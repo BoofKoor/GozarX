@@ -1,0 +1,16 @@
+# Local development overrides — applied automatically by `docker compose`.
+# Bind-mounts the source for live editing; the venv lives at /opt/venv so it is
+# not shadowed by the mount. RELOAD=1 enables uvicorn autoreload, and the app
+# port is exposed directly so you can curl http://localhost:8000/health.
+services:
+  app:
+    environment:
+      RELOAD: "1"
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+
+  worker:
+    volumes:
+      - ./backend:/app

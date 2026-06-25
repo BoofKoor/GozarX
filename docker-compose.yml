@@ -1,0 +1,73 @@
+name: gozar
+
+# Shared definition for the two backend roles (app + worker) so the image is
+# built once and reused.
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: docker/Dockerfile.backend
+  image: gozar-backend:local
+  env_file: .env
+  restart: unless-stopped
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-gozar}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gozar}
+      POSTGRES_DB: ${POSTGRES_DB:-gozar}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-gozar} -d $${POSTGRES_DB:-gozar}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    <<: *backend
+    command: ["/entrypoint.sh"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "gozar.worker.main"]
+
+  nginx:
+    image: nginx:1.27
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  pg_data:
+  redis_data:
