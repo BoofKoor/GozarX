@@ -40,6 +40,15 @@ def back_keyboard(lang: Language) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def help_keyboard(lang: Language) -> InlineKeyboardMarkup:
+    """Help screen — carries the required-apps shortcut (v1 attaches it here, not to the picker)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("apps", lang), callback_data=cb.MENU_APPS)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def location_keyboard(
     remarks: list[str], prefix: str, lang: Language, *, page: int = 0
 ) -> InlineKeyboardMarkup:
@@ -70,9 +79,8 @@ def location_keyboard(
         sizes.append(nav)  # Prev/Next share one row
 
     builder.button(text=t("increase_traffic", lang), callback_data=cb.MENU_INVITE)
-    builder.button(text=t("apps", lang), callback_data=cb.MENU_APPS)
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
-    sizes.extend([1, 1, 1])
+    sizes.extend([1, 1])
     builder.adjust(*sizes)
     return builder.as_markup()
 

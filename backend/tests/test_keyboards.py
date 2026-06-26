@@ -7,6 +7,7 @@ from aiogram.types import InlineKeyboardMarkup
 from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import (
     back_keyboard,
+    help_keyboard,
     language_keyboard,
     location_keyboard,
     main_menu_keyboard,
@@ -36,6 +37,11 @@ def test_back_keyboard() -> None:
     assert _callbacks(back_keyboard(Language.en)) == [cb.MENU_HOME]
 
 
+def test_help_keyboard_has_required_apps() -> None:
+    # v1 attaches the required-apps button to the HELP screen (not the get-config picker).
+    assert _callbacks(help_keyboard(Language.en)) == [cb.MENU_APPS, cb.MENU_HOME]
+
+
 def test_location_keyboard_short_has_actions_and_no_nav() -> None:
     kb = location_keyboard(["A", "B", "C"], cb.CONFIG_CLAIM_PREFIX, Language.en)
     assert _callbacks(kb) == [
@@ -43,8 +49,7 @@ def test_location_keyboard_short_has_actions_and_no_nav() -> None:
         "config:claim:1",
         "config:claim:2",
         cb.MENU_INVITE,  # 🔋 free-traffic referral shortcut
-        cb.MENU_APPS,  # 🔗 required apps
-        cb.MENU_HOME,  # 🏠 back
+        cb.MENU_HOME,  # 🏠 back  (required-apps now lives on the Help screen)
     ]
 
 
@@ -55,7 +60,8 @@ def test_location_keyboard_paginates_by_global_index() -> None:
     assert page0[:8] == [f"config:claim:{i}" for i in range(8)]
     assert cb.loc_page_cb("claim", 1) in page0  # Next only
     assert cb.loc_page_cb("claim", 0) not in page0
-    assert page0[-3:] == [cb.MENU_INVITE, cb.MENU_APPS, cb.MENU_HOME]
+    assert page0[-2:] == [cb.MENU_INVITE, cb.MENU_HOME]
+    assert cb.MENU_APPS not in page0  # apps button is no longer on the picker
 
     page1 = _callbacks(location_keyboard(remarks, cb.CONFIG_CLAIM_PREFIX, Language.en, page=1))
     assert page1[:2] == ["config:claim:8", "config:claim:9"]  # GLOBAL indices, not 0/1
