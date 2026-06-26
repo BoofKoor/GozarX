@@ -16,10 +16,8 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from gozar.config.settings import get_settings
+from gozar.db import models  # noqa: F401  (registers every table on Base.metadata)
 from gozar.db.base import Base
-
-# Import model modules here (Phase 1+) so their tables register on Base.metadata:
-#   from gozar.db import models  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
