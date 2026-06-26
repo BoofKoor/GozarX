@@ -33,3 +33,32 @@ def back_keyboard(lang: Language) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
     return builder.as_markup()
+
+
+def location_keyboard(remarks: list[str], prefix: str, lang: Language) -> InlineKeyboardMarkup:
+    """Picker over location remark NAMES. The button index addresses the cached picker, and the
+    chosen name is resolved to its link by name — never a cross-index between two lists.
+    """
+    builder = InlineKeyboardBuilder()
+    for index, remark in enumerate(remarks):
+        builder.button(text=remark, callback_data=f"{prefix}{index}")
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def config_delivered_keyboard(lang: Language) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("change_location", lang), callback_data=cb.CONFIG_CHANGE)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def status_keyboard(lang: Language, *, active: bool) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if active:
+        builder.button(text=t("change_location", lang), callback_data=cb.CONFIG_CHANGE)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()

@@ -13,7 +13,8 @@ from gozar.services.content import ContentService
 
 router = Router(name="menu")
 
-_PLACEHOLDER = {cb.MENU_CONFIG, cb.MENU_INVITE, cb.MENU_STATUS, cb.MENU_SETTINGS}
+# config + status are live (Phase 4); invite + settings remain placeholders until Phase 5.
+_PLACEHOLDER = {cb.MENU_INVITE, cb.MENU_SETTINGS}
 
 
 @router.callback_query(F.data == cb.MENU_HOME)

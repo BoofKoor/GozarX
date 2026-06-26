@@ -39,6 +39,11 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "⬅️ Back",
         Language.ru: "⬅️ Назад",
     },
+    "change_location": {
+        Language.fa: "🌍 تغییر لوکیشن",
+        Language.en: "🌍 Change location",
+        Language.ru: "🌍 Сменить локацию",
+    },
     "coming_soon": {
         Language.fa: "به‌زودی…",
         Language.en: "Coming soon…",

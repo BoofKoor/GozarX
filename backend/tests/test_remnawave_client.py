@@ -51,6 +51,8 @@ async def test_create_trial_user_request_and_parse() -> None:
         "username": "t_1",
         "expireAt": "2030-01-01T00:00:00+00:00",
         "trafficLimitBytes": 1000,
+        "trafficLimitStrategy": "NO_RESET",
+        "status": "ACTIVE",
         "activeInternalSquads": ["sq1"],
     }
     assert user.uuid == "u1"

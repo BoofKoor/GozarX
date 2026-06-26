@@ -23,6 +23,7 @@ from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient
 from gozar.services.content import ContentService
 from gozar.services.settings_service import SettingsService
+from gozar.services.trial import TrialService
 
 logger = logging.getLogger("gozar.bot.middleware")
 
@@ -46,15 +47,18 @@ class ContextMiddleware(BaseMiddleware):
             user_repo = UserRepository(session)
             user, created = await user_repo.get_or_create(tg_user.id)
             content = ContentService(session, self._redis)
+            settings = SettingsService(session, self._redis)
+            config_log_repo = ConfigLogRepository(session)
             data.update(
                 session=session,
                 user=user,
                 created=created,
                 content=content,
-                settings=SettingsService(session, self._redis),
+                settings=settings,
                 user_repo=user_repo,
-                config_log_repo=ConfigLogRepository(session),
+                config_log_repo=config_log_repo,
                 panel=self._panel,
+                trial=TrialService(self._panel, settings, config_log_repo, self._redis),
             )
             if user.status is UserStatus.banned:
                 await _notify_banned(event, content, user)

@@ -59,9 +59,11 @@ class SubscriptionUser(_Base):
     traffic_limit_bytes: int = Field(default=0, alias="trafficLimitBytes")
     expires_at: str | None = Field(default=None, alias="expiresAt")
     user_status: str = Field(default="", alias="userStatus")
+    short_uuid: str = Field(default="", alias="shortUuid")
 
 
 class Subscription(_Base):
+    is_found: bool = Field(default=True, alias="isFound")
     links: list[str] = Field(default_factory=list)
     # keyed by host remark NAME -> config link (used to match a chosen location to its link by name)
     ss_conf_links: dict[str, str] = Field(default_factory=dict, alias="ssConfLinks")
