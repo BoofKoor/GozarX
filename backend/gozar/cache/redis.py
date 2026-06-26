@@ -17,3 +17,9 @@ def create_redis_pool(url: str) -> Redis:
 
 def content_key(lang: str, key: str) -> str:
     return f"cache:content:{lang}:{key}"
+
+
+def sub_cache_key(telegram_id: int) -> str:
+    """Per-user trial subscription cache (picker remark->link map + expiry). One source of this key
+    so the trial service and the reminder webhook clear/refresh exactly the same entry."""
+    return f"cache:sub:{telegram_id}"

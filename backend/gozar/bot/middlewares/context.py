@@ -16,12 +16,14 @@ from aiogram.types import CallbackQuery, Message, TelegramObject
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from gozar.bot.notifications import PendingNotifications
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient
 from gozar.services.content import ContentService
+from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingsService
 from gozar.services.trial import TrialService
 
@@ -49,6 +51,7 @@ class ContextMiddleware(BaseMiddleware):
             content = ContentService(session, self._redis)
             settings = SettingsService(session, self._redis)
             config_log_repo = ConfigLogRepository(session)
+            notify = PendingNotifications()
             data.update(
                 session=session,
                 user=user,
@@ -59,6 +62,8 @@ class ContextMiddleware(BaseMiddleware):
                 config_log_repo=config_log_repo,
                 panel=self._panel,
                 trial=TrialService(self._panel, settings, config_log_repo, self._redis),
+                referral=ReferralService(user_repo, settings, self._panel),
+                notify=notify,
             )
             if user.status is UserStatus.banned:
                 await _notify_banned(event, content, user)
@@ -66,6 +71,9 @@ class ContextMiddleware(BaseMiddleware):
                 return None
             result = await handler(event, data)
             await session.commit()
+            # Side-effects fire ONLY after the commit succeeds — never before (a failed commit must
+            # not leave a user having seen a message whose DB write rolled back).
+            await notify.flush(data.get("bot"))
             return result
 
 

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # ── Webhook security ──────────────────────────────────────────────────
     webhook_secret: SecretStr = SecretStr("")
     webhook_header_secret: SecretStr = SecretStr("")
+    # Shared secret the Remnawave panel signs its webhooks with (HMAC-SHA256 over the body).
+    panel_webhook_secret: SecretStr = SecretStr("")
 
     # ── Remnawave panel ───────────────────────────────────────────────────
     panel_base_url: str = ""

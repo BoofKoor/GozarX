@@ -44,6 +44,26 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "🌍 Change location",
         Language.ru: "🌍 Сменить локацию",
     },
+    "settings_language": {
+        Language.fa: "🌐 زبان",
+        Language.en: "🌐 Language",
+        Language.ru: "🌐 Язык",
+    },
+    "reminder_on": {
+        Language.fa: "🔔 یادآوری‌ها: روشن",
+        Language.en: "🔔 Reminders: on",
+        Language.ru: "🔔 Напоминания: вкл",
+    },
+    "reminder_off": {
+        Language.fa: "🔕 یادآوری‌ها: خاموش",
+        Language.en: "🔕 Reminders: off",
+        Language.ru: "🔕 Напоминания: выкл",
+    },
+    "invite_share": {
+        Language.fa: "📤 اشتراک‌گذاری لینک",
+        Language.en: "📤 Share link",
+        Language.ru: "📤 Поделиться ссылкой",
+    },
     "coming_soon": {
         Language.fa: "به‌زودی…",
         Language.en: "Coming soon…",

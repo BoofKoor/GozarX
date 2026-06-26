@@ -1,4 +1,4 @@
-"""Main-menu navigation. Feature screens (config/status/invite/settings) arrive in Phases 4-5."""
+"""Main-menu navigation. All feature screens are live (config/status/invite/settings)."""
 
 from __future__ import annotations
 
@@ -6,15 +6,11 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
 from gozar.bot import callbacks as cb
-from gozar.bot.i18n import t
 from gozar.bot.keyboards import back_keyboard, main_menu_keyboard
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
 
 router = Router(name="menu")
-
-# config + status are live (Phase 4); invite + settings remain placeholders until Phase 5.
-_PLACEHOLDER = {cb.MENU_INVITE, cb.MENU_SETTINGS}
 
 
 @router.callback_query(F.data == cb.MENU_HOME)
@@ -31,9 +27,3 @@ async def menu_help(callback: CallbackQuery, user: User, content: ContentService
     text = await content.text("help", user.language)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=back_keyboard(user.language))
-
-
-# Phases 4-5 register feature routers BEFORE `menu`, so these placeholders fire only until then.
-@router.callback_query(F.data.in_(_PLACEHOLDER))
-async def menu_placeholder(callback: CallbackQuery, user: User) -> None:
-    await callback.answer(t("coming_soon", user.language))

@@ -114,6 +114,11 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "⚙️ Settings:\nChange your language and reminders here.",
         Language.ru: "⚙️ Настройки:\nИзмените язык и напоминания здесь.",
     },
+    "referral_joined": {
+        Language.fa: "🎉 یکی از دوستانی که دعوت کردید اولین کانفیگش را گرفت!\nتعداد دعوت‌های شما: {count}\nحجم روزانهٔ فعلی شما: {size}",
+        Language.en: "🎉 A friend you invited just claimed their first config!\nYour invites: {count}\nYour daily allowance is now: {size}",
+        Language.ru: "🎉 Приглашённый вами друг получил свой первый конфиг!\nВаши приглашения: {count}\nВаш дневной лимит теперь: {size}",
+    },
     "banned": {
         Language.fa: "⛔️ دسترسی شما به ربات مسدود شده است.",
         Language.en: "⛔️ Your access to the bot has been blocked.",

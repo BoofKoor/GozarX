@@ -21,7 +21,7 @@ from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
-from gozar.web.routes import health, telegram
+from gozar.web.routes import health, panel, telegram
 
 logger = logging.getLogger("gozar")
 
@@ -90,7 +90,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Gozar", version="0.1.0", lifespan=lifespan)
     app.include_router(health.router)
     app.include_router(telegram.router)  # POST /tg/{secret}
+    app.include_router(panel.router)  # POST /panel-webhook (Remnawave expiry/limit events)
     # Routers added in later phases:
-    #   P5: app.include_router(panel.router)           # POST /panel-webhook
     #   P7: app.include_router(admin_api.router, prefix="/api")
     return app

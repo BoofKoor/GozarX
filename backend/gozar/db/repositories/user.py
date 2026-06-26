@@ -13,6 +13,10 @@ class UserRepository(BaseRepository):
     async def get(self, telegram_id: int) -> User | None:
         return await self.session.get(User, telegram_id)
 
+    async def get_by_panel_username(self, panel_username: str) -> User | None:
+        """Reverse lookup for the panel webhook: map a Remnawave username back to its Gozar user."""
+        return await self.session.scalar(select(User).where(User.panel_username == panel_username))
+
     async def create(
         self,
         telegram_id: int,
