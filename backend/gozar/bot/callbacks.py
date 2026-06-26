@@ -17,6 +17,10 @@ CONFIG_CLAIM_PREFIX = "config:claim:"
 CONFIG_LOC_PREFIX = "config:loc:"
 CONFIG_CHANGE = "config:change"
 
+# Settings screen.
+SETTINGS_LANG = "settings:lang"
+SETTINGS_REMINDER_TOGGLE = "settings:reminder"
+
 
 def lang_cb(code: str) -> str:
     return f"{LANG_PREFIX}{code}"

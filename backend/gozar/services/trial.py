@@ -25,6 +25,7 @@ from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
 
+from gozar.cache.redis import sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -39,7 +40,6 @@ _DEFAULT_DAILY_MB = 1024
 _DEFAULT_TRIAL_HOURS = 24
 # Panel statuses that mean "this trial has ended" (used by the self-heal check).
 _ENDED_STATUSES = {"EXPIRED", "LIMITED", "DISABLED"}
-_CACHE_PREFIX = "cache:sub:"
 
 
 # --- claim() result variants -------------------------------------------------------------------
@@ -134,7 +134,7 @@ def _parse_dt(value: str | None) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
-def _human_bytes(num: int) -> str:
+def human_bytes(num: int) -> str:
     value = float(max(num, 0))
     for unit in ("B", "KB", "MB", "GB"):
         if value < 1024:
@@ -159,6 +159,19 @@ def _format_expires(value: str | None) -> str:
     return parsed.strftime("%Y-%m-%d %H:%M UTC") if parsed else "—"
 
 
+async def compute_traffic_bytes(settings: SettingsService, referral_count: int) -> int:
+    """Daily allowance + the configured (capped) referral bonus, in bytes.
+
+    The single source of the trial quota math — reused by the trial claim, the referral live-bump,
+    and the invite screen. Never hardcodes the reward/cap (they come from settings).
+    """
+    daily_mb = await settings.get_int(SettingKey.DAILY_LIMIT_MB, _DEFAULT_DAILY_MB)
+    reward_mb = await settings.get_int(SettingKey.REFERRAL_REWARD_MB, 0)
+    cap = await settings.get_int(SettingKey.REFERRAL_REWARD_LIMIT, 0)
+    rewarded = min(referral_count, cap)
+    return (daily_mb + rewarded * reward_mb) * 1024 * 1024
+
+
 class TrialService:
     def __init__(
         self,
@@ -172,27 +185,16 @@ class TrialService:
         self._config_log_repo = config_log_repo
         self._redis = redis
 
-    # --- traffic + cache helpers ----------------------------------------------------------------
-    async def _traffic_bytes(self, user: User) -> int:
-        """Daily allowance + the configured (capped) referral bonus — never hardcoded numbers."""
-        daily_mb = await self._settings.get_int(SettingKey.DAILY_LIMIT_MB, _DEFAULT_DAILY_MB)
-        reward_mb = await self._settings.get_int(SettingKey.REFERRAL_REWARD_MB, 0)
-        cap = await self._settings.get_int(SettingKey.REFERRAL_REWARD_LIMIT, 0)
-        rewarded = min(user.referral_count, cap)
-        return (daily_mb + rewarded * reward_mb) * 1024 * 1024
-
-    def _cache_key(self, telegram_id: int) -> str:
-        return f"{_CACHE_PREFIX}{telegram_id}"
-
+    # --- cache helpers (the quota math lives in module-level compute_traffic_bytes) --------------
     async def _store_cache(
         self, telegram_id: int, links: dict[str, str], expires: str | None
     ) -> None:
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
         payload = json.dumps({"links": links, "expires": expires})
-        await self._redis.set(self._cache_key(telegram_id), payload, ex=hours * 3600)
+        await self._redis.set(sub_cache_key(telegram_id), payload, ex=hours * 3600)
 
     async def _load_cache(self, telegram_id: int) -> _Cached | None:
-        raw = await self._redis.get(self._cache_key(telegram_id))
+        raw = await self._redis.get(sub_cache_key(telegram_id))
         if not raw:
             return None
         try:
@@ -205,7 +207,7 @@ class TrialService:
         return _Cached({str(k): str(v) for k, v in links.items()}, data.get("expires"))
 
     async def _clear_cache(self, telegram_id: int) -> None:
-        await self._redis.delete(self._cache_key(telegram_id))
+        await self._redis.delete(sub_cache_key(telegram_id))
 
     async def _filter_locations(self, links: dict[str, str]) -> dict[str, str]:
         """Intersect the link map with the LOCATIONS allowlist (empty allowlist -> keep all)."""
@@ -278,7 +280,7 @@ class TrialService:
             return NotReady()
 
         # 4. Panel call 1 — create a fresh 24h trial user. User stays `available` on failure.
-        traffic_bytes = await self._traffic_bytes(user)
+        traffic_bytes = await compute_traffic_bytes(self._settings, user.referral_count)
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
         expire_at = datetime.now(UTC) + timedelta(hours=hours)
         username = _gen_username(user.telegram_id)
@@ -301,7 +303,7 @@ class TrialService:
         await self._store_cache(user.telegram_id, filtered, expires)
         user.status = UserStatus.active_config
         user.panel_username = username
-        return Provisioned(list(filtered.keys()), _human_bytes(traffic_bytes))
+        return Provisioned(list(filtered.keys()), human_bytes(traffic_bytes))
 
     async def status(self, user: User) -> StatusInfo | PanelError:
         usage, remaining, active = "—", "—", False
@@ -312,14 +314,15 @@ class TrialService:
                 return PanelError()
             if refreshed is not None:
                 sub, _ = refreshed
-                usage = _human_bytes(sub.user.traffic_used_bytes)
+                usage = human_bytes(sub.user.traffic_used_bytes)
                 expires = _parse_dt(sub.user.expires_at)
                 remaining = _human_duration(expires - datetime.now(UTC)) if expires else "—"
                 active = True
+        daily_limit = human_bytes(await compute_traffic_bytes(self._settings, user.referral_count))
         return StatusInfo(
             tg_id=user.telegram_id,
             referrals=user.referral_count,
-            daily_limit=_human_bytes(await self._traffic_bytes(user)),
+            daily_limit=daily_limit,
             configs=await self._config_log_repo.count_for_user(user.telegram_id),
             usage=usage,
             remaining=remaining,

@@ -61,3 +61,49 @@ async def test_banned_user_short_circuits(db_sessions) -> None:
     assert result is None
     assert called is False
     await redis.aclose()
+
+
+class _StubBot:
+    def __init__(self) -> None:
+        self.sent: list[tuple[int, str]] = []
+
+    async def send_message(self, chat_id: int, text: str, reply_markup=None) -> None:
+        self.sent.append((chat_id, text))
+
+
+async def test_notifications_flush_after_commit(db_sessions) -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    mw = ContextMiddleware(db_sessions, redis, panel=None)  # type: ignore[arg-type]
+    bot = _StubBot()
+
+    async def handler(event, data) -> str:
+        data["notify"].send(777, "hi")  # queue a cross-user send
+        return "ok"
+
+    event = SimpleNamespace(from_user=SimpleNamespace(id=4242))
+    result = await mw(handler, event, {"bot": bot})
+
+    assert result == "ok"
+    assert bot.sent == [(777, "hi")]  # flushed AFTER the commit
+    async with db_sessions() as session:  # and the commit landed
+        assert await UserRepository(session).get(4242) is not None
+    await redis.aclose()
+
+
+async def test_no_notification_when_handler_raises(db_sessions) -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    mw = ContextMiddleware(db_sessions, redis, panel=None)  # type: ignore[arg-type]
+    bot = _StubBot()
+
+    async def handler(event, data) -> str:
+        data["notify"].send(777, "should-not-send")
+        raise ValueError("boom")
+
+    event = SimpleNamespace(from_user=SimpleNamespace(id=4343))
+    with pytest.raises(ValueError):
+        await mw(handler, event, {"bot": bot})
+
+    assert bot.sent == []  # rolled back -> flush never reached -> nothing sent
+    async with db_sessions() as session:  # the user insert rolled back too
+        assert await UserRepository(session).get(4343) is None
+    await redis.aclose()

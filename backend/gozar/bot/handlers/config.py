@@ -19,9 +19,11 @@ from gozar.bot.keyboards import (
     config_delivered_keyboard,
     location_keyboard,
 )
+from gozar.bot.notifications import PendingNotifications
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.services.content import ContentService
+from gozar.services.referral import ReferralService
 from gozar.services.trial import (
     AlreadyActive,
     AlreadyClaimedToday,
@@ -31,6 +33,7 @@ from gozar.services.trial import (
     PanelError,
     Provisioned,
     TrialService,
+    human_bytes,
 )
 
 router = Router(name="config")
@@ -78,25 +81,59 @@ async def open_config(
     await _edit(callback, text, markup)
 
 
+async def _maybe_award_referral(
+    invitee: User,
+    content: ContentService,
+    log_repo: ConfigLogRepository,
+    referral: ReferralService,
+    notify: PendingNotifications,
+) -> None:
+    """On the invitee's FIRST delivered config (count just became 1), credit their referrer and
+    queue the inviter's notice — SENT post-commit so the +1 is durable first."""
+    if not invitee.referred_by:
+        return
+    if await log_repo.count_for_user(invitee.telegram_id) != 1:
+        return
+    award = await referral.award_first_claim(invitee)
+    if award is None:
+        return
+    text = await content.text(
+        "referral_joined",
+        award.inviter.language,
+        count=award.new_count,
+        size=human_bytes(award.new_daily_bytes),
+    )
+    notify.send(award.inviter.telegram_id, text)
+
+
 async def _deliver(
     callback: CallbackQuery,
     user: User,
     content: ContentService,
     trial: TrialService,
+    notify: PendingNotifications,
     prefix: str,
     log_repo: ConfigLogRepository | None,
+    referral: ReferralService | None,
 ) -> None:
+    # DB work only; every user-facing send is QUEUED on `notify` and flushed by the middleware AFTER
+    # the commit (so the invitee's config + the inviter's referral notice never precede the write).
     await callback.answer()
+    message = callback.message
+    if not isinstance(message, Message):
+        return
     index = _parse_index((callback.data or "").removeprefix(prefix))
     if index is None:
         return
     delivery = await trial.link_for(user, index)
     if delivery is None:  # trial just ended / cache lost — nudge them to claim again
         text = await content.text("panel_error", user.language)
-        await _edit(callback, text, back_keyboard(user.language))
+        notify.edit(message, text, back_keyboard(user.language))
         return
-    if log_repo is not None:
+    if log_repo is not None:  # claim path — write the one log row, then maybe credit the referrer
         await log_repo.add(user.telegram_id, delivery.location)
+        if referral is not None:
+            await _maybe_award_referral(user, content, log_repo, referral, notify)
     text = await content.text(
         "config_delivered",
         user.language,
@@ -104,7 +141,7 @@ async def _deliver(
         link=html.escape(delivery.link),
         expires=delivery.expires,
     )
-    await _edit(callback, text, config_delivered_keyboard(user.language))
+    notify.edit(message, text, config_delivered_keyboard(user.language))
 
 
 @router.callback_query(F.data.startswith(cb.CONFIG_CLAIM_PREFIX))
@@ -113,16 +150,26 @@ async def deliver_claim(
     user: User,
     content: ContentService,
     trial: TrialService,
+    notify: PendingNotifications,
     config_log_repo: ConfigLogRepository,
+    referral: ReferralService,
 ) -> None:
-    await _deliver(callback, user, content, trial, cb.CONFIG_CLAIM_PREFIX, config_log_repo)
+    await _deliver(
+        callback, user, content, trial, notify, cb.CONFIG_CLAIM_PREFIX, config_log_repo, referral
+    )
 
 
 @router.callback_query(F.data.startswith(cb.CONFIG_LOC_PREFIX))
 async def deliver_change(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    notify: PendingNotifications,
 ) -> None:
-    await _deliver(callback, user, content, trial, cb.CONFIG_LOC_PREFIX, log_repo=None)
+    await _deliver(
+        callback, user, content, trial, notify, cb.CONFIG_LOC_PREFIX, log_repo=None, referral=None
+    )
 
 
 @router.callback_query(F.data == cb.CONFIG_CHANGE)

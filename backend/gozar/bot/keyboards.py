@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from urllib.parse import quote
+
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
@@ -59,6 +61,27 @@ def status_keyboard(lang: Language, *, active: bool) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     if active:
         builder.button(text=t("change_location", lang), callback_data=cb.CONFIG_CHANGE)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def settings_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("settings_language", lang), callback_data=cb.SETTINGS_LANG)
+    toggle = t("reminder_on", lang) if reminder_enabled else t("reminder_off", lang)
+    builder.button(text=toggle, callback_data=cb.SETTINGS_REMINDER_TOGGLE)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def invite_keyboard(lang: Language, link: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    if link.startswith("http"):  # a real deep link (bot_username configured) — offer one-tap share
+        builder.button(
+            text=t("invite_share", lang), url=f"https://t.me/share/url?url={quote(link)}"
+        )
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
     builder.adjust(1)
     return builder.as_markup()
