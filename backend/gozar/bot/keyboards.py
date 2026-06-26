@@ -11,6 +11,9 @@ from gozar.bot import callbacks as cb
 from gozar.bot.i18n import LANGUAGE_NAMES, t
 from gozar.db.models.enums import Language
 
+# Locations per picker page; longer squads paginate with Next/Prev (v1's after_before_keyboard).
+_PAGE_SIZE = 8
+
 
 def language_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
@@ -37,15 +40,40 @@ def back_keyboard(lang: Language) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def location_keyboard(remarks: list[str], prefix: str, lang: Language) -> InlineKeyboardMarkup:
-    """Picker over location remark NAMES. The button index addresses the cached picker, and the
-    chosen name is resolved to its link by name — never a cross-index between two lists.
+def location_keyboard(
+    remarks: list[str], prefix: str, lang: Language, *, page: int = 0
+) -> InlineKeyboardMarkup:
+    """Paginated picker over location remark NAMES.
+
+    Each button is keyed by its **global** index, and the chosen name resolves to its link by NAME
+    (never a cross-index between two lists). ``page`` is a pure view offset into the same cached
+    remarks. Below the locations: a Prev/Next nav row (only when there's more than one page), then
+    the free-traffic referral shortcut, the required-apps screen, and back.
     """
     builder = InlineKeyboardBuilder()
-    for index, remark in enumerate(remarks):
-        builder.button(text=remark, callback_data=f"{prefix}{index}")
+    page_count = max(1, (len(remarks) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    page = min(max(page, 0), page_count - 1)
+    window = range(page * _PAGE_SIZE, min((page + 1) * _PAGE_SIZE, len(remarks)))
+    for index in window:
+        builder.button(text=remarks[index], callback_data=f"{prefix}{index}")
+    sizes = [1] * len(window)
+
+    tag = "claim" if prefix == cb.CONFIG_CLAIM_PREFIX else "loc"
+    nav = 0
+    if page > 0:
+        builder.button(text=t("nav_prev", lang), callback_data=cb.loc_page_cb(tag, page - 1))
+        nav += 1
+    if page < page_count - 1:
+        builder.button(text=t("nav_next", lang), callback_data=cb.loc_page_cb(tag, page + 1))
+        nav += 1
+    if nav:
+        sizes.append(nav)  # Prev/Next share one row
+
+    builder.button(text=t("increase_traffic", lang), callback_data=cb.MENU_INVITE)
+    builder.button(text=t("apps", lang), callback_data=cb.MENU_APPS)
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
-    builder.adjust(1)
+    sizes.extend([1, 1, 1])
+    builder.adjust(*sizes)
     return builder.as_markup()
 
 
@@ -72,7 +100,7 @@ def settings_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboa
     toggle = t("reminder_on", lang) if reminder_enabled else t("reminder_off", lang)
     builder.button(text=toggle, callback_data=cb.SETTINGS_REMINDER_TOGGLE)
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
-    builder.adjust(1)
+    builder.adjust(2, 1)  # language | reminder on one row, back below
     return builder.as_markup()
 
 

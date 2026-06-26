@@ -7,9 +7,9 @@ from gozar.db.models.enums import Language
 
 
 def test_labels_per_language() -> None:
-    assert t("menu_help", Language.fa) == "❓ راهنما"
-    assert t("menu_help", Language.en) == "❓ Help"
-    assert t("menu_help", Language.ru) == "❓ Помощь"
+    assert t("menu_help", Language.fa) == "📝 راهنما"
+    assert t("menu_help", Language.en) == "📝 Help"
+    assert t("menu_help", Language.ru) == "📝 Помощь"
 
 
 def test_unknown_key_returns_key() -> None:

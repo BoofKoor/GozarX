@@ -27,3 +27,12 @@ async def menu_help(callback: CallbackQuery, user: User, content: ContentService
     text = await content.text("help", user.language)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=back_keyboard(user.language))
+
+
+@router.callback_query(F.data == cb.MENU_APPS)
+async def menu_apps(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    """Required-apps info screen (reached from the get-config picker)."""
+    await callback.answer()
+    text = await content.text("required_apps", user.language)
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=back_keyboard(user.language))

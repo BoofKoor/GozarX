@@ -119,6 +119,11 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "🎉 A friend you invited just claimed their first config!\nYour invites: {count}\nYour daily allowance is now: {size}",
         Language.ru: "🎉 Приглашённый вами друг получил свой первый конфиг!\nВаши приглашения: {count}\nВаш дневной лимит теперь: {size}",
     },
+    "required_apps": {
+        Language.fa: "🔗 برای استفاده از کانفیگ، یکی از این برنامه‌ها را نصب کنید:\n\n• اندروید: v2rayNG یا Hiddify\n• آیفون: Streisand یا Hiddify\n• ویندوز: Hiddify یا v2rayN\n• مک: Streisand یا Hiddify\n\nسپس کانفیگ را کپی کرده و در برنامه وارد (Import) کنید.",
+        Language.en: "🔗 To use your config, install one of these apps:\n\n• Android: v2rayNG or Hiddify\n• iOS: Streisand or Hiddify\n• Windows: Hiddify or v2rayN\n• macOS: Streisand or Hiddify\n\nThen copy your config and import it into the app.",
+        Language.ru: "🔗 Чтобы использовать конфиг, установите одно из приложений:\n\n• Android: v2rayNG или Hiddify\n• iOS: Streisand или Hiddify\n• Windows: Hiddify или v2rayN\n• macOS: Streisand или Hiddify\n\nЗатем скопируйте конфиг и импортируйте его в приложение.",
+    },
     "banned": {
         Language.fa: "⛔️ دسترسی شما به ربات مسدود شده است.",
         Language.en: "⛔️ Your access to the bot has been blocked.",
