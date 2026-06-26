@@ -24,6 +24,7 @@ dev = [
     "ruff>=0.7",
     "pytest>=8.3",
     "pytest-asyncio>=0.24",
+    "fakeredis>=2.21",
 ]
 
 [build-system]
@@ -42,6 +43,9 @@ extend-exclude = ["migrations/versions"]
 # E/F = pycodestyle+pyflakes, I = isort, UP = pyupgrade, B = bugbear,
 # T20 = flake8-print (T201 bans print()), ASYNC = async pitfalls.
 select = ["E", "F", "I", "UP", "B", "T20", "ASYNC"]
+
+[tool.ruff.lint.per-file-ignores]
+"gozar/seed.py" = ["E501"]  # long translated copy strings
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

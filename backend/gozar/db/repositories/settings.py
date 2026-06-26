@@ -22,6 +22,12 @@ class SettingsRepository(BaseRepository):
         )
         await self.session.execute(stmt)
 
+    async def add_default(self, key: str, value: str) -> None:
+        """Insert a default only if the key is absent — never clobbers admin edits."""
+        stmt = pg_insert(Setting).values(key=key, value=value)
+        stmt = stmt.on_conflict_do_nothing(index_elements=[Setting.key])
+        await self.session.execute(stmt)
+
     async def all_as_dict(self) -> dict[str, str]:
         result = await self.session.scalars(select(Setting))
         return {s.key: s.value for s in result.all()}
