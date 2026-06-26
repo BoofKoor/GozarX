@@ -51,7 +51,7 @@ def test_settings_keyboard_reflects_state() -> None:
     assert cb.SETTINGS_REMINDER_TOGGLE in datas
     assert cb.MENU_HOME in datas
     toggle = next(b for b in buttons if b.callback_data == cb.SETTINGS_REMINDER_TOGGLE)
-    assert "on" in toggle.text.lower()
+    assert "✅" in toggle.text  # enabled -> check mark
 
     off = settings_keyboard(Language.en, reminder_enabled=False)
     toggle_off = next(
@@ -60,7 +60,7 @@ def test_settings_keyboard_reflects_state() -> None:
         for b in row
         if b.callback_data == cb.SETTINGS_REMINDER_TOGGLE
     )
-    assert "off" in toggle_off.text.lower()
+    assert "❌" in toggle_off.text  # disabled -> cross mark
 
 
 def test_invite_link_format() -> None:

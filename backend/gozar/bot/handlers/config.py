@@ -187,3 +187,28 @@ async def change_location(
         return
     text = await content.text("choose_location", lang)
     await _edit(callback, text, location_keyboard(result, cb.CONFIG_LOC_PREFIX, lang))
+
+
+@router.callback_query(F.data.startswith(cb.LOC_PAGE_PREFIX))
+async def paginate_locations(
+    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+) -> None:
+    """Re-render the picker at another page — a pure view change (no claim/log/referral logic).
+
+    The ``{tag}`` in ``loc:page:{tag}:{N}`` preserves the delivery prefix (claim vs change), so a
+    paginated first-claim picker still delivers via ``config:claim:`` and writes its one log row.
+    """
+    await callback.answer()
+    tag, _, page_str = (callback.data or "").removeprefix(cb.LOC_PAGE_PREFIX).partition(":")
+    page = _parse_index(page_str) or 0
+    prefix = cb.CONFIG_CLAIM_PREFIX if tag == "claim" else cb.CONFIG_LOC_PREFIX
+    result = await trial.locations(user)
+    lang = user.language
+    if isinstance(result, PanelError):
+        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang))
+        return
+    if not result:
+        await _edit(callback, await content.text("no_locations", lang), back_keyboard(lang))
+        return
+    text = await content.text("choose_location", lang)
+    await _edit(callback, text, location_keyboard(result, prefix, lang, page=page))

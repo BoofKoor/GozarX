@@ -8,6 +8,7 @@ MENU_INVITE = "menu:invite"
 MENU_STATUS = "menu:status"
 MENU_HELP = "menu:help"
 MENU_SETTINGS = "menu:settings"
+MENU_APPS = "menu:apps"  # required-apps info screen
 
 LANG_PREFIX = "lang:set:"
 
@@ -16,6 +17,10 @@ LANG_PREFIX = "lang:set:"
 CONFIG_CLAIM_PREFIX = "config:claim:"
 CONFIG_LOC_PREFIX = "config:loc:"
 CONFIG_CHANGE = "config:change"
+
+# Location-picker pagination: loc:page:{tag}:{N}. The tag ("claim" | "loc") preserves which delivery
+# prefix the re-rendered page uses, so a paginated first-claim picker still logs via config:claim:.
+LOC_PAGE_PREFIX = "loc:page:"
 
 # Settings screen.
 SETTINGS_LANG = "settings:lang"
@@ -32,3 +37,7 @@ def config_claim_cb(index: int) -> str:
 
 def config_loc_cb(index: int) -> str:
     return f"{CONFIG_LOC_PREFIX}{index}"
+
+
+def loc_page_cb(tag: str, page: int) -> str:
+    return f"{LOC_PAGE_PREFIX}{tag}:{page}"

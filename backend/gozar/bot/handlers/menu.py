@@ -6,7 +6,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery, Message
 
 from gozar.bot import callbacks as cb
-from gozar.bot.keyboards import back_keyboard, main_menu_keyboard
+from gozar.bot.keyboards import back_keyboard, help_keyboard, main_menu_keyboard
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
 
@@ -25,5 +25,14 @@ async def menu_home(callback: CallbackQuery, user: User, content: ContentService
 async def menu_help(callback: CallbackQuery, user: User, content: ContentService) -> None:
     await callback.answer()
     text = await content.text("help", user.language)
+    if isinstance(callback.message, Message):
+        await callback.message.edit_text(text, reply_markup=help_keyboard(user.language))
+
+
+@router.callback_query(F.data == cb.MENU_APPS)
+async def menu_apps(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    """Required-apps info screen (reached from the get-config picker)."""
+    await callback.answer()
+    text = await content.text("required_apps", user.language)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=back_keyboard(user.language))
