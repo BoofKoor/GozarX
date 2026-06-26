@@ -31,3 +31,16 @@ async def session():
     async with sessionmaker() as db:
         yield db
     await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def db_sessions():
+    """A sessionmaker over a fresh schema — for code that opens its own session (middleware)."""
+    if not TEST_DATABASE_URL:
+        pytest.skip("TEST_DATABASE_URL not set")
+    engine = create_async_engine(TEST_DATABASE_URL)
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield async_sessionmaker(engine, expire_on_commit=False)
+    await engine.dispose()
