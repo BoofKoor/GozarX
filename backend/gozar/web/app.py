@@ -17,6 +17,7 @@ from fastapi import FastAPI
 
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
+from gozar.db.session import create_engine, create_sessionmaker
 from gozar.web.routes import health
 
 logger = logging.getLogger("gozar")
@@ -31,8 +32,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Shared HTTP client (TLS verification ON) — used by the Remnawave client (P2+).
     app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(10.0), verify=True)
 
+    # Database engine + session factory (lazy pool — no connection until first query).
+    app.state.engine = create_engine(settings.database_url)
+    app.state.sessionmaker = create_sessionmaker(app.state.engine)
+
     # Resource seams wired in later phases — create here, tear down symmetrically below:
-    #   P1: app.state.engine, app.state.sessionmaker (create from settings.database_url)
     #   P2: app.state.redis = await create_redis_pool(settings.redis_url)
     #   P3: app.state.bot, app.state.dp = build_bot_and_dispatcher(settings); await set_webhook(...)
     try:
@@ -40,7 +44,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         #   P3: await app.state.bot.session.close()
         #   P2: await app.state.redis.aclose()
-        #   P1: await app.state.engine.dispose()
+        await app.state.engine.dispose()
         await app.state.http.aclose()
         logger.info("gozar stopped")
 
