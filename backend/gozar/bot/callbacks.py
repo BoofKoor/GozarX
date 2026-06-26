@@ -11,6 +11,20 @@ MENU_SETTINGS = "menu:settings"
 
 LANG_PREFIX = "lang:set:"
 
+# Config flow. CLAIM is the first delivery for a chosen location (writes one config_log); LOC is a
+# change-location delivery (no log); CHANGE re-opens the picker. Index addresses the cached picker.
+CONFIG_CLAIM_PREFIX = "config:claim:"
+CONFIG_LOC_PREFIX = "config:loc:"
+CONFIG_CHANGE = "config:change"
+
 
 def lang_cb(code: str) -> str:
     return f"{LANG_PREFIX}{code}"
+
+
+def config_claim_cb(index: int) -> str:
+    return f"{CONFIG_CLAIM_PREFIX}{index}"
+
+
+def config_loc_cb(index: int) -> str:
+    return f"{CONFIG_LOC_PREFIX}{index}"

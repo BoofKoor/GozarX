@@ -16,6 +16,7 @@ import httpx
 from pydantic import SecretStr
 
 from gozar.remnawave.errors import RemnawaveError
+from gozar.remnawave.links import parse_remark
 from gozar.remnawave.schemas import Host, InternalSquad, PanelUser, Subscription
 
 logger = logging.getLogger("gozar.remnawave")
@@ -29,6 +30,30 @@ def _unique(items: list[str]) -> list[str]:
             seen.add(item)
             out.append(item)
     return out
+
+
+def _links_from_list(links: list[str]) -> dict[str, str]:
+    """remark -> link, parsed from a list of raw config-link strings (first wins per remark)."""
+    out: dict[str, str] = {}
+    for link in links:
+        remark = parse_remark(link)
+        if remark and remark not in out:
+            out[remark] = link
+    return out
+
+
+def _parse_raw_links(raw: Any) -> dict[str, str]:
+    # VERIFY: the raw subscription shape varies by panel version — a list of link strings, a
+    #         {remark: link} map, or a wrapper like {"links": [...]}/{"subscription": [...]}.
+    if isinstance(raw, list):
+        return _links_from_list([str(x) for x in raw])
+    if isinstance(raw, dict):
+        for key in ("links", "subscription", "configs"):
+            if isinstance(raw.get(key), list):
+                return _links_from_list([str(x) for x in raw[key]])
+        if raw and all(isinstance(v, str) for v in raw.values()):
+            return {str(k): str(v) for k, v in raw.items()}
+    return {}
 
 
 class RemnawaveClient:
@@ -59,7 +84,8 @@ class RemnawaveClient:
         return data.get("response", data) if isinstance(data, dict) else data
 
     # VERIFY: POST /api/users (create-user.command.ts) — username, expireAt, trafficLimitBytes,
-    #         activeInternalSquads[]
+    #         activeInternalSquads[]. trafficLimitStrategy NO_RESET so each claim is a fresh 24h
+    #         user (we never reset traffic in place); status ACTIVE so the config works at once.
     async def create_trial_user(
         self, username: str, traffic_bytes: int, expire_at: datetime, squad_uuids: list[str]
     ) -> PanelUser:
@@ -67,6 +93,8 @@ class RemnawaveClient:
             "username": username,
             "expireAt": expire_at.isoformat(),
             "trafficLimitBytes": traffic_bytes,
+            "trafficLimitStrategy": "NO_RESET",
+            "status": "ACTIVE",
             "activeInternalSquads": squad_uuids,
         }
         return PanelUser.model_validate(await self._request("POST", "/users", json=payload))
@@ -81,9 +109,10 @@ class RemnawaveClient:
             raise
         return PanelUser.model_validate(data)
 
-    # VERIFY: PATCH /api/users (update-user.command.ts) — {username, trafficLimitBytes}
-    async def update_traffic_limit(self, username: str, traffic_bytes: int) -> PanelUser:
-        payload = {"username": username, "trafficLimitBytes": traffic_bytes}
+    # VERIFY: PATCH /api/users (update-user.command.ts) keys off the user UUID, not username — so
+    #         the referral bump (Phase 5) fetches the user by username for its uuid, then PATCHes.
+    async def update_traffic_limit(self, uuid: str, traffic_bytes: int) -> PanelUser:
+        payload = {"uuid": uuid, "trafficLimitBytes": traffic_bytes}
         return PanelUser.model_validate(await self._request("PATCH", "/users", json=payload))
 
     # VERIFY: DELETE /api/users/{uuid} -> response.isDeleted
@@ -108,11 +137,33 @@ class RemnawaveClient:
             hosts = []
         return [Host.model_validate(h) for h in hosts]
 
-    # VERIFY: GET /api/subscriptions/by-username/{username} -> {links, ssConfLinks, user}
+    # VERIFY: GET /api/subscriptions/by-username/{username} -> {links, ssConfLinks, user}. Carries
+    #         the user's shortUuid + status/expireAt (basis for both the picker and the self-heal).
     async def get_subscription(self, username: str) -> Subscription:
         return Subscription.model_validate(
             await self._request("GET", f"/subscriptions/by-username/{username}")
         )
+
+    # VERIFY: GET /api/subscriptions/raw/{shortUuid} — raw config data; shape is panel-version-
+    #         sensitive (a link list, a {remark: link} map, or a wrapper), so we parse defensively.
+    async def get_subscription_raw(self, short_uuid: str) -> Any:
+        return await self._request("GET", f"/subscriptions/raw/{short_uuid}")
+
+    async def subscription(self, username: str) -> tuple[Subscription, dict[str, str]]:
+        """The user's own subscription paired with a remark NAME -> config link map.
+
+        Single source of truth for the location picker: the picker's names and the link handed back
+        on a pick both come from this one response, so they can never cross-index (the v1 bug). We
+        try, in order: the by-username ``ssConfLinks`` map; else parse remarks out of ``links[]``;
+        else fall back to the raw endpoint (whose shape varies). All shape handling is # VERIFY:.
+        """
+        sub = await self.get_subscription(username)
+        links = dict(sub.ss_conf_links)
+        if not links:
+            links = _links_from_list(sub.links)
+        if not links and sub.user.short_uuid:
+            links = _parse_raw_links(await self.get_subscription_raw(sub.user.short_uuid))
+        return sub, links
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:
         """Location remark names available to a squad.

@@ -65,14 +65,29 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "Ваш пробный объём на сегодня: {size}\nВыберите локацию для создания конфига.",
     },
     "config_delivered": {
-        Language.fa: "کانفیگ شما برای «{location}» آماده است:\n\n`{link}`\n\n⏳ اعتبار تا: {expires}",
-        Language.en: 'Your config for "{location}" is ready:\n\n`{link}`\n\n⏳ Valid until: {expires}',
-        Language.ru: "Ваш конфиг для «{location}» готов:\n\n`{link}`\n\n⏳ Действует до: {expires}",
+        Language.fa: "کانفیگ شما برای «{location}» آماده است:\n\n<code>{link}</code>\n\n⏳ اعتبار تا: {expires}",
+        Language.en: 'Your config for "{location}" is ready:\n\n<code>{link}</code>\n\n⏳ Valid until: {expires}',
+        Language.ru: "Ваш конфиг для «{location}» готов:\n\n<code>{link}</code>\n\n⏳ Действует до: {expires}",
     },
     "already_claimed": {
         Language.fa: "شما امروز کانفیگ خود را گرفته‌اید. ✅\nفردا دوباره سر بزنید یا با دعوت دوستان حجم بگیرید.",
         Language.en: "You've already claimed today's config. ✅\nCome back tomorrow, or invite friends for more.",
         Language.ru: "Вы уже получили конфиг на сегодня. ✅\nЗаходите завтра или приглашайте друзей.",
+    },
+    "not_ready": {
+        Language.fa: "🛠 ربات هنوز آمادهٔ ارائهٔ کانفیگ نیست.\nلطفاً کمی بعد دوباره تلاش کنید.",
+        Language.en: "🛠 The bot isn't ready to hand out configs yet.\nPlease try again a little later.",
+        Language.ru: "🛠 Бот ещё не готов выдавать конфиги.\nПожалуйста, попробуйте чуть позже.",
+    },
+    "no_locations": {
+        Language.fa: "📍 در حال حاضر هیچ لوکیشنی در دسترس نیست.\nلطفاً بعداً دوباره سر بزنید.",
+        Language.en: "📍 No locations are available right now.\nPlease check back later.",
+        Language.ru: "📍 Сейчас нет доступных локаций.\nПожалуйста, загляните позже.",
+    },
+    "panel_error": {
+        Language.fa: "⚠️ ارتباط با سرور برقرار نشد.\nلطفاً چند لحظه بعد دوباره تلاش کنید.",
+        Language.en: "⚠️ Couldn't reach the server.\nPlease try again in a moment.",
+        Language.ru: "⚠️ Не удалось связаться с сервером.\nПожалуйста, повторите попытку чуть позже.",
     },
     "status": {
         Language.fa: "📊 وضعیت شما:\n• شناسه: {tg_id}\n• دعوت‌ها: {referrals}\n• حجم روزانه: {daily_limit}\n• کانفیگ‌های دریافتی: {configs}\n• مصرف: {usage}\n• زمان باقی‌مانده: {remaining}",
