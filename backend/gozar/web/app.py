@@ -15,9 +15,11 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 
+from gozar.cache.redis import create_redis_pool
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
+from gozar.remnawave import RemnawaveClient
 from gozar.web.routes import health
 
 logger = logging.getLogger("gozar")
@@ -36,14 +38,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = create_engine(settings.database_url)
     app.state.sessionmaker = create_sessionmaker(app.state.engine)
 
+    # Redis (content/settings cache now; aiogram FSM + arq queue later) — lazy pool.
+    app.state.redis = create_redis_pool(settings.redis_url)
+    # Remnawave panel client over the shared HTTP client (TLS on).
+    app.state.panel = RemnawaveClient(
+        app.state.http, settings.panel_base_url, settings.panel_api_token
+    )
+
     # Resource seams wired in later phases — create here, tear down symmetrically below:
-    #   P2: app.state.redis = await create_redis_pool(settings.redis_url)
     #   P3: app.state.bot, app.state.dp = build_bot_and_dispatcher(settings); await set_webhook(...)
     try:
         yield
     finally:
         #   P3: await app.state.bot.session.close()
-        #   P2: await app.state.redis.aclose()
+        await app.state.redis.aclose()
         await app.state.engine.dispose()
         await app.state.http.aclose()
         logger.info("gozar stopped")

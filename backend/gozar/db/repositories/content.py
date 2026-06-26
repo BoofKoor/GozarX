@@ -29,6 +29,12 @@ class ContentRepository(BaseRepository):
         )
         await self.session.execute(stmt)
 
+    async def add_default(self, key: str, language: Language, body: str) -> None:
+        """Insert a default only if (key, language) is absent — never clobbers admin edits."""
+        stmt = pg_insert(Content).values(key=key, language=language, body=body)
+        stmt = stmt.on_conflict_do_nothing(index_elements=[Content.key, Content.language])
+        await self.session.execute(stmt)
+
     async def all(self) -> list[Content]:
         result = await self.session.scalars(select(Content))
         return list(result.all())
