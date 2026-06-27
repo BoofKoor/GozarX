@@ -40,9 +40,19 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.ru: "🏠 Назад",
     },
     "change_location": {
-        Language.fa: "🌍 تغییر لوکیشن",
-        Language.en: "🌍 Change location",
-        Language.ru: "🌍 Сменить локацию",
+        Language.fa: "🔄 تغییر لوکیشن",
+        Language.en: "🔄 Change location",
+        Language.ru: "🔄 Изменить локацию",
+    },
+    "get_config": {
+        Language.fa: "📥 دریافت کانفیگ",
+        Language.en: "📥 Get config",
+        Language.ru: "📥 Получить конфиг",
+    },
+    "show_menu": {
+        Language.fa: "🏠 نمایش منوی اصلی",
+        Language.en: "🏠 Main menu",
+        Language.ru: "🏠 Главное меню",
     },
     "settings_language": {
         Language.fa: "🌐 تغییر زبان",
