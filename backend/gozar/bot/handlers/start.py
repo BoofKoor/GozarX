@@ -11,6 +11,7 @@ from gozar.bot.keyboards import language_keyboard, main_menu_keyboard
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
+from gozar.ui.buttons import ButtonOverrides
 
 router = Router(name="start")
 
@@ -32,6 +33,7 @@ async def cmd_start(
     user: User,
     created: bool,
     content: ContentService,
+    buttons: ButtonOverrides,
 ) -> None:
     if created:
         referrer = _parse_referrer(command.args, self_id=user.telegram_id)
@@ -42,11 +44,13 @@ async def cmd_start(
         await message.answer(text, reply_markup=language_keyboard())
     else:
         text = await content.text("main_menu", user.language)
-        await message.answer(text, reply_markup=main_menu_keyboard(user.language))
+        await message.answer(text, reply_markup=main_menu_keyboard(user.language, buttons))
 
 
 @router.callback_query(F.data.startswith(cb.LANG_PREFIX))
-async def set_language(callback: CallbackQuery, user: User, content: ContentService) -> None:
+async def set_language(
+    callback: CallbackQuery, user: User, content: ContentService, buttons: ButtonOverrides
+) -> None:
     code = (callback.data or "").removeprefix(cb.LANG_PREFIX)
     try:
         lang = Language(code)
@@ -57,4 +61,4 @@ async def set_language(callback: CallbackQuery, user: User, content: ContentServ
     await callback.answer()
     text = await content.text("welcome", lang)
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(text, reply_markup=main_menu_keyboard(lang))
+        await callback.message.edit_text(text, reply_markup=main_menu_keyboard(lang, buttons))

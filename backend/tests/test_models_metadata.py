@@ -12,7 +12,13 @@ def _table(name: str):
 
 
 def test_all_tables_registered() -> None:
-    assert set(Base.metadata.tables) == {"users", "config_logs", "content", "settings"}
+    assert set(Base.metadata.tables) == {
+        "users",
+        "config_logs",
+        "content",
+        "settings",
+        "button_configs",
+    }
 
 
 def test_users_columns() -> None:

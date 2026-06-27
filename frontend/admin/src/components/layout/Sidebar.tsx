@@ -1,9 +1,16 @@
 import { clsx } from "clsx";
-import { LayoutDashboard, Settings as SettingsIcon } from "lucide-react";
+import {
+  FileText,
+  LayoutDashboard,
+  MousePointerClick,
+  Settings as SettingsIcon,
+} from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const items = [
   { to: "/", label: "داشبورد", icon: LayoutDashboard },
+  { to: "/texts", label: "متن‌ها", icon: FileText },
+  { to: "/buttons", label: "دکمه‌ها", icon: MousePointerClick },
   { to: "/settings", label: "تنظیمات", icon: SettingsIcon },
 ];
 

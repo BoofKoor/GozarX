@@ -17,6 +17,7 @@ from gozar.db.models.user import User
 from gozar.services.content import ContentService
 from gozar.services.settings_service import SettingsService
 from gozar.services.trial import compute_traffic_bytes, human_bytes
+from gozar.ui.buttons import ButtonOverrides
 
 router = Router(name="invite")
 
@@ -29,7 +30,11 @@ def invite_link(bot_username: str, telegram_id: int) -> str:
 
 @router.callback_query(F.data == cb.MENU_INVITE)
 async def open_invite(
-    callback: CallbackQuery, user: User, content: ContentService, settings: SettingsService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    settings: SettingsService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     link = invite_link(get_settings().bot_username, user.telegram_id)
@@ -38,4 +43,6 @@ async def open_invite(
         "invite", user.language, link=link, count=user.referral_count, daily_size=daily_size
     )
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(text, reply_markup=invite_keyboard(user.language, link))
+        await callback.message.edit_text(
+            text, reply_markup=invite_keyboard(user.language, link, buttons)
+        )

@@ -38,6 +38,7 @@ from gozar.services.trial import (
     TrialService,
     human_bytes,
 )
+from gozar.ui.buttons import ButtonOverrides
 
 router = Router(name="config")
 
@@ -55,35 +56,43 @@ def _parse_index(raw: str) -> int | None:
 
 
 async def _render_claim(
-    result: ClaimResult, user: User, content: ContentService
+    result: ClaimResult, user: User, content: ContentService, buttons: ButtonOverrides
 ) -> tuple[str, InlineKeyboardMarkup]:
     lang = user.language
     if isinstance(result, Provisioned):
         text = await content.text("choose_location", lang)
-        return text, location_keyboard(result.remarks, cb.CONFIG_CLAIM_PREFIX, lang)
+        return text, location_keyboard(
+            result.remarks, cb.CONFIG_CLAIM_PREFIX, lang, buttons=buttons
+        )
     if isinstance(result, AlreadyActive):
         # Already holding a live trial — re-deliveries are changes (CONFIG_CHANGE, no new log).
         text = await content.text("choose_location", lang)
-        return text, location_keyboard(result.remarks, cb.CONFIG_CHANGE_PREFIX, lang)
+        return text, location_keyboard(
+            result.remarks, cb.CONFIG_CHANGE_PREFIX, lang, buttons=buttons
+        )
     key = {
         AlreadyClaimedToday: "already_claimed",
         NotReady: "not_ready",
         NoLocations: "no_locations",
         PanelError: "panel_error",
     }[type(result)]
-    return await content.text(key, lang), back_keyboard(lang)
+    return await content.text(key, lang), back_keyboard(lang, buttons)
 
 
 @router.callback_query(F.data == cb.MENU_CONFIG)
 async def open_config(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    buttons: ButtonOverrides,
 ) -> None:
     """The get-config LANDING — renders the user's current state and creates NO panel user."""
     await callback.answer()
     info = await trial.status(user)  # no panel call when claimable; self-heals an expired trial
     lang = user.language
     if isinstance(info, PanelError):
-        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang))
+        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang, buttons))
         return
     if info.active:
         text = await content.text(
@@ -95,17 +104,21 @@ async def open_config(
         )
     else:
         text = await content.text("config_size", lang, size=info.daily_limit)
-    await _edit(callback, text, landing_keyboard(lang, active=info.active))
+    await _edit(callback, text, landing_keyboard(lang, active=info.active, buttons=buttons))
 
 
 @router.callback_query(F.data == cb.CONFIG_CLAIM)
 async def start_claim(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    buttons: ButtonOverrides,
 ) -> None:
     """The landing's inner get-config button — the ONLY place that provisions, then the picker."""
     await callback.answer()
     result = await trial.claim(user)
-    text, markup = await _render_claim(result, user, content)
+    text, markup = await _render_claim(result, user, content, buttons)
     await _edit(callback, text, markup)
 
 
@@ -153,6 +166,7 @@ async def _deliver(
     prefix: str,
     log_repo: ConfigLogRepository | None,
     referral: ReferralService | None,
+    buttons: ButtonOverrides,
 ) -> None:
     # DB work only; every user-facing send is QUEUED on `notify` and flushed by the middleware AFTER
     # the commit (so the invitee's config + the inviter's referral notice never precede the write).
@@ -166,7 +180,7 @@ async def _deliver(
     delivery = await trial.link_for(user, index)
     if delivery is None:  # trial just ended / cache lost — nudge them to claim again
         text = await content.text("panel_error", user.language)
-        notify.edit(message, text, back_keyboard(user.language))
+        notify.edit(message, text, back_keyboard(user.language, buttons))
         return
     if log_repo is not None:  # claim path — write the one log row, then maybe credit the referrer
         await log_repo.add(user.telegram_id, delivery.location)
@@ -179,7 +193,7 @@ async def _deliver(
         link=html.escape(delivery.link),
         expires=delivery.expires,
     )
-    notify.edit(message, text, config_delivered_keyboard(user.language))
+    notify.edit(message, text, config_delivered_keyboard(user.language, buttons))
     await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 
 
@@ -193,6 +207,7 @@ async def deliver_claim(
     settings: SettingsService,
     config_log_repo: ConfigLogRepository,
     referral: ReferralService,
+    buttons: ButtonOverrides,
 ) -> None:
     await _deliver(
         callback,
@@ -204,6 +219,7 @@ async def deliver_claim(
         cb.CONFIG_CLAIM_PREFIX,
         config_log_repo,
         referral,
+        buttons,
     )
 
 
@@ -215,6 +231,7 @@ async def deliver_change(
     trial: TrialService,
     notify: PendingNotifications,
     settings: SettingsService,
+    buttons: ButtonOverrides,
 ) -> None:
     await _deliver(
         callback,
@@ -226,29 +243,42 @@ async def deliver_change(
         cb.CONFIG_CHANGE_PREFIX,
         log_repo=None,
         referral=None,
+        buttons=buttons,
     )
 
 
 @router.callback_query(F.data == cb.CONFIG_CHANGE)
 async def change_location(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     result = await trial.locations(user)
     lang = user.language
     if isinstance(result, PanelError):
-        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang))
+        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang, buttons))
         return
     if not result:  # nothing live to change
-        await _edit(callback, await content.text("no_locations", lang), back_keyboard(lang))
+        await _edit(
+            callback, await content.text("no_locations", lang), back_keyboard(lang, buttons)
+        )
         return
     text = await content.text("choose_location", lang)
-    await _edit(callback, text, location_keyboard(result, cb.CONFIG_CHANGE_PREFIX, lang))
+    await _edit(
+        callback, text, location_keyboard(result, cb.CONFIG_CHANGE_PREFIX, lang, buttons=buttons)
+    )
 
 
 @router.callback_query(F.data.startswith(cb.LOC_PAGE_PREFIX))
 async def paginate_locations(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    buttons: ButtonOverrides,
 ) -> None:
     """Re-render the picker at another page — a pure view change (no claim/log/referral logic).
 
@@ -262,10 +292,12 @@ async def paginate_locations(
     result = await trial.locations(user)
     lang = user.language
     if isinstance(result, PanelError):
-        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang))
+        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang, buttons))
         return
     if not result:
-        await _edit(callback, await content.text("no_locations", lang), back_keyboard(lang))
+        await _edit(
+            callback, await content.text("no_locations", lang), back_keyboard(lang, buttons)
+        )
         return
     text = await content.text("choose_location", lang)
-    await _edit(callback, text, location_keyboard(result, prefix, lang, page=page))
+    await _edit(callback, text, location_keyboard(result, prefix, lang, page=page, buttons=buttons))

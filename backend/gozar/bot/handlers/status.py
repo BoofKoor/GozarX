@@ -15,6 +15,7 @@ from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
 from gozar.services.trial import PanelError, StatusInfo, TrialService
+from gozar.ui.buttons import ButtonOverrides
 
 router = Router(name="status")
 
@@ -42,16 +43,20 @@ async def _status_body(info: StatusInfo, content: ContentService, lang: Language
 
 @router.callback_query(F.data == cb.MENU_STATUS)
 async def show_status(
-    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    trial: TrialService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     info = await trial.status(user)
     lang = user.language
     if isinstance(info, PanelError):
         text = await content.text("panel_error", lang)
-        markup = back_keyboard(lang)
+        markup = back_keyboard(lang, buttons)
     else:
         text = await _status_body(info, content, lang)
-        markup = status_keyboard(lang, active=info.active)
+        markup = status_keyboard(lang, active=info.active, buttons=buttons)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=markup)

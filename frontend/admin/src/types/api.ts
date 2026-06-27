@@ -55,3 +55,47 @@ export interface DashboardStats {
   referrals: number;
   claims_series: DayPoint[];
 }
+
+// --- Phase 7c: texts + buttons editors ---
+export type Lang = "fa" | "en" | "ru";
+export type LabelMap = Record<Lang, string>;
+
+export interface BotText {
+  key: string;
+  fa: string;
+  en: string;
+  ru: string;
+  placeholders: string[];
+}
+
+export type TextPatch = Partial<Record<Lang, string>>;
+
+export interface TextPreview {
+  rendered: string;
+  missing_placeholders: string[];
+}
+
+export interface ButtonConfig {
+  key: string;
+  screen: string;
+  is_critical: boolean;
+  is_visible: boolean;
+  default_row: number;
+  default_position: number;
+  effective_row: number;
+  effective_position: number;
+  default_label: LabelMap;
+  effective_label: LabelMap;
+  customized: boolean;
+}
+
+export interface ButtonAppearancePatch {
+  labels: Partial<LabelMap> | null;
+  is_visible: boolean;
+}
+
+export interface ReorderItem {
+  key: string;
+  row_index: number;
+  position: number;
+}

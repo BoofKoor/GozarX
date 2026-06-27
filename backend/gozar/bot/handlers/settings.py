@@ -13,6 +13,7 @@ from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import language_keyboard, reminder_keyboard, settings_keyboard
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
+from gozar.ui.buttons import ButtonOverrides
 
 router = Router(name="settings")
 
@@ -23,10 +24,12 @@ async def _edit(callback: CallbackQuery, text: str, markup: InlineKeyboardMarkup
 
 
 @router.callback_query(F.data == cb.MENU_SETTINGS)
-async def open_settings(callback: CallbackQuery, user: User, content: ContentService) -> None:
+async def open_settings(
+    callback: CallbackQuery, user: User, content: ContentService, buttons: ButtonOverrides
+) -> None:
     await callback.answer()
     text = await content.text("settings_menu", user.language)
-    await _edit(callback, text, settings_keyboard(user.language))
+    await _edit(callback, text, settings_keyboard(user.language, buttons))
 
 
 @router.callback_query(F.data == cb.SETTINGS_LANGUAGE)
@@ -38,27 +41,41 @@ async def choose_language(callback: CallbackQuery, user: User, content: ContentS
 
 
 @router.callback_query(F.data == cb.SETTINGS_REMINDER)
-async def reminder_settings(callback: CallbackQuery, user: User, content: ContentService) -> None:
+async def reminder_settings(
+    callback: CallbackQuery, user: User, content: ContentService, buttons: ButtonOverrides
+) -> None:
     await callback.answer()
     text = await content.text("reminder_setting", user.language)
-    markup = reminder_keyboard(user.language, reminder_enabled=user.reminder_enabled)
+    markup = reminder_keyboard(
+        user.language, reminder_enabled=user.reminder_enabled, buttons=buttons
+    )
     await _edit(callback, text, markup)
 
 
 async def _apply_reminder(
-    callback: CallbackQuery, user: User, content: ContentService, *, enabled: bool
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    buttons: ButtonOverrides,
+    *,
+    enabled: bool,
 ) -> None:
     user.reminder_enabled = enabled  # persisted on the middleware commit
     await callback.answer()
     text = await content.text("reminder_status", user.language)
-    await _edit(callback, text, reminder_keyboard(user.language, reminder_enabled=enabled))
+    markup = reminder_keyboard(user.language, reminder_enabled=enabled, buttons=buttons)
+    await _edit(callback, text, markup)
 
 
 @router.callback_query(F.data == cb.SETTINGS_REMINDER_ON)
-async def set_reminder_on(callback: CallbackQuery, user: User, content: ContentService) -> None:
-    await _apply_reminder(callback, user, content, enabled=True)
+async def set_reminder_on(
+    callback: CallbackQuery, user: User, content: ContentService, buttons: ButtonOverrides
+) -> None:
+    await _apply_reminder(callback, user, content, buttons, enabled=True)
 
 
 @router.callback_query(F.data == cb.SETTINGS_REMINDER_OFF)
-async def set_reminder_off(callback: CallbackQuery, user: User, content: ContentService) -> None:
-    await _apply_reminder(callback, user, content, enabled=False)
+async def set_reminder_off(
+    callback: CallbackQuery, user: User, content: ContentService, buttons: ButtonOverrides
+) -> None:
+    await _apply_reminder(callback, user, content, buttons, enabled=False)
