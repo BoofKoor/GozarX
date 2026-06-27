@@ -13,11 +13,19 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
+from gozar.bot.dispatcher import build_bot, build_dispatcher
+from gozar.cache.redis import create_redis_pool
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
-from gozar.web.routes import health
+from gozar.db.session import create_engine, create_sessionmaker
+from gozar.remnawave import RemnawaveClient
+from gozar.web.routes import admin as admin_api
+from gozar.web.routes import health, panel, telegram
 
 logger = logging.getLogger("gozar")
 
@@ -31,16 +39,60 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Shared HTTP client (TLS verification ON) — used by the Remnawave client (P2+).
     app.state.http = httpx.AsyncClient(timeout=httpx.Timeout(10.0), verify=True)
 
+    # Database engine + session factory (lazy pool — no connection until first query).
+    app.state.engine = create_engine(settings.database_url)
+    app.state.sessionmaker = create_sessionmaker(app.state.engine)
+
+    # Redis (content/settings cache now; aiogram FSM + arq queue later) — lazy pool.
+    app.state.redis = create_redis_pool(settings.redis_url)
+    # Remnawave panel client over the shared HTTP client (TLS on).
+    app.state.panel = RemnawaveClient(
+        app.state.http, settings.panel_base_url, settings.panel_api_token
+    )
+
+    # aiogram bot + dispatcher (webhook). Skipped without a token; live updates need HTTPS (P9).
+    app.state.bot = None
+    app.state.dp = None
+    app.state.arq = None
+    token = settings.bot_token.get_secret_value()
+    if token:
+        app.state.bot = build_bot(token)
+        # arq enqueue pool — admin broadcast/forward handlers push jobs to the worker through it.
+        app.state.arq = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+        app.state.dp = build_dispatcher(
+            app.state.sessionmaker, app.state.redis, app.state.panel, app.state.arq
+        )
+        if settings.domain:
+            webhook_url = (
+                f"https://{settings.domain}/tg/{settings.webhook_secret.get_secret_value()}"
+            )
+            try:
+                await app.state.bot.set_webhook(
+                    webhook_url,
+                    secret_token=settings.webhook_header_secret.get_secret_value(),
+                    drop_pending_updates=True,
+                )
+                logger.info("telegram webhook registered")
+            except Exception:
+                logger.exception("failed to register telegram webhook")
+        else:
+            logger.warning(
+                "BOT_TOKEN set but DOMAIN empty — webhook not registered (set in Phase 9)"
+            )
+    else:
+        logger.warning("no BOT_TOKEN — bot disabled (dev)")
+
     # Resource seams wired in later phases — create here, tear down symmetrically below:
-    #   P1: app.state.engine, app.state.sessionmaker (create from settings.database_url)
-    #   P2: app.state.redis = await create_redis_pool(settings.redis_url)
-    #   P3: app.state.bot, app.state.dp = build_bot_and_dispatcher(settings); await set_webhook(...)
+    #   P5: app.state.panel-webhook receiver  ·  P8: arq backup cron
     try:
         yield
     finally:
-        #   P3: await app.state.bot.session.close()
-        #   P2: await app.state.redis.aclose()
-        #   P1: await app.state.engine.dispose()
+        if app.state.bot is not None:
+            await app.state.bot.session.close()
+        if app.state.arq is not None:
+            await app.state.arq.aclose()
+        await app.state.redis.aclose()
+        await app.state.engine.dispose()
         await app.state.http.aclose()
         logger.info("gozar stopped")
 
@@ -48,8 +100,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app() -> FastAPI:
     app = FastAPI(title="Gozar", version="0.1.0", lifespan=lifespan)
     app.include_router(health.router)
-    # Routers added in later phases:
-    #   P3: app.include_router(telegram.router)        # POST /tg/{secret}
-    #   P5: app.include_router(panel.router)           # POST /panel-webhook
-    #   P7: app.include_router(admin_api.router, prefix="/api")
+    app.include_router(telegram.router)  # POST /tg/{secret}
+    app.include_router(panel.router)  # POST /panel-webhook (Remnawave expiry/limit events)
+    app.include_router(admin_api.router, prefix="/api")  # JWT admin API at /api/admin/*
+
+    # CORS for the admin SPA: the panel's own origin (prod) + the Vite dev server (local).
+    settings = get_settings()
+    origins = [f"https://{settings.admin_domain}"] if settings.admin_domain else []
+    origins += ["http://localhost:5173", "http://127.0.0.1:5173"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
