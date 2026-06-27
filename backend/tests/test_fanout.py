@@ -10,7 +10,7 @@ from types import SimpleNamespace
 
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 
-from gozar.worker.tasks import _should_remove, fanout
+from gozar.worker.tasks import _should_remove, broadcast_text, fanout
 
 
 def _exc(cls: type, message: str) -> Exception:
@@ -113,3 +113,56 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
 
     # Blocked (2) and chat-not-found (4) are removed; the transient failure (3) keeps the user.
     assert removed == [2, 4]
+
+
+class _TextBot:
+    """Web-broadcast bot: user 2 is blocked (removed), the rest receive the composed text."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[int, str]] = []
+
+    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+        if chat_id == 2:
+            raise _exc(TelegramForbiddenError, "Forbidden: bot was blocked by the user")
+        self.sent.append((chat_id, text))
+        return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+
+    async def edit_message_text(self, text: str, chat_id: int = 0, message_id: int = 0) -> None:
+        return None
+
+
+async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
+    removed: list[int] = []
+
+    class FakeRepo:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def list_all_ids(self) -> list[int]:
+            return [1, 2, 3]
+
+        async def delete(self, telegram_id: int) -> None:
+            removed.append(telegram_id)
+
+    class FakeSession:
+        async def __aenter__(self) -> FakeSession:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def commit(self) -> None:
+            return None
+
+    async def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.UserRepository", FakeRepo)
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _noop)
+
+    bot = _TextBot()
+    ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
+    await broadcast_text(ctx, "<b>hello</b>", admin_id=999)
+
+    assert removed == [2]  # only the blocked user is dropped
+    assert (1, "<b>hello</b>") in bot.sent and (3, "<b>hello</b>") in bot.sent

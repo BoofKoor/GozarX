@@ -3,12 +3,14 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { SetupGate } from "@/components/layout/SetupGate";
+import { Broadcast } from "@/pages/Broadcast";
 import { Buttons } from "@/pages/Buttons";
 import { Dashboard } from "@/pages/Dashboard";
 import { Login } from "@/pages/Login";
 import { Settings } from "@/pages/Settings";
 import { Setup } from "@/pages/setup/Setup";
 import { Texts } from "@/pages/Texts";
+import { Users } from "@/pages/Users";
 
 export default function App() {
   return (
@@ -20,6 +22,8 @@ export default function App() {
         <Route element={<SetupGate />}>
           <Route element={<AppShell />}>
             <Route path="/" element={<Dashboard />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/broadcast" element={<Broadcast />} />
             <Route path="/texts" element={<Texts />} />
             <Route path="/buttons" element={<Buttons />} />
             <Route path="/settings" element={<Settings />} />

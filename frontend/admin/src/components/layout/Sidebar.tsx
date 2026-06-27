@@ -2,13 +2,17 @@ import { clsx } from "clsx";
 import {
   FileText,
   LayoutDashboard,
+  Megaphone,
   MousePointerClick,
   Settings as SettingsIcon,
+  Users as UsersIcon,
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 
 const items = [
   { to: "/", label: "داشبورد", icon: LayoutDashboard },
+  { to: "/users", label: "کاربران", icon: UsersIcon },
+  { to: "/broadcast", label: "پیام همگانی", icon: Megaphone },
   { to: "/texts", label: "متن‌ها", icon: FileText },
   { to: "/buttons", label: "دکمه‌ها", icon: MousePointerClick },
   { to: "/settings", label: "تنظیمات", icon: SettingsIcon },
