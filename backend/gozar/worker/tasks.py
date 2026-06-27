@@ -1,16 +1,21 @@
-"""arq worker tasks — bulk fan-out that must never run inside a bot handler.
+"""arq worker tasks — bulk fan-out and the nightly DB backup, none of which may run in a handler.
 
 ``fanout`` delivers one message to every user (broadcast = ``copy_message``, no "Forwarded from";
 forward = ``forward_message``, keeps the header). It removes a user **only** on a genuine permanent
 delivery failure (blocked / deactivated / chat-not-found) — never on a transient error (v1 lesson
 #4). ``reset_all_active`` zeroes panel traffic consumption for every active user. Both report
 progress to the admin's chat and make a single bounded panel/send attempt per user.
+``backup_database`` is the arq cron job: it shells out to ``pg_dump``, gzips the dump, and ships it
+to the configured Telegram channel — a failed backup is logged and swallowed, never raised.
 """
 
 from __future__ import annotations
 
 import asyncio
+import gzip
 import logging
+import os
+from datetime import UTC, datetime
 
 from aiogram import Bot
 from aiogram.exceptions import (
@@ -19,8 +24,10 @@ from aiogram.exceptions import (
     TelegramNotFound,
     TelegramRetryAfter,
 )
-from aiogram.types import Message
+from aiogram.types import BufferedInputFile, Message
+from sqlalchemy.engine import make_url
 
+from gozar.config.settings import get_settings
 from gozar.db.models.enums import UserStatus
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
@@ -195,3 +202,88 @@ async def reset_all_active(ctx: dict, admin_id: int) -> None:
     await _edit(
         bot, progress, f"✅ Reset done · {total} active · reset {reset} · skipped {skipped}"
     )
+
+
+# ── Nightly database backup ───────────────────────────────────────────────────────────────────
+# pg_dump must match the server's MAJOR version (16); it refuses to dump a newer server. The
+# backend image installs postgresql-client-16 for exactly this. Telegram caps bot uploads at 50 MB
+# — far above this trial bot's dump for years; an over-cap send simply raises and is logged below.
+_PG_DUMP_FLAGS = ("--no-owner", "--no-privileges", "-w")  # -w: never prompt for a password
+
+
+def _pg_dump_argv_env(database_url: str) -> tuple[list[str], dict[str, str]]:
+    """Build the ``pg_dump`` argv + a PGPASSWORD env overlay from a SQLAlchemy URL.
+
+    The password goes through the environment, **never** argv (so it can't leak via ``ps`` or a
+    log line). The ``+asyncpg`` driver suffix is irrelevant to libpq and simply ignored here.
+    """
+    url = make_url(database_url)
+    argv = [
+        "pg_dump",
+        "-h",
+        url.host or "localhost",
+        "-p",
+        str(url.port or 5432),
+        "-U",
+        url.username or "",
+        "-d",
+        url.database or "",
+        *_PG_DUMP_FLAGS,
+    ]
+    return argv, {"PGPASSWORD": url.password or ""}
+
+
+async def _run_pg_dump(argv: list[str], env: dict[str, str]) -> tuple[int, bytes, bytes]:
+    """Run pg_dump -> ``(returncode, stdout, stderr)``. Seam: unit tests monkeypatch this."""
+    proc = await asyncio.create_subprocess_exec(
+        *argv,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env={**os.environ, **env},
+    )
+    out, err = await proc.communicate()
+    return proc.returncode or 0, out, err
+
+
+def _backup_chat_id(value: str) -> int | str:
+    """A numeric channel id (e.g. ``-100123…``) -> int; otherwise pass through (``@channel``)."""
+    v = value.strip()
+    return int(v) if v.lstrip("-").isdigit() else v
+
+
+async def backup_database(ctx: dict) -> None:
+    """Dump the database with ``pg_dump``, gzip it, and send it to the backup channel.
+
+    Off until ``BACKUP_CHANNEL_ID`` is set. Every failure (no bot, pg_dump error, send error) is
+    logged and swallowed — a backup must never crash the worker or abort the cron schedule.
+    """
+    settings = get_settings()
+    channel = settings.backup_channel_id.strip()
+    bot: Bot | None = ctx.get("bot")
+    if not channel:
+        logger.warning("backup: BACKUP_CHANNEL_ID unset — skipping nightly backup")
+        return
+    if bot is None:
+        logger.warning("backup: worker missing bot — skipping nightly backup")
+        return
+
+    argv, env = _pg_dump_argv_env(settings.database_url)
+    try:
+        code, dump, err = await _run_pg_dump(argv, env)
+    except OSError as exc:  # pg_dump binary missing / not executable
+        logger.error("backup: could not run pg_dump: %s", exc)
+        return
+    if code != 0:
+        detail = err.decode("utf-8", "replace")[:500]
+        logger.error("backup: pg_dump failed (rc=%s): %s", code, detail)
+        return
+
+    gz = await asyncio.to_thread(gzip.compress, dump)
+    ts = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
+    document = BufferedInputFile(gz, filename=f"gozar-{ts}.sql.gz")
+    caption = f"🗄 GozarX DB backup\n{ts} UTC · {len(gz) // 1024} KB"
+    try:
+        await bot.send_document(_backup_chat_id(channel), document, caption=caption)
+        logger.info("backup: sent gozar-%s.sql.gz (%d bytes gz)", ts, len(gz))
+    except TelegramAPIError as exc:
+        logger.error("backup: send_document failed: %s", exc)
