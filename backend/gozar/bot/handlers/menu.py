@@ -21,6 +21,15 @@ async def menu_home(callback: CallbackQuery, user: User, content: ContentService
         await callback.message.edit_text(text, reply_markup=main_menu_keyboard(user.language))
 
 
+@router.callback_query(F.data == cb.MENU_HOME_NEW)
+async def menu_home_new(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    """Deliver-screen 'show main menu' — a NEW message, so the delivered config stays in chat."""
+    await callback.answer()
+    text = await content.text("main_menu", user.language)
+    if isinstance(callback.message, Message):
+        await callback.message.answer(text, reply_markup=main_menu_keyboard(user.language))
+
+
 @router.callback_query(F.data == cb.MENU_HELP)
 async def menu_help(callback: CallbackQuery, user: User, content: ContentService) -> None:
     await callback.answer()

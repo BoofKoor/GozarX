@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 MENU_HOME = "menu:home"
+MENU_HOME_NEW = "menu:home:new"  # deliver screen's "show main menu" -> sends a NEW message
 MENU_CONFIG = "menu:config"
 MENU_INVITE = "menu:invite"
 MENU_STATUS = "menu:status"
@@ -12,14 +13,17 @@ MENU_APPS = "menu:apps"  # required-apps info screen
 
 LANG_PREFIX = "lang:set:"
 
-# Config flow. CLAIM is the first delivery for a chosen location (writes one config_log); LOC is a
-# change-location delivery (no log); CHANGE re-opens the picker. Index addresses the cached picker.
+# Config flow. menu:config -> landing; CONFIG_CLAIM (exact) is the landing's inner get-config button
+# that provisions; CONFIG_CHANGE (exact) opens the change picker. The {i}-suffixed prefixes are the
+# per-location deliveries: CLAIM writes one config_log (first claim); CHANGE re-delivers, no log.
+# (`config:claim` does not start with `config:claim:`, so exact and prefix never collide.)
+CONFIG_CLAIM = "config:claim"
 CONFIG_CLAIM_PREFIX = "config:claim:"
-CONFIG_LOC_PREFIX = "config:loc:"
 CONFIG_CHANGE = "config:change"
+CONFIG_CHANGE_PREFIX = "config:change:"
 
-# Location-picker pagination: loc:page:{tag}:{N}. The tag ("claim" | "loc") preserves which delivery
-# prefix the re-rendered page uses, so a paginated first-claim picker still logs via config:claim:.
+# Location-picker pagination: loc:page:{tag}:{N}. The tag ("claim" | "change") preserves which
+# delivery prefix the re-rendered page uses, so a paginated first claim still logs via claim path.
 LOC_PAGE_PREFIX = "loc:page:"
 
 # Settings screen.
@@ -35,8 +39,8 @@ def config_claim_cb(index: int) -> str:
     return f"{CONFIG_CLAIM_PREFIX}{index}"
 
 
-def config_loc_cb(index: int) -> str:
-    return f"{CONFIG_LOC_PREFIX}{index}"
+def config_change_cb(index: int) -> str:
+    return f"{CONFIG_CHANGE_PREFIX}{index}"
 
 
 def loc_page_cb(tag: str, page: int) -> str:

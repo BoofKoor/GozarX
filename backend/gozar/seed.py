@@ -60,9 +60,14 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "Выберите локацию:",
     },
     "config_size": {
-        Language.fa: "حجم کانفیگ آزمایشی امروز شما: {size}\nیک لوکیشن انتخاب کنید تا کانفیگ ساخته شود.",
-        Language.en: "Your trial size for today: {size}\nPick a location to generate your config.",
-        Language.ru: "Ваш пробный объём на сегодня: {size}\nВыберите локацию для создания конфига.",
+        Language.fa: "🎁 حجم روزانهٔ شما: {size}\nبرای دریافت کانفیگ امروز، دکمهٔ زیر را بزنید.",
+        Language.en: "🎁 Your daily allowance: {size}\nTap the button below to get today's config.",
+        Language.ru: "🎁 Ваш дневной объём: {size}\nНажмите кнопку ниже, чтобы получить конфиг.",
+    },
+    "config_active": {
+        Language.fa: "✅ کانفیگ شما فعال است.\n⏳ زمان باقی‌مانده: {remaining}\n📊 مصرف: {usage} از {total}",
+        Language.en: "✅ Your config is active.\n⏳ Time left: {remaining}\n📊 Used: {usage} of {total}",
+        Language.ru: "✅ Ваш конфиг активен.\n⏳ Осталось: {remaining}\n📊 Израсходовано: {usage} из {total}",
     },
     "config_delivered": {
         Language.fa: "کانفیگ شما برای «{location}» آماده است:\n\n<code>{link}</code>\n\n⏳ اعتبار تا: {expires}",
