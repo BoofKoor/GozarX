@@ -17,6 +17,7 @@ from gozar.bot.handlers.start import cmd_start, set_language
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
+from gozar.ui.buttons import EMPTY_OVERRIDES
 
 
 async def _content(**entries: str) -> ContentService:
@@ -40,7 +41,14 @@ async def test_start_new_user_shows_language_picker() -> None:
     content = await _content(**{"cache:content:fa:choose_language": "زبان؟"})
     user = User(telegram_id=10, language=Language.fa)
     message, sent = _message()
-    await cmd_start(message, SimpleNamespace(args=None), user, created=True, content=content)
+    await cmd_start(
+        message,
+        SimpleNamespace(args=None),
+        user,
+        created=True,
+        content=content,
+        buttons=EMPTY_OVERRIDES,
+    )
     assert sent["text"] == "زبان؟"
     callbacks = [b.callback_data for row in sent["markup"].inline_keyboard for b in row]
     assert callbacks == ["lang:set:fa", "lang:set:en", "lang:set:ru"]
@@ -51,11 +59,25 @@ async def test_start_records_referrer_and_ignores_self() -> None:
     message, _ = _message()
 
     user = User(telegram_id=10, language=Language.fa)
-    await cmd_start(message, SimpleNamespace(args="555"), user, created=True, content=content)
+    await cmd_start(
+        message,
+        SimpleNamespace(args="555"),
+        user,
+        created=True,
+        content=content,
+        buttons=EMPTY_OVERRIDES,
+    )
     assert user.referred_by == 555
 
     self_ref = User(telegram_id=10, language=Language.fa)
-    await cmd_start(message, SimpleNamespace(args="10"), self_ref, created=True, content=content)
+    await cmd_start(
+        message,
+        SimpleNamespace(args="10"),
+        self_ref,
+        created=True,
+        content=content,
+        buttons=EMPTY_OVERRIDES,
+    )
     assert self_ref.referred_by is None
 
 
@@ -63,7 +85,14 @@ async def test_start_existing_user_shows_menu() -> None:
     content = await _content(**{"cache:content:fa:main_menu": "منو"})
     user = User(telegram_id=10, language=Language.fa)
     message, sent = _message()
-    await cmd_start(message, SimpleNamespace(args=None), user, created=False, content=content)
+    await cmd_start(
+        message,
+        SimpleNamespace(args=None),
+        user,
+        created=False,
+        content=content,
+        buttons=EMPTY_OVERRIDES,
+    )
     assert sent["text"] == "منو"
     callbacks = [b.callback_data for row in sent["markup"].inline_keyboard for b in row]
     assert cb.MENU_CONFIG in callbacks
@@ -78,6 +107,6 @@ async def test_set_language_updates_language() -> None:
         answered["called"] = True
 
     callback = SimpleNamespace(data=cb.lang_cb("en"), message=None, answer=cb_answer)
-    await set_language(callback, user, content)
+    await set_language(callback, user, content, buttons=EMPTY_OVERRIDES)
     assert user.language is Language.en
     assert answered["called"] is True

@@ -8,6 +8,7 @@ from redis.asyncio import Redis
 CACHE_TTL = 300
 
 SETTINGS_KEY = "cache:settings"
+BUTTON_CONFIGS_KEY = "cache:button_configs"  # all button overrides, one JSON blob (Phase 7c)
 
 
 def create_redis_pool(url: str) -> Redis:

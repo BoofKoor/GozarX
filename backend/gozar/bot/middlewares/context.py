@@ -24,6 +24,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient
 from gozar.services.admin import AdminService
+from gozar.services.button_service import ButtonService
 from gozar.services.content import ContentService
 from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingsService
@@ -58,6 +59,8 @@ class ContextMiddleware(BaseMiddleware):
             content = ContentService(session, self._redis)
             settings = SettingsService(session, self._redis)
             config_log_repo = ConfigLogRepository(session)
+            # One Redis-cached fetch per update; injected so keyboards render the admin's overrides.
+            buttons = await ButtonService(session, self._redis).snapshot()
             notify = PendingNotifications()
             data.update(
                 session=session,
@@ -67,6 +70,7 @@ class ContextMiddleware(BaseMiddleware):
                 settings=settings,
                 user_repo=user_repo,
                 config_log_repo=config_log_repo,
+                buttons=buttons,
                 panel=self._panel,
                 trial=TrialService(self._panel, settings, config_log_repo, self._redis),
                 referral=ReferralService(user_repo, settings, self._panel),

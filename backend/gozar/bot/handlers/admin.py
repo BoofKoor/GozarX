@@ -36,6 +36,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.user import UserRepository
 from gozar.services.admin import AdminService, UserCard
 from gozar.services.content import ContentService
+from gozar.ui.buttons import ButtonOverrides
 
 logger = logging.getLogger("gozar.bot.admin")
 
@@ -74,13 +75,17 @@ def _card_tokens(card: UserCard) -> dict[str, object]:
 
 
 async def _to_menu(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await state.clear()
     await _edit(
         callback,
         await content.text("admin_menu", user.language),
-        admin_menu_keyboard(user.language),
+        admin_menu_keyboard(user.language, buttons),
     )
 
 
@@ -90,6 +95,7 @@ async def _show_card(
     content: ContentService,
     admin: AdminService,
     target_id: int,
+    buttons: ButtonOverrides,
     *,
     note_key: str | None = None,
 ) -> None:
@@ -98,32 +104,42 @@ async def _show_card(
         await _edit(
             callback,
             await content.text("admin_user_not_found", user.language),
-            admin_back_keyboard(user.language),
+            admin_back_keyboard(user.language, buttons),
         )
         return
     body = await content.text("admin_user_card", user.language, **_card_tokens(card))
     if note_key:
         body = f"{await content.text(note_key, user.language)}\n\n{body}"
-    markup = admin_user_card_keyboard(user.language, banned=card.user.status is UserStatus.banned)
+    markup = admin_user_card_keyboard(
+        user.language, banned=card.user.status is UserStatus.banned, buttons=buttons
+    )
     await _edit(callback, body, markup)
 
 
 # --- menu --------------------------------------------------------------------------------------
 @router.message(Command("admin"))
 async def open_admin(
-    message: Message, user: User, content: ContentService, state: FSMContext
+    message: Message,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await state.clear()
     text = await content.text("admin_menu", user.language)
-    await message.answer(text, reply_markup=admin_menu_keyboard(user.language))
+    await message.answer(text, reply_markup=admin_menu_keyboard(user.language, buttons))
 
 
 @router.callback_query(F.data == cb.ADMIN_MENU)
 async def admin_menu(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
-    await _to_menu(callback, user, content, state)
+    await _to_menu(callback, user, content, state, buttons)
 
 
 @router.callback_query(F.data == cb.ADMIN_CLOSE)
@@ -136,7 +152,11 @@ async def admin_close(callback: CallbackQuery, state: FSMContext) -> None:
 
 @router.callback_query(F.data == cb.ADMIN_STATS)
 async def admin_stats(
-    callback: CallbackQuery, user: User, content: ContentService, admin: AdminService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     s = await admin.stats()
@@ -150,12 +170,16 @@ async def admin_stats(
         configs_today=s.configs_today,
         referrals=s.referrals,
     )
-    await _edit(callback, text, admin_back_keyboard(user.language))
+    await _edit(callback, text, admin_back_keyboard(user.language, buttons))
 
 
 @router.callback_query(F.data == cb.ADMIN_REFRESH_LOCATIONS)
 async def admin_refresh_locations(
-    callback: CallbackQuery, user: User, content: ContentService, admin: AdminService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     names = await admin.refresh_locations()
@@ -168,13 +192,17 @@ async def admin_refresh_locations(
             count=len(names),
             locations=", ".join(names) or "—",
         )
-    await _edit(callback, text, admin_back_keyboard(user.language))
+    await _edit(callback, text, admin_back_keyboard(user.language, buttons))
 
 
 # --- broadcast / forward (preview + confirm gate, then enqueue) --------------------------------
 @router.callback_query(F.data == cb.ADMIN_BROADCAST)
 async def start_broadcast(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.set_state(FanoutFlow.waiting_message)
@@ -182,13 +210,17 @@ async def start_broadcast(
     await _edit(
         callback,
         await content.text("admin_broadcast_prompt", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )
 
 
 @router.callback_query(F.data == cb.ADMIN_FORWARD)
 async def start_forward(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.set_state(FanoutFlow.waiting_message)
@@ -196,7 +228,7 @@ async def start_forward(
     await _edit(
         callback,
         await content.text("admin_forward_prompt", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )
 
 
@@ -207,6 +239,7 @@ async def fanout_receive(
     content: ContentService,
     state: FSMContext,
     user_repo: UserRepository,
+    buttons: ButtonOverrides,
 ) -> None:
     data = await state.get_data()
     action = data.get("action", "broadcast")
@@ -225,7 +258,11 @@ async def fanout_receive(
     await message.answer(
         text,
         reply_markup=confirm_keyboard(
-            user.language, cb.ADMIN_SEND_CONFIRM, cb.ADMIN_SEND_CANCEL, confirm_key="admin_send"
+            user.language,
+            cb.ADMIN_SEND_CONFIRM,
+            cb.ADMIN_SEND_CANCEL,
+            confirm_key="admin_send",
+            buttons=buttons,
         ),
     )
 
@@ -237,6 +274,7 @@ async def fanout_confirm(
     content: ContentService,
     state: FSMContext,
     arq: ArqRedis | None,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     data = await state.get_data()
@@ -248,41 +286,49 @@ async def fanout_confirm(
         await _edit(
             callback,
             await content.text("admin_send_failed", user.language),
-            admin_back_keyboard(user.language),
+            admin_back_keyboard(user.language, buttons),
         )
         return
     await arq.enqueue_job("fanout", action, src_chat, message_id, callback.from_user.id)
     await _edit(
         callback,
         await content.text("admin_send_queued", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )
 
 
 @router.callback_query(F.data == cb.ADMIN_SEND_CANCEL, StateFilter(FanoutFlow.confirming))
 async def fanout_cancel(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.clear()
     await _edit(
         callback,
         await content.text("admin_send_cancelled", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )
 
 
 # --- user lookup + per-user actions ------------------------------------------------------------
 @router.callback_query(F.data == cb.ADMIN_USERS)
 async def start_user_lookup(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.set_state(UserActionFlow.waiting_id)
     await _edit(
         callback,
         await content.text("admin_user_prompt", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )
 
 
@@ -293,6 +339,7 @@ async def user_lookup(
     content: ContentService,
     state: FSMContext,
     admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     raw = (message.text or "").strip()
     card = None
@@ -301,7 +348,7 @@ async def user_lookup(
     if card is None:
         await message.answer(
             await content.text("admin_user_not_found", user.language),
-            reply_markup=admin_back_keyboard(user.language),
+            reply_markup=admin_back_keyboard(user.language, buttons),
         )
         return
     await state.set_state(UserActionFlow.viewing)
@@ -310,7 +357,7 @@ async def user_lookup(
     await message.answer(
         body,
         reply_markup=admin_user_card_keyboard(
-            user.language, banned=card.user.status is UserStatus.banned
+            user.language, banned=card.user.status is UserStatus.banned, buttons=buttons
         ),
     )
 
@@ -328,14 +375,17 @@ async def user_unban(
     content: ContentService,
     state: FSMContext,
     admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     target_id = await _target(state)
     if target_id is None:
-        await _to_menu(callback, user, content, state)
+        await _to_menu(callback, user, content, state, buttons)
         return
     await admin.unban(target_id)
-    await _show_card(callback, user, content, admin, target_id, note_key="admin_unban_done")
+    await _show_card(
+        callback, user, content, admin, target_id, buttons, note_key="admin_unban_done"
+    )
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_RECLAIM, StateFilter(UserActionFlow.viewing))
@@ -345,19 +395,26 @@ async def user_reclaim(
     content: ContentService,
     state: FSMContext,
     admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     target_id = await _target(state)
     if target_id is None:
-        await _to_menu(callback, user, content, state)
+        await _to_menu(callback, user, content, state, buttons)
         return
     await admin.reclaim(target_id)
-    await _show_card(callback, user, content, admin, target_id, note_key="admin_reclaim_done")
+    await _show_card(
+        callback, user, content, admin, target_id, buttons, note_key="admin_reclaim_done"
+    )
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_BAN, StateFilter(UserActionFlow.viewing))
 async def user_ban_prompt(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.update_data(pending="ban")
@@ -365,13 +422,19 @@ async def user_ban_prompt(
     await _edit(
         callback,
         await content.text("admin_ban_confirm", user.language),
-        confirm_keyboard(user.language, cb.ADMIN_USER_CONFIRM, cb.ADMIN_USER_CANCEL),
+        confirm_keyboard(
+            user.language, cb.ADMIN_USER_CONFIRM, cb.ADMIN_USER_CANCEL, buttons=buttons
+        ),
     )
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_ZERO_REFERRALS, StateFilter(UserActionFlow.viewing))
 async def user_zero_prompt(
-    callback: CallbackQuery, user: User, content: ContentService, state: FSMContext
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    state: FSMContext,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.update_data(pending="zero_referrals")
@@ -379,7 +442,9 @@ async def user_zero_prompt(
     await _edit(
         callback,
         await content.text("admin_zero_confirm", user.language),
-        confirm_keyboard(user.language, cb.ADMIN_USER_CONFIRM, cb.ADMIN_USER_CANCEL),
+        confirm_keyboard(
+            user.language, cb.ADMIN_USER_CONFIRM, cb.ADMIN_USER_CANCEL, buttons=buttons
+        ),
     )
 
 
@@ -390,6 +455,7 @@ async def user_confirm(
     content: ContentService,
     state: FSMContext,
     admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     data = await state.get_data()
@@ -398,7 +464,7 @@ async def user_confirm(
     await state.set_state(UserActionFlow.viewing)
     await state.update_data(pending=None)
     if target_id is None:
-        await _to_menu(callback, user, content, state)
+        await _to_menu(callback, user, content, state, buttons)
         return
     target_id = int(target_id)
     note = None
@@ -408,7 +474,7 @@ async def user_confirm(
     elif pending == "zero_referrals":
         await admin.zero_referrals(target_id)
         note = "admin_zero_done"
-    await _show_card(callback, user, content, admin, target_id, note_key=note)
+    await _show_card(callback, user, content, admin, target_id, buttons, note_key=note)
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_CANCEL, StateFilter(UserActionFlow.confirming))
@@ -418,21 +484,26 @@ async def user_cancel(
     content: ContentService,
     state: FSMContext,
     admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     await state.set_state(UserActionFlow.viewing)
     await state.update_data(pending=None)
     target_id = await _target(state)
     if target_id is None:
-        await _to_menu(callback, user, content, state)
+        await _to_menu(callback, user, content, state, buttons)
         return
-    await _show_card(callback, user, content, admin, target_id)
+    await _show_card(callback, user, content, admin, target_id, buttons)
 
 
 # --- bulk reset all active ---------------------------------------------------------------------
 @router.callback_query(F.data == cb.ADMIN_RESET_ALL)
 async def reset_all_prompt(
-    callback: CallbackQuery, user: User, content: ContentService, admin: AdminService
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    admin: AdminService,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     s = await admin.stats()
@@ -440,25 +511,29 @@ async def reset_all_prompt(
     await _edit(
         callback,
         text,
-        confirm_keyboard(user.language, cb.ADMIN_RESET_ALL_CONFIRM, cb.ADMIN_MENU),
+        confirm_keyboard(user.language, cb.ADMIN_RESET_ALL_CONFIRM, cb.ADMIN_MENU, buttons=buttons),
     )
 
 
 @router.callback_query(F.data == cb.ADMIN_RESET_ALL_CONFIRM)
 async def reset_all_confirm(
-    callback: CallbackQuery, user: User, content: ContentService, arq: ArqRedis | None
+    callback: CallbackQuery,
+    user: User,
+    content: ContentService,
+    arq: ArqRedis | None,
+    buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
     if arq is None or callback.from_user is None:
         await _edit(
             callback,
             await content.text("admin_send_failed", user.language),
-            admin_back_keyboard(user.language),
+            admin_back_keyboard(user.language, buttons),
         )
         return
     await arq.enqueue_job("reset_all_active", callback.from_user.id)
     await _edit(
         callback,
         await content.text("admin_reset_all_queued", user.language),
-        admin_back_keyboard(user.language),
+        admin_back_keyboard(user.language, buttons),
     )

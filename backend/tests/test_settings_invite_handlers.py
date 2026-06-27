@@ -17,6 +17,7 @@ from gozar.bot.keyboards import invite_keyboard
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
+from gozar.ui.buttons import EMPTY_OVERRIDES
 
 
 async def _content(**entries: str) -> ContentService:
@@ -43,11 +44,12 @@ async def test_reminder_sub_screen_handlers_flip_flag() -> None:
     user = User(telegram_id=10, language=Language.fa, reminder_enabled=True)
     callback = _callback()
 
-    await set_reminder_off(callback, user, content)
+    await set_reminder_off(callback, user, content, buttons=EMPTY_OVERRIDES)
     assert user.reminder_enabled is False
-    await set_reminder_on(callback, user, content)
+    await set_reminder_on(callback, user, content, buttons=EMPTY_OVERRIDES)
     assert user.reminder_enabled is True
-    await reminder_settings(callback, user, content)  # opening the sub-screen doesn't change state
+    # opening the sub-screen doesn't change state
+    await reminder_settings(callback, user, content, buttons=EMPTY_OVERRIDES)
     assert user.reminder_enabled is True
 
 

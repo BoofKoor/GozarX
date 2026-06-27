@@ -96,3 +96,74 @@ async def test_protected_route_rejects_missing_token(admin_client: httpx.AsyncCl
     # Same app, but strip the Authorization header for this one call.
     r = await admin_client.get("/api/admin/settings/", headers={"Authorization": ""})
     assert r.status_code == 401
+
+
+# --- buttons editor ----------------------------------------------------------------------------
+async def test_buttons_list_includes_catalogue_with_criticals(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    r = await admin_client.get("/api/admin/buttons/")
+    assert r.status_code == 200
+    items = r.json()
+    keys = {i["key"] for i in items}
+    assert {"menu_config", "back", "admin_stats"} <= keys
+    backs = [i for i in items if i["key"] == "back"]
+    assert backs and all(i["is_critical"] for i in backs)  # shared chrome, all critical
+    mc = next(i for i in items if i["key"] == "menu_config")
+    assert mc["customized"] is False
+    assert mc["effective_label"]["fa"] == mc["default_label"]["fa"]
+
+
+async def test_buttons_update_appearance(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.put(
+        "/api/admin/buttons/menu_config", json={"labels": {"fa": "سفارشی"}, "is_visible": True}
+    )
+    assert r.status_code == 200
+    mc = next(i for i in r.json() if i["key"] == "menu_config")
+    assert mc["effective_label"]["fa"] == "سفارشی"
+    assert mc["customized"] is True
+
+
+async def test_buttons_cannot_hide_critical(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.put("/api/admin/buttons/back", json={"is_visible": False})
+    assert r.status_code == 422
+
+
+async def test_buttons_reset(admin_client: httpx.AsyncClient) -> None:
+    await admin_client.put(
+        "/api/admin/buttons/menu_help", json={"labels": {"en": "X"}, "is_visible": True}
+    )
+    r = await admin_client.post("/api/admin/buttons/menu_help/reset")
+    assert r.status_code == 200
+    mh = next(i for i in r.json() if i["key"] == "menu_help")
+    assert mh["customized"] is False
+
+
+async def test_buttons_reorder(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.post(
+        "/api/admin/buttons/reorder",
+        json={"items": [{"key": "menu_help", "row_index": 0, "position": 1}]},
+    )
+    assert r.status_code == 200
+    mh = next(i for i in r.json() if i["key"] == "menu_help" and i["screen"] == "main_menu")
+    assert mh["effective_row"] == 0 and mh["effective_position"] == 1
+
+
+# --- texts editor ------------------------------------------------------------------------------
+async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> None:
+    # GET unions DB rows with the seeded defaults, so keys show even on a fresh (unseeded) schema.
+    r = await admin_client.get("/api/admin/texts/")
+    assert r.status_code == 200
+    assert "welcome" in {t["key"] for t in r.json()}
+
+    r = await admin_client.put("/api/admin/texts/welcome", json={"en": "Hi {name}"})
+    assert r.status_code == 200
+    assert r.json()["en"] == "Hi {name}"
+    assert "name" in r.json()["placeholders"]
+
+    r = await admin_client.post(
+        "/api/admin/texts/preview", json={"body": "Hi {name}, {x}", "sample": {"name": "Ann"}}
+    )
+    body = r.json()
+    assert body["rendered"] == "Hi Ann, {x}"  # provided token rendered, unknown left intact
+    assert body["missing_placeholders"] == ["x"]

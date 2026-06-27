@@ -24,6 +24,7 @@ from gozar.remnawave.schemas import PanelUser, Subscription, SubscriptionUser
 from gozar.services.content import ContentService
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import TrialService
+from gozar.ui.buttons import EMPTY_OVERRIDES
 
 pytestmark = pytest.mark.skipif(
     not os.environ.get("TEST_DATABASE_URL"), reason="TEST_DATABASE_URL not set"
@@ -101,7 +102,7 @@ async def test_menu_config_landing_creates_no_panel_user(session) -> None:
     trial, content = await _setup(session, panel)
     user = await _user(session, telegram_id=1, status=UserStatus.available)
 
-    await open_config(_callback(), user, content, trial)
+    await open_config(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
 
     assert panel.created == []  # the landing must NOT provision
     assert user.status is UserStatus.available
@@ -112,7 +113,7 @@ async def test_config_claim_provisions_and_flips_active(session) -> None:
     trial, content = await _setup(session, panel)
     user = await _user(session, telegram_id=2, status=UserStatus.available)
 
-    await start_claim(_callback(), user, content, trial)
+    await start_claim(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
 
     assert panel.created  # config:claim is the only place that provisions
     assert user.status is UserStatus.active_config
@@ -125,7 +126,7 @@ async def test_menu_config_landing_self_heals_expired(session) -> None:
         session, telegram_id=3, status=UserStatus.active_config, panel_username="g3_old"
     )
 
-    await open_config(_callback(), user, content, trial)
+    await open_config(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
 
     assert panel.created == []  # landing never provisions, even while healing
     assert user.status is UserStatus.available  # expired trial self-healed to claimable

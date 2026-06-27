@@ -21,6 +21,7 @@ from gozar.bot.handlers.admin import (
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
+from gozar.ui.buttons import EMPTY_OVERRIDES
 
 
 async def _content(**entries: str) -> ContentService:
@@ -75,7 +76,7 @@ def _user() -> User:
 async def test_start_broadcast_enters_waiting_state() -> None:
     content = await _content(admin_broadcast_prompt="send the message")
     state = FakeState()
-    await start_broadcast(_callback(), _user(), content, state)
+    await start_broadcast(_callback(), _user(), content, state, buttons=EMPTY_OVERRIDES)
     assert state.state == FanoutFlow.waiting_message
     assert (await state.get_data())["action"] == "broadcast"
 
@@ -84,7 +85,7 @@ async def test_confirm_enqueues_fanout_and_clears() -> None:
     content = await _content(admin_send_queued="queued")
     state = FakeState(data={"action": "broadcast", "src_chat": 100, "message_id": 200})
     arq = FakeArq()
-    await fanout_confirm(_callback(uid=5), _user(), content, state, arq)
+    await fanout_confirm(_callback(uid=5), _user(), content, state, arq, buttons=EMPTY_OVERRIDES)
     assert arq.jobs == [("fanout", ("broadcast", 100, 200, 5))]
     assert state.cleared
 
@@ -92,21 +93,21 @@ async def test_confirm_enqueues_fanout_and_clears() -> None:
 async def test_cancel_enqueues_nothing() -> None:
     content = await _content(admin_send_cancelled="cancelled")
     state = FakeState(data={"action": "broadcast", "src_chat": 100, "message_id": 200})
-    await fanout_cancel(_callback(), _user(), content, state)
+    await fanout_cancel(_callback(), _user(), content, state, buttons=EMPTY_OVERRIDES)
     assert state.cleared  # no arq involved → nothing can be sent
 
 
 async def test_confirm_without_arq_is_safe() -> None:
     content = await _content(admin_send_failed="failed")
     state = FakeState(data={"action": "broadcast", "src_chat": 100, "message_id": 200})
-    await fanout_confirm(_callback(), _user(), content, state, None)  # must not raise
+    await fanout_confirm(_callback(), _user(), content, state, None, buttons=EMPTY_OVERRIDES)
     assert state.cleared
 
 
 async def test_ban_action_confirms_before_acting() -> None:
     content = await _content(admin_ban_confirm="are you sure?")
     state = FakeState(data={"target_id": 77}, state=UserActionFlow.viewing)
-    await user_ban_prompt(_callback(), _user(), content, state)
+    await user_ban_prompt(_callback(), _user(), content, state, buttons=EMPTY_OVERRIDES)
     assert state.state == UserActionFlow.confirming
     assert (await state.get_data())["pending"] == "ban"
 
@@ -114,5 +115,5 @@ async def test_ban_action_confirms_before_acting() -> None:
 async def test_reset_all_confirm_enqueues_bulk_job() -> None:
     content = await _content(admin_reset_all_queued="queued")
     arq = FakeArq()
-    await reset_all_confirm(_callback(uid=5), _user(), content, arq)
+    await reset_all_confirm(_callback(uid=5), _user(), content, arq, buttons=EMPTY_OVERRIDES)
     assert arq.jobs == [("reset_all_active", (5,))]
