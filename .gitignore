@@ -20,3 +20,8 @@ frontend/dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Phase 9 installer — server-only artifacts (never commit; TLS private key lives here)
+nginx/certs/
+docker-compose.tls.yml
+nginx/nginx.tls.conf
