@@ -45,6 +45,18 @@ class ConfigLogRepository(BaseRepository):
             or 0
         )
 
+    async def daily_counts(self, since: datetime) -> list[tuple[str, int]]:
+        """Claims per UTC day at or after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        Backs the dashboard activity chart (one grouped query)."""
+        day = func.date(ConfigLog.created_at).label("day")
+        rows = await self.session.execute(
+            select(day, func.count())
+            .where(ConfigLog.created_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
+
     async def delete_for_user_since(self, user_id: int, since: datetime) -> int:
         """Drop a user's claims at or after ``since`` — the admin 'reclaim' action clears today's
         guard so the user can claim again. Returns the number of rows removed."""

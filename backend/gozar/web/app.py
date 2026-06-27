@@ -16,6 +16,7 @@ import httpx
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from gozar.bot.dispatcher import build_bot, build_dispatcher
 from gozar.cache.redis import create_redis_pool
@@ -23,6 +24,7 @@ from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
+from gozar.web.routes import admin as admin_api
 from gozar.web.routes import health, panel, telegram
 
 logger = logging.getLogger("gozar")
@@ -100,6 +102,17 @@ def create_app() -> FastAPI:
     app.include_router(health.router)
     app.include_router(telegram.router)  # POST /tg/{secret}
     app.include_router(panel.router)  # POST /panel-webhook (Remnawave expiry/limit events)
-    # Routers added in later phases:
-    #   P7: app.include_router(admin_api.router, prefix="/api")
+    app.include_router(admin_api.router, prefix="/api")  # JWT admin API at /api/admin/*
+
+    # CORS for the admin SPA: the panel's own origin (prod) + the Vite dev server (local).
+    settings = get_settings()
+    origins = [f"https://{settings.admin_domain}"] if settings.admin_domain else []
+    origins += ["http://localhost:5173", "http://127.0.0.1:5173"]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     return app
