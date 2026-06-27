@@ -59,15 +59,20 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "🌐 Change language",
         Language.ru: "🌐 Сменить язык",
     },
-    "reminder_on": {
-        Language.fa: "📮 یادآور ✅",
-        Language.en: "📮 Reminders ✅",
-        Language.ru: "📮 Напоминания ✅",
+    "settings_reminder": {
+        Language.fa: "📮 یادآور",
+        Language.en: "📮 Reminders",
+        Language.ru: "📮 Напоминания",
     },
-    "reminder_off": {
-        Language.fa: "📮 یادآور ❌",
-        Language.en: "📮 Reminders ❌",
-        Language.ru: "📮 Напоминания ❌",
+    "reminder_enable": {
+        Language.fa: "✅ فعال‌سازی یادآور",
+        Language.en: "✅ Enable reminders",
+        Language.ru: "✅ Включить напоминания",
+    },
+    "reminder_disable": {
+        Language.fa: "❌ غیرفعال‌سازی یادآور",
+        Language.en: "❌ Disable reminders",
+        Language.ru: "❌ Отключить напоминания",
     },
     "invite_share": {
         Language.fa: "📤 اشتراک‌گذاری لینک",

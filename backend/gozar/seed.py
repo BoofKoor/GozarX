@@ -35,9 +35,9 @@ DEFAULT_SETTINGS: dict[str, str] = {
 # i18n map (Phase 3), NOT here.
 DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
     "welcome": {
-        Language.fa: "به ربات خوش‌آمدید! 🌟\nهر روز یک کانفیگ آزمایشی رایگان بگیرید و با دعوت دوستان حجم روزانه‌تان را بیشتر کنید.",
-        Language.en: "Welcome! 🌟\nGet one free trial config every day, and grow your daily allowance by inviting friends.",
-        Language.ru: "Добро пожаловать! 🌟\nПолучайте бесплатный пробный конфиг каждый день и увеличивайте лимит, приглашая друзей.",
+        Language.fa: "سلام! 👋\nهر روز یک کانفیگ آزمایشی رایگان از منوی زیر بگیر، و با دعوت دوستانت حجم روزانه‌ات را بیشتر کن. 🚀",
+        Language.en: "Hey there! 👋\nGrab a free trial config every day from the menu below, and invite friends to grow your daily traffic. 🚀",
+        Language.ru: "Привет! 👋\nКаждый день получай бесплатный пробный конфиг из меню ниже и приглашай друзей, чтобы увеличить дневной трафик. 🚀",
     },
     "help": {
         Language.fa: "راهنما:\n• «کانفیگ امروز» — دریافت کانفیگ آزمایشی روزانه\n• «دعوت دوستان» — افزایش حجم روزانه\n• «وضعیت من» — مصرف و زمان باقی‌مانده\n• «تنظیمات» — زبان و یادآوری‌ها",
@@ -95,9 +95,24 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "⚠️ Не удалось связаться с сервером.\nПожалуйста, повторите попытку чуть позже.",
     },
     "status": {
-        Language.fa: "📊 وضعیت شما:\n• شناسه: {tg_id}\n• دعوت‌ها: {referrals}\n• حجم روزانه: {daily_limit}\n• کانفیگ‌های دریافتی: {configs}\n• مصرف: {usage}\n• زمان باقی‌مانده: {remaining}",
-        Language.en: "📊 Your status:\n• ID: {tg_id}\n• Referrals: {referrals}\n• Daily limit: {daily_limit}\n• Configs received: {configs}\n• Usage: {usage}\n• Time left: {remaining}",
-        Language.ru: "📊 Ваш статус:\n• ID: {tg_id}\n• Приглашения: {referrals}\n• Дневной лимит: {daily_limit}\n• Конфигов получено: {configs}\n• Расход: {usage}\n• Осталось: {remaining}",
+        Language.fa: "📊 وضعیت شما:\n{status_line}\n• شناسه: {tg_id}\n• دعوت‌ها: {referrals}\n• حجم روزانه: {daily_limit}\n• کانفیگ‌های دریافتی: {configs}{status_usage}",
+        Language.en: "📊 Your status:\n{status_line}\n• ID: {tg_id}\n• Referrals: {referrals}\n• Daily limit: {daily_limit}\n• Configs received: {configs}{status_usage}",
+        Language.ru: "📊 Ваш статус:\n{status_line}\n• ID: {tg_id}\n• Приглашения: {referrals}\n• Дневной лимит: {daily_limit}\n• Конфигов получено: {configs}{status_usage}",
+    },
+    "status_received": {
+        Language.fa: "کانفیگ دریافت شده ✅",
+        Language.en: "Config received ✅",
+        Language.ru: "Конфиг получен ✅",
+    },
+    "status_not_received": {
+        Language.fa: "کانفیگ دریافت نشده❕",
+        Language.en: "Config not received❕",
+        Language.ru: "Конфиг не получен❕",
+    },
+    "status_usage": {
+        Language.fa: "\n• مصرف: {usage}\n• زمان باقی‌مانده: {remaining}",
+        Language.en: "\n• Usage: {usage}\n• Time left: {remaining}",
+        Language.ru: "\n• Расход: {usage}\n• Осталось: {remaining}",
     },
     "invite": {
         Language.fa: "👥 دوستان خود را دعوت کنید!\nلینک دعوت شما:\n{link}\n\nتعداد دعوت‌ها: {count}\nحجم روزانهٔ فعلی: {daily_size}",
@@ -118,6 +133,21 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.fa: "⚙️ تنظیمات:\nزبان و یادآوری‌ها را اینجا تغییر دهید.",
         Language.en: "⚙️ Settings:\nChange your language and reminders here.",
         Language.ru: "⚙️ Настройки:\nИзмените язык и напоминания здесь.",
+    },
+    "reminder_setting": {
+        Language.fa: "🔔 یادآوری‌ها:\nپیش از پایان اعتبار کانفیگ آزمایشی به شما یادآوری می‌کنیم.",
+        Language.en: "🔔 Reminders:\nWe'll remind you before your trial config expires.",
+        Language.ru: "🔔 Напоминания:\nМы напомним вам до истечения пробного конфига.",
+    },
+    "reminder_status": {
+        Language.fa: "✅ تنظیمات یادآوری به‌روزرسانی شد.",
+        Language.en: "✅ Your reminder setting was updated.",
+        Language.ru: "✅ Настройка напоминаний обновлена.",
+    },
+    "ads": {
+        Language.fa: "📣 از سرویس ما لذت می‌بری؟ آن را با دوستانت به اشتراک بگذار!",
+        Language.en: "📣 Enjoying the service? Share it with your friends!",
+        Language.ru: "📣 Нравится сервис? Поделитесь им с друзьями!",
     },
     "referral_joined": {
         Language.fa: "🎉 یکی از دوستانی که دعوت کردید اولین کانفیگش را گرفت!\nتعداد دعوت‌های شما: {count}\nحجم روزانهٔ فعلی شما: {size}",

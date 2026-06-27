@@ -1,7 +1,7 @@
-"""Status screen: identity, referrals, computed daily allowance, usage + time left.
+"""Status screen: identity, referrals, daily allowance, a config-received line, usage + time left.
 
 For an ``active_config`` user this re-reads the live panel state (which also self-heals an ended
-trial), so usage/time-left are real and the change button appears only while a trial is live.
+trial), so usage/time-left are real and shown only while a trial is live.
 """
 
 from __future__ import annotations
@@ -11,11 +11,33 @@ from aiogram.types import CallbackQuery, Message
 
 from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import back_keyboard, status_keyboard
+from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
-from gozar.services.trial import PanelError, TrialService
+from gozar.services.trial import PanelError, StatusInfo, TrialService
 
 router = Router(name="status")
+
+
+async def _status_body(info: StatusInfo, content: ContentService, lang: Language) -> str:
+    """The status body via content tokens: the received/not-received line + (only when active) the
+    usage block. ``status_usage`` is empty when claimable, so usage/time-left are hidden."""
+    line = await content.text("status_received" if info.active else "status_not_received", lang)
+    usage = (
+        await content.text("status_usage", lang, usage=info.usage, remaining=info.remaining)
+        if info.active
+        else ""
+    )
+    return await content.text(
+        "status",
+        lang,
+        tg_id=info.tg_id,
+        referrals=info.referrals,
+        daily_limit=info.daily_limit,
+        configs=info.configs,
+        status_line=line,
+        status_usage=usage,
+    )
 
 
 @router.callback_query(F.data == cb.MENU_STATUS)
@@ -29,16 +51,7 @@ async def show_status(
         text = await content.text("panel_error", lang)
         markup = back_keyboard(lang)
     else:
-        text = await content.text(
-            "status",
-            lang,
-            tg_id=info.tg_id,
-            referrals=info.referrals,
-            daily_limit=info.daily_limit,
-            configs=info.configs,
-            usage=info.usage,
-            remaining=info.remaining,
-        )
+        text = await _status_body(info, content, lang)
         markup = status_keyboard(lang, active=info.active)
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=markup)
