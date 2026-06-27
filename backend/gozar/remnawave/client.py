@@ -120,6 +120,13 @@ class RemnawaveClient:
         data = await self._request("DELETE", f"/users/{uuid}")
         return bool(data.get("isDeleted", True)) if isinstance(data, dict) else True
 
+    # VERIFY: POST /api/users/{uuid}/actions/reset-traffic -> response.isReset. Zeroes the user's
+    #         used traffic for the current period (admin bulk "reset daily consumption"). Single
+    #         bounded attempt per user; the caller logs + skips on failure (no retry loop).
+    async def reset_user_traffic(self, uuid: str) -> bool:
+        data = await self._request("POST", f"/users/{uuid}/actions/reset-traffic")
+        return bool(data.get("isReset", True)) if isinstance(data, dict) else True
+
     # VERIFY: GET /api/internal-squads -> response.internalSquads[]
     async def list_internal_squads(self) -> list[InternalSquad]:
         data = await self._request("GET", "/internal-squads")

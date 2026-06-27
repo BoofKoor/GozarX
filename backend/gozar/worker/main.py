@@ -2,46 +2,63 @@
 
 Run: ``python -m gozar.worker.main``
 
-Redis settings are read at runtime inside :func:`run`, never at class-body eval,
-so importing this module has no side effects. arq refuses to start with an empty
-``functions`` list, so Phase 0 registers a single no-op placeholder; Phase 6
-replaces/extends ``functions`` with the real broadcast / forward tasks.
+Redis settings are read at runtime inside :func:`run`, never at class-body eval, so importing this
+module has no side effects. ``_startup`` builds the worker's own resources (HTTP client + panel,
+DB engine + sessionmaker, aiogram Bot) into the arq ``ctx`` — mirroring the web lifespan and torn
+down symmetrically in ``_shutdown``. The Bot is constructed inline (not via the dispatcher) so the
+worker never imports the FastAPI/handler graph.
 """
 
 from __future__ import annotations
 
 import logging
 
+import httpx
+from aiogram import Bot
+from aiogram.client.default import DefaultBotProperties
+from aiogram.enums import ParseMode
 from arq import run_worker
 from arq.connections import RedisSettings
 
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
+from gozar.db.session import create_engine, create_sessionmaker
+from gozar.remnawave import RemnawaveClient
+from gozar.worker.tasks import fanout, reset_all_active
 
 logger = logging.getLogger("gozar.worker")
 
 
-async def noop(ctx: dict) -> None:
-    """No-op placeholder so arq has >=1 registered function.
-
-    arq raises "at least one function or cron_job must be registered" when started
-    with an empty functions list, so this lets the worker boot and idle. It is never
-    enqueued in Phase 0; Phase 6 replaces/extends ``functions`` with the real
-    broadcast / forward tasks.
-    """
-    return None
-
-
 async def _startup(ctx: dict) -> None:
+    settings = get_settings()
+    ctx["http"] = httpx.AsyncClient(timeout=httpx.Timeout(10.0), verify=True)
+    ctx["panel"] = RemnawaveClient(ctx["http"], settings.panel_base_url, settings.panel_api_token)
+    ctx["engine"] = create_engine(settings.database_url)
+    ctx["sessionmaker"] = create_sessionmaker(ctx["engine"])
+    token = settings.bot_token.get_secret_value()
+    ctx["bot"] = (
+        Bot(token, default=DefaultBotProperties(parse_mode=ParseMode.HTML)) if token else None
+    )
+    if ctx["bot"] is None:
+        logger.warning("worker started without BOT_TOKEN — fan-out tasks will no-op")
     logger.info("arq worker started")
 
 
 async def _shutdown(ctx: dict) -> None:
+    bot = ctx.get("bot")
+    if bot is not None:
+        await bot.session.close()
+    engine = ctx.get("engine")
+    if engine is not None:
+        await engine.dispose()
+    http = ctx.get("http")
+    if http is not None:
+        await http.aclose()
     logger.info("arq worker stopped")
 
 
 class WorkerSettings:
-    functions = [noop]  # P6 replaces this with broadcast / forward tasks
+    functions = [fanout, reset_all_active]
     cron_jobs: list = []  # P8: nightly pg_dump backup
     on_startup = _startup
     on_shutdown = _shutdown

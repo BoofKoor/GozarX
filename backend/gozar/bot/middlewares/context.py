@@ -13,6 +13,7 @@ from typing import Any
 
 from aiogram import BaseMiddleware
 from aiogram.types import CallbackQuery, Message, TelegramObject
+from arq import ArqRedis
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -22,6 +23,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient
+from gozar.services.admin import AdminService
 from gozar.services.content import ContentService
 from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingsService
@@ -34,11 +36,16 @@ Handler = Callable[[TelegramObject, dict[str, Any]], Awaitable[Any]]
 
 class ContextMiddleware(BaseMiddleware):
     def __init__(
-        self, sessionmaker: async_sessionmaker, redis: Redis, panel: RemnawaveClient
+        self,
+        sessionmaker: async_sessionmaker,
+        redis: Redis,
+        panel: RemnawaveClient,
+        arq: ArqRedis | None = None,
     ) -> None:
         self._sessionmaker = sessionmaker
         self._redis = redis
         self._panel = panel
+        self._arq = arq
 
     async def __call__(self, handler: Handler, event: TelegramObject, data: dict[str, Any]) -> Any:
         tg_user = getattr(event, "from_user", None)
@@ -63,6 +70,8 @@ class ContextMiddleware(BaseMiddleware):
                 panel=self._panel,
                 trial=TrialService(self._panel, settings, config_log_repo, self._redis),
                 referral=ReferralService(user_repo, settings, self._panel),
+                admin=AdminService(user_repo, config_log_repo, settings, self._panel, self._redis),
+                arq=self._arq,
                 notify=notify,
             )
             if user.status is UserStatus.banned:

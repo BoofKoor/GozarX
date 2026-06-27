@@ -33,6 +33,27 @@ SETTINGS_REMINDER = "settings:reminder"
 SETTINGS_REMINDER_ON = "settings:reminder:on"
 SETTINGS_REMINDER_OFF = "settings:reminder:off"
 
+# Admin panel (owner-only; the IsOwner filter gates the whole router). All exact-match. Per-user
+# actions carry NO id — the target telegram_id lives in the UserActionFlow FSM state, so the card
+# buttons stay stateless. The preview gate (SEND_CONFIRM/CANCEL) is what releases a broadcast.
+ADMIN_MENU = "admin:menu"
+ADMIN_STATS = "admin:stats"
+ADMIN_BROADCAST = "admin:broadcast"
+ADMIN_FORWARD = "admin:forward"
+ADMIN_USERS = "admin:users"
+ADMIN_REFRESH_LOCATIONS = "admin:refresh_locations"
+ADMIN_RESET_ALL = "admin:reset_all"
+ADMIN_RESET_ALL_CONFIRM = "admin:reset_all:confirm"  # exact; != "admin:reset_all"
+ADMIN_CLOSE = "admin:close"
+ADMIN_SEND_CONFIRM = "admin:send:confirm"
+ADMIN_SEND_CANCEL = "admin:send:cancel"
+ADMIN_USER_BAN = "admin:user:ban"
+ADMIN_USER_UNBAN = "admin:user:unban"
+ADMIN_USER_RECLAIM = "admin:user:reclaim"
+ADMIN_USER_ZERO_REFERRALS = "admin:user:zero_referrals"
+ADMIN_USER_CONFIRM = "admin:user:confirm"
+ADMIN_USER_CANCEL = "admin:user:cancel"
+
 
 def lang_cb(code: str) -> str:
     return f"{LANG_PREFIX}{code}"

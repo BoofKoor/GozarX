@@ -12,6 +12,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiogram.fsm.storage.base import DefaultKeyBuilder
 from aiogram.fsm.storage.redis import RedisStorage
+from arq import ArqRedis
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
@@ -25,11 +26,14 @@ def build_bot(token: str) -> Bot:
 
 
 def build_dispatcher(
-    sessionmaker: async_sessionmaker, redis: Redis, panel: RemnawaveClient
+    sessionmaker: async_sessionmaker,
+    redis: Redis,
+    panel: RemnawaveClient,
+    arq: ArqRedis | None = None,
 ) -> Dispatcher:
     storage = RedisStorage(redis, key_builder=DefaultKeyBuilder(prefix="fsm"))
     dp = Dispatcher(storage=storage)
-    middleware = ContextMiddleware(sessionmaker, redis, panel)
+    middleware = ContextMiddleware(sessionmaker, redis, panel, arq)
     dp.message.outer_middleware(middleware)
     dp.callback_query.outer_middleware(middleware)
     register_handlers(dp)

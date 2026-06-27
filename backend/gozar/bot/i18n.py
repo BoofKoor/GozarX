@@ -104,6 +104,82 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "Coming soon…",
         Language.ru: "Скоро…",
     },
+    # --- Admin panel (owner-only) chrome ---
+    "admin_stats": {
+        Language.fa: "📊 آمار",
+        Language.en: "📊 Stats",
+        Language.ru: "📊 Статистика",
+    },
+    "admin_users": {
+        Language.fa: "👤 مدیریت کاربر",
+        Language.en: "👤 User lookup",
+        Language.ru: "👤 Пользователь",
+    },
+    "admin_broadcast": {
+        Language.fa: "📣 پیام همگانی",
+        Language.en: "📣 Broadcast",
+        Language.ru: "📣 Рассылка",
+    },
+    "admin_forward": {
+        Language.fa: "↪️ فوروارد همگانی",
+        Language.en: "↪️ Forward",
+        Language.ru: "↪️ Переслать всем",
+    },
+    "admin_refresh_locations": {
+        Language.fa: "📍 بروزرسانی لوکیشن‌ها",
+        Language.en: "📍 Refresh locations",
+        Language.ru: "📍 Обновить локации",
+    },
+    "admin_reset_all": {
+        Language.fa: "♻️ ریست حجم همه",
+        Language.en: "♻️ Reset all traffic",
+        Language.ru: "♻️ Сбросить трафик",
+    },
+    "admin_close": {
+        Language.fa: "❌ بستن",
+        Language.en: "❌ Close",
+        Language.ru: "❌ Закрыть",
+    },
+    "admin_back": {
+        Language.fa: "🔙 منوی ادمین",
+        Language.en: "🔙 Admin menu",
+        Language.ru: "🔙 Админ-меню",
+    },
+    "admin_send": {
+        Language.fa: "✅ ارسال",
+        Language.en: "✅ Send",
+        Language.ru: "✅ Отправить",
+    },
+    "admin_confirm": {
+        Language.fa: "✅ تأیید",
+        Language.en: "✅ Confirm",
+        Language.ru: "✅ Подтвердить",
+    },
+    "admin_cancel": {
+        Language.fa: "❌ لغو",
+        Language.en: "❌ Cancel",
+        Language.ru: "❌ Отмена",
+    },
+    "admin_ban": {
+        Language.fa: "⛔ مسدودسازی",
+        Language.en: "⛔ Ban",
+        Language.ru: "⛔ Бан",
+    },
+    "admin_unban": {
+        Language.fa: "✅ رفع مسدودی",
+        Language.en: "✅ Unban",
+        Language.ru: "✅ Разбан",
+    },
+    "admin_reclaim": {
+        Language.fa: "🔄 اجازه دریافت مجدد",
+        Language.en: "🔄 Allow re-claim",
+        Language.ru: "🔄 Разрешить заново",
+    },
+    "admin_zero_referrals": {
+        Language.fa: "0️⃣ صفر کردن دعوت‌ها",
+        Language.en: "0️⃣ Zero referrals",
+        Language.ru: "0️⃣ Обнулить рефералов",
+    },
 }
 
 # Language-picker captions: each language's own name (identical regardless of the current language).

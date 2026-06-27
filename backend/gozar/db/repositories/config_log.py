@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.repositories.base import BaseRepository
@@ -35,3 +35,20 @@ class ConfigLogRepository(BaseRepository):
             )
             or 0
         )
+
+    async def count_since(self, since: datetime) -> int:
+        """Total claims across all users at or after ``since`` (admin stats: 'configs today')."""
+        return int(
+            await self.session.scalar(
+                select(func.count()).select_from(ConfigLog).where(ConfigLog.created_at >= since)
+            )
+            or 0
+        )
+
+    async def delete_for_user_since(self, user_id: int, since: datetime) -> int:
+        """Drop a user's claims at or after ``since`` — the admin 'reclaim' action clears today's
+        guard so the user can claim again. Returns the number of rows removed."""
+        result = await self.session.execute(
+            delete(ConfigLog).where(ConfigLog.user_id == user_id, ConfigLog.created_at >= since)
+        )
+        return int(result.rowcount or 0)
