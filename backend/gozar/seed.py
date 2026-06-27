@@ -164,6 +164,112 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "⛔️ Your access to the bot has been blocked.",
         Language.ru: "⛔️ Ваш доступ к боту заблокирован.",
     },
+    # --- Admin panel (owner-only) body copy. Operators read these in their own language. ---
+    "admin_menu": {
+        Language.fa: "🛠 پنل مدیریت\nیک گزینه را انتخاب کنید:",
+        Language.en: "🛠 Admin panel\nChoose an option:",
+        Language.ru: "🛠 Панель администратора\nВыберите действие:",
+    },
+    "admin_stats": {
+        Language.fa: "📊 آمار ربات:\n• کل کاربران: {total}\n• آزاد: {available}\n• دارای کانفیگ فعال: {active}\n• مسدود: {banned}\n• کانفیگ‌های امروز: {configs_today}\n• مجموع دعوت‌ها: {referrals}",
+        Language.en: "📊 Bot stats:\n• Total users: {total}\n• Available: {available}\n• Active config: {active}\n• Banned: {banned}\n• Configs today: {configs_today}\n• Total referrals: {referrals}",
+        Language.ru: "📊 Статистика:\n• Всего пользователей: {total}\n• Свободны: {available}\n• С активным конфигом: {active}\n• Заблокированы: {banned}\n• Конфигов сегодня: {configs_today}\n• Всего приглашений: {referrals}",
+    },
+    "admin_broadcast_prompt": {
+        Language.fa: "📣 پیامی که می‌خواهید برای همهٔ کاربران ارسال شود را بفرستید (متن یا رسانه).\nبدون سربرگ «فورواردشده» ارسال می‌شود.",
+        Language.en: "📣 Send the message to broadcast to all users (text or media).\nIt is sent cleanly, without a 'Forwarded from' header.",
+        Language.ru: "📣 Отправьте сообщение для рассылки всем (текст или медиа).\nОно уйдёт без пометки «Переслано».",
+    },
+    "admin_forward_prompt": {
+        Language.fa: "↪️ پیامی را که می‌خواهید برای همهٔ کاربران فوروارد شود، فوروارد کنید.\nسربرگ «فورواردشده» حفظ می‌شود.",
+        Language.en: "↪️ Forward the message you want forwarded to all users.\nThe 'Forwarded from' header is preserved.",
+        Language.ru: "↪️ Перешлите сообщение, которое нужно переслать всем.\nПометка «Переслано» сохранится.",
+    },
+    "admin_send_preview": {
+        Language.fa: "⬆️ پیش‌نمایش بالا دقیقاً همان چیزی است که کاربران می‌بینند.\nبه {count} کاربر ارسال شود؟",
+        Language.en: "⬆️ The preview above is exactly what users will see.\nSend to {count} users?",
+        Language.ru: "⬆️ Предпросмотр выше — это ровно то, что увидят пользователи.\nОтправить {count} пользователям?",
+    },
+    "admin_send_queued": {
+        Language.fa: "✅ ارسال در صف قرار گرفت. پیشرفت در همین‌جا گزارش می‌شود.",
+        Language.en: "✅ Queued. Progress will be reported here.",
+        Language.ru: "✅ В очереди. Прогресс будет показан здесь.",
+    },
+    "admin_send_cancelled": {
+        Language.fa: "❌ ارسال لغو شد.",
+        Language.en: "❌ Send cancelled.",
+        Language.ru: "❌ Отправка отменена.",
+    },
+    "admin_send_failed": {
+        Language.fa: "⚠️ ارسال ممکن نشد (صف در دسترس نیست). بعداً تلاش کنید.",
+        Language.en: "⚠️ Couldn't queue (queue unavailable). Try again later.",
+        Language.ru: "⚠️ Не удалось поставить в очередь. Попробуйте позже.",
+    },
+    "admin_user_prompt": {
+        Language.fa: "👤 شناسهٔ عددی تلگرام کاربر را بفرستید:",
+        Language.en: "👤 Send the user's numeric Telegram ID:",
+        Language.ru: "👤 Отправьте числовой Telegram ID пользователя:",
+    },
+    "admin_user_not_found": {
+        Language.fa: "❓ کاربری با این شناسه پیدا نشد. دوباره تلاش کنید.",
+        Language.en: "❓ No user with that ID. Try again.",
+        Language.ru: "❓ Пользователь с таким ID не найден. Попробуйте снова.",
+    },
+    "admin_user_card": {
+        Language.fa: "👤 کاربر {id}\n• وضعیت: {status}\n• زبان: {language}\n• دعوت‌ها: {referrals}\n• کانفیگ‌های دریافتی: {configs}\n• نام پنل: {panel}\n• تاریخ عضویت: {joined}",
+        Language.en: "👤 User {id}\n• Status: {status}\n• Language: {language}\n• Referrals: {referrals}\n• Configs received: {configs}\n• Panel name: {panel}\n• Joined: {joined}",
+        Language.ru: "👤 Пользователь {id}\n• Статус: {status}\n• Язык: {language}\n• Приглашения: {referrals}\n• Конфигов получено: {configs}\n• Имя в панели: {panel}\n• Регистрация: {joined}",
+    },
+    "admin_ban_confirm": {
+        Language.fa: "⛔ این کاربر مسدود می‌شود و کانفیگ فعالش روی پنل حذف می‌شود. ادامه می‌دهید؟",
+        Language.en: "⛔ This bans the user and deletes their live panel config. Continue?",
+        Language.ru: "⛔ Пользователь будет заблокирован, а его активный конфиг на панели удалён. Продолжить?",
+    },
+    "admin_ban_done": {
+        Language.fa: "⛔ کاربر مسدود شد و دسترسی پنل لغو شد.",
+        Language.en: "⛔ User banned and panel access revoked.",
+        Language.ru: "⛔ Пользователь заблокирован, доступ к панели отозван.",
+    },
+    "admin_unban_done": {
+        Language.fa: "✅ مسدودی کاربر برداشته شد.",
+        Language.en: "✅ User unbanned.",
+        Language.ru: "✅ Пользователь разблокирован.",
+    },
+    "admin_reclaim_done": {
+        Language.fa: "🔄 محدودیت دریافت امروز برداشته شد؛ کاربر می‌تواند دوباره کانفیگ بگیرد.",
+        Language.en: "🔄 Today's claim was cleared; the user can claim a config again.",
+        Language.ru: "🔄 Дневной лимит сброшен; пользователь может снова получить конфиг.",
+    },
+    "admin_zero_confirm": {
+        Language.fa: "0️⃣ شمار دعوت‌های این کاربر صفر می‌شود و حجم روزانه‌اش به مقدار پایه برمی‌گردد. این عمل بازگشت‌پذیر نیست. ادامه می‌دهید؟",
+        Language.en: "0️⃣ This zeroes the user's referrals and drops their daily allowance to base. This is not reversible. Continue?",
+        Language.ru: "0️⃣ Приглашения пользователя обнулятся, а дневной объём вернётся к базовому. Это необратимо. Продолжить?",
+    },
+    "admin_zero_done": {
+        Language.fa: "0️⃣ دعوت‌های کاربر صفر شد.",
+        Language.en: "0️⃣ User's referrals reset to zero.",
+        Language.ru: "0️⃣ Приглашения пользователя обнулены.",
+    },
+    "admin_reset_all_confirm": {
+        Language.fa: "♻️ مصرف حجم {count} کاربر دارای کانفیگ فعال روی پنل صفر می‌شود. ادامه می‌دهید؟",
+        Language.en: "♻️ This resets panel traffic consumption for {count} active users. Continue?",
+        Language.ru: "♻️ Это сбросит расход трафика на панели для {count} активных пользователей. Продолжить?",
+    },
+    "admin_reset_all_queued": {
+        Language.fa: "✅ ریست حجم در صف قرار گرفت. پیشرفت در همین‌جا گزارش می‌شود.",
+        Language.en: "✅ Traffic reset queued. Progress will be reported here.",
+        Language.ru: "✅ Сброс трафика в очереди. Прогресс будет показан здесь.",
+    },
+    "admin_refresh_done": {
+        Language.fa: "📍 لوکیشن‌ها بروزرسانی شد ({count}): {locations}",
+        Language.en: "📍 Locations refreshed ({count}): {locations}",
+        Language.ru: "📍 Локации обновлены ({count}): {locations}",
+    },
+    "admin_refresh_failed": {
+        Language.fa: "⚠️ بروزرسانی لوکیشن‌ها ممکن نشد (اسکواد آزمایشی تنظیم نشده یا خطای پنل).",
+        Language.en: "⚠️ Couldn't refresh locations (trial squad not set, or a panel error).",
+        Language.ru: "⚠️ Не удалось обновить локации (сквад не задан или ошибка панели).",
+    },
 }
 
 

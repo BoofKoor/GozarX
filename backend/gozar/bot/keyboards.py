@@ -146,3 +146,52 @@ def invite_keyboard(lang: Language, link: str) -> InlineKeyboardMarkup:
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
     builder.adjust(1)
     return builder.as_markup()
+
+
+# --- Admin panel (owner-only) keyboards ---------------------------------------------------------
+def admin_menu_keyboard(lang: Language) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("admin_stats", lang), callback_data=cb.ADMIN_STATS)
+    builder.button(text=t("admin_users", lang), callback_data=cb.ADMIN_USERS)
+    builder.button(text=t("admin_broadcast", lang), callback_data=cb.ADMIN_BROADCAST)
+    builder.button(text=t("admin_forward", lang), callback_data=cb.ADMIN_FORWARD)
+    builder.button(
+        text=t("admin_refresh_locations", lang), callback_data=cb.ADMIN_REFRESH_LOCATIONS
+    )
+    builder.button(text=t("admin_reset_all", lang), callback_data=cb.ADMIN_RESET_ALL)
+    builder.button(text=t("admin_close", lang), callback_data=cb.ADMIN_CLOSE)
+    builder.adjust(2, 2, 2, 1)
+    return builder.as_markup()
+
+
+def admin_back_keyboard(lang: Language) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t("admin_back", lang), callback_data=cb.ADMIN_MENU)
+    return builder.as_markup()
+
+
+def confirm_keyboard(
+    lang: Language, confirm_cb: str, cancel_cb: str, *, confirm_key: str = "admin_confirm"
+) -> InlineKeyboardMarkup:
+    """Generic ✅/❌ gate — the broadcast/forward preview, the per-user destructive confirm, and the
+    bulk reset confirm all reuse it (only the confirm/cancel callbacks differ)."""
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t(confirm_key, lang), callback_data=confirm_cb)
+    builder.button(text=t("admin_cancel", lang), callback_data=cancel_cb)
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def admin_user_card_keyboard(lang: Language, *, banned: bool) -> InlineKeyboardMarkup:
+    """Per-user actions. Ban (when active) / unban (when banned), plus reclaim + zero-referrals;
+    the target telegram_id is held in FSM state, so no id is embedded in the callbacks."""
+    builder = InlineKeyboardBuilder()
+    if banned:
+        builder.button(text=t("admin_unban", lang), callback_data=cb.ADMIN_USER_UNBAN)
+    else:
+        builder.button(text=t("admin_ban", lang), callback_data=cb.ADMIN_USER_BAN)
+    builder.button(text=t("admin_reclaim", lang), callback_data=cb.ADMIN_USER_RECLAIM)
+    builder.button(text=t("admin_zero_referrals", lang), callback_data=cb.ADMIN_USER_ZERO_REFERRALS)
+    builder.button(text=t("admin_back", lang), callback_data=cb.ADMIN_MENU)
+    builder.adjust(1, 2, 1)
+    return builder.as_markup()

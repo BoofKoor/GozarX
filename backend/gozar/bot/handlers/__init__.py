@@ -2,13 +2,15 @@
 
 from aiogram import Dispatcher
 
-from gozar.bot.handlers import config, invite, menu, settings, start, status
+from gozar.bot.handlers import admin, config, invite, menu, settings, start, status
 
 
 def register_handlers(dp: Dispatcher) -> None:
-    # Feature routers are included BEFORE `menu`; with config/status/invite/settings all live now,
-    # `menu` owns only home + help (no placeholders left).
+    # `admin` is registered right after `start` and is owner-gated (IsOwner), so its FSM message
+    # handlers claim an owner's mid-flow messages before the feature routers see them; a non-owner's
+    # update never matches it and falls through. Feature routers come before `menu` (home + help).
     dp.include_router(start.router)
+    dp.include_router(admin.router)
     dp.include_router(config.router)
     dp.include_router(status.router)
     dp.include_router(invite.router)

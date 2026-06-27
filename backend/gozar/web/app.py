@@ -13,6 +13,8 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import httpx
+from arq import create_pool
+from arq.connections import RedisSettings
 from fastapi import FastAPI
 
 from gozar.bot.dispatcher import build_bot, build_dispatcher
@@ -49,10 +51,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     # aiogram bot + dispatcher (webhook). Skipped without a token; live updates need HTTPS (P9).
     app.state.bot = None
     app.state.dp = None
+    app.state.arq = None
     token = settings.bot_token.get_secret_value()
     if token:
         app.state.bot = build_bot(token)
-        app.state.dp = build_dispatcher(app.state.sessionmaker, app.state.redis, app.state.panel)
+        # arq enqueue pool — admin broadcast/forward handlers push jobs to the worker through it.
+        app.state.arq = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+        app.state.dp = build_dispatcher(
+            app.state.sessionmaker, app.state.redis, app.state.panel, app.state.arq
+        )
         if settings.domain:
             webhook_url = (
                 f"https://{settings.domain}/tg/{settings.webhook_secret.get_secret_value()}"
@@ -80,6 +87,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     finally:
         if app.state.bot is not None:
             await app.state.bot.session.close()
+        if app.state.arq is not None:
+            await app.state.arq.aclose()
         await app.state.redis.aclose()
         await app.state.engine.dispose()
         await app.state.http.aclose()
