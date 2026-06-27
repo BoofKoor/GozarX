@@ -26,6 +26,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.services.content import ContentService
 from gozar.services.referral import ReferralService
+from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import (
     AlreadyActive,
     AlreadyClaimedToday,
@@ -133,12 +134,22 @@ async def _maybe_award_referral(
     notify.send(award.inviter.telegram_id, text)
 
 
+async def _maybe_queue_ads(
+    settings: SettingsService, content: ContentService, notify: PendingNotifications, user: User
+) -> None:
+    """v1's 'deliver, then ads': when ads_enabled, queue the ads copy as a SEPARATE message on the
+    same post-commit buffer (so it never fires on a rollback). Default off."""
+    if await settings.get_bool(SettingKey.ADS_ENABLED):
+        notify.send(user.telegram_id, await content.text("ads", user.language))
+
+
 async def _deliver(
     callback: CallbackQuery,
     user: User,
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
     prefix: str,
     log_repo: ConfigLogRepository | None,
     referral: ReferralService | None,
@@ -169,6 +180,7 @@ async def _deliver(
         expires=delivery.expires,
     )
     notify.edit(message, text, config_delivered_keyboard(user.language))
+    await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 
 
 @router.callback_query(F.data.startswith(cb.CONFIG_CLAIM_PREFIX))
@@ -178,11 +190,20 @@ async def deliver_claim(
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
     config_log_repo: ConfigLogRepository,
     referral: ReferralService,
 ) -> None:
     await _deliver(
-        callback, user, content, trial, notify, cb.CONFIG_CLAIM_PREFIX, config_log_repo, referral
+        callback,
+        user,
+        content,
+        trial,
+        notify,
+        settings,
+        cb.CONFIG_CLAIM_PREFIX,
+        config_log_repo,
+        referral,
     )
 
 
@@ -193,6 +214,7 @@ async def deliver_change(
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
 ) -> None:
     await _deliver(
         callback,
@@ -200,6 +222,7 @@ async def deliver_change(
         content,
         trial,
         notify,
+        settings,
         cb.CONFIG_CHANGE_PREFIX,
         log_repo=None,
         referral=None,

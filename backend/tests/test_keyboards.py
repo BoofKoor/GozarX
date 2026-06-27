@@ -13,6 +13,8 @@ from gozar.bot.keyboards import (
     language_keyboard,
     location_keyboard,
     main_menu_keyboard,
+    reminder_keyboard,
+    settings_keyboard,
 )
 from gozar.db.models.enums import Language
 
@@ -42,6 +44,26 @@ def test_back_keyboard() -> None:
 def test_help_keyboard_has_required_apps() -> None:
     # v1 attaches the required-apps button to the HELP screen (not the get-config picker).
     assert _callbacks(help_keyboard(Language.en)) == [cb.MENU_APPS, cb.MENU_HOME]
+
+
+def test_settings_keyboard_language_and_reminder() -> None:
+    assert _callbacks(settings_keyboard(Language.en)) == [
+        cb.SETTINGS_LANGUAGE,
+        cb.SETTINGS_REMINDER,  # opens the reminder sub-screen
+        cb.MENU_HOME,
+    ]
+
+
+def test_reminder_keyboard_state_toggle() -> None:
+    # enabled -> the toggle disables (and back goes to the settings screen)
+    assert _callbacks(reminder_keyboard(Language.en, reminder_enabled=True)) == [
+        cb.SETTINGS_REMINDER_OFF,
+        cb.MENU_SETTINGS,
+    ]
+    assert _callbacks(reminder_keyboard(Language.en, reminder_enabled=False)) == [
+        cb.SETTINGS_REMINDER_ON,
+        cb.MENU_SETTINGS,
+    ]
 
 
 def test_landing_keyboard_claimable() -> None:

@@ -1,4 +1,4 @@
-"""User settings: change language + toggle the expiry/limit reminders.
+"""User settings: a language picker + a reminder sub-screen (v1's two-level layout).
 
 These edit the user's own message inline (no commit-sensitive cross-user side-effect), so they keep
 the simple inline pattern rather than the post-commit notification buffer.
@@ -7,44 +7,58 @@ the simple inline pattern rather than the post-commit notification buffer.
 from __future__ import annotations
 
 from aiogram import F, Router
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from gozar.bot import callbacks as cb
-from gozar.bot.i18n import t
-from gozar.bot.keyboards import language_keyboard, settings_keyboard
+from gozar.bot.keyboards import language_keyboard, reminder_keyboard, settings_keyboard
 from gozar.db.models.user import User
 from gozar.services.content import ContentService
 
 router = Router(name="settings")
 
 
-async def _show(callback: CallbackQuery, user: User, content: ContentService) -> None:
-    text = await content.text("settings_menu", user.language)
+async def _edit(callback: CallbackQuery, text: str, markup: InlineKeyboardMarkup) -> None:
     if isinstance(callback.message, Message):
-        await callback.message.edit_text(
-            text,
-            reply_markup=settings_keyboard(user.language, reminder_enabled=user.reminder_enabled),
-        )
+        await callback.message.edit_text(text, reply_markup=markup)
 
 
 @router.callback_query(F.data == cb.MENU_SETTINGS)
 async def open_settings(callback: CallbackQuery, user: User, content: ContentService) -> None:
     await callback.answer()
-    await _show(callback, user, content)
+    text = await content.text("settings_menu", user.language)
+    await _edit(callback, text, settings_keyboard(user.language))
 
 
-@router.callback_query(F.data == cb.SETTINGS_REMINDER_TOGGLE)
-async def toggle_reminder(callback: CallbackQuery, user: User, content: ContentService) -> None:
-    user.reminder_enabled = not user.reminder_enabled  # persisted on the middleware commit
-    toast = t("reminder_on" if user.reminder_enabled else "reminder_off", user.language)
-    await callback.answer(toast)
-    await _show(callback, user, content)
-
-
-@router.callback_query(F.data == cb.SETTINGS_LANG)
+@router.callback_query(F.data == cb.SETTINGS_LANGUAGE)
 async def choose_language(callback: CallbackQuery, user: User, content: ContentService) -> None:
     await callback.answer()
+    # The language picker reuses the start.py `lang:set:` callback (lands on the main menu).
     text = await content.text("choose_language", user.language)
-    if isinstance(callback.message, Message):
-        # The language picker reuses the start.py `lang:set:` callback (lands on the main menu).
-        await callback.message.edit_text(text, reply_markup=language_keyboard())
+    await _edit(callback, text, language_keyboard())
+
+
+@router.callback_query(F.data == cb.SETTINGS_REMINDER)
+async def reminder_settings(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    await callback.answer()
+    text = await content.text("reminder_setting", user.language)
+    markup = reminder_keyboard(user.language, reminder_enabled=user.reminder_enabled)
+    await _edit(callback, text, markup)
+
+
+async def _apply_reminder(
+    callback: CallbackQuery, user: User, content: ContentService, *, enabled: bool
+) -> None:
+    user.reminder_enabled = enabled  # persisted on the middleware commit
+    await callback.answer()
+    text = await content.text("reminder_status", user.language)
+    await _edit(callback, text, reminder_keyboard(user.language, reminder_enabled=enabled))
+
+
+@router.callback_query(F.data == cb.SETTINGS_REMINDER_ON)
+async def set_reminder_on(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    await _apply_reminder(callback, user, content, enabled=True)
+
+
+@router.callback_query(F.data == cb.SETTINGS_REMINDER_OFF)
+async def set_reminder_off(callback: CallbackQuery, user: User, content: ContentService) -> None:
+    await _apply_reminder(callback, user, content, enabled=False)

@@ -116,13 +116,24 @@ def status_keyboard(lang: Language, *, active: bool) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def settings_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboardMarkup:
+def settings_keyboard(lang: Language) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=t("settings_language", lang), callback_data=cb.SETTINGS_LANG)
-    toggle = t("reminder_on", lang) if reminder_enabled else t("reminder_off", lang)
-    builder.button(text=toggle, callback_data=cb.SETTINGS_REMINDER_TOGGLE)
+    builder.button(text=t("settings_language", lang), callback_data=cb.SETTINGS_LANGUAGE)
+    builder.button(text=t("settings_reminder", lang), callback_data=cb.SETTINGS_REMINDER)
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
     builder.adjust(2, 1)  # language | reminder on one row, back below
+    return builder.as_markup()
+
+
+def reminder_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboardMarkup:
+    """Reminder sub-screen: one state toggle (enable when off / disable when on) + back."""
+    builder = InlineKeyboardBuilder()
+    if reminder_enabled:
+        builder.button(text=t("reminder_disable", lang), callback_data=cb.SETTINGS_REMINDER_OFF)
+    else:
+        builder.button(text=t("reminder_enable", lang), callback_data=cb.SETTINGS_REMINDER_ON)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_SETTINGS)
+    builder.adjust(1)
     return builder.as_markup()
 
 

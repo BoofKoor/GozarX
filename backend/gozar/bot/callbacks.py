@@ -26,9 +26,12 @@ CONFIG_CHANGE_PREFIX = "config:change:"
 # delivery prefix the re-rendered page uses, so a paginated first claim still logs via claim path.
 LOC_PAGE_PREFIX = "loc:page:"
 
-# Settings screen.
-SETTINGS_LANG = "settings:lang"
-SETTINGS_REMINDER_TOGGLE = "settings:reminder"
+# Settings screen + reminder sub-screen (v1). SETTINGS_REMINDER opens the sub-screen; the ON/OFF
+# variants are its single state toggle. `settings:reminder` != `settings:reminder:on` (exact-match).
+SETTINGS_LANGUAGE = "settings:language"
+SETTINGS_REMINDER = "settings:reminder"
+SETTINGS_REMINDER_ON = "settings:reminder:on"
+SETTINGS_REMINDER_OFF = "settings:reminder:off"
 
 
 def lang_cb(code: str) -> str:
