@@ -6,5 +6,6 @@
 **/.ruff_cache
 .env
 *.env
-frontend/node_modules
-frontend/dist
+frontend/**/node_modules
+frontend/**/dist
+frontend/**/.vite

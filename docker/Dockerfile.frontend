@@ -1,0 +1,20 @@
+# syntax=docker/dockerfile:1
+#
+# Builds the React admin SPA (frontend/admin) and serves the static bundle with nginx.
+# Two stages so the final image carries only the built assets + nginx (no Node). The
+# build context is the repo root (so we can COPY frontend/admin/). nginx.conf is mounted
+# by docker-compose and serves the SPA from /usr/share/nginx/html with an /index.html fallback.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+
+# 1) Dependency layer — cached unless the lockfile changes.
+COPY frontend/admin/package.json frontend/admin/package-lock.json ./
+RUN npm ci
+
+# 2) App source, then the production build → /app/dist.
+COPY frontend/admin/ ./
+RUN npm run build
+
+FROM nginx:1.27
+COPY --from=build /app/dist /usr/share/nginx/html
