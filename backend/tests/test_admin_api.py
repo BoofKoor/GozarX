@@ -16,6 +16,8 @@ import pytest_asyncio
 from httpx import ASGITransport
 
 from gozar.config.settings import get_settings
+from gozar.db.models.enums import UserStatus
+from gozar.db.models.user import User
 from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
 
@@ -167,3 +169,86 @@ async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> Non
     body = r.json()
     assert body["rendered"] == "Hi Ann, {x}"  # provided token rendered, unknown left intact
     assert body["missing_placeholders"] == ["x"]
+
+
+# --- users + broadcast -------------------------------------------------------------------------
+async def _seed_users(db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=1001, status=UserStatus.available, panel_username=None),
+                User(telegram_id=1002, status=UserStatus.active_config, panel_username="g_1002"),
+                User(telegram_id=2003, status=UserStatus.banned, panel_username=None),
+            ]
+        )
+        await s.commit()
+
+
+async def test_users_list_filter_search(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    await _seed_users(db_sessions)
+    r = await admin_client.get("/api/admin/users/")
+    assert r.status_code == 200 and r.json()["total"] == 3 and len(r.json()["items"]) == 3
+
+    r = await admin_client.get("/api/admin/users/", params={"status": "banned"})
+    assert {u["telegram_id"] for u in r.json()["items"]} == {2003}
+
+    r = await admin_client.get("/api/admin/users/", params={"search": "100"})
+    assert {u["telegram_id"] for u in r.json()["items"]} == {1001, 1002}  # telegram_id substring
+
+    r = await admin_client.get("/api/admin/users/", params={"search": "g_1002"})
+    assert {u["telegram_id"] for u in r.json()["items"]} == {1002}  # panel_username match
+
+
+async def test_users_pagination(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    await _seed_users(db_sessions)
+    r = await admin_client.get("/api/admin/users/", params={"page": 1, "page_size": 2})
+    body = r.json()
+    assert body["total"] == 3 and len(body["items"]) == 2 and body["page_size"] == 2
+
+
+async def test_user_card_and_actions(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    await _seed_users(db_sessions)
+    r = await admin_client.get("/api/admin/users/1002")
+    assert r.status_code == 200 and r.json()["telegram_id"] == 1002 and r.json()["configs"] == 0
+
+    # ban a user with no panel account (no panel call needed) then unban
+    assert (await admin_client.post("/api/admin/users/1001/ban")).json()["status"] == "banned"
+    assert (await admin_client.post("/api/admin/users/1001/unban")).json()["status"] == "available"
+    assert (await admin_client.post("/api/admin/users/1002/zero_referrals")).json()[
+        "referral_count"
+    ] == 0
+    assert (await admin_client.post("/api/admin/users/1002/reclaim")).json()[
+        "status"
+    ] == "available"
+    assert (await admin_client.post("/api/admin/users/999999/ban")).status_code == 404
+
+
+async def test_broadcast_audience_and_enqueue(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    monkeypatch.setenv("OWNERS", "777")
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = _StubPanel()
+
+    class _FakeArq:
+        def __init__(self) -> None:
+            self.jobs: list = []
+
+        async def enqueue_job(self, name: str, *args: object) -> None:
+            self.jobs.append((name, args))
+
+    app.state.arq = _FakeArq()
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        assert (await c.get("/api/admin/broadcast/")).json()["recipients"] == 0
+        r = await c.post("/api/admin/broadcast/", json={"text": "<b>hi</b>"})
+        assert r.status_code == 200 and r.json()["queued"] is True
+    assert app.state.arq.jobs == [("broadcast_text", ("<b>hi</b>", 777))]
+    get_settings.cache_clear()

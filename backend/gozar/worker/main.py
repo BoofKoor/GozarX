@@ -24,7 +24,7 @@ from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
-from gozar.worker.tasks import fanout, reset_all_active
+from gozar.worker.tasks import broadcast_text, fanout, reset_all_active
 
 logger = logging.getLogger("gozar.worker")
 
@@ -58,7 +58,7 @@ async def _shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [fanout, reset_all_active]
+    functions = [fanout, broadcast_text, reset_all_active]
     cron_jobs: list = []  # P8: nightly pg_dump backup
     on_startup = _startup
     on_shutdown = _shutdown

@@ -72,19 +72,12 @@ async def _edit(bot: Bot, message: Message | None, text: str) -> None:
         pass
 
 
-async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id: int) -> None:
-    """Send one message (referenced by ``chat_id``/``message_id`` in the admin's chat) to all users.
-
-    ``action`` is ``"broadcast"`` (copy) or ``"forward"``. Removals are batched and committed once,
-    after the loop, so a long send never holds a write transaction open.
+async def _broadcast_loop(bot: Bot, sessionmaker: object, admin_id: int, send_one: object) -> None:
+    """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
+    applying the strict removal allowlist + throttle + progress. Removals are batched and committed
+    once, after the loop, so a long send never holds a write transaction open.
     """
-    bot: Bot | None = ctx.get("bot")
-    sessionmaker = ctx.get("sessionmaker")
-    if bot is None or sessionmaker is None:
-        logger.warning("fanout: worker missing bot/sessionmaker; skipping")
-        return
-
-    async with sessionmaker() as session:
+    async with sessionmaker() as session:  # type: ignore[operator]
         ids = await UserRepository(session).list_all_ids()
 
     total = len(ids)
@@ -94,12 +87,12 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
 
     for i, uid in enumerate(ids, start=1):
         try:
-            await _deliver(bot, action, uid, chat_id, message_id)
+            await send_one(uid)  # type: ignore[operator]
             sent += 1
         except TelegramRetryAfter as exc:
             await asyncio.sleep(exc.retry_after)
             try:
-                await _deliver(bot, action, uid, chat_id, message_id)
+                await send_one(uid)  # type: ignore[operator]
                 sent += 1
             except Exception:
                 failed += 1
@@ -112,7 +105,7 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
         except TelegramAPIError:
             failed += 1  # transient API error (incl. other BadRequests) → keep the user
         except Exception:
-            logger.warning("fanout: unexpected send error (kept user)")
+            logger.warning("broadcast: unexpected send error (kept user)")
             failed += 1
         if i % 100 == 0:
             await _edit(
@@ -121,7 +114,7 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
         await asyncio.sleep(_SEND_DELAY)
 
     if to_remove:
-        async with sessionmaker() as session:
+        async with sessionmaker() as session:  # type: ignore[operator]
             repo = UserRepository(session)
             for uid in to_remove:
                 await repo.delete(uid)
@@ -132,6 +125,39 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
         progress,
         f"✅ Done · {total} users · sent {sent} · failed {failed} · removed {removed}",
     )
+
+
+async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id: int) -> None:
+    """Copy/forward one message (referenced by ``chat_id``/``message_id`` in the admin's chat) to
+    every user. ``action`` is ``"broadcast"`` (copy, no header) or ``"forward"`` — the bot tool.
+    """
+    bot: Bot | None = ctx.get("bot")
+    sessionmaker = ctx.get("sessionmaker")
+    if bot is None or sessionmaker is None:
+        logger.warning("fanout: worker missing bot/sessionmaker; skipping")
+        return
+
+    async def send_one(uid: int) -> None:
+        await _deliver(bot, action, uid, chat_id, message_id)
+
+    await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
+
+
+async def broadcast_text(ctx: dict, text: str, admin_id: int) -> None:
+    """Send a composed HTML message to every user — the web panel's broadcast (it has no source
+    message to copy). Same strict removal allowlist as ``fanout``: a user is dropped only on a
+    permanent delivery failure, never a transient one.
+    """
+    bot: Bot | None = ctx.get("bot")
+    sessionmaker = ctx.get("sessionmaker")
+    if bot is None or sessionmaker is None:
+        logger.warning("broadcast_text: worker missing bot/sessionmaker; skipping")
+        return
+
+    async def send_one(uid: int) -> None:
+        await bot.send_message(uid, text, parse_mode="HTML")
+
+    await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
 
 
 async def reset_all_active(ctx: dict, admin_id: int) -> None:

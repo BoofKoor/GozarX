@@ -2,11 +2,25 @@
 
 from __future__ import annotations
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy.sql import Select
 
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
+
+
+def _filtered(stmt: Select, status: UserStatus | None, search: str | None) -> Select:
+    """Apply the admin user-list filters: optional status + a substring search over telegram_id
+    (matched as text) or panel_username. Shared by the page query and its count."""
+    if status is not None:
+        stmt = stmt.where(User.status == status)
+    if search and search.strip():
+        like = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(cast(User.telegram_id, String).ilike(like), User.panel_username.ilike(like))
+        )
+    return stmt
 
 
 class UserRepository(BaseRepository):
@@ -54,6 +68,27 @@ class UserRepository(BaseRepository):
             )
             or 0
         )
+
+    async def list_page(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        status: UserStatus | None = None,
+        search: str | None = None,
+    ) -> list[User]:
+        """A page of users (newest first) for the admin panel, with optional status + search."""
+        stmt = _filtered(select(User), status, search)
+        stmt = stmt.order_by(User.created_at.desc()).limit(limit).offset(offset)
+        result = await self.session.scalars(stmt)
+        return list(result.all())
+
+    async def count_filtered(
+        self, *, status: UserStatus | None = None, search: str | None = None
+    ) -> int:
+        """Total rows matching the same status + search filter — drives the page count."""
+        stmt = _filtered(select(func.count()).select_from(User), status, search)
+        return int(await self.session.scalar(stmt) or 0)
 
     async def sum_referrals(self) -> int:
         """Total referrals across all users (one number for the admin stats screen)."""
