@@ -18,8 +18,8 @@ users, and broadcasts. Everything is Dockerized and installs near zero-touch.
 - **Remnawave** panel via API token (Bearer). One shared `httpx.AsyncClient`; TLS verification **on**.
 - **PostgreSQL** + SQLAlchemy 2 async + Alembic. **Redis** for aiogram FSM, content/settings cache,
   and the arq queue.
-- **nginx** terminates TLS, routes `/api` + the webhooks to the app, and serves the SPA static build;
-  a **certbot companion** issues/renews Let's Encrypt certs (wired in the installer).
+- **nginx** terminates TLS (a **Cloudflare Origin Certificate** installed by the Phase 9 installer),
+  routes `/api` + the webhooks to the app, and serves the SPA static build.
 - **Runtime config lives in the DB** (`settings` / `content` tables), edited from the panel —
   changing it never needs a redeploy. Only secrets/infra are env vars.
 
@@ -100,6 +100,14 @@ When a change needs a server deploy, hand the owner exactly these commands. The 
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
+**First-time install (server):** clone the repo, then `sudo ./install.sh` (or `make install`). It
+prompts for the **domain first, then a TLS certificate** (Cloudflare Origin Certificate — cert + key),
+collects the Telegram/panel/admin details, generates all secrets, writes a chmod-600 `.env`, builds +
+starts the stack behind TLS (`docker-compose.tls.yml` + `nginx/nginx.tls.conf`, both server-only and
+git-ignored), and verifies health, admin login, and the Telegram webhook. Re-running is safe — secrets
+and the Postgres password are reused, never rotated. In Cloudflare: the DNS record must be **Proxied**
+(orange cloud) and SSL/TLS mode **Full (strict)**.
+
 ## Build phases
 0 Skeleton + this file + settings + logging + compose + .env.example; app boots `/health`.
 1 DB models + Alembic initial migration + repositories.
@@ -110,7 +118,7 @@ When a change needs a server deploy, hand the owner exactly these commands. The 
 6 Admin (FSM): stats, broadcast/forward (arq worker), ban, reset limits, refresh locations.
 7 Admin API (JWT) + React/TS RTL panel: first-run setup wizard, dashboard, users/content/broadcast.
 8 DB backup job (arq cron: pg_dump → Telegram channel). Tests: location matching, referral cap, content render.
-9 Zero-touch installer (install.sh): Docker, DNS A-record + propagation wait, auto-TLS, secrets, compose up, health/migration/webhook verify.
+9 Zero-touch installer (install.sh): Docker bootstrap, Cloudflare Origin-cert TLS, secret generation, compose up, health/login/webhook verify.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.
