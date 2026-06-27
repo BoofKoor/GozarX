@@ -15,8 +15,8 @@ import logging
 from aiogram import Bot
 from aiogram.exceptions import (
     TelegramAPIError,
-    TelegramBadRequest,
     TelegramForbiddenError,
+    TelegramNotFound,
     TelegramRetryAfter,
 )
 from aiogram.types import Message
@@ -28,8 +28,9 @@ from gozar.remnawave import RemnawaveError
 logger = logging.getLogger("gozar.worker.tasks")
 
 # The ONLY delivery failures that remove a user. Anything else (rate limit, network, 5xx, any other
-# Forbidden/BadRequest description) is transient → keep the user. VERIFY the exact aiogram messages
-# against the live API before trusting this allowlist.
+# Forbidden/NotFound description) is transient → keep the user. aiogram 3 surfaces these as generic
+# classes, so we match a substring of `exc.message` (the raw "Forbidden: "/"Not Found: " prefix and
+# minor wording shifts don't matter). NB: "chat not found" is a TelegramNotFound, NOT a BadRequest.
 _BLOCKED = "bot was blocked by the user"
 _DEACTIVATED = "user is deactivated"
 _CHAT_NOT_FOUND = "chat not found"
@@ -43,7 +44,7 @@ def _should_remove(exc: Exception) -> bool:
     msg = str(getattr(exc, "message", exc)).lower()
     if isinstance(exc, TelegramForbiddenError):
         return _BLOCKED in msg or _DEACTIVATED in msg
-    if isinstance(exc, TelegramBadRequest):
+    if isinstance(exc, TelegramNotFound):
         return _CHAT_NOT_FOUND in msg
     return False
 
@@ -102,14 +103,14 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
                 sent += 1
             except Exception:
                 failed += 1
-        except (TelegramForbiddenError, TelegramBadRequest) as exc:
+        except (TelegramForbiddenError, TelegramNotFound) as exc:
             if _should_remove(exc):
                 to_remove.append(uid)
                 removed += 1
             else:
                 failed += 1
         except TelegramAPIError:
-            failed += 1  # transient API error → keep the user
+            failed += 1  # transient API error (incl. other BadRequests) → keep the user
         except Exception:
             logger.warning("fanout: unexpected send error (kept user)")
             failed += 1
