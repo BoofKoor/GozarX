@@ -1,9 +1,10 @@
-"""Today's-config flow: provision -> location picker -> deliver -> change location.
+"""Today's-config flow: landing -> provision -> picker -> deliver -> change location.
 
-``menu:config`` provisions a fresh trial (or recognises a live one) and shows the picker built from
-that subscription. A ``config:claim:{i}`` pick is the FIRST delivery — it writes one ``config_log``
-row. ``config:change`` re-opens the picker and ``config:loc:{i}`` re-delivers WITHOUT logging (it is
-a change, not a new claim). Links contain ``&``/``#``/``<`` so the link + location are HTML-escaped.
+``menu:config`` renders the LANDING (no panel call): claimable -> allowance body + a get-config
+button; active -> usage body + a change button. The inner ``config:claim`` button is the only place
+that provisions (``claim()``) and shows the picker. A ``config:claim:{i}`` pick is the first
+delivery (writes one ``config_log`` row); ``config:change`` re-opens the picker and
+``config:change:{i}`` re-delivers WITHOUT logging. Links are HTML-escaped (they hold ``&``/``#``).
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import (
     back_keyboard,
     config_delivered_keyboard,
+    landing_keyboard,
     location_keyboard,
 )
 from gozar.bot.notifications import PendingNotifications
@@ -24,6 +26,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.services.content import ContentService
 from gozar.services.referral import ReferralService
+from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import (
     AlreadyActive,
     AlreadyClaimedToday,
@@ -56,12 +59,12 @@ async def _render_claim(
 ) -> tuple[str, InlineKeyboardMarkup]:
     lang = user.language
     if isinstance(result, Provisioned):
-        text = await content.text("config_size", lang, size=result.size)
+        text = await content.text("choose_location", lang)
         return text, location_keyboard(result.remarks, cb.CONFIG_CLAIM_PREFIX, lang)
     if isinstance(result, AlreadyActive):
-        # Already holding a live trial — re-deliveries are changes (CONFIG_LOC, no new log).
+        # Already holding a live trial — re-deliveries are changes (CONFIG_CHANGE, no new log).
         text = await content.text("choose_location", lang)
-        return text, location_keyboard(result.remarks, cb.CONFIG_LOC_PREFIX, lang)
+        return text, location_keyboard(result.remarks, cb.CONFIG_CHANGE_PREFIX, lang)
     key = {
         AlreadyClaimedToday: "already_claimed",
         NotReady: "not_ready",
@@ -75,6 +78,31 @@ async def _render_claim(
 async def open_config(
     callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
 ) -> None:
+    """The get-config LANDING — renders the user's current state and creates NO panel user."""
+    await callback.answer()
+    info = await trial.status(user)  # no panel call when claimable; self-heals an expired trial
+    lang = user.language
+    if isinstance(info, PanelError):
+        await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang))
+        return
+    if info.active:
+        text = await content.text(
+            "config_active",
+            lang,
+            remaining=info.remaining,
+            usage=info.usage,
+            total=info.daily_limit,
+        )
+    else:
+        text = await content.text("config_size", lang, size=info.daily_limit)
+    await _edit(callback, text, landing_keyboard(lang, active=info.active))
+
+
+@router.callback_query(F.data == cb.CONFIG_CLAIM)
+async def start_claim(
+    callback: CallbackQuery, user: User, content: ContentService, trial: TrialService
+) -> None:
+    """The landing's inner get-config button — the ONLY place that provisions, then the picker."""
     await callback.answer()
     result = await trial.claim(user)
     text, markup = await _render_claim(result, user, content)
@@ -106,12 +134,22 @@ async def _maybe_award_referral(
     notify.send(award.inviter.telegram_id, text)
 
 
+async def _maybe_queue_ads(
+    settings: SettingsService, content: ContentService, notify: PendingNotifications, user: User
+) -> None:
+    """v1's 'deliver, then ads': when ads_enabled, queue the ads copy as a SEPARATE message on the
+    same post-commit buffer (so it never fires on a rollback). Default off."""
+    if await settings.get_bool(SettingKey.ADS_ENABLED):
+        notify.send(user.telegram_id, await content.text("ads", user.language))
+
+
 async def _deliver(
     callback: CallbackQuery,
     user: User,
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
     prefix: str,
     log_repo: ConfigLogRepository | None,
     referral: ReferralService | None,
@@ -142,6 +180,7 @@ async def _deliver(
         expires=delivery.expires,
     )
     notify.edit(message, text, config_delivered_keyboard(user.language))
+    await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 
 
 @router.callback_query(F.data.startswith(cb.CONFIG_CLAIM_PREFIX))
@@ -151,24 +190,42 @@ async def deliver_claim(
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
     config_log_repo: ConfigLogRepository,
     referral: ReferralService,
 ) -> None:
     await _deliver(
-        callback, user, content, trial, notify, cb.CONFIG_CLAIM_PREFIX, config_log_repo, referral
+        callback,
+        user,
+        content,
+        trial,
+        notify,
+        settings,
+        cb.CONFIG_CLAIM_PREFIX,
+        config_log_repo,
+        referral,
     )
 
 
-@router.callback_query(F.data.startswith(cb.CONFIG_LOC_PREFIX))
+@router.callback_query(F.data.startswith(cb.CONFIG_CHANGE_PREFIX))
 async def deliver_change(
     callback: CallbackQuery,
     user: User,
     content: ContentService,
     trial: TrialService,
     notify: PendingNotifications,
+    settings: SettingsService,
 ) -> None:
     await _deliver(
-        callback, user, content, trial, notify, cb.CONFIG_LOC_PREFIX, log_repo=None, referral=None
+        callback,
+        user,
+        content,
+        trial,
+        notify,
+        settings,
+        cb.CONFIG_CHANGE_PREFIX,
+        log_repo=None,
+        referral=None,
     )
 
 
@@ -186,7 +243,7 @@ async def change_location(
         await _edit(callback, await content.text("no_locations", lang), back_keyboard(lang))
         return
     text = await content.text("choose_location", lang)
-    await _edit(callback, text, location_keyboard(result, cb.CONFIG_LOC_PREFIX, lang))
+    await _edit(callback, text, location_keyboard(result, cb.CONFIG_CHANGE_PREFIX, lang))
 
 
 @router.callback_query(F.data.startswith(cb.LOC_PAGE_PREFIX))
@@ -201,7 +258,7 @@ async def paginate_locations(
     await callback.answer()
     tag, _, page_str = (callback.data or "").removeprefix(cb.LOC_PAGE_PREFIX).partition(":")
     page = _parse_index(page_str) or 0
-    prefix = cb.CONFIG_CLAIM_PREFIX if tag == "claim" else cb.CONFIG_LOC_PREFIX
+    prefix = cb.CONFIG_CLAIM_PREFIX if tag == "claim" else cb.CONFIG_CHANGE_PREFIX
     result = await trial.locations(user)
     lang = user.language
     if isinstance(result, PanelError):

@@ -40,24 +40,39 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.ru: "🏠 Назад",
     },
     "change_location": {
-        Language.fa: "🌍 تغییر لوکیشن",
-        Language.en: "🌍 Change location",
-        Language.ru: "🌍 Сменить локацию",
+        Language.fa: "🔄 تغییر لوکیشن",
+        Language.en: "🔄 Change location",
+        Language.ru: "🔄 Изменить локацию",
+    },
+    "get_config": {
+        Language.fa: "📥 دریافت کانفیگ",
+        Language.en: "📥 Get config",
+        Language.ru: "📥 Получить конфиг",
+    },
+    "show_menu": {
+        Language.fa: "🏠 نمایش منوی اصلی",
+        Language.en: "🏠 Main menu",
+        Language.ru: "🏠 Главное меню",
     },
     "settings_language": {
         Language.fa: "🌐 تغییر زبان",
         Language.en: "🌐 Change language",
         Language.ru: "🌐 Сменить язык",
     },
-    "reminder_on": {
-        Language.fa: "📮 یادآور ✅",
-        Language.en: "📮 Reminders ✅",
-        Language.ru: "📮 Напоминания ✅",
+    "settings_reminder": {
+        Language.fa: "📮 یادآور",
+        Language.en: "📮 Reminders",
+        Language.ru: "📮 Напоминания",
     },
-    "reminder_off": {
-        Language.fa: "📮 یادآور ❌",
-        Language.en: "📮 Reminders ❌",
-        Language.ru: "📮 Напоминания ❌",
+    "reminder_enable": {
+        Language.fa: "✅ فعال‌سازی یادآور",
+        Language.en: "✅ Enable reminders",
+        Language.ru: "✅ Включить напоминания",
+    },
+    "reminder_disable": {
+        Language.fa: "❌ غیرفعال‌سازی یادآور",
+        Language.en: "❌ Disable reminders",
+        Language.ru: "❌ Отключить напоминания",
     },
     "invite_share": {
         Language.fa: "📤 اشتراک‌گذاری لینک",

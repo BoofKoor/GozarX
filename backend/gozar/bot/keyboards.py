@@ -49,6 +49,20 @@ def help_keyboard(lang: Language) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
+def landing_keyboard(lang: Language, *, active: bool) -> InlineKeyboardMarkup:
+    """Get-config landing (v1). Claimable -> a get-config button that provisions on tap; active ->
+    a change-location button. Both carry the 🔋 free-traffic referral shortcut + back."""
+    builder = InlineKeyboardBuilder()
+    if active:
+        builder.button(text=t("change_location", lang), callback_data=cb.CONFIG_CHANGE)
+    else:
+        builder.button(text=t("get_config", lang), callback_data=cb.CONFIG_CLAIM)
+    builder.button(text=t("increase_traffic", lang), callback_data=cb.MENU_INVITE)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    builder.adjust(1)
+    return builder.as_markup()
+
+
 def location_keyboard(
     remarks: list[str], prefix: str, lang: Language, *, page: int = 0
 ) -> InlineKeyboardMarkup:
@@ -57,7 +71,7 @@ def location_keyboard(
     Each button is keyed by its **global** index, and the chosen name resolves to its link by NAME
     (never a cross-index between two lists). ``page`` is a pure view offset into the same cached
     remarks. Below the locations: a Prev/Next nav row (only when there's more than one page), then
-    the free-traffic referral shortcut, the required-apps screen, and back.
+    back to the landing (the 🔋 free-traffic shortcut lives on the landing, not here).
     """
     builder = InlineKeyboardBuilder()
     page_count = max(1, (len(remarks) + _PAGE_SIZE - 1) // _PAGE_SIZE)
@@ -67,7 +81,7 @@ def location_keyboard(
         builder.button(text=remarks[index], callback_data=f"{prefix}{index}")
     sizes = [1] * len(window)
 
-    tag = "claim" if prefix == cb.CONFIG_CLAIM_PREFIX else "loc"
+    tag = "claim" if prefix == cb.CONFIG_CLAIM_PREFIX else "change"
     nav = 0
     if page > 0:
         builder.button(text=t("nav_prev", lang), callback_data=cb.loc_page_cb(tag, page - 1))
@@ -78,9 +92,8 @@ def location_keyboard(
     if nav:
         sizes.append(nav)  # Prev/Next share one row
 
-    builder.button(text=t("increase_traffic", lang), callback_data=cb.MENU_INVITE)
-    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
-    sizes.extend([1, 1])
+    builder.button(text=t("back", lang), callback_data=cb.MENU_CONFIG)  # back to the landing
+    sizes.append(1)
     builder.adjust(*sizes)
     return builder.as_markup()
 
@@ -88,7 +101,8 @@ def location_keyboard(
 def config_delivered_keyboard(lang: Language) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t("change_location", lang), callback_data=cb.CONFIG_CHANGE)
-    builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
+    # "show main menu" sends a NEW message (MENU_HOME_NEW) so the delivered config stays in chat.
+    builder.button(text=t("show_menu", lang), callback_data=cb.MENU_HOME_NEW)
     builder.adjust(1)
     return builder.as_markup()
 
@@ -102,13 +116,24 @@ def status_keyboard(lang: Language, *, active: bool) -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def settings_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboardMarkup:
+def settings_keyboard(lang: Language) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text=t("settings_language", lang), callback_data=cb.SETTINGS_LANG)
-    toggle = t("reminder_on", lang) if reminder_enabled else t("reminder_off", lang)
-    builder.button(text=toggle, callback_data=cb.SETTINGS_REMINDER_TOGGLE)
+    builder.button(text=t("settings_language", lang), callback_data=cb.SETTINGS_LANGUAGE)
+    builder.button(text=t("settings_reminder", lang), callback_data=cb.SETTINGS_REMINDER)
     builder.button(text=t("back", lang), callback_data=cb.MENU_HOME)
     builder.adjust(2, 1)  # language | reminder on one row, back below
+    return builder.as_markup()
+
+
+def reminder_keyboard(lang: Language, *, reminder_enabled: bool) -> InlineKeyboardMarkup:
+    """Reminder sub-screen: one state toggle (enable when off / disable when on) + back."""
+    builder = InlineKeyboardBuilder()
+    if reminder_enabled:
+        builder.button(text=t("reminder_disable", lang), callback_data=cb.SETTINGS_REMINDER_OFF)
+    else:
+        builder.button(text=t("reminder_enable", lang), callback_data=cb.SETTINGS_REMINDER_ON)
+    builder.button(text=t("back", lang), callback_data=cb.MENU_SETTINGS)
+    builder.adjust(1)
     return builder.as_markup()
 
 
