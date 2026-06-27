@@ -19,12 +19,13 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from arq import run_worker
 from arq.connections import RedisSettings
+from arq.cron import cron
 
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
-from gozar.worker.tasks import broadcast_text, fanout, reset_all_active
+from gozar.worker.tasks import backup_database, broadcast_text, fanout, reset_all_active
 
 logger = logging.getLogger("gozar.worker")
 
@@ -58,8 +59,10 @@ async def _shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [fanout, broadcast_text, reset_all_active]
-    cron_jobs: list = []  # P8: nightly pg_dump backup
+    functions = [fanout, broadcast_text, reset_all_active, backup_database]
+    # Nightly DB backup at 03:00 — arq cron reads the worker process clock, which is UTC in the
+    # container (and the default ``tz``), so this fires at 03:00 UTC.
+    cron_jobs = [cron(backup_database, hour=3, minute=0)]
     on_startup = _startup
     on_shutdown = _shutdown
 
