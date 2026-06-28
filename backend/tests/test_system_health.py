@@ -8,6 +8,8 @@ worker ``sample_health`` use the real ``session`` / ``db_sessions`` fixtures (sk
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
+from types import SimpleNamespace
 
 import fakeredis.aioredis
 
@@ -19,6 +21,7 @@ from gozar.services.health import (
     Probe,
     WebhookHealth,
     _overall,
+    _to_dt,
     build_snapshot,
     read_host_resources,
     sample_from,
@@ -37,6 +40,23 @@ class _PanelUp:
     async def system_stats(self) -> SystemStats:
         return SystemStats(
             online_now=1, cpu_cores=4, mem_total=100, mem_used=50, uptime_seconds=3600
+        )
+
+
+class _Bot:
+    """Minimal stand-in for the aiogram Bot. ``last_error_date`` is a ``datetime`` — exactly how
+    aiogram parses it (the live bug: the old code assumed a Unix int and 500'd the page)."""
+
+    def __init__(self, last_error_date: object = None, message: str | None = None) -> None:
+        self._led = last_error_date
+        self._msg = message
+
+    async def get_webhook_info(self) -> SimpleNamespace:
+        return SimpleNamespace(
+            url="https://x/tg/secret",
+            pending_update_count=3,
+            last_error_date=self._led,
+            last_error_message=self._msg,
         )
 
 
@@ -106,3 +126,41 @@ async def test_sample_health_writes_capped_history(db_sessions) -> None:
     assert len(items) == 1
     row = json.loads(items[0])
     assert "ts" in row and "status" in row and "load1" in row
+
+
+def test_to_dt_accepts_datetime_int_and_none() -> None:
+    aware = datetime(2026, 1, 1, tzinfo=UTC)
+    assert _to_dt(aware) == aware
+    assert _to_dt(datetime(2026, 1, 1)).tzinfo is UTC  # naive -> assumed UTC
+    assert _to_dt(1735689600) is not None  # raw int timestamp tolerated
+    assert _to_dt(None) is None and _to_dt("oops") is None
+
+
+async def test_build_snapshot_handles_datetime_last_error(session) -> None:
+    # Regression: aiogram gives last_error_date as a datetime. A RECENT webhook error must be picked
+    # up (and degrade the status) — never raise out of the probe and 500 the page.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    recent = datetime.now(UTC) - timedelta(minutes=1)
+    bot = _Bot(recent, "Wrong response from the webhook: 502 Bad Gateway")
+    snap = await build_snapshot(session, redis, _PanelUp(), bot)
+    assert snap.telegram.ok is True
+    assert snap.webhook.configured and snap.webhook.pending == 3
+    assert snap.webhook.recent_error is True
+    assert snap.webhook.last_error_at is not None
+    assert snap.webhook.last_error == "Wrong response from the webhook: 502 Bad Gateway"
+    assert snap.status == "degraded"  # a recent webhook error degrades the service
+
+
+async def test_build_snapshot_old_error_is_ok(session) -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    old = datetime.now(UTC) - timedelta(hours=2)
+    snap = await build_snapshot(session, redis, _PanelUp(), _Bot(old, "stale error"))
+    assert snap.webhook.recent_error is False
+    assert snap.status == "ok"  # an old, resolved error must NOT keep the page degraded
+
+
+async def test_build_snapshot_no_webhook_error(session) -> None:
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    snap = await build_snapshot(session, redis, _PanelUp(), _Bot(None, None))
+    assert snap.telegram.ok and snap.webhook.last_error_at is None
+    assert snap.webhook.recent_error is False and snap.status == "ok"
