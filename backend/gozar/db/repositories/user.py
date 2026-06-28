@@ -150,6 +150,22 @@ class UserRepository(BaseRepository):
         result = await self.session.scalars(select(User.telegram_id))
         return list(result.all())
 
+    async def list_ids_by_languages(self, langs: list[Language]) -> list[int]:
+        """telegram_ids of users whose language is in ``langs`` (empty ⇒ all) — the language-
+        targeted broadcast audience. Materialised once, like ``list_all_ids``."""
+        stmt = select(User.telegram_id)
+        if langs:
+            stmt = stmt.where(User.language.in_(langs))
+        result = await self.session.scalars(stmt)
+        return list(result.all())
+
+    async def count_by_languages(self, langs: list[Language]) -> int:
+        """Recipient count for a language-targeted broadcast (empty ⇒ all)."""
+        stmt = select(func.count()).select_from(User)
+        if langs:
+            stmt = stmt.where(User.language.in_(langs))
+        return int(await self.session.scalar(stmt) or 0)
+
     async def list_panel_usernames_by_status(self, status: UserStatus) -> list[str]:
         """Live panel usernames of users in a status (non-null) — backs the bulk traffic reset."""
         result = await self.session.scalars(

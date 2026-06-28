@@ -10,6 +10,7 @@ from types import SimpleNamespace
 
 from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
 
+from gozar.db.models.enums import Language
 from gozar.worker.tasks import _should_remove, broadcast_text, fanout
 
 
@@ -166,3 +167,61 @@ async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
 
     assert removed == [2]  # only the blocked user is dropped
     assert (1, "<b>hello</b>") in bot.sent and (3, "<b>hello</b>") in bot.sent
+
+
+class _LangBot:
+    """Records every (chat_id, text) it sends — the language-filter test has no removals."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[int, str]] = []
+
+    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+        self.sent.append((chat_id, text))
+        return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+
+    async def edit_message_text(self, text: str, chat_id: int = 0, message_id: int = 0) -> None:
+        return None
+
+
+async def test_broadcast_text_targets_only_chosen_languages(monkeypatch) -> None:
+    """A language-targeted broadcast pulls the filtered audience (never the full list), and invalid
+    codes are dropped before the query."""
+    seen_langs: list = []
+
+    class FakeRepo:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def list_all_ids(self) -> list[int]:
+            raise AssertionError("must use the language-filtered audience, not list_all_ids")
+
+        async def list_ids_by_languages(self, langs: list) -> list[int]:
+            seen_langs.append(langs)
+            return [10, 11]
+
+        async def delete(self, telegram_id: int) -> None:
+            return None
+
+    class FakeSession:
+        async def __aenter__(self) -> FakeSession:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def commit(self) -> None:
+            return None
+
+    async def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.UserRepository", FakeRepo)
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _noop)
+
+    bot = _LangBot()
+    ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
+    await broadcast_text(ctx, "سلام", admin_id=999, languages=["fa", "xx"])  # 'xx' is invalid
+
+    assert seen_langs == [[Language.fa]]  # invalid 'xx' dropped, valid 'fa' kept
+    # the message goes only to the filtered audience (progress pings to admin 999 carry other text)
+    assert {chat for chat, text in bot.sent if text == "سلام"} == {10, 11}
