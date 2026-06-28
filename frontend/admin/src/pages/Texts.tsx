@@ -14,6 +14,9 @@ const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
   { code: "ru", label: "Русский", dir: "ltr" },
 ];
 
+// Dynamic variables filled from the panel webhook — usable in the reminder texts.
+const GLOBAL_VARS = ["total_traffic", "used_traffic", "expire"];
+
 export function Texts() {
   const { data: texts = [], isLoading } = useTexts();
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -165,6 +168,25 @@ function TextEditor({ text }: { text: BotText }) {
           </div>
         </div>
       )}
+
+      <div>
+        <div className="mb-1.5 text-xs font-medium text-slate-500">
+          متغیرهای سراسری (در پیام‌های یادآور پر می‌شوند — برای درج کلیک کنید):
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {GLOBAL_VARS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              dir="ltr"
+              onClick={() => insertPlaceholder(p)}
+              className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-mono text-xs text-amber-700 hover:border-amber-400 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              {`{${p}}`}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {LANGS.map(({ code, label, dir }) => (
         <div key={code}>

@@ -125,10 +125,12 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "⏳ Your trial config has expired.\nYou can grab a fresh one now.",
         Language.ru: "⏳ Ваш пробный конфиг истёк.\nМожете получить новый прямо сейчас.",
     },
+    # The reminder messages can use the global variables {total_traffic} / {used_traffic} / {expire}
+    # (filled from the panel webhook). They render to "—" for any value the event doesn't carry.
     "reminder_limited": {
-        Language.fa: "📉 حجم کانفیگ آزمایشی شما تمام شد.\nفردا یکی تازه بگیرید یا دوستان خود را دعوت کنید.",
-        Language.en: "📉 Your trial config ran out of data.\nGet a fresh one tomorrow, or invite friends.",
-        Language.ru: "📉 Трафик пробного конфига закончился.\nПолучите новый завтра или пригласите друзей.",
+        Language.fa: "🪫 حجم کانفیگ آزمایشی شما تمام شد.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n♻️ هم‌اکنون می‌توانید کانفیگ جدید بگیرید یا دوستان خود را دعوت کنید.",
+        Language.en: "🪫 Your trial config ran out of data.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n♻️ Get a fresh one now, or invite friends.",
+        Language.ru: "🪫 Трафик пробного конфига закончился.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n♻️ Получите новый или пригласите друзей.",
     },
     "settings_menu": {
         Language.fa: "⚙️ تنظیمات:\nزبان و یادآوری‌ها را اینجا تغییر دهید.",

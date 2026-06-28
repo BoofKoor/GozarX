@@ -16,11 +16,13 @@ import logging
 from aiogram import Bot
 from fastapi import APIRouter, Header, HTTPException, Request
 
+from gozar.bot.replies import preview_options
 from gozar.config.settings import get_settings
 from gozar.db.repositories.user import UserRepository
-from gozar.remnawave.schemas import WebhookUserEvent
+from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.services.content import ContentService
 from gozar.services.reminders import ReminderService
+from gozar.services.trial import human_bytes
 
 logger = logging.getLogger("gozar.web.panel")
 
@@ -32,6 +34,17 @@ def _signature_ok(raw: bytes, signature: str, secret: str) -> bool:
     #         `x-remnawave-signature` header. Confirm the header name + scheme against the panel.
     expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
+
+
+def _reminder_tokens(data: PanelUser) -> dict[str, str]:
+    """The global variables an admin can drop into a reminder text — filled from the webhook's
+    own user data (no extra panel call). ``{expire}`` keeps the panel's date+time, trimmed."""
+    expire = data.expire_at.replace("T", " ")[:16] if data.expire_at else "—"
+    return {
+        "used_traffic": human_bytes(data.traffic.used_bytes),
+        "total_traffic": human_bytes(data.traffic_limit_bytes),
+        "expire": expire,
+    }
 
 
 @router.post("/panel-webhook")
@@ -54,19 +67,21 @@ async def panel_webhook(
     redis = request.app.state.redis
     bot: Bot | None = getattr(request.app.state, "bot", None)
 
-    pending: tuple[int, str] | None = None
+    pending: tuple[int, str, bool] | None = None
     async with sessionmaker() as session:
         outcome = await ReminderService(UserRepository(session), redis).apply_event(event)
         if outcome is not None and outcome.user.reminder_enabled:
-            text = await ContentService(session, redis).text(
-                outcome.content_key, outcome.user.language
+            msg = await ContentService(session, redis).message(
+                outcome.content_key, outcome.user.language, **_reminder_tokens(event.data)
             )
-            pending = (outcome.user.telegram_id, text)
+            pending = (outcome.user.telegram_id, msg.text, msg.link_preview)
         await session.commit()
 
     if pending is not None and bot is not None:  # send only AFTER the reset is durable
         try:
-            await bot.send_message(pending[0], pending[1])
+            await bot.send_message(
+                pending[0], pending[1], link_preview_options=preview_options(pending[2])
+            )
         except Exception:  # blocked user / transient — best-effort, never fail the webhook
             logger.warning("reminder send failed (ignored)")
     return {"ok": True}
