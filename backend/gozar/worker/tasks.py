@@ -30,7 +30,7 @@ from sqlalchemy.engine import make_url
 
 from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.config.settings import get_settings
-from gozar.db.models.enums import UserStatus
+from gozar.db.models.enums import Language, UserStatus
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
 from gozar.services.health import build_snapshot, sample_from
@@ -82,13 +82,21 @@ async def _edit(bot: Bot, message: Message | None, text: str) -> None:
         pass
 
 
-async def _broadcast_loop(bot: Bot, sessionmaker: object, admin_id: int, send_one: object) -> None:
+async def _broadcast_loop(
+    bot: Bot,
+    sessionmaker: object,
+    admin_id: int,
+    send_one: object,
+    languages: list[Language] | None = None,
+) -> None:
     """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
-    applying the strict removal allowlist + throttle + progress. Removals are batched and committed
+    applying the strict removal allowlist + throttle + progress. ``languages`` (empty/None ⇒ all)
+    narrows the audience for a language-targeted panel broadcast. Removals are batched and committed
     once, after the loop, so a long send never holds a write transaction open.
     """
     async with sessionmaker() as session:  # type: ignore[operator]
-        ids = await UserRepository(session).list_all_ids()
+        repo = UserRepository(session)
+        ids = await (repo.list_ids_by_languages(languages) if languages else repo.list_all_ids())
 
     total = len(ids)
     sent = failed = removed = 0
@@ -153,10 +161,12 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
     await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
 
 
-async def broadcast_text(ctx: dict, text: str, admin_id: int) -> None:
-    """Send a composed HTML message to every user — the web panel's broadcast (it has no source
-    message to copy). Same strict removal allowlist as ``fanout``: a user is dropped only on a
-    permanent delivery failure, never a transient one.
+async def broadcast_text(
+    ctx: dict, text: str, admin_id: int, languages: list[str] | None = None
+) -> None:
+    """Send a composed HTML message to the panel's broadcast audience (it has no source message to
+    copy). ``languages`` (empty/None ⇒ everyone) targets specific language groups. Same strict
+    removal allowlist as ``fanout``: a user is dropped only on a permanent delivery failure.
     """
     bot: Bot | None = ctx.get("bot")
     sessionmaker = ctx.get("sessionmaker")
@@ -164,10 +174,13 @@ async def broadcast_text(ctx: dict, text: str, admin_id: int) -> None:
         logger.warning("broadcast_text: worker missing bot/sessionmaker; skipping")
         return
 
+    valid = {lang.value for lang in Language}
+    langs = [Language(c) for c in (languages or []) if c in valid] or None
+
     async def send_one(uid: int) -> None:
         await bot.send_message(uid, text, parse_mode="HTML")
 
-    await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
+    await _broadcast_loop(bot, sessionmaker, admin_id, send_one, langs)
 
 
 async def reset_all_active(ctx: dict, admin_id: int) -> None:

@@ -176,6 +176,11 @@ export interface BroadcastAudience {
   recipients: number;
 }
 
+export interface BroadcastSend {
+  text: string;
+  languages: Lang[]; // empty ⇒ everyone; a subset targets only those language groups
+}
+
 export interface BroadcastResult {
   queued: boolean;
   recipients: number;

@@ -375,7 +375,78 @@ async def test_broadcast_audience_and_enqueue(db_sessions, monkeypatch) -> None:
         assert (await c.get("/api/admin/broadcast/")).json()["recipients"] == 0
         r = await c.post("/api/admin/broadcast/", json={"text": "<b>hi</b>"})
         assert r.status_code == 200 and r.json()["queued"] is True
-    assert app.state.arq.jobs == [("broadcast_text", ("<b>hi</b>", 777))]
+    # languages defaults to [] (everyone) — the worker reads an empty list as "all users"
+    assert app.state.arq.jobs == [("broadcast_text", ("<b>hi</b>", 777, []))]
+    get_settings.cache_clear()
+
+
+async def _seed_langs(db_sessions) -> None:
+    """3 fa · 2 en · 1 ru, for the language-targeted broadcast audience."""
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=31, language=Language.fa),
+                User(telegram_id=32, language=Language.fa),
+                User(telegram_id=33, language=Language.fa),
+                User(telegram_id=34, language=Language.en),
+                User(telegram_id=35, language=Language.en),
+                User(telegram_id=36, language=Language.ru),
+            ]
+        )
+        await s.commit()
+
+
+async def test_broadcast_audience_language_filter(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    await _seed_langs(db_sessions)
+
+    async def count(params: dict | None = None) -> int:
+        return (await admin_client.get("/api/admin/broadcast/", params=params)).json()["recipients"]
+
+    assert await count() == 6  # no param ⇒ everyone
+    assert await count({"languages": ""}) == 6  # empty string ⇒ everyone
+    assert await count({"languages": "fa"}) == 3
+    assert await count({"languages": "fa,en"}) == 5
+    assert await count({"languages": "ru"}) == 1
+    # an unknown code is rejected, not silently treated as "everyone"
+    assert (
+        await admin_client.get("/api/admin/broadcast/", params={"languages": "xx"})
+    ).status_code == 422
+
+
+async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    monkeypatch.setenv("OWNERS", "777")
+    get_settings.cache_clear()
+    await _seed_langs(db_sessions)
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = _StubPanel()
+
+    class _FakeArq:
+        def __init__(self) -> None:
+            self.jobs: list = []
+
+        async def enqueue_job(self, name: str, *args: object) -> None:
+            self.jobs.append((name, args))
+
+    app.state.arq = _FakeArq()
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        r = await c.post("/api/admin/broadcast/", json={"text": "سلام", "languages": ["fa"]})
+        assert r.status_code == 200 and r.json()["recipients"] == 3  # only fa users
+        # an unknown code in the body is rejected before the job is enqueued
+        assert (
+            await c.post("/api/admin/broadcast/", json={"text": "x", "languages": ["xx"]})
+        ).status_code == 422
+    assert app.state.arq.jobs == [("broadcast_text", ("سلام", 777, ["fa"]))]
     get_settings.cache_clear()
 
 

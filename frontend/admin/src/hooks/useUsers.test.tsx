@@ -36,10 +36,11 @@ describe("users + broadcast hooks", () => {
     expect(result.current.data?.total).toBe(1);
   });
 
-  it("useAudience fetches the recipient count", async () => {
+  it("useAudience fetches the recipient count for the chosen languages", async () => {
     mock.onGet("/admin/broadcast/").reply(200, { recipients: 42 });
-    const { result } = renderHook(() => useAudience(), { wrapper: wrapper() });
+    const { result } = renderHook(() => useAudience(["fa", "en"]), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.recipients).toBe(42);
+    expect(mock.history.get[0].params).toEqual({ languages: "fa,en" }); // comma-joined param
   });
 });
