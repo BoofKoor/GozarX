@@ -10,6 +10,10 @@ CACHE_TTL = 300
 SETTINGS_KEY = "cache:settings"
 BUTTON_CONFIGS_KEY = "cache:button_configs"  # all button overrides, one JSON blob (Phase 7c)
 
+# Capped list of per-minute system-health samples (newest first) for the monitoring page history.
+HEALTH_HISTORY_KEY = "health:history"
+HEALTH_HISTORY_MAX = 1440  # ~24h at one sample/minute
+
 
 def create_redis_pool(url: str) -> Redis:
     """Build a Redis client (connection pool is lazy — no socket until first command)."""

@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
 import {
+  Activity,
   FileText,
   LayoutDashboard,
   Megaphone,
@@ -16,6 +17,7 @@ const items = [
   { to: "/broadcast", label: "پیام همگانی", icon: Megaphone },
   { to: "/texts", label: "متن‌ها", icon: FileText },
   { to: "/buttons", label: "دکمه‌ها", icon: MousePointerClick },
+  { to: "/system", label: "سیستم", icon: Activity },
   { to: "/settings", label: "تنظیمات", icon: SettingsIcon },
 ];
 

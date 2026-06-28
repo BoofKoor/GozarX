@@ -30,6 +30,17 @@ export function shortDay(iso: string): string {
   return parts.length === 3 ? `${parts[1]}/${parts[2]}` : iso;
 }
 
+/** Seconds → a compact uptime string ("3d 4h", "12m"). */
+export function humanUptime(seconds: number): string {
+  const s = Math.max(0, Math.floor(seconds));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d) return `${d}d ${h}h`;
+  if (h) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 /** Bot language code → Persian display name (the panel is RTL/Persian). */
 const LANG_LABELS: Record<string, string> = { fa: "فارسی", en: "انگلیسی", ru: "روسی" };
 

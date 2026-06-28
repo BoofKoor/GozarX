@@ -75,6 +75,12 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: 'Your config for "{location}" is ready:\n\n<code>{link}</code>\n\n⏳ Valid until: {expires}',
         Language.ru: "Ваш конфиг для «{location}» готов:\n\n<code>{link}</code>\n\n⏳ Действует до: {expires}",
     },
+    # Toast shown at the top of the chat the moment a fresh config is created (claim path only).
+    "config_created_toast": {
+        Language.fa: "✅ کانفیگ با موفقیت ساخته شد",
+        Language.en: "✅ Config created successfully",
+        Language.ru: "✅ Конфиг успешно создан",
+    },
     "already_claimed": {
         Language.fa: "شما امروز کانفیگ خود را گرفته‌اید. ✅\nفردا دوباره سر بزنید یا با دعوت دوستان حجم بگیرید.",
         Language.en: "You've already claimed today's config. ✅\nCome back tomorrow, or invite friends for more.",

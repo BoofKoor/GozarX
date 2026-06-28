@@ -9,6 +9,7 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Login } from "@/pages/Login";
 import { Settings } from "@/pages/Settings";
 import { Setup } from "@/pages/setup/Setup";
+import { System } from "@/pages/System";
 import { Texts } from "@/pages/Texts";
 import { Users } from "@/pages/Users";
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/broadcast" element={<Broadcast />} />
             <Route path="/texts" element={<Texts />} />
             <Route path="/buttons" element={<Buttons />} />
+            <Route path="/system" element={<System />} />
             <Route path="/settings" element={<Settings />} />
           </Route>
         </Route>

@@ -181,15 +181,17 @@ async def _deliver(
 ) -> None:
     # DB work only; every user-facing send is QUEUED on `notify` and flushed by the middleware AFTER
     # the commit (so the invitee's config + the inviter's referral notice never precede the write).
-    await callback.answer()
     message = callback.message
     if not isinstance(message, Message):
+        await callback.answer()
         return
     index = _parse_index((callback.data or "").removeprefix(prefix))
     if index is None:
+        await callback.answer()
         return
     delivery = await trial.link_for(user, index)
     if delivery is None:  # trial just ended / cache lost — nudge them to claim again
+        await callback.answer()
         text = await content.text("panel_error", user.language)
         notify.edit(message, text, back_keyboard(user.language, buttons))
         return
@@ -197,6 +199,10 @@ async def _deliver(
         await log_repo.add(user.telegram_id, delivery.location)
         if referral is not None:
             await _maybe_award_referral(user, content, log_repo, referral, notify)
+        # confirm the new config with a toast at the top of the chat (claim path only, not a change)
+        await callback.answer(await content.text("config_created_toast", user.language))
+    else:
+        await callback.answer()
     # Global state tokens so an admin can drop {total_traffic}/{remaining}/{expire} into the
     # delivered text. Total is the user's daily allowance (computed locally — no panel call; the hot
     # path stays DB-only). Live usage needs a panel call, so {used_traffic} shows "—" here (real

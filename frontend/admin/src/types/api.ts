@@ -180,3 +180,66 @@ export interface BroadcastResult {
   queued: boolean;
   recipients: number;
 }
+
+// --- system monitoring (/api/admin/system/*) ---
+export interface Probe {
+  ok: boolean;
+  latency_ms: number | null;
+  detail: string | null;
+}
+
+export interface HostResources {
+  load1: number;
+  load5: number;
+  load15: number;
+  cpu_count: number;
+  mem_total: number;
+  mem_used: number;
+  mem_pct: number;
+  disk_total: number;
+  disk_used: number;
+  disk_pct: number;
+}
+
+export interface WebhookHealth {
+  configured: boolean;
+  url_set: boolean;
+  pending: number;
+  recent_error: boolean;
+  last_error_at: string | null;
+  last_error: string | null;
+}
+
+// Subset of the panel SystemStats surfaced on the monitoring page (extra fields are ignored).
+export interface PanelStats {
+  cpu_cores: number;
+  mem_total: number;
+  mem_used: number;
+  uptime_seconds: number;
+}
+
+export type HealthStatus = "ok" | "degraded" | "down";
+
+export interface SystemHealth {
+  status: HealthStatus;
+  generated_at: string;
+  db: Probe;
+  redis: Probe;
+  panel: Probe;
+  telegram: Probe;
+  webhook: WebhookHealth;
+  host: HostResources;
+  panel_stats: PanelStats | null;
+}
+
+export interface HealthSample {
+  ts: string;
+  status: string;
+  api_ms: number | null;
+  pending: number;
+  db_ms: number | null;
+  redis_ms: number | null;
+  load1: number;
+  mem_pct: number;
+  disk_pct: number;
+}

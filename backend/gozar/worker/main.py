@@ -21,11 +21,18 @@ from arq import run_worker
 from arq.connections import RedisSettings
 from arq.cron import cron
 
+from gozar.cache.redis import create_redis_pool
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
-from gozar.worker.tasks import backup_database, broadcast_text, fanout, reset_all_active
+from gozar.worker.tasks import (
+    backup_database,
+    broadcast_text,
+    fanout,
+    reset_all_active,
+    sample_health,
+)
 
 logger = logging.getLogger("gozar.worker")
 
@@ -36,6 +43,8 @@ async def _startup(ctx: dict) -> None:
     ctx["panel"] = RemnawaveClient(ctx["http"], settings.panel_base_url, settings.panel_api_token)
     ctx["engine"] = create_engine(settings.database_url)
     ctx["sessionmaker"] = create_sessionmaker(ctx["engine"])
+    # Decoded Redis pool for the health sampler (matches the web app's content/settings cache pool).
+    ctx["cache_redis"] = create_redis_pool(settings.redis_url)
     token = settings.bot_token.get_secret_value()
     ctx["bot"] = (
         Bot(token, default=DefaultBotProperties(parse_mode=ParseMode.HTML)) if token else None
@@ -49,6 +58,9 @@ async def _shutdown(ctx: dict) -> None:
     bot = ctx.get("bot")
     if bot is not None:
         await bot.session.close()
+    cache_redis = ctx.get("cache_redis")
+    if cache_redis is not None:
+        await cache_redis.aclose()
     engine = ctx.get("engine")
     if engine is not None:
         await engine.dispose()
@@ -59,10 +71,13 @@ async def _shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [fanout, broadcast_text, reset_all_active, backup_database]
-    # Nightly DB backup at 03:00 — arq cron reads the worker process clock, which is UTC in the
-    # container (and the default ``tz``), so this fires at 03:00 UTC.
-    cron_jobs = [cron(backup_database, hour=3, minute=0)]
+    functions = [fanout, broadcast_text, reset_all_active, backup_database, sample_health]
+    # Nightly DB backup at 03:00 (UTC container clock); a system-health sample every minute
+    # (second=0) feeds the monitoring page's history.
+    cron_jobs = [
+        cron(backup_database, hour=3, minute=0),
+        cron(sample_health, second=0),
+    ]
     on_startup = _startup
     on_shutdown = _shutdown
 

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import gzip
+import json
 import logging
 import os
 from datetime import UTC, datetime
@@ -27,10 +28,12 @@ from aiogram.exceptions import (
 from aiogram.types import BufferedInputFile, Message
 from sqlalchemy.engine import make_url
 
+from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import UserStatus
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
+from gozar.services.health import build_snapshot, sample_from
 
 logger = logging.getLogger("gozar.worker.tasks")
 
@@ -287,3 +290,20 @@ async def backup_database(ctx: dict) -> None:
         logger.info("backup: sent gozar-%s.sql.gz (%d bytes gz)", ts, len(gz))
     except TelegramAPIError as exc:
         logger.error("backup: send_document failed: %s", exc)
+
+
+async def sample_health(ctx: dict) -> None:
+    """Per-minute system-health sample → a capped Redis list (newest first) for the monitoring page
+    history. Best-effort: any failure is logged and swallowed (a missed sample must never abort the
+    cron). Builds the same snapshot the live route serves, then keeps only the compact row."""
+    redis = ctx.get("cache_redis")
+    if redis is None:
+        return
+    sessionmaker = ctx["sessionmaker"]
+    try:
+        async with sessionmaker() as session:
+            snapshot = await build_snapshot(session, redis, ctx["panel"], ctx.get("bot"))
+        await redis.lpush(HEALTH_HISTORY_KEY, json.dumps(sample_from(snapshot)))
+        await redis.ltrim(HEALTH_HISTORY_KEY, 0, HEALTH_HISTORY_MAX - 1)
+    except Exception:
+        logger.warning("health sample failed (ignored)")
