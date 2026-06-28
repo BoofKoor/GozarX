@@ -92,6 +92,24 @@ class UserRepository(BaseRepository):
         stmt = _filtered(select(func.count()).select_from(User), status, search)
         return int(await self.session.scalar(stmt) or 0)
 
+    async def count_created_since(self, since: datetime) -> int:
+        """Users registered at/after ``since`` — backs the new-today / new-this-week KPIs."""
+        return int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.created_at >= since)
+            )
+            or 0
+        )
+
+    async def count_reminder_enabled(self) -> int:
+        """How many users keep reminders on (engagement signal)."""
+        return int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.reminder_enabled.is_(True))
+            )
+            or 0
+        )
+
     async def sum_referrals(self) -> int:
         """Total referrals across all users (one number for the admin stats screen)."""
         return int(

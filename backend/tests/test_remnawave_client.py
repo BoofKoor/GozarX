@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 import httpx
 import pytest
 
-from gozar.remnawave.client import RemnawaveClient, _online_usernames_from
+from gozar.remnawave.client import RemnawaveClient
 from gozar.remnawave.errors import RemnawaveError
 
 Handler = Callable[[httpx.Request], httpx.Response]
@@ -121,29 +121,32 @@ async def test_non_2xx_raises_remnawave_error() -> None:
         await client.create_trial_user("t", 1, datetime(2030, 1, 1, tzinfo=UTC), [])
 
 
-def test_online_usernames_parser_tolerates_shapes() -> None:
-    # bare list of names
-    assert _online_usernames_from(["a", "b", "a"]) == {"a", "b"}
-    # list of user dicts (username or name)
-    assert _online_usernames_from([{"username": "a"}, {"name": "b"}, {"x": 1}]) == {"a", "b"}
-    # wrapper dicts under a few likely keys
-    assert _online_usernames_from({"onlineUsers": ["a"]}) == {"a"}
-    assert _online_usernames_from({"users": [{"username": "b"}]}) == {"b"}
-    # nobody online is a valid answer (empty set, not None)
-    assert _online_usernames_from([]) == set()
-    # unrecognised shapes -> None so the caller falls back to the DB count
-    assert _online_usernames_from({"unexpected": 1}) is None
-    assert _online_usernames_from(42) is None
-
-
-async def test_online_usernames_endpoint_returns_set() -> None:
+async def test_system_stats_parses_real_shape() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        assert request.url.path == "/api/system/stats/online"
-        return httpx.Response(200, json={"response": ["g_1", "g_2"]})
+        assert request.url.path == "/api/system/stats"
+        return httpx.Response(
+            200,
+            json={
+                "response": {
+                    "users": {"statusCounts": {"ACTIVE": 9, "EXPIRED": 2}, "totalUsers": 11},
+                    "onlineStats": {
+                        "lastDay": 30,
+                        "lastWeek": 70,
+                        "neverOnline": 1,
+                        "onlineNow": 4,
+                    },
+                    "nodes": {"totalOnline": 2, "totalBytesLifetime": "9876543210"},
+                }
+            },
+        )
 
-    assert await _client(handler).online_usernames() == {"g_1", "g_2"}
+    stats = await _client(handler).system_stats()
+    assert stats is not None
+    assert stats.online_now == 4 and stats.online_last_day == 30 and stats.never_online == 1
+    assert stats.status_counts == {"ACTIVE": 9, "EXPIRED": 2} and stats.total_users == 11
+    assert stats.nodes_online == 2 and stats.total_traffic_bytes == 9876543210  # string -> int
 
 
-async def test_online_usernames_returns_none_when_endpoint_missing() -> None:
-    # a panel that doesn't expose the endpoint -> None (a single bounded attempt, no raise)
-    assert await _client(lambda req: httpx.Response(404)).online_usernames() is None
+async def test_system_stats_returns_none_on_error() -> None:
+    # a panel that can't answer -> None (single bounded attempt, no raise; caller falls back to DB)
+    assert await _client(lambda req: httpx.Response(500)).system_stats() is None

@@ -1,9 +1,10 @@
-"""Dashboard (auth-gated): headline counts + activity/growth series + breakdowns for the panel.
+"""Dashboard (auth-gated): headline counts + activity/growth series + breakdowns + live panel stats.
 
-Counts reuse Phase 6 ``AdminService.stats()`` so the panel and the in-bot ``/admin`` never drift.
-The chart series, language/location breakdowns, and top referrers are cheap grouped queries over the
-same per-request session. ``online_now`` is the trial-squad users the panel reports as online,
-intersected with our DB; it falls back to the DB active-config count when the panel can't answer.
+DB counts reuse Phase 6 ``AdminService.stats()`` so the panel and the in-bot ``/admin`` never drift.
+The chart series, language/location breakdowns, top referrers, growth and conversion are cheap
+grouped queries over the same per-request session. The engagement + trial-health figures come from a
+single ``GET /api/system/stats`` panel call (``online_now`` = the panel's live online count); if the
+panel can't answer we fall back to the DB active-config count and zero the panel-only fields.
 """
 
 from __future__ import annotations
@@ -13,12 +14,11 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
-from gozar.db.models.enums import UserStatus
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
-from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingsService
+from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -43,14 +43,34 @@ class Referrer(BaseModel):
 
 
 class DashboardOut(BaseModel):
+    # headline + DB status (Phase 6 stats)
     total_users: int
     available: int
     active: int
     banned: int
     configs_today: int
     referrals: int
-    online_now: int
     range_days: int
+    # user growth (DB)
+    new_today: int
+    new_this_week: int
+    growth_pct: float  # this week's signups vs last week's
+    # engagement (panel /system/stats)
+    online_now: int
+    online_last_day: int
+    online_last_week: int
+    never_online: int
+    panel_online: bool  # whether the panel stats were reachable (frontend can dim panel-only cards)
+    # trial health & traffic (panel)
+    panel_status_counts: dict[str, int]
+    panel_total_users: int
+    total_traffic_bytes: int
+    nodes_online: int
+    # referral & conversion (DB)
+    conversion_pct: float
+    reminder_enabled: int
+    avg_referrals: float
+    # series + breakdowns
     claims_series: list[DayPoint]
     signups_series: list[DayPoint]
     languages: list[NamedCount]
@@ -58,17 +78,8 @@ class DashboardOut(BaseModel):
     top_referrers: list[Referrer]
 
 
-async def _online_now(panel: RemnawaveClient, users: UserRepository, fallback: int) -> int:
-    """Our trial-squad users currently online per the panel (∩ our active panel usernames). A single
-    bounded attempt — fall back to the DB active-config count if the panel can't answer."""
-    try:
-        online = await panel.online_usernames()
-    except RemnawaveError:
-        return fallback
-    if online is None:
-        return fallback
-    ours = set(await users.list_panel_usernames_by_status(UserStatus.active_config))
-    return len(online & ours)
+def _pct(part: int, whole: int) -> float:
+    return round(part / whole * 100, 1) if whole else 0.0
 
 
 @router.get("/stats", response_model=DashboardOut)
@@ -85,13 +96,31 @@ async def dashboard_stats(
     panel = request.app.state.panel
     admin_svc = AdminService(user_repo, config_log_repo, settings, panel, request.app.state.redis)
     s = await admin_svc.stats()
-    since = datetime.now(UTC) - timedelta(days=window)
+
+    now = datetime.now(UTC)
+    since = now - timedelta(days=window)
     claims = await config_log_repo.daily_counts(since)
     signups = await user_repo.signups_daily(since)
     languages = await user_repo.language_breakdown()
     top_locations = await config_log_repo.location_counts(since)
     referrers = await user_repo.top_referrers()
-    online_now = await _online_now(panel, user_repo, s.active)
+
+    # User growth: today, this week, and week-over-week change (independent of the chart range).
+    new_today = await user_repo.count_created_since(start_of_today_utc())
+    new_this_week = await user_repo.count_created_since(now - timedelta(days=7))
+    two_weeks = await user_repo.count_created_since(now - timedelta(days=14))
+    prev_week = two_weeks - new_this_week
+    growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else 0.0
+
+    # Referral & conversion.
+    claimed = await config_log_repo.distinct_user_count()
+    reminder_enabled = await user_repo.count_reminder_enabled()
+    avg_referrals = round(s.referrals / s.total, 2) if s.total else 0.0
+
+    # Engagement + trial health from one panel call (graceful when unreachable).
+    stats = await panel.system_stats()
+    online_now = stats.online_now if stats is not None else s.active
+
     return DashboardOut(
         total_users=s.total,
         available=s.available,
@@ -99,8 +128,22 @@ async def dashboard_stats(
         banned=s.banned,
         configs_today=s.configs_today,
         referrals=s.referrals,
-        online_now=online_now,
         range_days=window,
+        new_today=new_today,
+        new_this_week=new_this_week,
+        growth_pct=growth_pct,
+        online_now=online_now,
+        online_last_day=stats.online_last_day if stats else 0,
+        online_last_week=stats.online_last_week if stats else 0,
+        never_online=stats.never_online if stats else 0,
+        panel_online=stats is not None,
+        panel_status_counts=stats.status_counts if stats else {},
+        panel_total_users=stats.total_users if stats else 0,
+        total_traffic_bytes=stats.total_traffic_bytes if stats else 0,
+        nodes_online=stats.nodes_online if stats else 0,
+        conversion_pct=_pct(claimed, s.total),
+        reminder_enabled=reminder_enabled,
+        avg_referrals=avg_referrals,
         claims_series=[DayPoint(day=d, count=n) for d, n in claims],
         signups_series=[DayPoint(day=d, count=n) for d, n in signups],
         languages=[NamedCount(label=lang, count=n) for lang, n in languages],

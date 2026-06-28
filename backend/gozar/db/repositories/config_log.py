@@ -36,6 +36,12 @@ class ConfigLogRepository(BaseRepository):
             or 0
         )
 
+    async def distinct_user_count(self) -> int:
+        """How many distinct users have ever claimed ≥1 config — the conversion numerator."""
+        return int(
+            await self.session.scalar(select(func.count(func.distinct(ConfigLog.user_id)))) or 0
+        )
+
     async def count_since(self, since: datetime) -> int:
         """Total claims across all users at or after ``since`` (admin stats: 'configs today')."""
         return int(

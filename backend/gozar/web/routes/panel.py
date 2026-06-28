@@ -22,7 +22,7 @@ from gozar.db.repositories.user import UserRepository
 from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.services.content import ContentService
 from gozar.services.reminders import ReminderService
-from gozar.services.trial import human_bytes
+from gozar.services.trial import human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.web.panel")
 
@@ -38,12 +38,12 @@ def _signature_ok(raw: bytes, signature: str, secret: str) -> bool:
 
 def _reminder_tokens(data: PanelUser) -> dict[str, str]:
     """The global variables an admin can drop into a reminder text — filled from the webhook's
-    own user data (no extra panel call). ``{expire}`` keeps the panel's date+time, trimmed."""
-    expire = data.expire_at.replace("T", " ")[:16] if data.expire_at else "—"
+    own user data (no extra panel call). ``{expire}`` is the time LEFT ("19h 54m"), not a date."""
     return {
         "used_traffic": human_bytes(data.traffic.used_bytes),
         "total_traffic": human_bytes(data.traffic_limit_bytes),
-        "expire": expire,
+        "expire": human_remaining(data.expire_at),
+        "remaining": human_remaining(data.expire_at),
     }
 
 

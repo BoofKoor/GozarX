@@ -21,15 +21,42 @@ from gozar.db.repositories.content import ContentRepository
 
 logger = logging.getLogger("gozar.services.content")
 
-_TOKEN = re.compile(r"\{(\w+)\}")
+# A token candidate is any brace pair with no nested brace. We match broadly (not just ``\w+``) so a
+# hidden bidi/zero-width mark typed inside the braces can't make the token invisible to us.
+_TOKEN = re.compile(r"\{([^{}]*)\}")
+# Invisible bidi / zero-width formatting marks that creep into ``{token}`` when an admin edits Latin
+# tokens amid RTL Persian: ZWSP/ZWNJ/ZWJ/LRM/RLM (U+200B–U+200F), ALM (U+061C), the bidi
+# embeddings/overrides (U+202A–U+202E) and isolates (U+2066–U+2069).
+_MARKS_RE = re.compile("[\u200b-\u200f\u061c\u202a-\u202e\u2066-\u2069]")
+_IDENT = re.compile(r"\w+")
 _FALLBACK_LANG = Language.fa
 
 
 def render(body: str, tokens: dict[str, object]) -> str:
-    """Replace ``{token}`` with provided values; leave unprovided placeholders untouched."""
-    return _TOKEN.sub(
-        lambda m: str(tokens[m.group(1)]) if m.group(1) in tokens else m.group(0), body
-    )
+    """Replace ``{token}`` with provided values; leave unprovided placeholders untouched.
+
+    Robust to invisible bidi/zero-width marks inside the braces (we strip them from the candidate
+    KEY only, never from the surrounding prose — so a meaningful ZWNJ in Persian text is untouched).
+    """
+
+    def _sub(m: re.Match[str]) -> str:
+        key = _MARKS_RE.sub("", m.group(1))
+        return str(tokens[key]) if key in tokens else m.group(0)
+
+    return _TOKEN.sub(_sub, body)
+
+
+def sanitize_tokens(body: str) -> str:
+    """Rewrite ``{…key…}`` whose cleaned content is a bare identifier back to a clean ``{key}`` —
+    stripping stray bidi/zero-width marks from inside the braces so a hand-edited RTL body keeps a
+    clean token. Anything that isn't an identifier after cleaning (free text, ``{}``) is left as-is.
+    """
+
+    def _sub(m: re.Match[str]) -> str:
+        cleaned = _MARKS_RE.sub("", m.group(1))
+        return f"{{{cleaned}}}" if _IDENT.fullmatch(cleaned) else m.group(0)
+
+    return _TOKEN.sub(_sub, body)
 
 
 @dataclass(frozen=True, slots=True)

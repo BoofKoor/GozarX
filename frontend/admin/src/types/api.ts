@@ -58,14 +58,34 @@ export interface Referrer {
 }
 
 export interface DashboardStats {
+  // headline + DB status
   total_users: number;
   available: number;
   active: number;
   banned: number;
   configs_today: number;
   referrals: number;
-  online_now: number;
   range_days: number;
+  // user growth
+  new_today: number;
+  new_this_week: number;
+  growth_pct: number;
+  // engagement (panel /system/stats)
+  online_now: number;
+  online_last_day: number;
+  online_last_week: number;
+  never_online: number;
+  panel_online: boolean;
+  // trial health & traffic (panel)
+  panel_status_counts: Record<string, number>;
+  panel_total_users: number;
+  total_traffic_bytes: number;
+  nodes_online: number;
+  // referral & conversion
+  conversion_pct: number;
+  reminder_enabled: number;
+  avg_referrals: number;
+  // series + breakdowns
   claims_series: DayPoint[];
   signups_series: DayPoint[];
   languages: NamedCount[];
