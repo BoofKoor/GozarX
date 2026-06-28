@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 from gozar.seed import DEFAULT_CONTENT
-from gozar.services.content import ContentService, render
+from gozar.services.content import ContentService, render, sanitize_tokens
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/texts", tags=["texts"])
@@ -96,9 +96,10 @@ async def update_text(
 ) -> TextOut:
     content = ContentService(session, request.app.state.redis)
     # The editor saves all three languages together, so the per-key link_preview lands on every row.
+    # sanitize_tokens strips any stray bidi/zero-width marks an RTL edit slipped inside ``{token}``.
     for lang, text in ((Language.fa, body.fa), (Language.en, body.en), (Language.ru, body.ru)):
         if text is not None:
-            await content.set(key, lang, text, body.link_preview)
+            await content.set(key, lang, sanitize_tokens(text), body.link_preview)
     by_key = await _rows_by_key(ContentRepository(session))
     return _text_out(key, by_key.get(key, {}))
 

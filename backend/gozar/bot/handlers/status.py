@@ -38,6 +38,13 @@ async def _status_body(info: StatusInfo, content: ContentService, lang: Language
         configs=info.configs,
         status_line=line,
         status_usage=usage,
+        # Global aliases so {total_traffic}/{used_traffic}/{remaining}/{expire} also work here.
+        total_traffic=info.daily_limit,
+        total=info.daily_limit,
+        used_traffic=info.usage,
+        usage=info.usage,
+        remaining=info.remaining,
+        expire=info.remaining,
     )
 
 

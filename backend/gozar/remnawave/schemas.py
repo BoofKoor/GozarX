@@ -7,7 +7,7 @@ via aliases; ``populate_by_name`` lets tests build models with either name.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class _Base(BaseModel):
@@ -69,6 +69,52 @@ class Subscription(_Base):
     ss_conf_links: dict[str, str] = Field(default_factory=dict, alias="ssConfLinks")
     subscription_url: str | None = Field(default=None, alias="subscriptionUrl")
     user: SubscriptionUser = Field(default_factory=SubscriptionUser)
+
+
+def _coerce_int(value: object) -> int:
+    """Best-effort int (the panel sends ``totalBytesLifetime`` as a STRING). Non-numeric -> 0."""
+    try:
+        return int(float(value))  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return 0
+
+
+class SystemStats(_Base):
+    """Flattened ``GET /api/system/stats`` response (the fields the dashboard needs).
+
+    The raw payload nests these under ``onlineStats`` / ``users`` / ``nodes``; the validator pulls
+    them up. Direct construction (tests) with the flat field names is passed through unchanged.
+    """
+
+    online_now: int = 0
+    online_last_day: int = 0
+    online_last_week: int = 0
+    never_online: int = 0
+    status_counts: dict[str, int] = Field(default_factory=dict)
+    total_users: int = 0
+    nodes_online: int = 0
+    total_traffic_bytes: int = 0
+
+    @model_validator(mode="before")
+    @classmethod
+    def _flatten(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+        if not any(k in data for k in ("onlineStats", "users", "nodes")):
+            return data  # already flat (direct construction / tests)
+        online = data.get("onlineStats") or {}
+        users = data.get("users") or {}
+        nodes = data.get("nodes") or {}
+        return {
+            "online_now": online.get("onlineNow", 0),
+            "online_last_day": online.get("lastDay", 0),
+            "online_last_week": online.get("lastWeek", 0),
+            "never_online": online.get("neverOnline", 0),
+            "status_counts": users.get("statusCounts") or {},
+            "total_users": users.get("totalUsers", 0),
+            "nodes_online": nodes.get("totalOnline", 0),
+            "total_traffic_bytes": _coerce_int(nodes.get("totalBytesLifetime", 0)),
+        }
 
 
 class WebhookUserEvent(_Base):

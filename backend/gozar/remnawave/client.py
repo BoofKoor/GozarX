@@ -13,11 +13,11 @@ from datetime import datetime
 from typing import Any
 
 import httpx
-from pydantic import SecretStr
+from pydantic import SecretStr, ValidationError
 
 from gozar.remnawave.errors import RemnawaveError
 from gozar.remnawave.links import parse_remark
-from gozar.remnawave.schemas import Host, InternalSquad, PanelUser, Subscription
+from gozar.remnawave.schemas import Host, InternalSquad, PanelUser, Subscription, SystemStats
 
 logger = logging.getLogger("gozar.remnawave")
 
@@ -39,31 +39,6 @@ def _links_from_list(links: list[str]) -> dict[str, str]:
         remark = parse_remark(link)
         if remark and remark not in out:
             out[remark] = link
-    return out
-
-
-def _online_usernames_from(raw: Any) -> set[str] | None:
-    """Pull a set of usernames out of the panel's online-users payload, tolerating the shapes a
-    panel version might use: a bare ``["name", …]`` list, a ``[{username|name: …}, …]`` dict list,
-    or a wrapper dict keyed by ``onlineUsers``/``users``/``usernames``/``online``. Returns ``None``
-    when nothing matches (the caller then falls back to our DB count — never invents a number)."""
-    if isinstance(raw, dict):
-        for key in ("onlineUsers", "users", "usernames", "online"):
-            if isinstance(raw.get(key), list):
-                raw = raw[key]
-                break
-        else:
-            return None
-    if not isinstance(raw, list):
-        return None
-    out: set[str] = set()
-    for item in raw:
-        if isinstance(item, str) and item:
-            out.add(item)
-        elif isinstance(item, dict):
-            name = item.get("username") or item.get("name")
-            if isinstance(name, str) and name:
-                out.add(name)
     return out
 
 
@@ -152,18 +127,23 @@ class RemnawaveClient:
         data = await self._request("POST", f"/users/{uuid}/actions/reset-traffic")
         return bool(data.get("isReset", True)) if isinstance(data, dict) else True
 
-    # VERIFY: usernames the panel reports as currently online — for the dashboard "online now" KPI,
-    #         intersected with our trial-squad users. Remnawave's panel shows an online-connections
-    #         widget; the exact route + payload shape is version-sensitive, so confirm against the
-    #         live {PANEL_BASE_URL}/api and adjust the path/keys in ``_online_usernames_from``.
-    #         Returns None on any error or an unrecognised shape so the caller falls back to our DB
-    #         active-config count (a single bounded attempt; no retry loop, no invented count).
-    async def online_usernames(self) -> set[str] | None:
+    # VERIFY: GET /api/system/stats -> response.{onlineStats,users,nodes,cpu,memory,…}. Confirmed
+    #         against @remnawave/backend-contract: onlineStats.onlineNow is the LIVE online-users
+    #         count (panel-wide), with lastDay/lastWeek/neverOnline, users.statusCounts/totalUsers,
+    #         and nodes.totalOnline/totalBytesLifetime (a string). Single bounded attempt; returns
+    #         None on error/odd shape so the dashboard falls back to the DB active count.
+    async def system_stats(self) -> SystemStats | None:
         try:
-            data = await self._request("GET", "/system/stats/online")
+            data = await self._request("GET", "/system/stats")
         except RemnawaveError:
             return None
-        return _online_usernames_from(data)
+        if not isinstance(data, dict):
+            return None
+        try:
+            return SystemStats.model_validate(data)
+        except ValidationError:
+            logger.warning("panel /system/stats returned an unexpected shape")
+            return None
 
     # VERIFY: GET /api/internal-squads -> response.internalSquads[]
     async def list_internal_squads(self) -> list[InternalSquad]:

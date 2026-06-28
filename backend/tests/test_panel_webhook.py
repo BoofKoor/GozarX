@@ -7,6 +7,7 @@ by the DB-gated test_reminder_service). The success path is exercised live on fi
 from __future__ import annotations
 
 from collections.abc import Iterator
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,18 +43,21 @@ def test_panel_webhook_bad_signature_returns_403(monkeypatch) -> None:
 
 
 def test_reminder_tokens_from_webhook_data() -> None:
-    # The reminder "global variables" are filled from the webhook's own user payload.
+    # Reminder "global variables" come from the webhook's own user payload. {expire} is the time
+    # LEFT, so we build a future expiry and assert the duration shape (not an absolute date).
+    future = (datetime.now(UTC) + timedelta(hours=3)).isoformat()
     data = PanelUser.model_validate(
         {
             "trafficLimitBytes": 2 * 1024**3,
             "userTraffic": {"usedTrafficBytes": 512 * 1024**2},
-            "expireAt": "2026-06-30T14:00:00.000Z",
+            "expireAt": future,
         }
     )
     tokens = _reminder_tokens(data)
     assert tokens["total_traffic"] == "2.0 GB"
     assert tokens["used_traffic"] == "512.0 MB"
-    assert tokens["expire"] == "2026-06-30 14:00"  # date+time, trimmed
+    assert tokens["expire"] == tokens["remaining"]  # both fed from the same expiry
+    assert tokens["expire"].startswith("2h")  # ~3h out minus test runtime -> "2h 59m"
 
 
 def test_reminder_tokens_missing_expire() -> None:

@@ -19,10 +19,9 @@ from gozar.config.settings import get_settings
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
-from gozar.db.repositories.user import UserRepository
+from gozar.remnawave.schemas import SystemStats
 from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
-from gozar.web.routes.admin.dashboard import _online_now
 
 _SECRET = "test-admin-secret-0123456789-abcdef-ghijkl"  # ≥32 bytes for PyJWT
 
@@ -34,8 +33,8 @@ class _StubPanel:
             SimpleNamespace(uuid="sq-2", name="Squad Two"),
         ]
 
-    async def online_usernames(self) -> set[str] | None:
-        return None  # endpoint unavailable in tests -> dashboard falls back to the DB active count
+    async def system_stats(self) -> SystemStats | None:
+        return None  # panel unreachable in tests -> dashboard falls back to the DB active count
 
 
 @pytest_asyncio.fixture
@@ -98,9 +97,13 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
     for key in ("total_users", "available", "active", "banned", "configs_today", "referrals"):
         assert body[key] == 0
     assert body["claims_series"] == []
-    # richer payload defaults: empty series/breakdowns, online -> active fallback (0), default range
+    # richer payload defaults: online -> active fallback (0), panel unreachable, default range
     assert body["online_now"] == 0
     assert body["range_days"] == 14
+    assert body["panel_online"] is False
+    for key in ("new_today", "new_this_week", "conversion_pct", "avg_referrals", "nodes_online"):
+        assert body[key] == 0
+    assert body["panel_status_counts"] == {}
     for key in ("signups_series", "languages", "top_locations", "top_referrers"):
         assert body[key] == []
 
@@ -132,6 +135,9 @@ async def test_dashboard_stats_aggregations(admin_client: httpx.AsyncClient, db_
         (11, 5),
         (13, 2),
     ]  # only referrers with count > 0, biggest first
+    assert body["new_today"] == 3  # all three just created
+    assert body["conversion_pct"] == round(2 / 3 * 100, 1)  # users 11 & 13 claimed, of 3 total
+    assert body["avg_referrals"] == round(7 / 3, 2)
 
 
 async def test_dashboard_range_clamped(admin_client: httpx.AsyncClient) -> None:
@@ -142,30 +148,40 @@ async def test_dashboard_range_clamped(admin_client: httpx.AsyncClient) -> None:
     assert r.json()["range_days"] == 14
 
 
-async def test_online_now_intersects_panel_with_active_db_users(session) -> None:
-    session.add_all(
-        [
-            User(telegram_id=1, status=UserStatus.active_config, panel_username="g_1"),
-            User(telegram_id=2, status=UserStatus.active_config, panel_username="g_2"),
-            User(telegram_id=3, status=UserStatus.available, panel_username=None),
-        ]
-    )
-    await session.commit()
+async def test_dashboard_surfaces_panel_system_stats(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
 
-    class _Panel:  # panel reports g_1 (ours) + a stranger online
-        async def online_usernames(self) -> set[str]:
-            return {"g_1", "not_ours"}
+    class _Panel(_StubPanel):  # a reachable panel reports live online + status counts
+        async def system_stats(self) -> SystemStats:
+            return SystemStats(
+                online_now=4,
+                online_last_day=30,
+                online_last_week=70,
+                never_online=1,
+                status_counts={"ACTIVE": 9, "EXPIRED": 2},
+                total_users=11,
+                nodes_online=2,
+                total_traffic_bytes=9876543210,
+            )
 
-    n = await _online_now(_Panel(), UserRepository(session), fallback=99)
-    assert n == 1  # only g_1 is both ours-and-active and online (fallback ignored)
-
-
-async def test_online_now_falls_back_when_panel_cannot_answer(session) -> None:
-    class _Panel:
-        async def online_usernames(self) -> None:
-            return None
-
-    assert await _online_now(_Panel(), UserRepository(session), fallback=7) == 7
+    app.state.panel = _Panel()
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        body = (await c.get("/api/admin/dashboard/stats")).json()
+    assert body["online_now"] == 4 and body["panel_online"] is True
+    assert body["online_last_day"] == 30 and body["never_online"] == 1
+    assert body["panel_status_counts"] == {"ACTIVE": 9, "EXPIRED": 2}
+    assert body["total_traffic_bytes"] == 9876543210 and body["nodes_online"] == 2
+    get_settings.cache_clear()
 
 
 async def test_protected_route_rejects_missing_token(admin_client: httpx.AsyncClient) -> None:

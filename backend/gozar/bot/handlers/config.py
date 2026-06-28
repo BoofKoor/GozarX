@@ -36,6 +36,7 @@ from gozar.services.trial import (
     PanelError,
     Provisioned,
     TrialService,
+    compute_traffic_bytes,
     human_bytes,
 )
 from gozar.ui.buttons import ButtonOverrides
@@ -196,12 +197,24 @@ async def _deliver(
         await log_repo.add(user.telegram_id, delivery.location)
         if referral is not None:
             await _maybe_award_referral(user, content, log_repo, referral, notify)
+    # Global state tokens so an admin can drop {total_traffic}/{remaining}/{expire} into the
+    # delivered text. Total is the user's daily allowance (computed locally — no panel call; the hot
+    # path stays DB-only). Live usage needs a panel call, so {used_traffic} shows "—" here (real
+    # usage lives on the status screen). {expires}/{remaining}/{expire} = time-left.
+    total = human_bytes(await compute_traffic_bytes(settings, user.referral_count))
     msg = await content.message(
         "config_delivered",
         user.language,
         location=html.escape(delivery.location),
         link=html.escape(delivery.link),
         expires=delivery.expires,
+        remaining=delivery.expires,
+        expire=delivery.expires,
+        total_traffic=total,
+        total=total,
+        daily_limit=total,
+        used_traffic="—",
+        usage="—",
     )
     notify.edit(
         message,

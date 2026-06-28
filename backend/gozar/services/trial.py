@@ -98,11 +98,11 @@ class StatusInfo:
 
 @dataclass(frozen=True)
 class Delivery:
-    """A single delivered config: the location name, its link, and a human expiry."""
+    """A single delivered config: the location name, its link, and the time LEFT ("19h 54m")."""
 
     location: str
     link: str
-    expires: str
+    expires: str  # human time-remaining, not an absolute date
 
 
 @dataclass(frozen=True)
@@ -154,9 +154,14 @@ def _human_duration(delta: timedelta) -> str:
     return f"{hours}h" if hours else f"{minutes}m"
 
 
-def _format_expires(value: str | None) -> str:
+def human_remaining(value: str | None) -> str:
+    """Time LEFT until ``value`` (an ISO expiry) as a human duration ("19h 54m"); "—" if unknown.
+
+    Owners want the validity shown as time-remaining, not an absolute date — the same format the
+    status screen already uses for ``{remaining}``.
+    """
     parsed = _parse_dt(value)
-    return parsed.strftime("%Y-%m-%d %H:%M UTC") if parsed else "—"
+    return _human_duration(parsed - datetime.now(UTC)) if parsed else "—"
 
 
 async def compute_traffic_bytes(settings: SettingsService, referral_count: int) -> int:
@@ -361,4 +366,4 @@ class TrialService:
         if index < 0 or index >= len(names):
             return None
         name = names[index]
-        return Delivery(name, cached.links[name], _format_expires(cached.expires))
+        return Delivery(name, cached.links[name], human_remaining(cached.expires))

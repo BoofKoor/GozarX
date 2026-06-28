@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
-from gozar.services.content import render
+from gozar.services.content import render, sanitize_tokens
+
+# Invisible marks that creep into {token} when editing Latin tokens amid RTL Persian.
+RLM = "‏"
+ZWNJ = "‌"
 
 
 def test_render_substitutes_provided() -> None:
@@ -19,6 +23,30 @@ def test_render_no_tokens() -> None:
 
 def test_render_repeated_token() -> None:
     assert render("{x}-{x}", {"x": "1"}) == "1-1"
+
+
+def test_render_tolerates_bidi_marks_inside_braces() -> None:
+    # the live {referrals} bug: a hidden RLM inside the braces — must still substitute
+    assert render(f"دعوت: {{referrals{RLM}}}", {"referrals": 7}) == "دعوت: 7"
+    assert render(f"دعوت: {{{RLM}referrals}}", {"referrals": 7}) == "دعوت: 7"
+
+
+def test_render_does_not_touch_meaningful_zwnj_in_prose() -> None:
+    # ZWNJ inside ordinary Persian (می‌خواهم) must survive — we only clean inside token candidates
+    out = render(f"می{ZWNJ}خواهم {{name}}", {"name": "X"})
+    assert out == f"می{ZWNJ}خواهم X" and ZWNJ in out
+
+
+def test_render_non_token_braces_stay_literal() -> None:
+    assert render("a {free text} b", {}) == "a {free text} b"
+    assert render("{}", {}) == "{}"
+
+
+def test_sanitize_tokens_cleans_contaminated_keys() -> None:
+    assert sanitize_tokens(f"x {{referrals{RLM}}} y") == "x {referrals} y"
+    # non-identifier candidates + meaningful prose ZWNJ are left untouched
+    assert sanitize_tokens("a {free text} b") == "a {free text} b"
+    assert sanitize_tokens(f"می{ZWNJ}خواهم") == f"می{ZWNJ}خواهم"
 
 
 async def test_message_carries_link_preview_flag() -> None:

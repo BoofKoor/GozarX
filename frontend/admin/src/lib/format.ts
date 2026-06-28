@@ -14,6 +14,16 @@ export function formatMb(mb: number): string {
   return `${mb} MB`;
 }
 
+/** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
+export function humanBytes(n: number): string {
+  let v = Math.max(n, 0);
+  for (const unit of ["B", "KB", "MB", "GB", "TB"]) {
+    if (v < 1024) return `${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`;
+    v /= 1024;
+  }
+  return `${v.toFixed(1)} PB`;
+}
+
 /** "YYYY-MM-DD" → "MM/DD" for compact chart axis labels. */
 export function shortDay(iso: string): string {
   const parts = iso.split("-");
