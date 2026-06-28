@@ -148,26 +148,42 @@ async def _probe_panel(panel: RemnawaveClient) -> tuple[Probe, SystemStats | Non
     return Probe(ok=True, latency_ms=_ms(start)), stats
 
 
+def _to_dt(value: object) -> datetime | None:
+    """Normalise a Telegram timestamp to an aware datetime. aiogram already parses
+    ``last_error_date`` into a ``datetime``; tolerate a raw int/float too."""
+    if isinstance(value, datetime):
+        return value if value.tzinfo else value.replace(tzinfo=UTC)
+    if isinstance(value, int | float):
+        try:
+            return datetime.fromtimestamp(value, tz=UTC)
+        except (ValueError, OSError):
+            return None
+    return None
+
+
 async def _probe_telegram(bot: Bot | None) -> tuple[Probe, WebhookHealth]:
     if bot is None:
         return Probe(ok=False, detail="bot disabled"), WebhookHealth(configured=False)
     start = time.monotonic()
     try:
         info = await bot.get_webhook_info()
+        # Parsing stays INSIDE the try: aiogram returns last_error_date as a datetime, so a stray
+        # type/shape must never escape and 500 the whole monitoring page — degrade gracefully.
+        last_dt = _to_dt(info.last_error_date)
+        recent = bool(
+            last_dt and (datetime.now(UTC) - last_dt).total_seconds() < _RECENT_ERROR_SECONDS
+        )
+        webhook = WebhookHealth(
+            configured=True,
+            url_set=bool(info.url),
+            pending=info.pending_update_count or 0,
+            recent_error=recent,
+            last_error_at=last_dt.isoformat() if last_dt else None,
+            last_error=info.last_error_message,
+        )
     except Exception:
+        logger.warning("health: telegram webhook probe failed")
         return Probe(ok=False, detail="unreachable"), WebhookHealth(configured=True)
-    last_at, recent = None, False
-    if info.last_error_date:
-        last_at = datetime.fromtimestamp(info.last_error_date, tz=UTC).isoformat()
-        recent = (datetime.now(UTC).timestamp() - info.last_error_date) < _RECENT_ERROR_SECONDS
-    webhook = WebhookHealth(
-        configured=True,
-        url_set=bool(info.url),
-        pending=info.pending_update_count or 0,
-        recent_error=recent,
-        last_error_at=last_at,
-        last_error=info.last_error_message,
-    )
     return Probe(ok=True, latency_ms=_ms(start)), webhook
 
 
