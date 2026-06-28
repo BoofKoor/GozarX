@@ -7,6 +7,7 @@ needed. Skipped without ``TEST_DATABASE_URL`` (the ``db_sessions`` fixture skips
 
 from __future__ import annotations
 
+import json
 from collections.abc import AsyncIterator
 from types import SimpleNamespace
 
@@ -15,6 +16,7 @@ import httpx
 import pytest_asyncio
 from httpx import ASGITransport
 
+from gozar.cache.redis import HEALTH_HISTORY_KEY
 from gozar.config.settings import get_settings
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
@@ -374,4 +376,44 @@ async def test_broadcast_audience_and_enqueue(db_sessions, monkeypatch) -> None:
         r = await c.post("/api/admin/broadcast/", json={"text": "<b>hi</b>"})
         assert r.status_code == 200 and r.json()["queued"] is True
     assert app.state.arq.jobs == [("broadcast_text", ("<b>hi</b>", 777))]
+    get_settings.cache_clear()
+
+
+# --- system monitoring --------------------------------------------------------------------------
+async def test_system_health_endpoint_shape(admin_client: httpx.AsyncClient) -> None:
+    body = (await admin_client.get("/api/admin/system/health")).json()
+    assert body["status"] in ("ok", "degraded", "down")
+    for key in ("db", "redis", "panel", "telegram", "webhook", "host"):
+        assert key in body
+    assert body["db"]["ok"] is True and body["redis"]["ok"] is True  # test DB + fakeredis
+    assert body["panel"]["ok"] is False  # stub panel.system_stats() -> None
+    assert body["webhook"]["configured"] is False  # no bot in tests
+    assert body["host"]["cpu_count"] >= 1
+
+
+async def test_system_history_empty(admin_client: httpx.AsyncClient) -> None:
+    assert (await admin_client.get("/api/admin/system/history")).json() == []
+
+
+async def test_system_history_returns_samples(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = _StubPanel()
+    # newest-first in Redis: push older then newer; the route returns oldest-first
+    await app.state.redis.rpush(HEALTH_HISTORY_KEY, "not-json")  # malformed sample is skipped
+    await app.state.redis.lpush(HEALTH_HISTORY_KEY, json.dumps({"ts": "t1", "api_ms": 12}))
+    await app.state.redis.lpush(HEALTH_HISTORY_KEY, json.dumps({"ts": "t2", "api_ms": 20}))
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        rows = (await c.get("/api/admin/system/history?minutes=10")).json()
+    assert [r["ts"] for r in rows] == ["t1", "t2"]  # oldest-first, malformed dropped
+    assert rows[1]["api_ms"] == 20
     get_settings.cache_clear()

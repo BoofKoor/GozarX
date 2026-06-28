@@ -94,17 +94,24 @@ class SystemStats(_Base):
     total_users: int = 0
     nodes_online: int = 0
     total_traffic_bytes: int = 0
+    # panel host resources (for the system monitoring page)
+    cpu_cores: int = 0
+    mem_total: int = 0
+    mem_used: int = 0
+    uptime_seconds: int = 0
 
     @model_validator(mode="before")
     @classmethod
     def _flatten(cls, data: object) -> object:
         if not isinstance(data, dict):
             return data
-        if not any(k in data for k in ("onlineStats", "users", "nodes")):
+        if not any(k in data for k in ("onlineStats", "users", "nodes", "cpu", "memory")):
             return data  # already flat (direct construction / tests)
         online = data.get("onlineStats") or {}
         users = data.get("users") or {}
         nodes = data.get("nodes") or {}
+        cpu = data.get("cpu") or {}
+        memory = data.get("memory") or {}
         return {
             "online_now": online.get("onlineNow", 0),
             "online_last_day": online.get("lastDay", 0),
@@ -114,6 +121,10 @@ class SystemStats(_Base):
             "total_users": users.get("totalUsers", 0),
             "nodes_online": nodes.get("totalOnline", 0),
             "total_traffic_bytes": _coerce_int(nodes.get("totalBytesLifetime", 0)),
+            "cpu_cores": cpu.get("cores", 0),
+            "mem_total": _coerce_int(memory.get("total", 0)),
+            "mem_used": _coerce_int(memory.get("used", 0)),
+            "uptime_seconds": _coerce_int(data.get("uptime", 0)),
         }
 
 

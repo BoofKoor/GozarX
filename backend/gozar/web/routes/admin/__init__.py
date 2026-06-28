@@ -11,6 +11,7 @@ from gozar.web.routes.admin import (
     dashboard,
     settings,
     setup,
+    system,
     texts,
     users,
 )
@@ -24,3 +25,4 @@ router.include_router(texts.router)
 router.include_router(buttons.router)
 router.include_router(users.router)
 router.include_router(broadcast.router)
+router.include_router(system.router)

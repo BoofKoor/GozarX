@@ -128,6 +128,9 @@ async def test_system_stats_parses_real_shape() -> None:
             200,
             json={
                 "response": {
+                    "cpu": {"cores": 8},
+                    "memory": {"total": 1000, "free": 400, "used": 600},
+                    "uptime": 123456,
                     "users": {"statusCounts": {"ACTIVE": 9, "EXPIRED": 2}, "totalUsers": 11},
                     "onlineStats": {
                         "lastDay": 30,
@@ -145,6 +148,9 @@ async def test_system_stats_parses_real_shape() -> None:
     assert stats.online_now == 4 and stats.online_last_day == 30 and stats.never_online == 1
     assert stats.status_counts == {"ACTIVE": 9, "EXPIRED": 2} and stats.total_users == 11
     assert stats.nodes_online == 2 and stats.total_traffic_bytes == 9876543210  # string -> int
+    # panel host resources surfaced for the monitoring page
+    assert stats.cpu_cores == 8 and stats.mem_total == 1000 and stats.mem_used == 600
+    assert stats.uptime_seconds == 123456
 
 
 async def test_system_stats_returns_none_on_error() -> None:
