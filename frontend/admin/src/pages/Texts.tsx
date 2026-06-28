@@ -92,6 +92,7 @@ function TextEditor({ text }: { text: BotText }) {
     ru: text.ru,
   });
   const [preview, setPreview] = useState("");
+  const [linkPreview, setLinkPreview] = useState(text.link_preview);
   const refs = useRef<Record<Lang, HTMLTextAreaElement | null>>({ fa: null, en: null, ru: null });
   const focused = useRef<Lang>("fa");
 
@@ -106,7 +107,11 @@ function TextEditor({ text }: { text: BotText }) {
     return () => clearTimeout(id);
   }, [bodies.fa, text.placeholders]);
 
-  const dirty = bodies.fa !== text.fa || bodies.en !== text.en || bodies.ru !== text.ru;
+  const dirty =
+    bodies.fa !== text.fa ||
+    bodies.en !== text.en ||
+    bodies.ru !== text.ru ||
+    linkPreview !== text.link_preview;
 
   function insertPlaceholder(token: string) {
     const lang = focused.current;
@@ -123,7 +128,10 @@ function TextEditor({ text }: { text: BotText }) {
 
   function save() {
     update.mutate(
-      { key: text.key, patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru } },
+      {
+        key: text.key,
+        patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru, link_preview: linkPreview },
+      },
       {
         onSuccess: () => toast.success("ذخیره شد."),
         onError: () => toast.error("ذخیره نشد."),
@@ -184,6 +192,16 @@ function TextEditor({ text }: { text: BotText }) {
           {preview || "…"}
         </div>
       </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={linkPreview}
+          onChange={(e) => setLinkPreview(e.target.checked)}
+          className="h-4 w-4 accent-brand"
+        />
+        نمایش پیش‌نمایش لینک در این پیام
+      </label>
 
       <div className="flex justify-end">
         <Button onClick={save} loading={update.isPending} disabled={!dirty}>

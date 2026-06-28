@@ -43,6 +43,7 @@ class ButtonSpec:
     label: str | None = None
     callback_data: str | None = None
     url: str | None = None
+    style: str | None = None  # Bot API 9.4 color: primary|success|danger (None = default)
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +54,7 @@ class Override:
     is_visible: bool = True
     row: int | None = None
     position: int | None = None
+    style: str | None = None
 
 
 class ButtonOverrides:
@@ -79,6 +81,10 @@ class ButtonOverrides:
         ov = self._by_key.get(key)
         return None if ov is None else ov.position
 
+    def style(self, key: str) -> str | None:
+        ov = self._by_key.get(key)
+        return None if ov is None else ov.style
+
 
 EMPTY_OVERRIDES = ButtonOverrides({})
 
@@ -90,21 +96,23 @@ def render_rows(
 ) -> InlineKeyboardMarkup:
     ov = buttons if buttons is not None else EMPTY_OVERRIDES
 
-    # (eff_row, eff_pos, stable_order, text, callback_data, url)
-    collected: list[tuple[int, int, int, str, str | None, str | None]] = []
+    # (eff_row, eff_pos, stable_order, text, callback_data, url, style)
+    collected: list[tuple[int, int, int, str, str | None, str | None, str | None]] = []
     order = 0
     for d_row, row in enumerate(structure):
         for d_pos, spec in enumerate(row):
             if spec.key is None:  # raw data-driven cell — never overridden, never hidden
+                lbl = spec.label or ""
                 collected.append(
-                    (d_row, d_pos, order, spec.label or "", spec.callback_data, spec.url)
+                    (d_row, d_pos, order, lbl, spec.callback_data, spec.url, spec.style)
                 )
                 order += 1
                 continue
 
             text = ov.label(spec.key, lang) or t(spec.key, lang)
-            if spec.key in CRITICAL_KEYS:  # pinned: always visible, never reordered
-                collected.append((d_row, d_pos, order, text, spec.callback_data, spec.url))
+            style = ov.style(spec.key) or spec.style  # color override wins; else the default
+            if spec.key in CRITICAL_KEYS:  # pinned: visible + never reordered (but may be colored)
+                collected.append((d_row, d_pos, order, text, spec.callback_data, spec.url, style))
                 order += 1
                 continue
 
@@ -114,7 +122,7 @@ def render_rows(
             eff_row = d_row if eff_row is None else eff_row
             eff_pos = ov.position(spec.key)
             eff_pos = d_pos if eff_pos is None else eff_pos
-            collected.append((eff_row, eff_pos, order, text, spec.callback_data, spec.url))
+            collected.append((eff_row, eff_pos, order, text, spec.callback_data, spec.url, style))
             order += 1
 
     collected.sort(key=lambda c: (c[0], c[1], c[2]))
@@ -123,15 +131,15 @@ def render_rows(
     sizes: list[int] = []
     prev_row: int | None = None
     count = 0
-    for eff_row, _pos, _order, text, callback_data, url in collected:
+    for eff_row, _pos, _order, text, callback_data, url, style in collected:
         if prev_row is not None and eff_row != prev_row:
             sizes.append(count)
             count = 0
         prev_row = eff_row
         if url is not None:
-            builder.button(text=text, url=url)
+            builder.button(text=text, url=url, style=style)
         else:
-            builder.button(text=text, callback_data=callback_data)
+            builder.button(text=text, callback_data=callback_data, style=style)
         count += 1
     if count:
         sizes.append(count)

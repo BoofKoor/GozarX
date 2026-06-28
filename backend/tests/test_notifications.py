@@ -12,7 +12,9 @@ class _Bot:
         self.sent: list[tuple[int, str]] = []
         self._fail_chat = fail_chat
 
-    async def send_message(self, chat_id: int, text: str, reply_markup=None) -> None:
+    async def send_message(
+        self, chat_id: int, text: str, reply_markup=None, link_preview_options=None
+    ) -> None:
         if chat_id == self._fail_chat:
             raise RuntimeError("blocked")
         self.sent.append((chat_id, text))
@@ -48,7 +50,7 @@ async def test_send_is_noop_without_bot() -> None:
 async def test_edit_uses_message_bound_bot() -> None:
     edited: dict = {}
 
-    async def edit_text(text: str, reply_markup=None) -> None:
+    async def edit_text(text: str, reply_markup=None, link_preview_options=None) -> None:
         edited["text"] = text
 
     notify = PendingNotifications()

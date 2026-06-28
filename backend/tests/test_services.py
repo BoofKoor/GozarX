@@ -32,7 +32,7 @@ async def test_content_cache_miss_then_hit_and_fallback(session, redis) -> None:
     svc = ContentService(session, redis)
 
     assert await svc.text("welcome", Language.fa, name="Ali") == "سلام Ali"  # miss -> DB -> render
-    assert await redis.get("cache:content:fa:welcome") == "سلام {name}"  # now cached
+    assert "سلام {name}" in await redis.get("cache:content:fa:welcome")  # body cached (JSON blob)
     assert await svc.text("welcome", Language.en, name="Bob") == "سلام Bob"  # en missing -> fa
     assert await svc.text("nope", Language.en) == "[nope]"  # truly missing
 

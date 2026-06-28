@@ -80,7 +80,7 @@ async def _setup(session, panel):
         await redis.set(key, body)
     settings = SettingsService(session, redis)
     trial = TrialService(panel, settings, ConfigLogRepository(session), redis)
-    return trial, ContentService(session, redis)
+    return trial, ContentService(session, redis), settings
 
 
 def _callback():
@@ -99,7 +99,7 @@ async def _user(session, **kw) -> User:
 
 async def test_menu_config_landing_creates_no_panel_user(session) -> None:
     panel = FakePanel()  # subscription unused for a claimable user
-    trial, content = await _setup(session, panel)
+    trial, content, settings = await _setup(session, panel)
     user = await _user(session, telegram_id=1, status=UserStatus.available)
 
     await open_config(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
@@ -110,10 +110,10 @@ async def test_menu_config_landing_creates_no_panel_user(session) -> None:
 
 async def test_config_claim_provisions_and_flips_active(session) -> None:
     panel = FakePanel(sub=(_sub(), {"Germany": "vless://de#Germany"}))
-    trial, content = await _setup(session, panel)
+    trial, content, settings = await _setup(session, panel)
     user = await _user(session, telegram_id=2, status=UserStatus.available)
 
-    await start_claim(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
+    await start_claim(_callback(), user, content, trial, settings, buttons=EMPTY_OVERRIDES)
 
     assert panel.created  # config:claim is the only place that provisions
     assert user.status is UserStatus.active_config
@@ -121,7 +121,7 @@ async def test_config_claim_provisions_and_flips_active(session) -> None:
 
 async def test_menu_config_landing_self_heals_expired(session) -> None:
     panel = FakePanel(sub=(_sub(status="EXPIRED"), {"Germany": "vless://de#Germany"}))
-    trial, content = await _setup(session, panel)
+    trial, content, settings = await _setup(session, panel)
     user = await _user(
         session, telegram_id=3, status=UserStatus.active_config, panel_username="g3_old"
     )

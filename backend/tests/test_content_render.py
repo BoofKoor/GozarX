@@ -19,3 +19,25 @@ def test_render_no_tokens() -> None:
 
 def test_render_repeated_token() -> None:
     assert render("{x}-{x}", {"x": "1"}) == "1-1"
+
+
+async def test_message_carries_link_preview_flag() -> None:
+    import json
+
+    import fakeredis.aioredis
+
+    from gozar.db.models.enums import Language
+    from gozar.services.content import ContentService
+
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    # new cache format: body + link-preview flag
+    await redis.set("cache:content:fa:apps", json.dumps({"b": "get {app}", "lp": False}))
+    await redis.set("cache:content:fa:welcome", json.dumps({"b": "hi", "lp": True}))
+    # legacy plain-string cache entry → preview defaults on (back-compat)
+    await redis.set("cache:content:fa:legacy", "old body")
+    svc = ContentService(None, redis)  # type: ignore[arg-type]  # session unused on cache hits
+
+    apps = await svc.message("apps", Language.fa, app="X")
+    assert apps.text == "get X" and apps.link_preview is False
+    assert (await svc.message("welcome", Language.fa)).link_preview is True
+    assert (await svc.message("legacy", Language.fa)).link_preview is True

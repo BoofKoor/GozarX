@@ -26,12 +26,10 @@ CONFIG_CHANGE_PREFIX = "config:change:"
 # delivery prefix the re-rendered page uses, so a paginated first claim still logs via claim path.
 LOC_PAGE_PREFIX = "loc:page:"
 
-# Settings screen + reminder sub-screen (v1). SETTINGS_REMINDER opens the sub-screen; the ON/OFF
-# variants are its single state toggle. `settings:reminder` != `settings:reminder:on` (exact-match).
+# Settings screen. The reminder is a single stateful toggle right on the settings keyboard (no
+# sub-screen): one tap flips reminder_enabled and pops a toast.
 SETTINGS_LANGUAGE = "settings:language"
-SETTINGS_REMINDER = "settings:reminder"
-SETTINGS_REMINDER_ON = "settings:reminder:on"
-SETTINGS_REMINDER_OFF = "settings:reminder:off"
+SETTINGS_REMINDER_TOGGLE = "settings:reminder:toggle"
 
 # Admin panel (owner-only; the IsOwner filter gates the whole router). All exact-match. Per-user
 # actions carry NO id — the target telegram_id lives in the UserActionFlow FSM state, so the card

@@ -29,6 +29,7 @@ class SettingsOut(BaseModel):
     referral_reward_limit: int
     trial_hours: int
     ads_enabled: bool
+    configs_per_page: int
 
 
 class SettingsPatch(BaseModel):
@@ -38,6 +39,7 @@ class SettingsPatch(BaseModel):
     referral_reward_limit: int | None = None
     trial_hours: int | None = None
     ads_enabled: bool | None = None
+    configs_per_page: int | None = None
 
 
 async def _read(settings: SettingsService) -> SettingsOut:
@@ -49,6 +51,7 @@ async def _read(settings: SettingsService) -> SettingsOut:
         referral_reward_limit=await settings.get_int(SettingKey.REFERRAL_REWARD_LIMIT, 0),
         trial_hours=await settings.get_int(SettingKey.TRIAL_HOURS, 24),
         ads_enabled=await settings.get_bool(SettingKey.ADS_ENABLED),
+        configs_per_page=await settings.get_int(SettingKey.CONFIGS_PER_PAGE, 8),
     )
 
 
@@ -76,4 +79,6 @@ async def update_settings(
         await settings.set(SettingKey.TRIAL_HOURS, str(body.trial_hours))
     if body.ads_enabled is not None:
         await settings.set(SettingKey.ADS_ENABLED, "true" if body.ads_enabled else "false")
+    if body.configs_per_page is not None:
+        await settings.set(SettingKey.CONFIGS_PER_PAGE, str(max(1, body.configs_per_page)))
     return await _read(settings)

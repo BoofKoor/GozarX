@@ -25,6 +25,7 @@ class ButtonConfigRepository(BaseRepository):
         is_visible: bool,
         row_index: int | None,
         position: int | None,
+        style: str | None = None,
     ) -> None:
         stmt = pg_insert(ButtonConfig).values(
             key=key,
@@ -32,6 +33,7 @@ class ButtonConfigRepository(BaseRepository):
             is_visible=is_visible,
             row_index=row_index,
             position=position,
+            style=style,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=[ButtonConfig.key],
@@ -40,6 +42,7 @@ class ButtonConfigRepository(BaseRepository):
                 "is_visible": stmt.excluded.is_visible,
                 "row_index": stmt.excluded.row_index,
                 "position": stmt.excluded.position,
+                "style": stmt.excluded.style,
                 "updated_at": func.now(),
             },
         )

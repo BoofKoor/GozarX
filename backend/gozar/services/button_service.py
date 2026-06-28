@@ -35,6 +35,7 @@ class EditorButton:
     effective_position: int
     default_label: dict[str, str]
     effective_label: dict[str, str]
+    style: str | None
     customized: bool
 
 
@@ -55,6 +56,7 @@ class ButtonService:
                 "is_visible": r.is_visible,
                 "row_index": r.row_index,
                 "position": r.position,
+                "style": r.style,
             }
             for r in rows
         }
@@ -70,6 +72,7 @@ class ButtonService:
                 is_visible=ov.get("is_visible", True),
                 row=ov.get("row_index"),
                 position=ov.get("position"),
+                style=ov.get("style"),
             )
             for key, ov in raw.items()
         }
@@ -83,16 +86,22 @@ class ButtonService:
         is_visible: bool,
         row_index: int | None,
         position: int | None,
+        style: str | None = None,
     ) -> None:
         await self._repo.upsert(
-            key, labels=labels, is_visible=is_visible, row_index=row_index, position=position
+            key,
+            labels=labels,
+            is_visible=is_visible,
+            row_index=row_index,
+            position=position,
+            style=style,
         )
         await self.invalidate()
 
     async def set_appearance(
-        self, key: str, *, labels: dict[str, str] | None, is_visible: bool
+        self, key: str, *, labels: dict[str, str] | None, is_visible: bool, style: str | None = None
     ) -> None:
-        """Edit label + visibility (the Buttons-editor modal), preserving any order override."""
+        """Edit label + visibility + color (the Buttons-editor modal), preserving any order."""
         existing = await self._repo.get(key)
         await self._repo.upsert(
             key,
@@ -100,6 +109,7 @@ class ButtonService:
             is_visible=is_visible,
             row_index=existing.row_index if existing else None,
             position=existing.position if existing else None,
+            style=style,
         )
         await self.invalidate()
 
@@ -116,6 +126,7 @@ class ButtonService:
                 is_visible=cur.is_visible if cur else True,
                 row_index=row_index,
                 position=position,
+                style=cur.style if cur else None,
             )
         await self.invalidate()
 
@@ -153,6 +164,7 @@ class ButtonService:
                     or not row.is_visible
                     or row.row_index is not None
                     or row.position is not None
+                    or row.style is not None
                 )
             )
             out.append(
@@ -167,6 +179,7 @@ class ButtonService:
                     effective_position=eff_pos,
                     default_label=default_label,
                     effective_label=effective_label,
+                    style=row.style if row else None,
                     customized=customized,
                 )
             )

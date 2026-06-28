@@ -151,6 +151,25 @@ async def test_buttons_reorder(admin_client: httpx.AsyncClient) -> None:
     assert mh["effective_row"] == 0 and mh["effective_position"] == 1
 
 
+async def test_buttons_set_and_clear_style(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.put(
+        "/api/admin/buttons/menu_config", json={"is_visible": True, "style": "success"}
+    )
+    assert r.status_code == 200
+    mc = next(i for i in r.json() if i["key"] == "menu_config")
+    assert mc["style"] == "success" and mc["customized"] is True
+
+    bad = await admin_client.put(
+        "/api/admin/buttons/menu_config", json={"is_visible": True, "style": "purple"}
+    )
+    assert bad.status_code == 422  # only primary/success/danger allowed
+
+    r = await admin_client.put(
+        "/api/admin/buttons/menu_config", json={"is_visible": True, "style": None}
+    )
+    assert next(i for i in r.json() if i["key"] == "menu_config")["style"] is None  # cleared
+
+
 # --- texts editor ------------------------------------------------------------------------------
 async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> None:
     # GET unions DB rows with the seeded defaults, so keys show even on a fresh (unseeded) schema.
@@ -169,6 +188,20 @@ async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> Non
     body = r.json()
     assert body["rendered"] == "Hi Ann, {x}"  # provided token rendered, unknown left intact
     assert body["missing_placeholders"] == ["x"]
+
+
+async def test_texts_link_preview_roundtrips(admin_client: httpx.AsyncClient) -> None:
+    r = await admin_client.put(
+        "/api/admin/texts/required_apps",
+        json={"fa": "x", "en": "y", "ru": "z", "link_preview": False},
+    )
+    assert r.status_code == 200 and r.json()["link_preview"] is False
+    listed = next(
+        t
+        for t in (await admin_client.get("/api/admin/texts/")).json()
+        if t["key"] == "required_apps"
+    )
+    assert listed["link_preview"] is False  # the per-text flag persists + lists
 
 
 # --- users + broadcast -------------------------------------------------------------------------

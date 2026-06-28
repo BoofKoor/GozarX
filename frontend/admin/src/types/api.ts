@@ -26,6 +26,7 @@ export interface EconomicsSettings {
   referral_reward_mb: number;
   referral_reward_limit: number;
   trial_hours: number;
+  configs_per_page: number;
   ads_enabled: boolean;
 }
 
@@ -66,9 +67,13 @@ export interface BotText {
   en: string;
   ru: string;
   placeholders: string[];
+  link_preview: boolean;
 }
 
-export type TextPatch = Partial<Record<Lang, string>>;
+export type TextPatch = Partial<Record<Lang, string>> & { link_preview?: boolean };
+
+// Telegram Bot API 9.4 inline-button colors (null = the client's default style).
+export type ButtonStyle = "primary" | "success" | "danger" | null;
 
 export interface TextPreview {
   rendered: string;
@@ -86,12 +91,14 @@ export interface ButtonConfig {
   effective_position: number;
   default_label: LabelMap;
   effective_label: LabelMap;
+  style: ButtonStyle;
   customized: boolean;
 }
 
 export interface ButtonAppearancePatch {
   labels: Partial<LabelMap> | null;
   is_visible: boolean;
+  style?: ButtonStyle;
 }
 
 export interface ReorderItem {

@@ -29,12 +29,14 @@ class TextOut(BaseModel):
     en: str
     ru: str
     placeholders: list[str]
+    link_preview: bool
 
 
 class TextPatch(BaseModel):
     fa: str | None = None
     en: str | None = None
     ru: str | None = None
+    link_preview: bool = True
 
 
 class PreviewIn(BaseModel):
@@ -55,24 +57,35 @@ def _placeholders(*bodies: str) -> list[str]:
     return list(seen)
 
 
-async def _bodies_by_key(repo: ContentRepository) -> dict[str, dict[str, str]]:
-    out: dict[str, dict[str, str]] = {}
+async def _rows_by_key(repo: ContentRepository) -> dict[str, dict]:
+    """``{key: {"bodies": {lang: body}, "link_preview": bool}}`` — the flag is per key."""
+    out: dict[str, dict] = {}
     for row in await repo.all():
-        out.setdefault(row.key, {})[row.language.value] = row.body
+        entry = out.setdefault(row.key, {"bodies": {}, "link_preview": True})
+        entry["bodies"][row.language.value] = row.body
+        entry["link_preview"] = row.link_preview
     return out
 
 
-def _text_out(key: str, by_lang: dict[str, str]) -> TextOut:
+def _text_out(key: str, entry: dict) -> TextOut:
+    by_lang: dict[str, str] = entry.get("bodies", {})
     defaults = DEFAULT_CONTENT.get(key, {})
     fa = by_lang.get("fa", defaults.get(Language.fa, ""))
     en = by_lang.get("en", defaults.get(Language.en, ""))
     ru = by_lang.get("ru", defaults.get(Language.ru, ""))
-    return TextOut(key=key, fa=fa, en=en, ru=ru, placeholders=_placeholders(fa, en, ru))
+    return TextOut(
+        key=key,
+        fa=fa,
+        en=en,
+        ru=ru,
+        placeholders=_placeholders(fa, en, ru),
+        link_preview=entry.get("link_preview", True),
+    )
 
 
 @router.get("/", response_model=list[TextOut])
 async def list_texts(request: Request, session: DbSession, admin: AdminUser) -> list[TextOut]:
-    by_key = await _bodies_by_key(ContentRepository(session))
+    by_key = await _rows_by_key(ContentRepository(session))
     keys = sorted(set(by_key) | set(DEFAULT_CONTENT))
     return [_text_out(key, by_key.get(key, {})) for key in keys]
 
@@ -82,10 +95,11 @@ async def update_text(
     key: str, body: TextPatch, request: Request, session: DbSession, admin: AdminUser
 ) -> TextOut:
     content = ContentService(session, request.app.state.redis)
+    # The editor saves all three languages together, so the per-key link_preview lands on every row.
     for lang, text in ((Language.fa, body.fa), (Language.en, body.en), (Language.ru, body.ru)):
         if text is not None:
-            await content.set(key, lang, text)
-    by_key = await _bodies_by_key(ContentRepository(session))
+            await content.set(key, lang, text, body.link_preview)
+    by_key = await _rows_by_key(ContentRepository(session))
     return _text_out(key, by_key.get(key, {}))
 
 

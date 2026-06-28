@@ -17,6 +17,7 @@ function btn(over: Partial<ButtonConfig>): ButtonConfig {
     effective_position: 0,
     default_label: { fa: "f", en: "e", ru: "r" },
     effective_label: { fa: "f", en: "e", ru: "r" },
+    style: null,
     customized: false,
     ...over,
   };

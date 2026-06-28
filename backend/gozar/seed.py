@@ -29,6 +29,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     SettingKey.REFERRAL_REWARD_LIMIT: "10",
     SettingKey.TRIAL_HOURS: "24",
     SettingKey.ADS_ENABLED: "false",
+    SettingKey.CONFIGS_PER_PAGE: "8",
 }
 
 # Core user-facing copy per language; placeholders are {token}. Button labels live in the in-code
@@ -134,15 +135,16 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "⚙️ Settings:\nChange your language and reminders here.",
         Language.ru: "⚙️ Настройки:\nИзмените язык и напоминания здесь.",
     },
-    "reminder_setting": {
-        Language.fa: "🔔 یادآوری‌ها:\nپیش از پایان اعتبار کانفیگ آزمایشی به شما یادآوری می‌کنیم.",
-        Language.en: "🔔 Reminders:\nWe'll remind you before your trial config expires.",
-        Language.ru: "🔔 Напоминания:\nМы напомним вам до истечения пробного конфига.",
+    # Toasts shown when the settings reminder toggle flips (callback.answer), not full screens.
+    "reminder_enabled": {
+        Language.fa: "🔔 یادآوری روشن شد. پیش از پایان اعتبار کانفیگ به شما یادآوری می‌کنیم.",
+        Language.en: "🔔 Reminders on. We'll remind you before your config expires.",
+        Language.ru: "🔔 Напоминания включены. Мы напомним до истечения конфига.",
     },
-    "reminder_status": {
-        Language.fa: "✅ تنظیمات یادآوری به‌روزرسانی شد.",
-        Language.en: "✅ Your reminder setting was updated.",
-        Language.ru: "✅ Настройка напоминаний обновлена.",
+    "reminder_disabled": {
+        Language.fa: "🔕 یادآوری خاموش شد.",
+        Language.en: "🔕 Reminders off.",
+        Language.ru: "🔕 Напоминания отключены.",
     },
     "ads": {
         Language.fa: "📣 از سرویس ما لذت می‌بری؟ آن را با دوستانت به اشتراک بگذار!",

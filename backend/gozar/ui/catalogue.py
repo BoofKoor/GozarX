@@ -38,7 +38,6 @@ class Screen(StrEnum):
     config_delivered = "config_delivered"
     status = "status"
     settings = "settings"
-    reminder = "reminder"
     invite = "invite"
     location = "location"
     admin_menu = "admin_menu"
@@ -65,8 +64,8 @@ def _entries(screen: Screen, specs: list[tuple[str, int, int]]) -> list[Catalogu
 
 
 # Each screen mirrors the matching builder in ``bot/keyboards.py`` (row/position = today's layout).
-# Conditional alternatives (get_config|change_location, reminder_enable|disable, ban|unban,
-# confirm|send) share one cell — the builder renders whichever the runtime state selects.
+# Conditional alternatives (get_config|change_location, reminder_on|off, ban|unban, confirm|send)
+# share one cell — the builder renders whichever the runtime state selects.
 CATALOGUE: tuple[CatalogueEntry, ...] = tuple(
     _entries(
         Screen.main_menu,
@@ -92,11 +91,12 @@ CATALOGUE: tuple[CatalogueEntry, ...] = tuple(
     + _entries(Screen.status, [("change_location", 0, 0), ("back", 1, 0)])
     + _entries(
         Screen.settings,
-        [("settings_language", 0, 0), ("settings_reminder", 0, 1), ("back", 1, 0)],
-    )
-    + _entries(
-        Screen.reminder,
-        [("reminder_enable", 0, 0), ("reminder_disable", 0, 0), ("back", 1, 0)],
+        [
+            ("settings_language", 0, 0),
+            ("reminder_on", 0, 1),  # reminder_on|reminder_off share the toggle cell
+            ("reminder_off", 0, 1),
+            ("back", 1, 0),
+        ],
     )
     + _entries(Screen.invite, [("invite_share", 0, 0), ("back", 1, 0)])
     + _entries(Screen.location, [("nav_prev", 0, 0), ("nav_next", 0, 1), ("back", 1, 0)])
