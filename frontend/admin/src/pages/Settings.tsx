@@ -13,17 +13,24 @@ interface FormState {
   referral_reward_mb: number;
   referral_reward_limit: number;
   trial_hours: number;
+  configs_per_page: number;
   ads_enabled: boolean;
   locations: string;
 }
 
-type NumKey = "daily_limit_mb" | "referral_reward_mb" | "referral_reward_limit" | "trial_hours";
+type NumKey =
+  | "daily_limit_mb"
+  | "referral_reward_mb"
+  | "referral_reward_limit"
+  | "trial_hours"
+  | "configs_per_page";
 
 const EMPTY: FormState = {
   daily_limit_mb: 1024,
   referral_reward_mb: 500,
   referral_reward_limit: 10,
   trial_hours: 24,
+  configs_per_page: 8,
   ads_enabled: false,
   locations: "",
 };
@@ -40,6 +47,7 @@ export function Settings() {
         referral_reward_mb: data.referral_reward_mb,
         referral_reward_limit: data.referral_reward_limit,
         trial_hours: data.trial_hours,
+        configs_per_page: data.configs_per_page,
         ads_enabled: data.ads_enabled,
         locations: data.locations.join("، "),
       });
@@ -65,6 +73,7 @@ export function Settings() {
         referral_reward_mb: form.referral_reward_mb,
         referral_reward_limit: form.referral_reward_limit,
         trial_hours: form.trial_hours,
+        configs_per_page: form.configs_per_page,
         ads_enabled: form.ads_enabled,
         locations: splitLocations(form.locations),
       },
@@ -99,6 +108,14 @@ export function Settings() {
           </Labeled>
           <Labeled label="مدت اعتبار کانفیگ (ساعت)">
             <Input type="number" value={form.trial_hours} onChange={setNum("trial_hours")} />
+          </Labeled>
+          <Labeled label="تعداد کانفیگ در هر صفحهٔ منو">
+            <Input
+              type="number"
+              min={1}
+              value={form.configs_per_page}
+              onChange={setNum("configs_per_page")}
+            />
           </Labeled>
           <Labeled label="لوکیشن‌ها (با کاما جدا کنید؛ خالی = همه)">
             <Input

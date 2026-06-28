@@ -19,8 +19,10 @@ from gozar.db.models.enums import Language
 from gozar.ui.buttons import ButtonOverrides, ButtonSpec, render_rows
 from gozar.ui.labels import LANGUAGE_NAMES
 
-# Locations per picker page; longer squads paginate with Next/Prev (v1's after_before_keyboard).
+# Default locations per picker page (the runtime `configs_per_page` setting overrides it); longer
+# squads paginate with Next/Prev. Location cells render two-per-row.
 _PAGE_SIZE = 8
+_PER_ROW = 2
 
 
 def language_keyboard() -> InlineKeyboardMarkup:
@@ -87,21 +89,25 @@ def location_keyboard(
     lang: Language,
     *,
     page: int = 0,
+    page_size: int = _PAGE_SIZE,
     buttons: ButtonOverrides | None = None,
 ) -> InlineKeyboardMarkup:
-    """Paginated picker over location remark NAMES.
+    """Paginated picker over location remark NAMES, two cells per row.
 
     Each button is keyed by its **global** index, and the chosen name resolves to its link by NAME
     (never a cross-index between two lists). ``page`` is a pure view offset into the same cached
-    remarks. The location buttons are raw (data-driven) cells; only the Prev/Next nav (shown when
-    there's more than one page) and the back-to-landing button are catalogue chrome.
+    remarks; ``page_size`` is the runtime ``configs_per_page`` setting. The location buttons are raw
+    (data-driven) cells; only the Prev/Next nav (shown when there's more than one page) and the
+    back-to-landing button are catalogue chrome.
     """
-    page_count = max(1, (len(remarks) + _PAGE_SIZE - 1) // _PAGE_SIZE)
+    page_size = max(1, page_size)
+    page_count = max(1, (len(remarks) + page_size - 1) // page_size)
     page = min(max(page, 0), page_count - 1)
-    window = range(page * _PAGE_SIZE, min((page + 1) * _PAGE_SIZE, len(remarks)))
+    window = range(page * page_size, min((page + 1) * page_size, len(remarks)))
 
+    cells = [ButtonSpec(label=remarks[i], callback_data=f"{prefix}{i}") for i in window]
     structure: list[list[ButtonSpec]] = [
-        [ButtonSpec(label=remarks[index], callback_data=f"{prefix}{index}")] for index in window
+        cells[i : i + _PER_ROW] for i in range(0, len(cells), _PER_ROW)
     ]
 
     tag = "claim" if prefix == cb.CONFIG_CLAIM_PREFIX else "change"
@@ -139,28 +145,18 @@ def status_keyboard(
 
 
 def settings_keyboard(
-    lang: Language, buttons: ButtonOverrides | None = None
-) -> InlineKeyboardMarkup:
-    structure = [
-        [
-            ButtonSpec(key="settings_language", callback_data=cb.SETTINGS_LANGUAGE),
-            ButtonSpec(key="settings_reminder", callback_data=cb.SETTINGS_REMINDER),
-        ],
-        [ButtonSpec(key="back", callback_data=cb.MENU_HOME)],
-    ]
-    return render_rows(lang, structure, buttons)
-
-
-def reminder_keyboard(
     lang: Language, *, reminder_enabled: bool, buttons: ButtonOverrides | None = None
 ) -> InlineKeyboardMarkup:
-    """Reminder sub-screen: one state toggle (enable when off / disable when on) + back."""
-    toggle = (
-        ButtonSpec(key="reminder_disable", callback_data=cb.SETTINGS_REMINDER_OFF)
-        if reminder_enabled
-        else ButtonSpec(key="reminder_enable", callback_data=cb.SETTINGS_REMINDER_ON)
+    """Language picker + a one-tap reminder toggle whose label shows the current state (the same
+    `settings:reminder:toggle` callback flips it either way; no sub-screen)."""
+    reminder = ButtonSpec(
+        key="reminder_on" if reminder_enabled else "reminder_off",
+        callback_data=cb.SETTINGS_REMINDER_TOGGLE,
     )
-    structure = [[toggle], [ButtonSpec(key="back", callback_data=cb.MENU_SETTINGS)]]
+    structure = [
+        [ButtonSpec(key="settings_language", callback_data=cb.SETTINGS_LANGUAGE), reminder],
+        [ButtonSpec(key="back", callback_data=cb.MENU_HOME)],
+    ]
     return render_rows(lang, structure, buttons)
 
 

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { useUpdateButton } from "@/hooks/useButtons";
-import type { ButtonConfig, Lang } from "@/types/api";
+import type { ButtonConfig, ButtonStyle, Lang } from "@/types/api";
 
 const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
   { code: "fa", label: "فارسی", dir: "rtl" },
@@ -13,11 +13,19 @@ const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
   { code: "ru", label: "Русский", dir: "ltr" },
 ];
 
-/** Modal to edit a button's per-language label + visibility (order is via drag-drop, not here). */
+const COLORS: { value: ButtonStyle; label: string; swatch: string }[] = [
+  { value: null, label: "پیش‌فرض", swatch: "bg-slate-300 dark:bg-slate-600" },
+  { value: "primary", label: "آبی", swatch: "bg-blue-500" },
+  { value: "success", label: "سبز", swatch: "bg-emerald-500" },
+  { value: "danger", label: "قرمز", swatch: "bg-rose-500" },
+];
+
+/** Modal to edit a button's per-language label, visibility, and color (order is via drag-drop). */
 export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClose: () => void }) {
   const update = useUpdateButton();
   const [labels, setLabels] = useState<Record<Lang, string>>({ ...button.effective_label });
   const [visible, setVisible] = useState(button.is_visible);
+  const [style, setStyle] = useState<ButtonStyle>(button.style);
 
   function save() {
     // Only persist a label that differs from the default; empty -> revert to the code default.
@@ -29,7 +37,11 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
     update.mutate(
       {
         key: button.key,
-        patch: { labels: Object.keys(override).length ? override : null, is_visible: visible },
+        patch: {
+          labels: Object.keys(override).length ? override : null,
+          is_visible: visible,
+          style,
+        },
       },
       {
         onSuccess: () => {
@@ -95,6 +107,30 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
                 نیفتد.
               </p>
             )}
+          </div>
+          <div>
+            <label className="mb-1 block text-sm">رنگ دکمه</label>
+            <div className="flex gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c.label}
+                  type="button"
+                  onClick={() => setStyle(c.value)}
+                  className={clsx(
+                    "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs transition",
+                    style === c.value
+                      ? "border-brand"
+                      : "border-transparent hover:border-slate-300 dark:hover:border-slate-600",
+                  )}
+                >
+                  <span className={clsx("h-5 w-8 rounded", c.swatch)} />
+                  {c.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-xs text-slate-400">
+              رنگ دکمه‌های اینلاین (در نسخه‌های جدید تلگرام نمایش داده می‌شود).
+            </p>
           </div>
         </div>
         <div className="mt-5 flex justify-end gap-2">

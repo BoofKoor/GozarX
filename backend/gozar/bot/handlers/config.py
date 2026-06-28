@@ -55,20 +55,28 @@ def _parse_index(raw: str) -> int | None:
         return None
 
 
+async def _per_page(settings: SettingsService) -> int:
+    return await settings.get_int(SettingKey.CONFIGS_PER_PAGE, 8)
+
+
 async def _render_claim(
-    result: ClaimResult, user: User, content: ContentService, buttons: ButtonOverrides
+    result: ClaimResult,
+    user: User,
+    content: ContentService,
+    buttons: ButtonOverrides,
+    page_size: int,
 ) -> tuple[str, InlineKeyboardMarkup]:
     lang = user.language
     if isinstance(result, Provisioned):
         text = await content.text("choose_location", lang)
         return text, location_keyboard(
-            result.remarks, cb.CONFIG_CLAIM_PREFIX, lang, buttons=buttons
+            result.remarks, cb.CONFIG_CLAIM_PREFIX, lang, page_size=page_size, buttons=buttons
         )
     if isinstance(result, AlreadyActive):
         # Already holding a live trial — re-deliveries are changes (CONFIG_CHANGE, no new log).
         text = await content.text("choose_location", lang)
         return text, location_keyboard(
-            result.remarks, cb.CONFIG_CHANGE_PREFIX, lang, buttons=buttons
+            result.remarks, cb.CONFIG_CHANGE_PREFIX, lang, page_size=page_size, buttons=buttons
         )
     key = {
         AlreadyClaimedToday: "already_claimed",
@@ -113,12 +121,13 @@ async def start_claim(
     user: User,
     content: ContentService,
     trial: TrialService,
+    settings: SettingsService,
     buttons: ButtonOverrides,
 ) -> None:
     """The landing's inner get-config button — the ONLY place that provisions, then the picker."""
     await callback.answer()
     result = await trial.claim(user)
-    text, markup = await _render_claim(result, user, content, buttons)
+    text, markup = await _render_claim(result, user, content, buttons, await _per_page(settings))
     await _edit(callback, text, markup)
 
 
@@ -138,13 +147,13 @@ async def _maybe_award_referral(
     award = await referral.award_first_claim(invitee)
     if award is None:
         return
-    text = await content.text(
+    msg = await content.message(
         "referral_joined",
         award.inviter.language,
         count=award.new_count,
         size=human_bytes(award.new_daily_bytes),
     )
-    notify.send(award.inviter.telegram_id, text)
+    notify.send(award.inviter.telegram_id, msg.text, link_preview=msg.link_preview)
 
 
 async def _maybe_queue_ads(
@@ -153,7 +162,8 @@ async def _maybe_queue_ads(
     """v1's 'deliver, then ads': when ads_enabled, queue the ads copy as a SEPARATE message on the
     same post-commit buffer (so it never fires on a rollback). Default off."""
     if await settings.get_bool(SettingKey.ADS_ENABLED):
-        notify.send(user.telegram_id, await content.text("ads", user.language))
+        ad = await content.message("ads", user.language)
+        notify.send(user.telegram_id, ad.text, link_preview=ad.link_preview)
 
 
 async def _deliver(
@@ -186,14 +196,19 @@ async def _deliver(
         await log_repo.add(user.telegram_id, delivery.location)
         if referral is not None:
             await _maybe_award_referral(user, content, log_repo, referral, notify)
-    text = await content.text(
+    msg = await content.message(
         "config_delivered",
         user.language,
         location=html.escape(delivery.location),
         link=html.escape(delivery.link),
         expires=delivery.expires,
     )
-    notify.edit(message, text, config_delivered_keyboard(user.language, buttons))
+    notify.edit(
+        message,
+        msg.text,
+        config_delivered_keyboard(user.language, buttons),
+        link_preview=msg.link_preview,
+    )
     await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 
 
@@ -253,6 +268,7 @@ async def change_location(
     user: User,
     content: ContentService,
     trial: TrialService,
+    settings: SettingsService,
     buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
@@ -267,9 +283,10 @@ async def change_location(
         )
         return
     text = await content.text("choose_location", lang)
-    await _edit(
-        callback, text, location_keyboard(result, cb.CONFIG_CHANGE_PREFIX, lang, buttons=buttons)
+    markup = location_keyboard(
+        result, cb.CONFIG_CHANGE_PREFIX, lang, page_size=await _per_page(settings), buttons=buttons
     )
+    await _edit(callback, text, markup)
 
 
 @router.callback_query(F.data.startswith(cb.LOC_PAGE_PREFIX))
@@ -278,6 +295,7 @@ async def paginate_locations(
     user: User,
     content: ContentService,
     trial: TrialService,
+    settings: SettingsService,
     buttons: ButtonOverrides,
 ) -> None:
     """Re-render the picker at another page — a pure view change (no claim/log/referral logic).
@@ -300,4 +318,7 @@ async def paginate_locations(
         )
         return
     text = await content.text("choose_location", lang)
-    await _edit(callback, text, location_keyboard(result, prefix, lang, page=page, buttons=buttons))
+    markup = location_keyboard(
+        result, prefix, lang, page=page, page_size=await _per_page(settings), buttons=buttons
+    )
+    await _edit(callback, text, markup)

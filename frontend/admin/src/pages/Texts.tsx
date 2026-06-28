@@ -14,6 +14,9 @@ const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
   { code: "ru", label: "Русский", dir: "ltr" },
 ];
 
+// Dynamic variables filled from the panel webhook — usable in the reminder texts.
+const GLOBAL_VARS = ["total_traffic", "used_traffic", "expire"];
+
 export function Texts() {
   const { data: texts = [], isLoading } = useTexts();
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -92,6 +95,7 @@ function TextEditor({ text }: { text: BotText }) {
     ru: text.ru,
   });
   const [preview, setPreview] = useState("");
+  const [linkPreview, setLinkPreview] = useState(text.link_preview);
   const refs = useRef<Record<Lang, HTMLTextAreaElement | null>>({ fa: null, en: null, ru: null });
   const focused = useRef<Lang>("fa");
 
@@ -106,7 +110,11 @@ function TextEditor({ text }: { text: BotText }) {
     return () => clearTimeout(id);
   }, [bodies.fa, text.placeholders]);
 
-  const dirty = bodies.fa !== text.fa || bodies.en !== text.en || bodies.ru !== text.ru;
+  const dirty =
+    bodies.fa !== text.fa ||
+    bodies.en !== text.en ||
+    bodies.ru !== text.ru ||
+    linkPreview !== text.link_preview;
 
   function insertPlaceholder(token: string) {
     const lang = focused.current;
@@ -123,7 +131,10 @@ function TextEditor({ text }: { text: BotText }) {
 
   function save() {
     update.mutate(
-      { key: text.key, patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru } },
+      {
+        key: text.key,
+        patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru, link_preview: linkPreview },
+      },
       {
         onSuccess: () => toast.success("ذخیره شد."),
         onError: () => toast.error("ذخیره نشد."),
@@ -158,6 +169,25 @@ function TextEditor({ text }: { text: BotText }) {
         </div>
       )}
 
+      <div>
+        <div className="mb-1.5 text-xs font-medium text-slate-500">
+          متغیرهای سراسری (در پیام‌های یادآور پر می‌شوند — برای درج کلیک کنید):
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {GLOBAL_VARS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              dir="ltr"
+              onClick={() => insertPlaceholder(p)}
+              className="rounded border border-amber-200 bg-amber-50 px-1.5 py-0.5 font-mono text-xs text-amber-700 hover:border-amber-400 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-300"
+            >
+              {`{${p}}`}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {LANGS.map(({ code, label, dir }) => (
         <div key={code}>
           <label className="mb-1 block text-sm">{label}</label>
@@ -184,6 +214,16 @@ function TextEditor({ text }: { text: BotText }) {
           {preview || "…"}
         </div>
       </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          checked={linkPreview}
+          onChange={(e) => setLinkPreview(e.target.checked)}
+          className="h-4 w-4 accent-brand"
+        />
+        نمایش پیش‌نمایش لینک در این پیام
+      </label>
 
       <div className="flex justify-end">
         <Button onClick={save} loading={update.isPending} disabled={!dirty}>

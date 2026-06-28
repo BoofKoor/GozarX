@@ -25,6 +25,8 @@ class ButtonConfig(Base):
     is_visible: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)
     row_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
     position: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Bot API 9.4 inline-button color: 'primary' | 'success' | 'danger' (null = app default).
+    style: Mapped[str | None] = mapped_column(String(16), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

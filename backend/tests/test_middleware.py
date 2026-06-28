@@ -67,7 +67,9 @@ class _StubBot:
     def __init__(self) -> None:
         self.sent: list[tuple[int, str]] = []
 
-    async def send_message(self, chat_id: int, text: str, reply_markup=None) -> None:
+    async def send_message(
+        self, chat_id: int, text: str, reply_markup=None, link_preview_options=None
+    ) -> None:
         self.sent.append((chat_id, text))
 
 

@@ -20,6 +20,7 @@ function btn(over: Partial<ButtonConfig>): ButtonConfig {
     effective_position: 0,
     default_label: { fa: "پیش‌فرض", en: "Default", ru: "По" },
     effective_label: { fa: "پیش‌فرض", en: "Default", ru: "По" },
+    style: null,
     customized: false,
     ...over,
   };

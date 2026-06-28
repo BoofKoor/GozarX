@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Integer, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gozar.db.base import Base
@@ -17,3 +17,6 @@ class Content(Base):
     key: Mapped[str] = mapped_column(String(128))
     language: Mapped[Language] = mapped_column(language_enum)
     body: Mapped[str] = mapped_column(Text)
+    # Whether Telegram shows a link preview for this message (admins disable it per text in the
+    # Texts editor). Per-key in practice, but stored per (key, language) row for a simple schema.
+    link_preview: Mapped[bool] = mapped_column(Boolean, server_default=text("true"), nullable=False)

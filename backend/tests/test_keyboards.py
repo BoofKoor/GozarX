@@ -13,7 +13,6 @@ from gozar.bot.keyboards import (
     language_keyboard,
     location_keyboard,
     main_menu_keyboard,
-    reminder_keyboard,
     settings_keyboard,
 )
 from gozar.db.models.enums import Language
@@ -46,24 +45,15 @@ def test_help_keyboard_has_required_apps() -> None:
     assert _callbacks(help_keyboard(Language.en)) == [cb.MENU_APPS, cb.MENU_HOME]
 
 
-def test_settings_keyboard_language_and_reminder() -> None:
-    assert _callbacks(settings_keyboard(Language.en)) == [
-        cb.SETTINGS_LANGUAGE,
-        cb.SETTINGS_REMINDER,  # opens the reminder sub-screen
-        cb.MENU_HOME,
-    ]
-
-
-def test_reminder_keyboard_state_toggle() -> None:
-    # enabled -> the toggle disables (and back goes to the settings screen)
-    assert _callbacks(reminder_keyboard(Language.en, reminder_enabled=True)) == [
-        cb.SETTINGS_REMINDER_OFF,
-        cb.MENU_SETTINGS,
-    ]
-    assert _callbacks(reminder_keyboard(Language.en, reminder_enabled=False)) == [
-        cb.SETTINGS_REMINDER_ON,
-        cb.MENU_SETTINGS,
-    ]
+def test_settings_keyboard_language_and_reminder_toggle() -> None:
+    # The reminder is a one-tap toggle right on the settings keyboard (same callback either way);
+    # only its label differs by state, so the callbacks are identical for on/off.
+    for enabled in (True, False):
+        assert _callbacks(settings_keyboard(Language.en, reminder_enabled=enabled)) == [
+            cb.SETTINGS_LANGUAGE,
+            cb.SETTINGS_REMINDER_TOGGLE,
+            cb.MENU_HOME,
+        ]
 
 
 def test_landing_keyboard_claimable() -> None:
@@ -123,3 +113,23 @@ def test_location_keyboard_change_mode_uses_change_prefix_and_tag() -> None:
     page0 = _callbacks(location_keyboard(remarks, cb.CONFIG_CHANGE_PREFIX, Language.en, page=0))
     assert "config:change:0" in page0  # change delivery prefix
     assert cb.loc_page_cb("change", 1) in page0  # nav tag follows the change prefix
+
+
+def test_location_keyboard_packs_two_per_row() -> None:
+    kb = location_keyboard([f"L{i}" for i in range(5)], cb.CONFIG_CLAIM_PREFIX, Language.en)
+    loc_rows = [
+        row
+        for row in kb.inline_keyboard
+        if all((b.callback_data or "").startswith(cb.CONFIG_CLAIM_PREFIX) for b in row)
+    ]
+    assert [len(r) for r in loc_rows] == [2, 2, 1]  # 5 locations -> rows of 2, 2, 1
+
+
+def test_location_keyboard_respects_page_size() -> None:
+    remarks = [f"L{i}" for i in range(10)]
+    page0 = _callbacks(
+        location_keyboard(remarks, cb.CONFIG_CLAIM_PREFIX, Language.en, page=0, page_size=4)
+    )
+    locs = [c for c in page0 if c.startswith(cb.CONFIG_CLAIM_PREFIX)]
+    assert locs == [f"config:claim:{i}" for i in range(4)]  # only 4 per page now
+    assert cb.loc_page_cb("claim", 1) in page0  # smaller page size paginates sooner

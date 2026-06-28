@@ -1,7 +1,7 @@
-"""Settings reminder sub-screen handlers + invite deep link / keyboard.
+"""Settings reminder toggle handler + invite deep link / keyboard.
 
-Stub events + fakeredis-backed content (no DB) — the callback ``edit_text`` path is guarded by an
-``isinstance(.., Message)`` check, so these assert the state change + the pure builders.
+Stub events + fakeredis-backed content (no DB) — the callback ``edit_reply_markup`` path is guarded
+by an ``isinstance(.., Message)`` check, so these assert the state change + the pure builders.
 """
 
 from __future__ import annotations
@@ -12,7 +12,7 @@ import fakeredis.aioredis
 
 from gozar.bot import callbacks as cb
 from gozar.bot.handlers.invite import invite_link
-from gozar.bot.handlers.settings import reminder_settings, set_reminder_off, set_reminder_on
+from gozar.bot.handlers.settings import toggle_reminder
 from gozar.bot.keyboards import invite_keyboard
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
@@ -34,23 +34,20 @@ def _callback() -> SimpleNamespace:
     return SimpleNamespace(answer=answer, message=None)
 
 
-async def test_reminder_sub_screen_handlers_flip_flag() -> None:
+async def test_reminder_toggle_flips_flag() -> None:
     content = await _content(
         **{
-            "cache:content:fa:reminder_setting": "set",
-            "cache:content:fa:reminder_status": "updated",
+            "cache:content:fa:reminder_enabled": "on",
+            "cache:content:fa:reminder_disabled": "off",
         }
     )
     user = User(telegram_id=10, language=Language.fa, reminder_enabled=True)
     callback = _callback()
 
-    await set_reminder_off(callback, user, content, buttons=EMPTY_OVERRIDES)
-    assert user.reminder_enabled is False
-    await set_reminder_on(callback, user, content, buttons=EMPTY_OVERRIDES)
-    assert user.reminder_enabled is True
-    # opening the sub-screen doesn't change state
-    await reminder_settings(callback, user, content, buttons=EMPTY_OVERRIDES)
-    assert user.reminder_enabled is True
+    await toggle_reminder(callback, user, content, buttons=EMPTY_OVERRIDES)
+    assert user.reminder_enabled is False  # one tap flips it
+    await toggle_reminder(callback, user, content, buttons=EMPTY_OVERRIDES)
+    assert user.reminder_enabled is True  # and back
 
 
 def test_invite_link_format() -> None:

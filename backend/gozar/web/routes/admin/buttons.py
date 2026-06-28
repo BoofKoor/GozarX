@@ -19,6 +19,9 @@ from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/buttons", tags=["buttons"])
 
+# Bot API 9.4 inline-button colors; null = the app's default style.
+_STYLES = frozenset({"primary", "success", "danger"})
+
 
 def _service(request: Request, session: object) -> ButtonService:
     return ButtonService(session, request.app.state.redis)  # type: ignore[arg-type]
@@ -35,12 +38,14 @@ class ButtonOut(BaseModel):
     effective_position: int
     default_label: dict[str, str]
     effective_label: dict[str, str]
+    style: str | None
     customized: bool
 
 
 class AppearancePatch(BaseModel):
     labels: dict[str, str] | None = None
     is_visible: bool = True
+    style: str | None = None
 
 
 class ReorderItem(BaseModel):
@@ -68,8 +73,10 @@ async def update_button(
 ) -> list[ButtonOut]:
     if key in CRITICAL_KEYS and not body.is_visible:
         raise HTTPException(422, "critical buttons cannot be hidden")
+    if body.style is not None and body.style not in _STYLES:
+        raise HTTPException(422, "style must be primary, success, danger, or null")
     svc = _service(request, session)
-    await svc.set_appearance(key, labels=body.labels, is_visible=body.is_visible)
+    await svc.set_appearance(key, labels=body.labels, is_visible=body.is_visible, style=body.style)
     return [_out(b) for b in await svc.list_for_editor()]
 
 

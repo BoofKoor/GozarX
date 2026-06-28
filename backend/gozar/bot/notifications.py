@@ -15,6 +15,8 @@ from typing import Any
 from aiogram import Bot
 from aiogram.types import InlineKeyboardMarkup, Message
 
+from gozar.bot.replies import preview_options
+
 logger = logging.getLogger("gozar.bot.notifications")
 
 
@@ -23,23 +25,40 @@ class PendingNotifications:
         self._actions: list[Callable[[Bot | None], Awaitable[Any]]] = []
 
     def send(
-        self, chat_id: int, text: str, reply_markup: InlineKeyboardMarkup | None = None
+        self,
+        chat_id: int,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        *,
+        link_preview: bool = True,
     ) -> None:
         """Queue a fresh message to an arbitrary chat (e.g. the inviter)."""
 
         async def action(bot: Bot | None) -> None:
             if bot is not None:  # bot disabled in dev (no token) — nothing to send
-                await bot.send_message(chat_id, text, reply_markup=reply_markup)
+                await bot.send_message(
+                    chat_id,
+                    text,
+                    reply_markup=reply_markup,
+                    link_preview_options=preview_options(link_preview),
+                )
 
         self._actions.append(action)
 
     def edit(
-        self, message: Message, text: str, reply_markup: InlineKeyboardMarkup | None = None
+        self,
+        message: Message,
+        text: str,
+        reply_markup: InlineKeyboardMarkup | None = None,
+        *,
+        link_preview: bool = True,
     ) -> None:
         """Queue an edit of the triggering message (uses the message's bound bot)."""
 
         async def action(_bot: Bot | None) -> None:
-            await message.edit_text(text, reply_markup=reply_markup)
+            await message.edit_text(
+                text, reply_markup=reply_markup, link_preview_options=preview_options(link_preview)
+            )
 
         self._actions.append(action)
 

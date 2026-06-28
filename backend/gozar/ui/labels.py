@@ -62,20 +62,16 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "🌐 Change language",
         Language.ru: "🌐 Сменить язык",
     },
-    "settings_reminder": {
-        Language.fa: "📮 یادآور",
-        Language.en: "📮 Reminders",
-        Language.ru: "📮 Напоминания",
+    # Reminder toggle on the settings keyboard — label shows the CURRENT state; a tap flips it.
+    "reminder_on": {
+        Language.fa: "🔔 یادآور: روشن",
+        Language.en: "🔔 Reminders: on",
+        Language.ru: "🔔 Напоминания: вкл",
     },
-    "reminder_enable": {
-        Language.fa: "✅ فعال‌سازی یادآور",
-        Language.en: "✅ Enable reminders",
-        Language.ru: "✅ Включить напоминания",
-    },
-    "reminder_disable": {
-        Language.fa: "❌ غیرفعال‌سازی یادآور",
-        Language.en: "❌ Disable reminders",
-        Language.ru: "❌ Отключить напоминания",
+    "reminder_off": {
+        Language.fa: "🔕 یادآور: خاموش",
+        Language.en: "🔕 Reminders: off",
+        Language.ru: "🔕 Напоминания: выкл",
     },
     "invite_share": {
         Language.fa: "📤 اشتراک‌گذاری لینک",

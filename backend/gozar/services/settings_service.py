@@ -25,6 +25,7 @@ class SettingKey:
     REFERRAL_REWARD_LIMIT = "referral_reward_limit"
     TRIAL_HOURS = "trial_hours"
     ADS_ENABLED = "ads_enabled"
+    CONFIGS_PER_PAGE = "configs_per_page"
 
 
 _TRUE = {"1", "true", "yes", "on"}

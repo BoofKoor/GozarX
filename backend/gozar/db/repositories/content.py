@@ -21,11 +21,20 @@ class ContentRepository(BaseRepository):
         row = await self.get(key, language)
         return row.body if row is not None else None
 
-    async def upsert(self, key: str, language: Language, body: str) -> None:
-        stmt = pg_insert(Content).values(key=key, language=language, body=body)
+    async def get_message(self, key: str, language: Language) -> tuple[str, bool] | None:
+        """The body plus its link-preview flag (or None if the (key, language) row is absent)."""
+        row = await self.get(key, language)
+        return (row.body, row.link_preview) if row is not None else None
+
+    async def upsert(
+        self, key: str, language: Language, body: str, link_preview: bool = True
+    ) -> None:
+        stmt = pg_insert(Content).values(
+            key=key, language=language, body=body, link_preview=link_preview
+        )
         stmt = stmt.on_conflict_do_update(
             index_elements=[Content.key, Content.language],
-            set_={"body": stmt.excluded.body},
+            set_={"body": stmt.excluded.body, "link_preview": stmt.excluded.link_preview},
         )
         await self.session.execute(stmt)
 

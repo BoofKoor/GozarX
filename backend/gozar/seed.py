@@ -29,6 +29,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     SettingKey.REFERRAL_REWARD_LIMIT: "10",
     SettingKey.TRIAL_HOURS: "24",
     SettingKey.ADS_ENABLED: "false",
+    SettingKey.CONFIGS_PER_PAGE: "8",
 }
 
 # Core user-facing copy per language; placeholders are {token}. Button labels live in the in-code
@@ -124,25 +125,28 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "⏳ Your trial config has expired.\nYou can grab a fresh one now.",
         Language.ru: "⏳ Ваш пробный конфиг истёк.\nМожете получить новый прямо сейчас.",
     },
+    # The reminder messages can use the global variables {total_traffic} / {used_traffic} / {expire}
+    # (filled from the panel webhook). They render to "—" for any value the event doesn't carry.
     "reminder_limited": {
-        Language.fa: "📉 حجم کانفیگ آزمایشی شما تمام شد.\nفردا یکی تازه بگیرید یا دوستان خود را دعوت کنید.",
-        Language.en: "📉 Your trial config ran out of data.\nGet a fresh one tomorrow, or invite friends.",
-        Language.ru: "📉 Трафик пробного конфига закончился.\nПолучите новый завтра или пригласите друзей.",
+        Language.fa: "🪫 حجم کانفیگ آزمایشی شما تمام شد.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n♻️ هم‌اکنون می‌توانید کانفیگ جدید بگیرید یا دوستان خود را دعوت کنید.",
+        Language.en: "🪫 Your trial config ran out of data.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n♻️ Get a fresh one now, or invite friends.",
+        Language.ru: "🪫 Трафик пробного конфига закончился.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n♻️ Получите новый или пригласите друзей.",
     },
     "settings_menu": {
         Language.fa: "⚙️ تنظیمات:\nزبان و یادآوری‌ها را اینجا تغییر دهید.",
         Language.en: "⚙️ Settings:\nChange your language and reminders here.",
         Language.ru: "⚙️ Настройки:\nИзмените язык и напоминания здесь.",
     },
-    "reminder_setting": {
-        Language.fa: "🔔 یادآوری‌ها:\nپیش از پایان اعتبار کانفیگ آزمایشی به شما یادآوری می‌کنیم.",
-        Language.en: "🔔 Reminders:\nWe'll remind you before your trial config expires.",
-        Language.ru: "🔔 Напоминания:\nМы напомним вам до истечения пробного конфига.",
+    # Toasts shown when the settings reminder toggle flips (callback.answer), not full screens.
+    "reminder_enabled": {
+        Language.fa: "🔔 یادآوری روشن شد. پیش از پایان اعتبار کانفیگ به شما یادآوری می‌کنیم.",
+        Language.en: "🔔 Reminders on. We'll remind you before your config expires.",
+        Language.ru: "🔔 Напоминания включены. Мы напомним до истечения конфига.",
     },
-    "reminder_status": {
-        Language.fa: "✅ تنظیمات یادآوری به‌روزرسانی شد.",
-        Language.en: "✅ Your reminder setting was updated.",
-        Language.ru: "✅ Настройка напоминаний обновлена.",
+    "reminder_disabled": {
+        Language.fa: "🔕 یادآوری خاموش شد.",
+        Language.en: "🔕 Reminders off.",
+        Language.ru: "🔕 Напоминания отключены.",
     },
     "ads": {
         Language.fa: "📣 از سرویس ما لذت می‌بری؟ آن را با دوستانت به اشتراک بگذار!",

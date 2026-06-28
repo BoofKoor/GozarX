@@ -89,3 +89,27 @@ def test_url_button_rendered() -> None:
     m = render_rows(Language.fa, structure)
     assert m.inline_keyboard[0][0].url == "https://t.me/share"
     assert m.inline_keyboard[0][0].text == "📤 اشتراک‌گذاری لینک"
+
+
+def test_no_style_leaves_buttons_uncolored() -> None:
+    # Default render: no `style` set on any button — byte-identical to the pre-9.4 output.
+    m = render_rows(Language.fa, MAIN_MENU)
+    assert [[b.style for b in row] for row in m.inline_keyboard] == [
+        [None],
+        [None, None],
+        [None, None],
+    ]
+
+
+def test_style_override_colors_button() -> None:
+    ov = ButtonOverrides({"menu_config": Override(style="success")})
+    m = render_rows(Language.fa, MAIN_MENU, ov)
+    assert m.inline_keyboard[0][0].style == "success"  # the colored cell
+    assert m.inline_keyboard[1][0].style is None  # others stay default
+
+
+def test_critical_button_can_be_colored() -> None:
+    structure = [[ButtonSpec(key="back", callback_data="menu:home")]]
+    ov = ButtonOverrides({"back": Override(style="danger")})
+    m = render_rows(Language.fa, structure, ov)
+    assert m.inline_keyboard[0][0].style == "danger"  # criticals are pinned but still stylable
