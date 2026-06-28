@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.sql import Select
 
@@ -95,6 +97,34 @@ class UserRepository(BaseRepository):
         return int(
             await self.session.scalar(select(func.coalesce(func.sum(User.referral_count), 0))) or 0
         )
+
+    async def language_breakdown(self) -> list[tuple[str, int]]:
+        """Users grouped by language → ``[(lang_value, count), …]`` most-common first.
+        Backs the dashboard language donut."""
+        count = func.count().label("n")
+        rows = await self.session.execute(
+            select(User.language, count).group_by(User.language).order_by(count.desc())
+        )
+        return [(getattr(lang, "value", lang), int(n)) for lang, n in rows.all()]
+
+    async def top_referrers(self, limit: int = 5) -> list[tuple[int, int]]:
+        """The biggest inviters (referral_count > 0) → ``[(telegram_id, count), …]`` desc."""
+        rows = await self.session.execute(
+            select(User.telegram_id, User.referral_count)
+            .where(User.referral_count > 0)
+            .order_by(User.referral_count.desc())
+            .limit(limit)
+        )
+        return [(int(tid), int(n)) for tid, n in rows.all()]
+
+    async def signups_daily(self, since: datetime) -> list[tuple[str, int]]:
+        """Signups per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        Mirrors ConfigLogRepository.daily_counts for the dashboard growth chart."""
+        day = func.date(User.created_at).label("day")
+        rows = await self.session.execute(
+            select(day, func.count()).where(User.created_at >= since).group_by(day).order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
     async def list_all_ids(self) -> list[int]:
         """Every telegram_id — the broadcast/forward audience. Materialised once so the worker can
