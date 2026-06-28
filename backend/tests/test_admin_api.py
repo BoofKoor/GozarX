@@ -16,10 +16,13 @@ import pytest_asyncio
 from httpx import ASGITransport
 
 from gozar.config.settings import get_settings
-from gozar.db.models.enums import UserStatus
+from gozar.db.models.config_log import ConfigLog
+from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
+from gozar.db.repositories.user import UserRepository
 from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
+from gozar.web.routes.admin.dashboard import _online_now
 
 _SECRET = "test-admin-secret-0123456789-abcdef-ghijkl"  # ≥32 bytes for PyJWT
 
@@ -30,6 +33,9 @@ class _StubPanel:
             SimpleNamespace(uuid="sq-1", name="Squad One"),
             SimpleNamespace(uuid="sq-2", name="Squad Two"),
         ]
+
+    async def online_usernames(self) -> set[str] | None:
+        return None  # endpoint unavailable in tests -> dashboard falls back to the DB active count
 
 
 @pytest_asyncio.fixture
@@ -92,6 +98,74 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
     for key in ("total_users", "available", "active", "banned", "configs_today", "referrals"):
         assert body[key] == 0
     assert body["claims_series"] == []
+    # richer payload defaults: empty series/breakdowns, online -> active fallback (0), default range
+    assert body["online_now"] == 0
+    assert body["range_days"] == 14
+    for key in ("signups_series", "languages", "top_locations", "top_referrers"):
+        assert body[key] == []
+
+
+async def test_dashboard_stats_aggregations(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=11, language=Language.fa, referral_count=5),
+                User(telegram_id=12, language=Language.fa, referral_count=0),
+                User(telegram_id=13, language=Language.en, referral_count=2),
+            ]
+        )
+        await s.flush()  # users must exist before config_logs (FK; no ORM rel to order them)
+        s.add_all(
+            [
+                ConfigLog(user_id=11, location="Germany"),
+                ConfigLog(user_id=11, location="Germany"),
+                ConfigLog(user_id=13, location="Finland"),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/stats")).json()
+    assert body["total_users"] == 3 and body["referrals"] == 7
+    assert {x["label"]: x["count"] for x in body["languages"]} == {"fa": 2, "en": 1}
+    assert {x["label"]: x["count"] for x in body["top_locations"]} == {"Germany": 2, "Finland": 1}
+    assert [(r["telegram_id"], r["referral_count"]) for r in body["top_referrers"]] == [
+        (11, 5),
+        (13, 2),
+    ]  # only referrers with count > 0, biggest first
+
+
+async def test_dashboard_range_clamped(admin_client: httpx.AsyncClient) -> None:
+    assert (await admin_client.get("/api/admin/dashboard/stats?days=7")).json()["range_days"] == 7
+    assert (await admin_client.get("/api/admin/dashboard/stats?days=30")).json()["range_days"] == 30
+    # an unsupported window snaps back to the 14-day default (never an arbitrary range)
+    r = await admin_client.get("/api/admin/dashboard/stats?days=999")
+    assert r.json()["range_days"] == 14
+
+
+async def test_online_now_intersects_panel_with_active_db_users(session) -> None:
+    session.add_all(
+        [
+            User(telegram_id=1, status=UserStatus.active_config, panel_username="g_1"),
+            User(telegram_id=2, status=UserStatus.active_config, panel_username="g_2"),
+            User(telegram_id=3, status=UserStatus.available, panel_username=None),
+        ]
+    )
+    await session.commit()
+
+    class _Panel:  # panel reports g_1 (ours) + a stranger online
+        async def online_usernames(self) -> set[str]:
+            return {"g_1", "not_ours"}
+
+    n = await _online_now(_Panel(), UserRepository(session), fallback=99)
+    assert n == 1  # only g_1 is both ours-and-active and online (fallback ignored)
+
+
+async def test_online_now_falls_back_when_panel_cannot_answer(session) -> None:
+    class _Panel:
+        async def online_usernames(self) -> None:
+            return None
+
+    assert await _online_now(_Panel(), UserRepository(session), fallback=7) == 7
 
 
 async def test_protected_route_rejects_missing_token(admin_client: httpx.AsyncClient) -> None:

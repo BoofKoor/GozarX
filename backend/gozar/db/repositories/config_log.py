@@ -57,6 +57,19 @@ class ConfigLogRepository(BaseRepository):
         )
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
+    async def location_counts(self, since: datetime, limit: int = 10) -> list[tuple[str, int]]:
+        """Claims grouped by location at/after ``since`` → ``[(location, count), …]`` busiest first.
+        Backs the dashboard 'top locations' bar (one grouped query)."""
+        count = func.count().label("n")
+        rows = await self.session.execute(
+            select(ConfigLog.location, count)
+            .where(ConfigLog.created_at >= since)
+            .group_by(ConfigLog.location)
+            .order_by(count.desc())
+            .limit(limit)
+        )
+        return [(loc, int(n)) for loc, n in rows.all()]
+
     async def delete_for_user_since(self, user_id: int, since: datetime) -> int:
         """Drop a user's claims at or after ``since`` — the admin 'reclaim' action clears today's
         guard so the user can claim again. Returns the number of rows removed."""

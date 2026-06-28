@@ -1,12 +1,16 @@
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import type { DashboardStats } from "@/types/api";
 
-export function useDashboard() {
+/** Dashboard stats for a chart window (7/14/30 days). The backend clamps unsupported values.
+ * keepPreviousData holds the current view while a range switch refetches (no skeleton flash). */
+export function useDashboard(days: number) {
   return useQuery({
-    queryKey: ["dashboard"],
-    queryFn: async () => (await api.get<DashboardStats>("/admin/dashboard/stats")).data,
+    queryKey: ["dashboard", days],
+    queryFn: async () =>
+      (await api.get<DashboardStats>("/admin/dashboard/stats", { params: { days } })).data,
     refetchInterval: 30_000,
+    placeholderData: keepPreviousData,
   });
 }

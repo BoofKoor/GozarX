@@ -47,6 +47,16 @@ export interface DayPoint {
   count: number;
 }
 
+export interface NamedCount {
+  label: string;
+  count: number;
+}
+
+export interface Referrer {
+  telegram_id: number;
+  referral_count: number;
+}
+
 export interface DashboardStats {
   total_users: number;
   available: number;
@@ -54,7 +64,13 @@ export interface DashboardStats {
   banned: number;
   configs_today: number;
   referrals: number;
+  online_now: number;
+  range_days: number;
   claims_series: DayPoint[];
+  signups_series: DayPoint[];
+  languages: NamedCount[];
+  top_locations: NamedCount[];
+  top_referrers: Referrer[];
 }
 
 // --- Phase 7c: texts + buttons editors ---

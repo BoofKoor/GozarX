@@ -20,6 +20,13 @@ export function shortDay(iso: string): string {
   return parts.length === 3 ? `${parts[1]}/${parts[2]}` : iso;
 }
 
+/** Bot language code → Persian display name (the panel is RTL/Persian). */
+const LANG_LABELS: Record<string, string> = { fa: "فارسی", en: "انگلیسی", ru: "روسی" };
+
+export function langLabel(code: string): string {
+  return LANG_LABELS[code] ?? code;
+}
+
 /** Split a comma-separated locations field (ASCII or Persian comma) into a trimmed, non-empty list. */
 export function splitLocations(raw: string): string[] {
   return raw

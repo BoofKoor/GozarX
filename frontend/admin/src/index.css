@@ -2,6 +2,31 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Self-hosted Vazirmatn (vendored woff2 under public/fonts/ — served by nginx at /fonts/, no CDN).
+   Without these @font-face rules the "Vazirmatn" family in tailwind never loaded and the panel fell
+   back to Tahoma. font-display: swap keeps text visible while the weight downloads. */
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Vazirmatn";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/Vazirmatn-Bold.woff2") format("woff2");
+}
+
 @layer base {
   html {
     font-family: "Vazirmatn", Tahoma, "Segoe UI", system-ui, sans-serif;
@@ -9,5 +34,32 @@
 
   body {
     @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+  }
+
+  /* Tabular numerals so KPI counters and table figures don't jitter as values change. */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Slim, theme-aware scrollbars for the long lists (users, texts) and the sidebar. */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: theme("colors.slate.300") transparent;
+  }
+  .dark .scrollbar-thin {
+    scrollbar-color: theme("colors.slate.700") transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    border-radius: 9999px;
+    background-color: theme("colors.slate.300");
+  }
+  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: theme("colors.slate.700");
   }
 }

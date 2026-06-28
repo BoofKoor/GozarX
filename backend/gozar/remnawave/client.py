@@ -42,6 +42,31 @@ def _links_from_list(links: list[str]) -> dict[str, str]:
     return out
 
 
+def _online_usernames_from(raw: Any) -> set[str] | None:
+    """Pull a set of usernames out of the panel's online-users payload, tolerating the shapes a
+    panel version might use: a bare ``["name", …]`` list, a ``[{username|name: …}, …]`` dict list,
+    or a wrapper dict keyed by ``onlineUsers``/``users``/``usernames``/``online``. Returns ``None``
+    when nothing matches (the caller then falls back to our DB count — never invents a number)."""
+    if isinstance(raw, dict):
+        for key in ("onlineUsers", "users", "usernames", "online"):
+            if isinstance(raw.get(key), list):
+                raw = raw[key]
+                break
+        else:
+            return None
+    if not isinstance(raw, list):
+        return None
+    out: set[str] = set()
+    for item in raw:
+        if isinstance(item, str) and item:
+            out.add(item)
+        elif isinstance(item, dict):
+            name = item.get("username") or item.get("name")
+            if isinstance(name, str) and name:
+                out.add(name)
+    return out
+
+
 def _parse_raw_links(raw: Any) -> dict[str, str]:
     # VERIFY: the raw subscription shape varies by panel version — a list of link strings, a
     #         {remark: link} map, or a wrapper like {"links": [...]}/{"subscription": [...]}.
@@ -126,6 +151,19 @@ class RemnawaveClient:
     async def reset_user_traffic(self, uuid: str) -> bool:
         data = await self._request("POST", f"/users/{uuid}/actions/reset-traffic")
         return bool(data.get("isReset", True)) if isinstance(data, dict) else True
+
+    # VERIFY: usernames the panel reports as currently online — for the dashboard "online now" KPI,
+    #         intersected with our trial-squad users. Remnawave's panel shows an online-connections
+    #         widget; the exact route + payload shape is version-sensitive, so confirm against the
+    #         live {PANEL_BASE_URL}/api and adjust the path/keys in ``_online_usernames_from``.
+    #         Returns None on any error or an unrecognised shape so the caller falls back to our DB
+    #         active-config count (a single bounded attempt; no retry loop, no invented count).
+    async def online_usernames(self) -> set[str] | None:
+        try:
+            data = await self._request("GET", "/system/stats/online")
+        except RemnawaveError:
+            return None
+        return _online_usernames_from(data)
 
     # VERIFY: GET /api/internal-squads -> response.internalSquads[]
     async def list_internal_squads(self) -> list[InternalSquad]:
