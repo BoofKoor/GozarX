@@ -20,6 +20,7 @@ from gozar.bot.replies import preview_options
 from gozar.config.settings import get_settings
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.remnawave import RemnawaveClient
 from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.services.content import ContentService
 from gozar.services.reminders import ReminderService
@@ -69,8 +70,10 @@ async def panel_webhook(
     sessionmaker = request.app.state.sessionmaker
     redis = request.app.state.redis
     bot: Bot | None = getattr(request.app.state, "bot", None)
+    panel: RemnawaveClient | None = getattr(request.app.state, "panel", None)
 
     pending: tuple[int, str, bool] | None = None
+    purge_username: str | None = None
     async with sessionmaker() as session:
         service = ReminderService(
             UserRepository(session),
@@ -79,12 +82,19 @@ async def panel_webhook(
             redis,
         )
         outcome = await service.apply_event(event, _reminder_tokens(event.data))
-        if outcome is not None and outcome.user.reminder_enabled:
-            msg = await ContentService(session, redis).message(
-                outcome.content_key, outcome.user.language, **outcome.tokens
-            )
-            pending = (outcome.user.telegram_id, msg.text, msg.link_preview)
+        if outcome is not None:
+            purge_username = outcome.panel_username
+            if outcome.user.reminder_enabled:
+                msg = await ContentService(session, redis).message(
+                    outcome.content_key, outcome.user.language, **outcome.tokens
+                )
+                pending = (outcome.user.telegram_id, msg.text, msg.link_preview)
         await session.commit()
+
+    # Purge the now-spent trial user from the panel — only AFTER the reset is durable, so a failed
+    # delete never leaves the DB pointing at a user we already cleared. Best-effort, single attempt.
+    if purge_username and panel is not None:
+        await panel.delete_user_by_username(purge_username)
 
     if pending is not None and bot is not None:  # send only AFTER the reset is durable
         try:

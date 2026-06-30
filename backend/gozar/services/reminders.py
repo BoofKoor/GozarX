@@ -36,12 +36,15 @@ class ReminderOutcome:
 
     The caller gates the send on ``reminder_enabled``. ``tokens`` already carries
     ``cooldown_remaining`` (time left until the next claim is allowed) merged with whatever
-    panel-derived tokens the caller passed in.
+    panel-derived tokens the caller passed in. ``panel_username`` is the spent trial user the
+    caller should purge from the panel AFTER the reset commits (best-effort cleanup); it is the
+    username captured BEFORE the reset cleared it, so it is always one of our own trial users.
     """
 
     user: User
     content_key: str
     tokens: dict[str, str]
+    panel_username: str | None
 
 
 class ReminderService:
@@ -66,12 +69,15 @@ class ReminderService:
         self, user: User, content_key: str, base_tokens: dict[str, str]
     ) -> ReminderOutcome:
         # Reset to claimable — proactive counterpart to the lazy self-heal (same cache key).
+        panel_username = user.panel_username  # capture before the reset clears it (for cleanup)
         user.status = UserStatus.available
         user.panel_username = None
         await self._redis.delete(sub_cache_key(user.telegram_id))
         cooldown = await self._cooldown_remaining(user.telegram_id)
         tokens = {**base_tokens, "cooldown_remaining": cooldown}
-        return ReminderOutcome(user=user, content_key=content_key, tokens=tokens)
+        return ReminderOutcome(
+            user=user, content_key=content_key, tokens=tokens, panel_username=panel_username
+        )
 
     async def apply_event(
         self, event: WebhookUserEvent, base_tokens: dict[str, str] | None = None

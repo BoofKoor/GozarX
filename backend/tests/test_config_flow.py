@@ -49,6 +49,7 @@ _CONTENT = {
 class FakePanel:
     def __init__(self, sub=None) -> None:
         self.created: list[str] = []
+        self.deleted: list[str] = []
         self._sub = sub  # (Subscription, {name: link}) returned by subscription()
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids) -> PanelUser:
@@ -57,6 +58,10 @@ class FakePanel:
 
     async def subscription(self, username: str):
         return self._sub
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
 
 def _sub(*, status: str = "ACTIVE", expires_hours: float = 12) -> Subscription:

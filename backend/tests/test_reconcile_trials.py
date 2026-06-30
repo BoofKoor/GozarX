@@ -40,10 +40,15 @@ class FakePanel:
     def __init__(self, by_username: dict[str, str]) -> None:
         self._by_username = by_username
         self.probed: list[str] = []
+        self.deleted: list[str] = []
 
     async def subscription(self, username: str):
         self.probed.append(username)
         return _sub(self._by_username[username])
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
 
 class FakeBot:
@@ -77,18 +82,21 @@ async def test_reconcile_resets_and_notifies_ended_trial_only(db_sessions) -> No
     await _add(db_sessions, 2, "g2")  # still live
 
     bot = FakeBot()
+    panel = FakePanel({"g1": "LIMITED", "g2": "ACTIVE"})
     ctx = {
         "sessionmaker": db_sessions,
-        "panel": FakePanel({"g1": "LIMITED", "g2": "ACTIVE"}),
+        "panel": panel,
         "bot": bot,
         "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
     }
     await reconcile_trials(ctx)
 
-    # The limited user is healed back to claimable and notified; the live user is untouched.
+    # The limited user is healed back to claimable, notified, and purged from the panel; the live
+    # user is untouched.
     assert await _status(db_sessions, 1) is UserStatus.available
     assert await _status(db_sessions, 2) is UserStatus.active_config
     assert bot.sent == [1]
+    assert panel.deleted == ["g1"]
 
 
 async def test_reconcile_is_idempotent(db_sessions) -> None:

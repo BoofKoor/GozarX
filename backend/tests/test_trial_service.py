@@ -69,6 +69,7 @@ class FakePanel:
         self.create_error = create_error
         self.created: list[tuple] = []
         self.sub_calls: list[str] = []
+        self.deleted: list[str] = []
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids) -> PanelUser:
         self.created.append((username, traffic_bytes, expire_at, squad_uuids))
@@ -84,6 +85,10 @@ class FakePanel:
         if isinstance(item, Exception):
             raise item
         return item
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
 
 async def _service(session, panel, **overrides) -> TrialService:
@@ -255,6 +260,28 @@ async def test_self_heal_then_reclaim(session, ended) -> None:
     assert user.panel_username == panel.created[0][0]
     assert user.panel_username != "g100_old"  # a brand-new panel user
     assert len(panel.created) == 1
+
+
+async def test_self_heal_purges_spent_panel_user(session) -> None:
+    # An ended trial that still exists in the panel is deleted (cleanup) before the user is reset.
+    panel = FakePanel([(_sub(status="LIMITED"), _TWO), (_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, status=UserStatus.active_config, panel_username="g100_old")
+
+    await trial.claim(user)
+
+    assert panel.deleted == ["g100_old"]  # spent trial purged from the panel
+
+
+async def test_self_heal_missing_user_skips_purge(session) -> None:
+    # A trial already gone from the panel (404) has nothing to delete — no purge call.
+    panel = FakePanel([RemnawaveError("404", status_code=404), (_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, status=UserStatus.active_config, panel_username="g100_old")
+
+    await trial.claim(user)
+
+    assert panel.deleted == []
 
 
 async def test_link_for_matches_by_name(session) -> None:

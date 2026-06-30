@@ -270,6 +270,7 @@ async def reconcile_trials(ctx: dict) -> None:
         tokens = _reconcile_tokens(sub)
 
         send: tuple[int, str, bool] | None = None
+        purge_username: str | None = None
         async with sessionmaker() as session:
             users = UserRepository(session)
             user = await users.get(telegram_id)
@@ -280,12 +281,18 @@ async def reconcile_trials(ctx: dict) -> None:
                 users, ConfigLogRepository(session), SettingsService(session, redis), redis
             )
             outcome = await service.apply_ended_trial(user, panel_status, tokens)
-            if outcome is not None and outcome.user.reminder_enabled:
-                msg = await ContentService(session, redis).message(
-                    outcome.content_key, outcome.user.language, **outcome.tokens
-                )
-                send = (outcome.user.telegram_id, msg.text, msg.link_preview)
+            if outcome is not None:
+                purge_username = outcome.panel_username
+                if outcome.user.reminder_enabled:
+                    msg = await ContentService(session, redis).message(
+                        outcome.content_key, outcome.user.language, **outcome.tokens
+                    )
+                    send = (outcome.user.telegram_id, msg.text, msg.link_preview)
             await session.commit()
+
+        # Purge the spent trial user from the panel — only AFTER the reset is durable. Best-effort.
+        if purge_username:
+            await panel.delete_user_by_username(purge_username)
 
         if send is not None and bot is not None:  # send only AFTER the reset is durable
             try:

@@ -57,6 +57,7 @@ async def test_expired_resets_user_and_clears_cache(session) -> None:
 
     assert outcome is not None
     assert outcome.content_key == "reminder_expired"
+    assert outcome.panel_username == "g1_x"  # captured before the reset, for panel cleanup
     assert user.status is UserStatus.available
     assert user.panel_username is None
     assert await redis.get(sub_cache_key(1)) is None

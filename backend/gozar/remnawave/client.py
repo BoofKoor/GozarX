@@ -120,6 +120,26 @@ class RemnawaveClient:
         data = await self._request("DELETE", f"/users/{uuid}")
         return bool(data.get("isDeleted", True)) if isinstance(data, dict) else True
 
+    async def delete_user_by_username(self, username: str) -> bool:
+        """Resolve a username to its uuid (GET by-username) and DELETE it — purge a spent trial.
+
+        Best-effort cleanup used after an expiry/limit reset: a single bounded attempt that logs
+        and returns ``False`` on a missing user or any panel failure, so callers never have to
+        guard it. A user already gone from the panel (404) is success-by-absence (nothing to purge).
+        """
+        try:
+            user = await self.get_user(username)
+        except RemnawaveError:
+            logger.warning("panel cleanup: lookup for delete failed")
+            return False
+        if user is None or not user.uuid:
+            return False
+        try:
+            return await self.delete_user(user.uuid)
+        except RemnawaveError:
+            logger.warning("panel cleanup: delete failed")
+            return False
+
     # VERIFY: POST /api/users/{uuid}/actions/reset-traffic -> response.isReset. Zeroes the user's
     #         used traffic for the current period (admin bulk "reset daily consumption"). Single
     #         bounded attempt per user; the caller logs + skips on failure (no retry loop).

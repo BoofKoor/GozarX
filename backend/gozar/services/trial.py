@@ -281,10 +281,12 @@ class TrialService:
             sub, links = await self._panel.subscription(username)
         except RemnawaveError as exc:
             if exc.status_code == 404:
-                await self._reset(user)
+                await self._reset(user)  # already gone from the panel — nothing to purge
                 return None
             raise
         if self._is_expired(sub):
+            if sub.is_found:  # the spent trial user still exists — purge it (best-effort)
+                await self._panel.delete_user_by_username(username)
             await self._reset(user)
             return None
         filtered = await self._filter_locations(links)
