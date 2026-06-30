@@ -25,11 +25,14 @@ async def test_get_int() -> None:
 
 
 async def test_get_bool() -> None:
-    svc = await _service({"on": "true", "off": "false", "weird": "YES"})
+    svc = await _service({"on": "true", "off": "false", "weird": "YES", "blank": "  "})
     assert await svc.get_bool("on") is True
     assert await svc.get_bool("off") is False
     assert await svc.get_bool("weird") is True
     assert await svc.get_bool("missing", default=True) is True
+    # A blank/empty value honours the default, like get_int (not a silent False).
+    assert await svc.get_bool("blank", default=True) is True
+    assert await svc.get_bool("blank") is False
 
 
 async def test_get_list() -> None:
