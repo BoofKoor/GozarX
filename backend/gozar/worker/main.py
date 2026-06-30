@@ -30,6 +30,7 @@ from gozar.worker.tasks import (
     backup_database,
     broadcast_text,
     fanout,
+    reconcile_trials,
     reset_all_active,
     sample_health,
 )
@@ -71,12 +72,21 @@ async def _shutdown(ctx: dict) -> None:
 
 
 class WorkerSettings:
-    functions = [fanout, broadcast_text, reset_all_active, backup_database, sample_health]
+    functions = [
+        fanout,
+        broadcast_text,
+        reset_all_active,
+        reconcile_trials,
+        backup_database,
+        sample_health,
+    ]
     # Nightly DB backup at 03:00 (UTC container clock); a system-health sample every minute
-    # (second=0) feeds the monitoring page's history.
+    # (second=0) feeds the monitoring page's history; a trial reconcile sweep every 15 min as the
+    # panel-webhook fallback (notify + reset users whose data ran out / trial expired).
     cron_jobs = [
         cron(backup_database, hour=3, minute=0),
         cron(sample_health, second=0),
+        cron(reconcile_trials, minute={0, 15, 30, 45}),
     ]
     on_startup = _startup
     on_shutdown = _shutdown

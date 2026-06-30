@@ -18,10 +18,12 @@ from fastapi import APIRouter, Header, HTTPException, Request
 
 from gozar.bot.replies import preview_options
 from gozar.config.settings import get_settings
+from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.services.content import ContentService
 from gozar.services.reminders import ReminderService
+from gozar.services.settings_service import SettingsService
 from gozar.services.trial import human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.web.panel")
@@ -30,8 +32,9 @@ router = APIRouter()
 
 
 def _signature_ok(raw: bytes, signature: str, secret: str) -> bool:
-    # VERIFY: Remnawave signs the webhook body with HMAC-SHA256 and sends the hex digest in the
-    #         `x-remnawave-signature` header. Confirm the header name + scheme against the panel.
+    # Remnawave signs the RAW webhook body with HMAC-SHA256 (secret = WEBHOOK_SECRET_HEADER) and
+    # sends the hex digest in `x-remnawave-signature`. The separate `x-remnawave-timestamp` header
+    # is NOT part of the signed payload, so it's not mixed into the HMAC here.
     expected = hmac.new(secret.encode(), raw, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
@@ -69,10 +72,16 @@ async def panel_webhook(
 
     pending: tuple[int, str, bool] | None = None
     async with sessionmaker() as session:
-        outcome = await ReminderService(UserRepository(session), redis).apply_event(event)
+        service = ReminderService(
+            UserRepository(session),
+            ConfigLogRepository(session),
+            SettingsService(session, redis),
+            redis,
+        )
+        outcome = await service.apply_event(event, _reminder_tokens(event.data))
         if outcome is not None and outcome.user.reminder_enabled:
             msg = await ContentService(session, redis).message(
-                outcome.content_key, outcome.user.language, **_reminder_tokens(event.data)
+                outcome.content_key, outcome.user.language, **outcome.tokens
             )
             pending = (outcome.user.telegram_id, msg.text, msg.link_preview)
         await session.commit()

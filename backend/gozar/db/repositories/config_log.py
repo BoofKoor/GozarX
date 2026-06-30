@@ -26,7 +26,7 @@ class ConfigLogRepository(BaseRepository):
         )
 
     async def count_for_user_since(self, user_id: int, since: datetime) -> int:
-        """Count a user's claims at or after ``since`` (backs the daily-trial guard)."""
+        """Count a user's claims at or after ``since`` (backs the rolling-cooldown claim guard)."""
         return int(
             await self.session.scalar(
                 select(func.count())
@@ -34,6 +34,12 @@ class ConfigLogRepository(BaseRepository):
                 .where(ConfigLog.user_id == user_id, ConfigLog.created_at >= since)
             )
             or 0
+        )
+
+    async def latest_created_at_for_user(self, user_id: int) -> datetime | None:
+        """The user's most recent claim time — used to show the cooldown time-remaining."""
+        return await self.session.scalar(
+            select(func.max(ConfigLog.created_at)).where(ConfigLog.user_id == user_id)
         )
 
     async def distinct_user_count(self) -> int:
