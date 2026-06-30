@@ -22,7 +22,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.services.settings_service import SettingKey, SettingsService
-from gozar.services.trial import start_of_today_utc
+from gozar.services.trial import _DEFAULT_TRIAL_HOURS, cooldown_start, start_of_today_utc
 
 logger = logging.getLogger("gozar.services.admin")
 
@@ -97,12 +97,13 @@ class AdminService:
         return user
 
     async def reclaim(self, target_id: int) -> User | None:
-        """Forgiveness: clear today's claim guard + heal back to ``available`` (drop the dead trial
-        + cached sub) so a stuck user can claim a fresh config again today."""
+        """Forgiveness: clear the rolling claim cooldown + heal back to ``available`` (drop the dead
+        trial + cached sub) so a stuck user can claim a fresh config again right away."""
         user = await self._users.get(target_id)
         if user is None:
             return None
-        await self._logs.delete_for_user_since(target_id, start_of_today_utc())
+        hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
+        await self._logs.delete_for_user_since(target_id, cooldown_start(hours))
         user.status = UserStatus.available
         user.panel_username = None
         await self._redis.delete(sub_cache_key(target_id))

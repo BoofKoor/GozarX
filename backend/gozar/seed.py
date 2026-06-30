@@ -82,9 +82,9 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "✅ Конфиг успешно создан",
     },
     "already_claimed": {
-        Language.fa: "شما امروز کانفیگ خود را گرفته‌اید. ✅\nفردا دوباره سر بزنید یا با دعوت دوستان حجم بگیرید.",
-        Language.en: "You've already claimed today's config. ✅\nCome back tomorrow, or invite friends for more.",
-        Language.ru: "Вы уже получили конфиг на сегодня. ✅\nЗаходите завтра или приглашайте друзей.",
+        Language.fa: "شما به‌تازگی کانفیگ گرفته‌اید. ✅\nتا {retry_after} دیگر می‌توانید کانفیگ بعدی را بگیرید، یا با دعوت دوستان حجم خود را زیاد کنید.",
+        Language.en: "You've recently claimed a config. ✅\nYou can get the next one in {retry_after}, or invite friends for more.",
+        Language.ru: "Вы недавно получили конфиг. ✅\nСледующий можно получить через {retry_after} или пригласите друзей.",
     },
     "not_ready": {
         Language.fa: "🛠 ربات هنوز آمادهٔ ارائهٔ کانفیگ نیست.\nلطفاً کمی بعد دوباره تلاش کنید.",
@@ -132,11 +132,12 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "⏳ Ваш пробный конфиг истёк.\nМожете получить новый прямо сейчас.",
     },
     # The reminder messages can use the global variables {total_traffic} / {used_traffic} / {expire}
-    # (filled from the panel webhook). They render to "—" for any value the event doesn't carry.
+    # / {cooldown_remaining} (filled from the panel webhook / reconcile job). They render to "—" for
+    # any value the event doesn't carry.
     "reminder_limited": {
-        Language.fa: "🪫 حجم کانفیگ آزمایشی شما تمام شد.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n♻️ هم‌اکنون می‌توانید کانفیگ جدید بگیرید یا دوستان خود را دعوت کنید.",
-        Language.en: "🪫 Your trial config ran out of data.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n♻️ Get a fresh one now, or invite friends.",
-        Language.ru: "🪫 Трафик пробного конфига закончился.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n♻️ Получите новый или пригласите друзей.",
+        Language.fa: "🪫 حجم کانفیگ آزمایشی شما تمام شد.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n⏳ تا {cooldown_remaining} دیگر می‌توانید کانفیگ بعدی را بگیرید، یا با دعوت دوستان حجم خود را زیاد کنید.",
+        Language.en: "🪫 Your trial config ran out of data.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n⏳ You can get the next config in {cooldown_remaining}, or invite friends for more.",
+        Language.ru: "🪫 Трафик пробного конфига закончился.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n⏳ Следующий конфиг можно получить через {cooldown_remaining} или пригласите друзей.",
     },
     "settings_menu": {
         Language.fa: "⚙️ تنظیمات:\nزبان و یادآوری‌ها را اینجا تغییر دهید.",

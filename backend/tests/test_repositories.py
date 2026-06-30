@@ -38,6 +38,16 @@ async def test_config_log_counts(session) -> None:
     assert await logs.count_for_user_since(222, datetime.now(UTC) - timedelta(hours=1)) == 2
 
 
+async def test_config_log_latest_created_at(session) -> None:
+    await UserRepository(session).create(223)
+    logs = ConfigLogRepository(session)
+    assert await logs.latest_created_at_for_user(223) is None  # no claims yet
+    await logs.add(223, "Germany")
+    latest = await logs.latest_created_at_for_user(223)
+    assert latest is not None
+    assert (datetime.now(UTC) - latest) < timedelta(minutes=5)  # ~just now (server clock)
+
+
 async def test_content_upsert(session) -> None:
     repo = ContentRepository(session)
     await repo.upsert("welcome", Language.fa, "first")

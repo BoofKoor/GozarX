@@ -12,6 +12,7 @@ import fakeredis.aioredis
 import pytest
 
 from gozar.cache.redis import SETTINGS_KEY
+from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -98,6 +99,17 @@ async def _user(session, **kw) -> User:
     return user
 
 
+async def _log_at(session, user_id: int, *, hours_ago: float) -> None:
+    """Insert a claim with an explicit ``created_at`` (the rolling cooldown is keyed off it)."""
+    log = ConfigLog(
+        user_id=user_id,
+        location="Germany",
+        created_at=datetime.now(UTC) - timedelta(hours=hours_ago),
+    )
+    session.add(log)
+    await session.flush()
+
+
 _TWO = {"Germany": "vless://de#Germany", "Finland": "vless://fi#Finland"}
 
 
@@ -159,14 +171,39 @@ async def test_claim_not_ready_without_squad(session) -> None:
     assert not panel.created  # no panel call when not configured
 
 
-async def test_claim_daily_guard(session) -> None:
+async def test_claim_cooldown_guard_blocks_within_window(session) -> None:
     panel = FakePanel([(_sub(), _TWO)])
     trial = await _service(session, panel)
     user = await _user(session)
-    await ConfigLogRepository(session).add(user.telegram_id, "Germany")  # already claimed today
+    await ConfigLogRepository(session).add(user.telegram_id, "Germany")  # claimed just now
+
+    result = await trial.claim(user)
+    assert isinstance(result, AlreadyClaimedToday)
+    assert result.retry_after  # tells the user how long is left (≈ trial_hours)
+    assert not panel.created
+
+
+async def test_claim_cooldown_blocks_just_under_window(session) -> None:
+    # The fix: the guard is a rolling `trial_hours` window keyed off the LAST claim, not the UTC
+    # calendar day — so a claim 23h ago stays blocked (the near-midnight re-claim regression).
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session)
+    await _log_at(session, user.telegram_id, hours_ago=23)
 
     assert isinstance(await trial.claim(user), AlreadyClaimedToday)
     assert not panel.created
+
+
+async def test_claim_cooldown_freed_after_window(session) -> None:
+    # A claim older than `trial_hours` no longer blocks — the user can claim a fresh trial.
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session)
+    await _log_at(session, user.telegram_id, hours_ago=25)
+
+    assert isinstance(await trial.claim(user), Provisioned)
+    assert user.status is UserStatus.active_config
 
 
 async def test_claim_already_active_when_live(session) -> None:

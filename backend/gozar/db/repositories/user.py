@@ -175,6 +175,16 @@ class UserRepository(BaseRepository):
         )
         return [name for name in result.all() if name]
 
+    async def list_active_with_panel(self) -> list[tuple[int, str]]:
+        """``(telegram_id, panel_username)`` for every ``active_config`` user with a live panel
+        account — the audience the ``reconcile_trials`` sweep probes for ended/limited trials."""
+        rows = await self.session.execute(
+            select(User.telegram_id, User.panel_username).where(
+                User.status == UserStatus.active_config, User.panel_username.is_not(None)
+            )
+        )
+        return [(int(tid), name) for tid, name in rows.all() if name]
+
     async def delete(self, telegram_id: int) -> None:
         """Remove a user row (a broadcast removes a user ONLY on a genuine blocked/deactivated send
         error — never on a transient failure). ``config_logs`` cascade-delete via the FK."""

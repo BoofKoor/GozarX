@@ -28,12 +28,19 @@ from aiogram.exceptions import (
 from aiogram.types import BufferedInputFile, Message
 from sqlalchemy.engine import make_url
 
+from gozar.bot.replies import preview_options
 from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language, UserStatus
+from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
+from gozar.remnawave.schemas import Subscription
+from gozar.services.content import ContentService
 from gozar.services.health import build_snapshot, sample_from
+from gozar.services.reminders import ReminderService
+from gozar.services.settings_service import SettingsService
+from gozar.services.trial import TrialService, human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.worker.tasks")
 
@@ -218,6 +225,80 @@ async def reset_all_active(ctx: dict, admin_id: int) -> None:
     await _edit(
         bot, progress, f"✅ Reset done · {total} active · reset {reset} · skipped {skipped}"
     )
+
+
+# ── Trial reconcile sweep (panel-webhook fallback) ────────────────────────────────────────────
+def _reconcile_tokens(sub: Subscription) -> dict[str, str]:
+    """Reminder tokens built from the live subscription (mirrors the webhook's ``_reminder_tokens``,
+    sourced from the panel read instead of the event payload)."""
+    return {
+        "used_traffic": human_bytes(sub.user.traffic_used_bytes),
+        "total_traffic": human_bytes(sub.user.traffic_limit_bytes),
+        "expire": human_remaining(sub.user.expires_at),
+        "remaining": human_remaining(sub.user.expires_at),
+    }
+
+
+async def reconcile_trials(ctx: dict) -> None:
+    """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose live trial
+    has ended (EXPIRED / LIMITED / missing), reset them to claimable and send the matching reminder.
+
+    Idempotent with the webhook — a user it already reset is no longer ``active_config``, so this
+    never double-notifies. Best-effort throughout: one bounded panel attempt per user, and a panel
+    or send failure for a single user is logged/skipped, never aborting the sweep.
+    """
+    sessionmaker = ctx.get("sessionmaker")
+    panel = ctx.get("panel")
+    bot: Bot | None = ctx.get("bot")
+    redis = ctx.get("cache_redis")
+    if sessionmaker is None or panel is None or redis is None:
+        logger.warning("reconcile_trials: worker missing sessionmaker/panel/redis; skipping")
+        return
+
+    async with sessionmaker() as session:
+        targets = await UserRepository(session).list_active_with_panel()
+
+    healed = 0
+    for telegram_id, username in targets:
+        try:
+            sub, _ = await panel.subscription(username)  # bounded single attempt
+        except RemnawaveError:
+            continue  # transient — the next sweep retries
+        if not TrialService._is_expired(sub):
+            continue  # trial still live — leave it
+        panel_status = sub.user.user_status if sub.is_found else ""
+        tokens = _reconcile_tokens(sub)
+
+        send: tuple[int, str, bool] | None = None
+        async with sessionmaker() as session:
+            users = UserRepository(session)
+            user = await users.get(telegram_id)
+            # Skip if it was reset (webhook) or re-claimed (new panel user) since we probed.
+            if user is None or user.panel_username != username:
+                continue
+            service = ReminderService(
+                users, ConfigLogRepository(session), SettingsService(session, redis), redis
+            )
+            outcome = await service.apply_ended_trial(user, panel_status, tokens)
+            if outcome is not None and outcome.user.reminder_enabled:
+                msg = await ContentService(session, redis).message(
+                    outcome.content_key, outcome.user.language, **outcome.tokens
+                )
+                send = (outcome.user.telegram_id, msg.text, msg.link_preview)
+            await session.commit()
+
+        if send is not None and bot is not None:  # send only AFTER the reset is durable
+            try:
+                await bot.send_message(
+                    send[0], send[1], link_preview_options=preview_options(send[2])
+                )
+            except Exception:  # blocked user / transient — best-effort, never abort the sweep
+                logger.warning("reconcile_trials: reminder send failed (ignored)")
+        healed += 1
+        await asyncio.sleep(0.02)
+
+    if healed:
+        logger.info("reconcile_trials: healed %d ended trial(s)", healed)
 
 
 # ── Nightly database backup ───────────────────────────────────────────────────────────────────

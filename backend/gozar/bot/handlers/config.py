@@ -79,8 +79,11 @@ async def _render_claim(
         return text, location_keyboard(
             result.remarks, cb.CONFIG_CHANGE_PREFIX, lang, page_size=page_size, buttons=buttons
         )
+    if isinstance(result, AlreadyClaimedToday):
+        # Cooldown still running — tell them how long is left ("—" when it can't be derived).
+        text = await content.text("already_claimed", lang, retry_after=result.retry_after or "—")
+        return text, back_keyboard(lang, buttons)
     key = {
-        AlreadyClaimedToday: "already_claimed",
         NotReady: "not_ready",
         NoLocations: "no_locations",
         PanelError: "panel_error",

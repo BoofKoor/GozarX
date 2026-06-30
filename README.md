@@ -19,7 +19,8 @@ gets a fresh trial config each day.
 - **Location picker** — choose from the locations in your trial squad (matched by remark name).
 - **Change location** and **check status** (usage, time remaining, daily limit) any time.
 - **Referrals** — invite friends to grow your daily traffic allowance, up to a configurable cap.
-- **Reminders** when a config expires or hits its limit (driven by Remnawave webhook events).
+- **Reminders** when a config expires or hits its limit (Remnawave webhook, with a worker reconcile
+  sweep as a fallback).
 - **Multilingual** — Persian / English / Russian, with all copy editable from the panel.
 
 ### For the owner (in-bot admin — `/admin`)
@@ -102,6 +103,12 @@ rotated**, and an installed certificate can be kept.
 ### 3. Finish setup in the panel
 Open `https://your-domain`, log in with the admin credentials you chose, and complete the **first-run
 wizard** (trial squad, locations, referral economics). That's it — the bot is live.
+
+### 4. Enable the Remnawave panel webhook (recommended)
+For instant expiry/data-limit reminders, enable the webhook in the **Remnawave panel** and point it at
+`https://your-domain/panel-webhook`, using the secret `PANEL_WEBHOOK_SECRET` from `.env` and the
+`user.limited` + `user.expired` events. If you skip this, those reminders still go out via the worker's
+**reconcile sweep** (every 15 minutes) — just not instantly.
 
 ---
 

@@ -60,7 +60,13 @@ class AlreadyActive:
 
 @dataclass(frozen=True)
 class AlreadyClaimedToday:
-    """One claim per UTC calendar day already used."""
+    """The rolling claim cooldown (``trial_hours`` since the last claim) hasn't elapsed yet.
+
+    ``retry_after`` is the human time LEFT until the next claim is allowed ("7h 12m"), or "" when
+    it can't be derived (the message then falls back to a generic wait copy).
+    """
+
+    retry_after: str = ""
 
 
 @dataclass(frozen=True)
@@ -114,9 +120,32 @@ class _Cached:
 
 
 def start_of_today_utc() -> datetime:
-    """Midnight UTC today — the boundary for the one-claim-per-calendar-day guard."""
+    """Midnight UTC today — the boundary for the calendar-day admin stats (configs/new today)."""
     now = datetime.now(UTC)
     return now.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+def cooldown_start(hours: int) -> datetime:
+    """Start of the rolling claim-cooldown window: ``now - hours``.
+
+    The claim guard counts a user's claims at/after this instant — so a user can claim again only
+    once ``trial_hours`` have elapsed since their LAST claim (not at the next UTC midnight, which
+    let a near-midnight claimer re-claim minutes later).
+    """
+    return datetime.now(UTC) - timedelta(hours=max(hours, 1))
+
+
+def cooldown_remaining(last_claim: datetime | None, hours: int) -> str:
+    """Human time LEFT until the cooldown elapses (``last_claim + hours``); "—" when unknown.
+
+    Shared by the claim guard's "try again in …" copy and the limit/expiry reminders, so the wait
+    shown to the user is always derived from their real last-claim time, never a hardcoded "24h".
+    """
+    if last_claim is None:
+        return "—"
+    if last_claim.tzinfo is None:
+        last_claim = last_claim.replace(tzinfo=UTC)
+    return _human_duration(last_claim + timedelta(hours=max(hours, 1)) - datetime.now(UTC))
 
 
 def _gen_username(telegram_id: int) -> str:
@@ -262,6 +291,11 @@ class TrialService:
         await self._store_cache(user.telegram_id, filtered, sub.user.expires_at)
         return sub, filtered
 
+    async def _retry_after(self, telegram_id: int, hours: int) -> str:
+        """Human time LEFT until the cooldown elapses (last claim + ``hours``); "—" if unknown."""
+        last = await self._config_log_repo.latest_created_at_for_user(telegram_id)
+        return cooldown_remaining(last, hours)
+
     # --- public flow ----------------------------------------------------------------------------
     async def claim(self, user: User) -> ClaimResult:
         # 1. Already holding a config? Re-read live state (self-heals an ended trial to available).
@@ -275,18 +309,20 @@ class TrialService:
                 return AlreadyActive(list(links.keys()))
             # else: reset to available — fall through to a fresh claim.
 
-        # 2. One claim per UTC calendar day.
-        if await self._config_log_repo.count_for_user_since(user.telegram_id, start_of_today_utc()):
-            return AlreadyClaimedToday()
+        # 2. One claim per rolling `trial_hours` window (keyed off the user's LAST claim, so
+        #    exhausting the quota never lets them re-claim before the cooldown elapses).
+        hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
+        since = cooldown_start(hours)
+        if await self._config_log_repo.count_for_user_since(user.telegram_id, since):
+            return AlreadyClaimedToday(await self._retry_after(user.telegram_id, hours))
 
         # 3. Trial squad configured (first-run wizard done)?
         squad = await self._settings.get(SettingKey.TRIAL_SQUAD)
         if not squad:
             return NotReady()
 
-        # 4. Panel call 1 — create a fresh 24h trial user. User stays `available` on failure.
+        # 4. Panel call 1 — create a fresh trial user. User stays `available` on failure.
         traffic_bytes = await compute_traffic_bytes(self._settings, user.referral_count)
-        hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
         expire_at = datetime.now(UTC) + timedelta(hours=hours)
         username = _gen_username(user.telegram_id)
         try:

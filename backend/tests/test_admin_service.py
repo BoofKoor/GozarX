@@ -64,6 +64,10 @@ class FakeSettings:
     async def get(self, key: str) -> str | None:
         return self.values.get(key)
 
+    async def get_int(self, key: str, default: int = 0) -> int:
+        value = self.values.get(key)
+        return int(value) if value is not None else default
+
     async def set(self, key: str, value: str) -> None:
         self.sets.append((key, value))
         self.values[key] = value
@@ -146,7 +150,7 @@ async def test_reclaim_clears_today_and_heals_to_available() -> None:
     await _svc(users=FakeUsers(user=user), logs=logs, redis=redis).reclaim(7)
     assert user.status is UserStatus.available
     assert user.panel_username is None
-    assert logs.deleted and logs.deleted[0][0] == 7  # today's claim guard cleared
+    assert logs.deleted and logs.deleted[0][0] == 7  # rolling claim cooldown cleared
     assert await redis.get(sub_cache_key(7)) is None
 
 

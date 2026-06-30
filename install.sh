@@ -447,6 +447,12 @@ report() {
   Cloudflare  : DNS record for $DOMAIN must be Proxied (orange cloud);
                 SSL/TLS mode = Full (strict).
 
+  Panel hook  : In the Remnawave panel, enable the webhook and point it at
+                  https://$DOMAIN/panel-webhook
+                with secret = PANEL_WEBHOOK_SECRET from $ENV_FILE and the
+                user.limited + user.expired events ON. Without this, expiry/limit
+                reminders rely solely on the worker's reconcile sweep (every 15m).
+
   Logs        : docker compose -f docker-compose.yml -f docker-compose.tls.yml logs -f
   Update      : git pull && docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
   Re-run      : sudo ./install.sh   (safe; reuses secrets)
