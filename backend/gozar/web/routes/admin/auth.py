@@ -49,7 +49,11 @@ async def login(body: LoginIn) -> TokenOut:
     settings = get_settings()
     # Constant-time username compare + bcrypt password check (bcrypt verifies even on a wrong
     # username, so the response time doesn't leak which half was wrong).
-    user_ok = hmac.compare_digest(body.username, settings.admin_username)
+    # Compare as bytes: hmac.compare_digest raises TypeError on a str with non-ASCII code points,
+    # so a client sending a non-ASCII username (or a non-ASCII configured username) must not 500.
+    user_ok = hmac.compare_digest(
+        body.username.encode("utf-8"), settings.admin_username.encode("utf-8")
+    )
     try:
         pass_ok = verify_password(body.password, settings.admin_password_hash)
     except AdminNotConfigured as exc:
@@ -70,6 +74,11 @@ async def refresh(body: RefreshIn) -> TokenOut:
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, _NOT_CONFIGURED) from exc
     except TokenInvalid as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid refresh token") from exc
+    # Bind the token to the CURRENT admin identity: a refresh token minted for a since-rotated
+    # username must not keep renewing access (the installer reuses the JWT secret, so a username
+    # change is otherwise the only lever and it wouldn't cut off old sessions without this check).
+    if payload.sub != get_settings().admin_username:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid refresh token")
     return TokenOut(
         access_token=create_access(payload.sub),
         refresh_token=create_refresh(payload.sub),
