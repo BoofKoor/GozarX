@@ -28,3 +28,11 @@ def sub_cache_key(telegram_id: int) -> str:
     """Per-user trial subscription cache (picker remark->link map + expiry). One source of this key
     so the trial service and the reminder webhook clear/refresh exactly the same entry."""
     return f"cache:sub:{telegram_id}"
+
+
+def limited_notified_key(telegram_id: int) -> str:
+    """One-shot guard for the data-limit ('invite to revive') nudge. A data-exhausted trial keeps
+    its account (status stays active_config) so a referral bump can revive it — the status
+    transition no longer gates the reminder, so this key does: SET NX before sending, cleared on a
+    fresh claim / expiry reset / referral revive, and TTL'd to the trial window as a safety net."""
+    return f"cache:limited_notified:{telegram_id}"

@@ -38,6 +38,12 @@ class _StubPanel:
     async def system_stats(self) -> SystemStats | None:
         return None  # panel unreachable in tests -> dashboard falls back to the DB active count
 
+    async def get_user(self, username: str):
+        return None  # no live panel account in tests -> reclaim/ban revoke is a no-op
+
+    async def delete_user(self, uuid: str) -> bool:
+        return True
+
 
 @pytest_asyncio.fixture
 async def admin_client(db_sessions, monkeypatch) -> AsyncIterator[httpx.AsyncClient]:

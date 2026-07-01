@@ -241,7 +241,9 @@ def _reconcile_tokens(sub: Subscription) -> dict[str, str]:
 
 async def reconcile_trials(ctx: dict) -> None:
     """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose live trial
-    has ended (EXPIRED / LIMITED / missing), reset them to claimable and send the matching reminder.
+    is TERMINAL (time-expired / disabled / missing), reset them to claimable and send the expiry
+    reminder. A data-limited-but-time-valid trial is deliberately left alone (``_is_expired`` is
+    False for it) so it stays revivable by a referral bump — the data-limit nudge is webhook-only.
 
     Idempotent with the webhook — a user it already reset is no longer ``active_config``, so this
     never double-notifies. Best-effort throughout: one bounded panel attempt per user, and a panel
@@ -265,8 +267,7 @@ async def reconcile_trials(ctx: dict) -> None:
         except RemnawaveError:
             continue  # transient — the next sweep retries
         if not TrialService._is_expired(sub):
-            continue  # trial still live — leave it
-        panel_status = sub.user.user_status if sub.is_found else ""
+            continue  # trial still live (incl. data-limited-but-time-valid) — leave it
         tokens = _reconcile_tokens(sub)
 
         send: tuple[int, str, bool] | None = None
@@ -279,7 +280,7 @@ async def reconcile_trials(ctx: dict) -> None:
             service = ReminderService(
                 users, ConfigLogRepository(session), SettingsService(session, redis), redis, panel
             )
-            outcome = await service.apply_ended_trial(user, panel_status, tokens)
+            outcome = await service.apply_ended_trial(user, tokens)
             if outcome is not None and outcome.user.reminder_enabled:
                 msg = await ContentService(session, redis).message(
                     outcome.content_key, outcome.user.language, **outcome.tokens

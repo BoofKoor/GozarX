@@ -78,22 +78,44 @@ async def _status(sessionmaker, telegram_id: int) -> UserStatus:
 
 
 async def test_reconcile_resets_and_notifies_ended_trial_only(db_sessions) -> None:
-    await _add(db_sessions, 1, "g1")  # data ran out
+    await _add(db_sessions, 1, "g1")  # time expired
     await _add(db_sessions, 2, "g2")  # still live
 
     bot = FakeBot()
+    panel = FakePanel({"g1": "EXPIRED", "g2": "ACTIVE"})
     ctx = {
         "sessionmaker": db_sessions,
-        "panel": FakePanel({"g1": "LIMITED", "g2": "ACTIVE"}),
+        "panel": panel,
         "bot": bot,
         "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
     }
     await reconcile_trials(ctx)
 
-    # The limited user is healed back to claimable and notified; the live user is untouched.
+    # The expired user is healed to claimable, notified, and deleted; the live user is untouched.
     assert await _status(db_sessions, 1) is UserStatus.available
     assert await _status(db_sessions, 2) is UserStatus.active_config
     assert bot.sent == [1]
+    assert panel.deleted == ["g1"]
+
+
+async def test_reconcile_skips_data_limited_but_time_valid(db_sessions) -> None:
+    # DATA ran out but TIME is still valid: the sweep leaves the trial ALONE (kept active_config,
+    # not deleted, not notified) — it's revivable via a referral bump; only the webhook nudges it.
+    await _add(db_sessions, 1, "g1")
+
+    bot = FakeBot()
+    panel = FakePanel({"g1": "LIMITED"})  # _sub gives a future expireAt -> non-terminal
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": panel,
+        "bot": bot,
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    assert await _status(db_sessions, 1) is UserStatus.active_config  # left live
+    assert bot.sent == []  # no reminder from the sweep
+    assert panel.deleted == []  # account kept
 
 
 async def test_reconcile_is_idempotent(db_sessions) -> None:
@@ -101,7 +123,7 @@ async def test_reconcile_is_idempotent(db_sessions) -> None:
     bot = FakeBot()
     ctx = {
         "sessionmaker": db_sessions,
-        "panel": FakePanel({"g1": "LIMITED"}),
+        "panel": FakePanel({"g1": "EXPIRED"}),
         "bot": bot,
         "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
     }
@@ -127,7 +149,7 @@ async def test_reconcile_skips_user_disabled_reminders(db_sessions) -> None:
     bot = FakeBot()
     ctx = {
         "sessionmaker": db_sessions,
-        "panel": FakePanel({"g3": "LIMITED"}),
+        "panel": FakePanel({"g3": "EXPIRED"}),
         "bot": bot,
         "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
     }
