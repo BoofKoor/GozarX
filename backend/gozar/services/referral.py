@@ -79,11 +79,13 @@ class ReferralService:
 
         This is also the REVIVE path for a data-exhausted (LIMITED-but-time-valid) inviter: because
         such a user is now kept ``active_config`` with a live panel account (see TrialService), this
-        guard passes and the bump lifts their cap. VERIFY: on the panel versions we target, raising
-        ``trafficLimitBytes`` above ``usedTrafficBytes`` re-activates a LIMITED user on the next
-        node sync — reviving the SAME config. We do NOT reset usage (that would refund already-spent
-        traffic). On a successful bump we drop the one-shot data-limit nudge guard + the cached sub
-        so the next status read reflects the revived state.
+        guard passes and the bump lifts their cap. VERIFIED against Remnawave's ``updateUser``
+        handler (users.service.ts): PATCHing a LIMITED user with a ``trafficLimitBytes`` HIGHER than
+        their current limit (or 0 = unlimited) flips them back to ``ACTIVE`` and re-adds them to the
+        node — reviving the SAME config, no usage reset needed (which would wrongly refund spent
+        traffic). NB: the panel keys the re-activation off new-limit > OLD-limit, so a bump AT the
+        referral cap (allowance unchanged) does NOT revive — correct, there's no bonus left to give.
+        On a successful bump we drop the one-shot nudge guard + the cached sub so the read is fresh.
         """
         if inviter.status is not UserStatus.active_config or not inviter.panel_username:
             return
