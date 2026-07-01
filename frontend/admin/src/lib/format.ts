@@ -55,3 +55,26 @@ export function splitLocations(raw: string): string[] {
     .map((s) => s.trim())
     .filter(Boolean);
 }
+
+// The formatting tags Telegram actually renders (attribute-less; <a href> handled separately).
+const TG_TAGS = "b|strong|i|em|u|ins|s|strike|del|code|pre|blockquote|tg-spoiler";
+
+/**
+ * Render a Telegram-formatted message body as SAFE preview HTML.
+ *
+ * Everything is HTML-escaped first, then only Telegram's small supported tag subset is re-enabled —
+ * so pasted markup like `<img onerror=…>` or `<script>` can never execute in the admin origin
+ * (where the JWTs live in localStorage). Links are re-enabled only when the href is an
+ * http(s)/tg scheme. This replaces a raw `dangerouslySetInnerHTML` of the textarea content.
+ */
+export function telegramPreviewHtml(raw: string): string {
+  const escaped = raw.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return escaped
+    .replace(new RegExp(`&lt;(/?(?:${TG_TAGS}))&gt;`, "gi"), "<$1>")
+    .replace(/&lt;a\s+href=(&quot;|"|')([^"'&<>]+)\1&gt;/gi, (m, _q, href) =>
+      /^(https?:\/\/|tg:\/\/)/i.test(href)
+        ? `<a href="${href}" target="_blank" rel="noopener noreferrer">`
+        : m,
+    )
+    .replace(/&lt;\/a&gt;/gi, "</a>");
+}

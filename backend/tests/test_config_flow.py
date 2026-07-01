@@ -41,6 +41,7 @@ _SETTINGS = {
 _CONTENT = {
     "cache:content:en:config_size": "allowance {size}",
     "cache:content:en:config_active": "active {remaining} {usage}/{total}",
+    "cache:content:en:config_limited": "data out — invite to revive {remaining} {usage}/{total}",
     "cache:content:en:choose_location": "pick a location",
     "cache:content:en:panel_error": "panel error",
 }
@@ -49,6 +50,7 @@ _CONTENT = {
 class FakePanel:
     def __init__(self, sub=None) -> None:
         self.created: list[str] = []
+        self.deleted: list[str] = []
         self._sub = sub  # (Subscription, {name: link}) returned by subscription()
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids) -> PanelUser:
@@ -57,6 +59,10 @@ class FakePanel:
 
     async def subscription(self, username: str):
         return self._sub
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
 
 def _sub(*, status: str = "ACTIVE", expires_hours: float = 12) -> Subscription:
@@ -130,3 +136,19 @@ async def test_menu_config_landing_self_heals_expired(session) -> None:
 
     assert panel.created == []  # landing never provisions, even while healing
     assert user.status is UserStatus.available  # expired trial self-healed to claimable
+
+
+async def test_menu_config_landing_keeps_data_limited_active(session) -> None:
+    # Data ran out (LIMITED) but time is still valid: the landing keeps the user active_config and
+    # never deletes the panel account — the config is revivable via a referral bump.
+    panel = FakePanel(sub=(_sub(status="LIMITED"), {"Germany": "vless://de#Germany"}))
+    trial, content, settings = await _setup(session, panel)
+    user = await _user(
+        session, telegram_id=7, status=UserStatus.active_config, panel_username="g7_live"
+    )
+
+    await open_config(_callback(), user, content, trial, buttons=EMPTY_OVERRIDES)
+
+    assert panel.created == []  # landing never provisions
+    assert panel.deleted == []  # data-limit never deletes the panel account
+    assert user.status is UserStatus.active_config  # kept — not self-healed to available

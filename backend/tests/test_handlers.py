@@ -37,6 +37,15 @@ def _message() -> tuple[SimpleNamespace, dict]:
     return SimpleNamespace(answer=answer), sent
 
 
+def _fsm() -> SimpleNamespace:
+    """A minimal FSMContext stand-in — cmd_start only calls ``clear()`` on it."""
+
+    async def clear() -> None:
+        return None
+
+    return SimpleNamespace(clear=clear)
+
+
 async def test_start_new_user_shows_language_picker() -> None:
     content = await _content(**{"cache:content:fa:choose_language": "زبان؟"})
     user = User(telegram_id=10, language=Language.fa)
@@ -47,6 +56,7 @@ async def test_start_new_user_shows_language_picker() -> None:
         user,
         created=True,
         content=content,
+        state=_fsm(),
         buttons=EMPTY_OVERRIDES,
     )
     assert sent["text"] == "زبان؟"
@@ -65,6 +75,7 @@ async def test_start_records_referrer_and_ignores_self() -> None:
         user,
         created=True,
         content=content,
+        state=_fsm(),
         buttons=EMPTY_OVERRIDES,
     )
     assert user.referred_by == 555
@@ -76,6 +87,7 @@ async def test_start_records_referrer_and_ignores_self() -> None:
         self_ref,
         created=True,
         content=content,
+        state=_fsm(),
         buttons=EMPTY_OVERRIDES,
     )
     assert self_ref.referred_by is None
@@ -91,6 +103,7 @@ async def test_start_existing_user_shows_menu() -> None:
         user,
         created=False,
         content=content,
+        state=_fsm(),
         buttons=EMPTY_OVERRIDES,
     )
     assert sent["text"] == "منو"

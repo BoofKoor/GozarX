@@ -58,7 +58,9 @@ class SettingsService:
 
     async def get_bool(self, key: str, default: bool = False) -> bool:
         raw = await self.get(key)
-        return raw.strip().lower() in _TRUE if raw is not None else default
+        if raw is None or raw.strip() == "":  # blank == unset -> honor the default (like get_int)
+            return default
+        return raw.strip().lower() in _TRUE
 
     async def get_list(self, key: str) -> list[str]:
         raw = await self.get(key)

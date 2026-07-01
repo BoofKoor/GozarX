@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
-import { useCompleteSetup, useSquads } from "@/hooks/useSetup";
+import { useCompleteSetup, useSetupStatus, useSquads } from "@/hooks/useSetup";
 import { splitLocations } from "@/lib/format";
 
 interface Econ {
@@ -25,11 +25,20 @@ const DEFAULT_ECON: Econ = {
 
 export function Setup() {
   const navigate = useNavigate();
+  const { data: status } = useSetupStatus();
   const { data: squads, isLoading, isError } = useSquads();
   const complete = useCompleteSetup();
   const [trialSquad, setTrialSquad] = useState("");
   const [econ, setEcon] = useState<Econ>(DEFAULT_ECON);
   const [locations, setLocations] = useState("");
+
+  // Setup already done? Don't let a bookmark/back-button re-open the wizard — resubmitting would
+  // clobber live settings with the DEFAULT_ECON values. Send the admin to the dashboard instead.
+  useEffect(() => {
+    if (status?.completed) {
+      navigate("/", { replace: true });
+    }
+  }, [status, navigate]);
 
   useEffect(() => {
     if (squads && squads.length > 0 && !trialSquad) {

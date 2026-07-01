@@ -73,7 +73,7 @@ class ContextMiddleware(BaseMiddleware):
                 buttons=buttons,
                 panel=self._panel,
                 trial=TrialService(self._panel, settings, config_log_repo, self._redis),
-                referral=ReferralService(user_repo, settings, self._panel),
+                referral=ReferralService(user_repo, settings, self._panel, self._redis),
                 admin=AdminService(user_repo, config_log_repo, settings, self._panel, self._redis),
                 arq=self._arq,
                 notify=notify,

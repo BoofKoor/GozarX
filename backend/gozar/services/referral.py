@@ -16,6 +16,9 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 
+from redis.asyncio import Redis
+
+from gozar.cache.redis import limited_notified_key, sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.user import UserRepository
@@ -41,11 +44,16 @@ class AwardResult:
 
 class ReferralService:
     def __init__(
-        self, user_repo: UserRepository, settings: SettingsService, panel: RemnawaveClient
+        self,
+        user_repo: UserRepository,
+        settings: SettingsService,
+        panel: RemnawaveClient,
+        redis: Redis | None = None,
     ) -> None:
         self._users = user_repo
         self._settings = settings
         self._panel = panel
+        self._redis = redis
 
     async def award_first_claim(self, invitee: User) -> AwardResult | None:
         """Credit the invitee's referrer (caller guarantees this is the invitee's first claim).
@@ -67,12 +75,26 @@ class ReferralService:
         )
 
     async def _maybe_bump_live_trial(self, inviter: User, new_daily_bytes: int) -> None:
-        """Raise the inviter's live-trial panel limit to the new allowance, if they hold one."""
+        """Raise the inviter's live-trial panel limit to the new allowance, if they hold one.
+
+        This is also the REVIVE path for a data-exhausted (LIMITED-but-time-valid) inviter: because
+        such a user is now kept ``active_config`` with a live panel account (see TrialService), this
+        guard passes and the bump lifts their cap. VERIFIED against Remnawave's ``updateUser``
+        handler (users.service.ts): PATCHing a LIMITED user with a ``trafficLimitBytes`` HIGHER than
+        their current limit (or 0 = unlimited) flips them back to ``ACTIVE`` and re-adds them to the
+        node — reviving the SAME config, no usage reset needed (which would wrongly refund spent
+        traffic). NB: the panel keys the re-activation off new-limit > OLD-limit, so a bump AT the
+        referral cap (allowance unchanged) does NOT revive — correct, there's no bonus left to give.
+        On a successful bump we drop the one-shot nudge guard + the cached sub so the read is fresh.
+        """
         if inviter.status is not UserStatus.active_config or not inviter.panel_username:
             return
         try:
             panel_user = await self._panel.get_user(inviter.panel_username)
             if panel_user and panel_user.uuid:
                 await self._panel.update_traffic_limit(panel_user.uuid, new_daily_bytes)
+                if self._redis is not None:
+                    await self._redis.delete(limited_notified_key(inviter.telegram_id))
+                    await self._redis.delete(sub_cache_key(inviter.telegram_id))
         except RemnawaveError:
             logger.warning("referral live-bump failed for inviter %s", inviter.telegram_id)

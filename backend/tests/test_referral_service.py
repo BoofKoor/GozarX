@@ -11,7 +11,7 @@ import os
 import fakeredis.aioredis
 import pytest
 
-from gozar.cache.redis import SETTINGS_KEY
+from gozar.cache.redis import SETTINGS_KEY, limited_notified_key, sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -44,10 +44,10 @@ class FakePanel:
         return PanelUser(uuid=uuid)
 
 
-async def _service(session, panel) -> ReferralService:
-    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+async def _service(session, panel, redis=None) -> ReferralService:
+    redis = redis or fakeredis.aioredis.FakeRedis(decode_responses=True)
     await redis.set(SETTINGS_KEY, json.dumps(_SETTINGS))
-    return ReferralService(UserRepository(session), SettingsService(session, redis), panel)
+    return ReferralService(UserRepository(session), SettingsService(session, redis), panel, redis)
 
 
 async def _add(session, **kw) -> User:
@@ -91,6 +91,31 @@ async def test_award_bumps_live_inviter_trial_by_uuid(session) -> None:
     expected = (1024 + 3 * 500) * 1024 * 1024  # within the cap of 10
     assert panel.traffic_updates == [("u-inv", expected)]  # PATCH keyed off the uuid
     assert award.new_daily_bytes == expected
+
+
+async def test_award_revives_data_limited_inviter(session) -> None:
+    # The inviter is data-limited (kept active_config). Crediting a referral bumps their cap AND
+    # clears the one-shot nudge guard + the stale sub cache, so the revived state re-reads.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = FakePanel(PanelUser(uuid="u-inv"))
+    await _add(
+        session,
+        telegram_id=1,
+        status=UserStatus.active_config,
+        panel_username="g1_live",
+        referral_count=0,
+    )
+    invitee = await _add(session, telegram_id=2, referred_by=1)
+    await redis.set(limited_notified_key(1), "1")  # a data-limit nudge was already sent
+    await redis.set(sub_cache_key(1), "stale-picker")  # a stale (limited) sub cache
+    referral = await _service(session, panel, redis)
+
+    award = await referral.award_first_claim(invitee)
+
+    assert award.new_count == 1
+    assert panel.traffic_updates == [("u-inv", (1024 + 1 * 500) * 1024 * 1024)]  # cap lifted
+    assert await redis.get(limited_notified_key(1)) is None  # guard dropped
+    assert await redis.get(sub_cache_key(1)) is None  # stale cache dropped -> revived re-read
 
 
 async def test_award_caps_the_bonus(session) -> None:

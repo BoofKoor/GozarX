@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gozar.config.settings import get_settings
 from gozar.web.auth import AdminNotConfigured, TokenInvalid
 from gozar.web.auth.jwt import TYPE_ACCESS, decode
 
@@ -54,6 +55,9 @@ async def require_admin(
         ) from exc
     except TokenInvalid as exc:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token") from exc
+    # Reject a token whose subject is no longer the configured admin (identity rotated).
+    if payload.sub != get_settings().admin_username:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid token")
     return payload.sub
 
 

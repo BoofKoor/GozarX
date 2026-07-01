@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
-import { langLabel } from "@/lib/format";
+import { langLabel, telegramPreviewHtml } from "@/lib/format";
 import type { Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
@@ -106,7 +106,7 @@ export function Broadcast() {
             <div
               className="whitespace-pre-wrap rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800"
               dir="auto"
-              dangerouslySetInnerHTML={{ __html: text }}
+              dangerouslySetInnerHTML={{ __html: telegramPreviewHtml(text) }}
             />
           </div>
         )}

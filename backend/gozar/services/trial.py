@@ -7,13 +7,20 @@ Change-location reuses the same cache; it never creates a second panel user.
 
 **The DB status flip is the LAST step of a claim.** ``status -> active_config`` + ``panel_username``
 are written only after BOTH the create and the subscription read succeed with >=1 usable link. A
-partial failure leaves the user ``available`` (an orphaned panel user is harmless — its 24h expiry
-cleans it up), so we never half-commit a user into a stuck state.
+partial failure leaves the user ``available``; the orphaned panel user from a partial create is
+cleaned up by the next reset/self-heal (Remnawave only DISABLES an expired user, it never deletes
+one), so we never half-commit a user into a stuck state.
 
 **Lazy self-heal.** Between a Phase-4 claim and the Phase-5 expiry webhook, an ``active_config``
 user whose trial has already ended would otherwise be stuck on "already active" forever. Whenever we
-touch such a user we re-read the live panel state we need anyway; if it reads expired / limited /
-missing we reset them to ``available`` so they can claim again.
+touch such a user we re-read the live panel state we need anyway; if the trial is TERMINAL (time
+expired / disabled / missing) we reset them to ``available`` (deleting the dead panel account) so
+they can claim again.
+
+**Data-limit ≠ time-expiry.** A trial that ran out of DATA (panel ``LIMITED``) but whose time is
+still valid is NOT terminal: we keep the account and ``active_config`` so a referral traffic bump
+can revive the SAME config. Only TIME expiry deletes the panel account. The status/config screens
+surface this via ``data_exhausted`` ("invite to revive"); the data-limit nudge is webhook-only.
 """
 
 from __future__ import annotations
@@ -25,7 +32,7 @@ from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
 
-from gozar.cache.redis import sub_cache_key
+from gozar.cache.redis import limited_notified_key, sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -38,8 +45,11 @@ logger = logging.getLogger("gozar.services.trial")
 # Fallbacks used ONLY if the (always-seeded) setting is missing — not a place to encode economics.
 _DEFAULT_DAILY_MB = 1024
 _DEFAULT_TRIAL_HOURS = 24
-# Panel statuses that mean "this trial has ended" (used by the self-heal check).
-_ENDED_STATUSES = {"EXPIRED", "LIMITED", "DISABLED"}
+# Panel statuses that make a trial TERMINAL on their own (delete the account + reset to available).
+# LIMITED is deliberately EXCLUDED: a data-exhausted trial whose TIME is still valid stays live so a
+# referral traffic bump can revive the same config — it becomes terminal only once its time also
+# passes (the expires_at check in _is_expired), never on data-exhaustion alone.
+_ENDED_STATUSES = {"EXPIRED", "DISABLED"}
 
 
 # --- claim() result variants -------------------------------------------------------------------
@@ -91,7 +101,11 @@ ClaimResult = (
 
 @dataclass(frozen=True)
 class StatusInfo:
-    """Rendered tokens for the status screen (``active`` controls the change-location button)."""
+    """Rendered tokens for the status screen (``active`` controls the change-location button).
+
+    ``data_exhausted`` is True for a live-but-data-spent trial (LIMITED, time still valid): the
+    config landing then shows the 'invite to revive' copy instead of the healthy 'active' copy.
+    """
 
     tg_id: int
     referrals: int
@@ -100,6 +114,7 @@ class StatusInfo:
     usage: str
     remaining: str
     active: bool
+    data_exhausted: bool = False
 
 
 @dataclass(frozen=True)
@@ -254,6 +269,8 @@ class TrialService:
     # --- self-heal ------------------------------------------------------------------------------
     @staticmethod
     def _is_expired(sub: Subscription) -> bool:
+        """Terminal (delete + reset) test: missing, EXPIRED/DISABLED, or TIME past. A LIMITED trial
+        whose ``expires_at`` is still in the future is NOT terminal — it stays live + revivable."""
         if not sub.is_found:
             return True
         if sub.user.user_status.upper() in _ENDED_STATUSES:
@@ -261,10 +278,29 @@ class TrialService:
         expires = _parse_dt(sub.user.expires_at)
         return expires is not None and expires <= datetime.now(UTC)
 
+    @staticmethod
+    def _is_data_exhausted(sub: Subscription) -> bool:
+        """A live trial whose DATA is spent (panel LIMITED, or used >= limit) but whose time is
+        still valid — revivable by a referral bump, so screens surface it apart from healthy."""
+        if sub.user.user_status.upper() == "LIMITED":
+            return True
+        limit = sub.user.traffic_limit_bytes
+        return limit > 0 and sub.user.traffic_used_bytes >= limit
+
     async def _reset(self, user: User) -> None:
+        # Delete the ended trial's panel account so expired users don't accumulate in Remnawave (the
+        # panel only DISABLES an expired user, never removes it). Best-effort + bounded: a 404 means
+        # it's already gone, and a transient error is logged and ignored so the reset still happens.
+        username = user.panel_username
+        if username:
+            try:
+                await self._panel.delete_user_by_username(username)
+            except RemnawaveError:
+                logger.warning("self-heal: panel delete failed for %s", user.telegram_id)
         user.status = UserStatus.available
         user.panel_username = None
         await self._clear_cache(user.telegram_id)
+        await self._redis.delete(limited_notified_key(user.telegram_id))
 
     async def _refresh_active(self, user: User) -> tuple[Subscription, dict[str, str]] | None:
         """Re-read an active_config user's live state.
@@ -342,12 +378,13 @@ class TrialService:
         # 6. Only now (create + >=1 link both OK) cache the map and flip the DB status LAST.
         expires = sub.user.expires_at or expire_at.isoformat()
         await self._store_cache(user.telegram_id, filtered, expires)
+        await self._redis.delete(limited_notified_key(user.telegram_id))  # fresh episode
         user.status = UserStatus.active_config
         user.panel_username = username
         return Provisioned(list(filtered.keys()), human_bytes(traffic_bytes))
 
     async def status(self, user: User) -> StatusInfo | PanelError:
-        usage, remaining, active = "—", "—", False
+        usage, remaining, active, exhausted = "—", "—", False, False
         if user.status is UserStatus.active_config:
             try:
                 refreshed = await self._refresh_active(user)
@@ -359,6 +396,7 @@ class TrialService:
                 expires = _parse_dt(sub.user.expires_at)
                 remaining = _human_duration(expires - datetime.now(UTC)) if expires else "—"
                 active = True
+                exhausted = self._is_data_exhausted(sub)
         daily_limit = human_bytes(await compute_traffic_bytes(self._settings, user.referral_count))
         return StatusInfo(
             tg_id=user.telegram_id,
@@ -368,6 +406,7 @@ class TrialService:
             usage=usage,
             remaining=remaining,
             active=active,
+            data_exhausted=exhausted,
         )
 
     async def locations(self, user: User) -> list[str] | PanelError:

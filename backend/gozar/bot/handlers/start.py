@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from aiogram import F, Router
 from aiogram.filters import CommandObject, CommandStart
+from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from gozar.bot import callbacks as cb
@@ -33,8 +34,13 @@ async def cmd_start(
     user: User,
     created: bool,
     content: ContentService,
+    state: FSMContext,
     buttons: ButtonOverrides,
 ) -> None:
+    # /start is an explicit reset: clear any half-finished admin FSM flow so the owner's next plain
+    # message can't be captured by a stale `waiting_id` / `waiting_message` state after navigating
+    # away from the admin panel.
+    await state.clear()
     if created:
         referrer = _parse_referrer(command.args, self_id=user.telegram_id)
         if referrer is not None:

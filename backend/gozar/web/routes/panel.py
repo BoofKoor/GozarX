@@ -69,6 +69,7 @@ async def panel_webhook(
     sessionmaker = request.app.state.sessionmaker
     redis = request.app.state.redis
     bot: Bot | None = getattr(request.app.state, "bot", None)
+    panel = getattr(request.app.state, "panel", None)
 
     pending: tuple[int, str, bool] | None = None
     async with sessionmaker() as session:
@@ -77,6 +78,7 @@ async def panel_webhook(
             ConfigLogRepository(session),
             SettingsService(session, redis),
             redis,
+            panel,
         )
         outcome = await service.apply_event(event, _reminder_tokens(event.data))
         if outcome is not None and outcome.user.reminder_enabled:

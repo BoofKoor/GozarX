@@ -107,8 +107,10 @@ async def open_config(
         await _edit(callback, await content.text("panel_error", lang), back_keyboard(lang, buttons))
         return
     if info.active:
+        # Data spent but time still valid -> 'invite to revive' copy; else the healthy-active copy.
+        key = "config_limited" if info.data_exhausted else "config_active"
         text = await content.text(
-            "config_active",
+            key,
             lang,
             remaining=info.remaining,
             usage=info.usage,

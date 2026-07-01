@@ -15,7 +15,7 @@ from dataclasses import dataclass
 
 from redis.asyncio import Redis
 
-from gozar.cache.redis import sub_cache_key
+from gozar.cache.redis import limited_notified_key, sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -97,16 +97,19 @@ class AdminService:
         return user
 
     async def reclaim(self, target_id: int) -> User | None:
-        """Forgiveness: clear the rolling claim cooldown + heal back to ``available`` (drop the dead
-        trial + cached sub) so a stuck user can claim a fresh config again right away."""
+        """Forgiveness: clear the rolling claim cooldown + heal back to ``available`` so a stuck
+        user can claim a fresh config again right away. Also DELETES the live panel account (best
+        effort): a data-limited trial now keeps its account far longer, so reclaiming one without
+        revoking it would orphan a live Remnawave user."""
         user = await self._users.get(target_id)
         if user is None:
             return None
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
         await self._logs.delete_for_user_since(target_id, cooldown_start(hours))
+        await self._revoke_panel(user)  # delete the live panel account + drop the cached sub
         user.status = UserStatus.available
         user.panel_username = None
-        await self._redis.delete(sub_cache_key(target_id))
+        await self._redis.delete(limited_notified_key(target_id))
         return user
 
     async def zero_referrals(self, target_id: int) -> User | None:

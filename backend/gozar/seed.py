@@ -70,6 +70,14 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "✅ Your config is active.\n⏳ Time left: {remaining}\n📊 Used: {usage} of {total}",
         Language.ru: "✅ Ваш конфиг активен.\n⏳ Осталось: {remaining}\n📊 Израсходовано: {usage} из {total}",
     },
+    # Shown on the get-config landing when the trial's DATA is spent but its time is still valid: the
+    # SAME config revives the moment a friend is invited (referral traffic bump), so we nudge to invite
+    # rather than imply the config is gone. The landing already carries the 🔋 invite button.
+    "config_limited": {
+        Language.fa: "🪫 حجم کانفیگ شما تمام شده، اما هنوز معتبر است.\n⏳ زمان باقی‌مانده: {remaining}\n📊 مصرف: {usage} از {total}\n👥 با دعوت دوستان حجم بگیرید تا همین کانفیگ دوباره وصل شود.",
+        Language.en: "🪫 Your config is out of data but still valid.\n⏳ Time left: {remaining}\n📊 Used: {usage} of {total}\n👥 Invite friends to top up and revive this same config.",
+        Language.ru: "🪫 Трафик конфига закончился, но он ещё действует.\n⏳ Осталось: {remaining}\n📊 Израсходовано: {usage} из {total}\n👥 Пригласите друзей, чтобы пополнить трафик и снова активировать этот конфиг.",
+    },
     "config_delivered": {
         Language.fa: "کانفیگ شما برای «{location}» آماده است:\n\n<code>{link}</code>\n\n⏳ اعتبار تا: {expires}",
         Language.en: 'Your config for "{location}" is ready:\n\n<code>{link}</code>\n\n⏳ Valid until: {expires}',
@@ -135,9 +143,9 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
     # / {cooldown_remaining} (filled from the panel webhook / reconcile job). They render to "—" for
     # any value the event doesn't carry.
     "reminder_limited": {
-        Language.fa: "🪫 حجم کانفیگ آزمایشی شما تمام شد.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n⏳ تا {cooldown_remaining} دیگر می‌توانید کانفیگ بعدی را بگیرید، یا با دعوت دوستان حجم خود را زیاد کنید.",
-        Language.en: "🪫 Your trial config ran out of data.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n⏳ You can get the next config in {cooldown_remaining}, or invite friends for more.",
-        Language.ru: "🪫 Трафик пробного конфига закончился.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n⏳ Следующий конфиг можно получить через {cooldown_remaining} или пригласите друзей.",
+        Language.fa: "🪫 حجم کانفیگ شما تمام شد، اما کانفیگ‌تان هنوز معتبر است.\n🔋 حجم کل: {total_traffic} · مصرف‌شده: {used_traffic}\n👥 همین حالا دوستی را دعوت کنید تا حجم بیشتری بگیرید و همین کانفیگ دوباره وصل شود.",
+        Language.en: "🪫 Your config ran out of data, but it's still valid.\n🔋 Total: {total_traffic} · Used: {used_traffic}\n👥 Invite a friend now to get more data and revive this same config.",
+        Language.ru: "🪫 Трафик конфига закончился, но сам конфиг ещё действует.\n🔋 Всего: {total_traffic} · Использовано: {used_traffic}\n👥 Пригласите друга, чтобы получить больше трафика и снова активировать этот конфиг.",
     },
     "settings_menu": {
         Language.fa: "⚙️ تنظیمات:\nزبان و یادآوری‌ها را اینجا تغییر دهید.",

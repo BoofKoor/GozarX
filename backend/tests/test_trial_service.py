@@ -69,6 +69,11 @@ class FakePanel:
         self.create_error = create_error
         self.created: list[tuple] = []
         self.sub_calls: list[str] = []
+        self.deleted: list[str] = []  # usernames the self-heal removed from the panel
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids) -> PanelUser:
         self.created.append((username, traffic_bytes, expire_at, squad_uuids))
@@ -235,9 +240,10 @@ async def test_claim_transient_error_on_active_keeps_state(session) -> None:
     "ended",
     [
         (_sub(status="EXPIRED"), _TWO),
-        (_sub(status="LIMITED"), _TWO),
+        (_sub(status="DISABLED"), _TWO),
         (_sub(is_found=False), _TWO),
         (_sub(expires_hours=-1), _TWO),  # expireAt in the past
+        (_sub(status="LIMITED", expires_hours=-1), _TWO),  # data-out AND time-past -> terminal
         RemnawaveError("404", status_code=404),  # panel user gone
     ],
 )
@@ -330,6 +336,40 @@ async def test_status_self_heals_expired_active(session) -> None:
     assert info.active is False
     assert user.status is UserStatus.available  # status read self-healed the ended trial
     assert user.panel_username is None
+
+
+async def test_status_data_limited_stays_active_and_flags_exhausted(session) -> None:
+    # Data ran out (LIMITED) but time is still valid: the trial is KEPT (revivable via referral), so
+    # status still reads active — with data_exhausted set so the landing shows the revive copy.
+    panel = FakePanel([(_sub(status="LIMITED", used=1024 * 1024 * 1024, expires_hours=8), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, status=UserStatus.active_config, panel_username="g100_live")
+
+    info = await trial.status(user)
+
+    assert not isinstance(info, PanelError)
+    assert info.active is True
+    assert info.data_exhausted is True
+    assert user.status is UserStatus.active_config  # NOT self-healed — the account is kept
+    assert user.panel_username == "g100_live"
+    assert not panel.deleted  # data-limit never deletes the panel account
+
+
+async def test_claim_on_data_limited_returns_already_active(session) -> None:
+    # A data-limited-but-time-valid holder claiming again is told they already hold a config (change
+    # location), not given a fresh one — the same account is meant to be revived, not replaced.
+    panel = FakePanel(
+        [(_sub(status="LIMITED", expires_hours=8), {"Germany": "vless://de#Germany"})]
+    )
+    trial = await _service(session, panel)
+    user = await _user(session, status=UserStatus.active_config, panel_username="g100_live")
+
+    result = await trial.claim(user)
+
+    assert isinstance(result, AlreadyActive)
+    assert user.status is UserStatus.active_config
+    assert not panel.created  # no new panel user
+    assert not panel.deleted  # and the limited account is untouched
 
 
 def test_start_of_today_utc_is_midnight() -> None:
