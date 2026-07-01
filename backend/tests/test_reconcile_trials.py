@@ -40,10 +40,15 @@ class FakePanel:
     def __init__(self, by_username: dict[str, str]) -> None:
         self._by_username = by_username
         self.probed: list[str] = []
+        self.deleted: list[str] = []
 
     async def subscription(self, username: str):
         self.probed.append(username)
         return _sub(self._by_username[username])
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
 
 class FakeBot:

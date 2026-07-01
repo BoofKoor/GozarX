@@ -10,6 +10,7 @@ gated on ``reminder_enabled`` by the caller. A banned user is never touched.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 
 from redis.asyncio import Redis
@@ -19,9 +20,12 @@ from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.remnawave.schemas import WebhookUserEvent
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import _DEFAULT_TRIAL_HOURS, cooldown_remaining
+
+logger = logging.getLogger("gozar.services.reminders")
 
 # VERIFY: Remnawave's event names for the expiry / data-limit transitions.
 _REMINDER_FOR_EVENT = {
@@ -51,21 +55,38 @@ class ReminderService:
         config_logs: ConfigLogRepository,
         settings: SettingsService,
         redis: Redis,
+        panel: RemnawaveClient | None = None,
     ) -> None:
         self._users = user_repo
         self._logs = config_logs
         self._settings = settings
         self._redis = redis
+        self._panel = panel
 
     async def _cooldown_remaining(self, telegram_id: int) -> str:
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
         last = await self._logs.latest_created_at_for_user(telegram_id)
         return cooldown_remaining(last, hours)
 
+    async def _delete_panel_user(self, user: User) -> None:
+        """Best-effort: delete the ended trial's Remnawave account so expired users don't pile up in
+        the panel (an expired user is only DISABLED there, never auto-removed). Bounded single
+        attempt — a panel error is logged and ignored so the reset/reminder still proceeds."""
+        username = user.panel_username
+        if not self._panel or not username:
+            return
+        try:
+            await self._panel.delete_user_by_username(username)
+        except RemnawaveError:
+            logger.warning(
+                "reminder: panel delete failed for %s (left to expire)", user.telegram_id
+            )
+
     async def _reset_and_outcome(
         self, user: User, content_key: str, base_tokens: dict[str, str]
     ) -> ReminderOutcome:
         # Reset to claimable — proactive counterpart to the lazy self-heal (same cache key).
+        await self._delete_panel_user(user)  # remove the ended trial from the panel first
         user.status = UserStatus.available
         user.panel_username = None
         await self._redis.delete(sub_cache_key(user.telegram_id))

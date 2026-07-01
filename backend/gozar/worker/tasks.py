@@ -277,7 +277,7 @@ async def reconcile_trials(ctx: dict) -> None:
             if user is None or user.panel_username != username:
                 continue
             service = ReminderService(
-                users, ConfigLogRepository(session), SettingsService(session, redis), redis
+                users, ConfigLogRepository(session), SettingsService(session, redis), redis, panel
             )
             outcome = await service.apply_ended_trial(user, panel_status, tokens)
             if outcome is not None and outcome.user.reminder_enabled:

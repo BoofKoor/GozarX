@@ -120,6 +120,15 @@ class RemnawaveClient:
         data = await self._request("DELETE", f"/users/{uuid}")
         return bool(data.get("isDeleted", True)) if isinstance(data, dict) else True
 
+    async def delete_user_by_username(self, username: str) -> bool:
+        """Resolve a username to its uuid (PATCH/DELETE key off the uuid, not the name) and delete
+        that panel account. Returns False when the user is already gone (404) or carries no uuid; a
+        transient failure raises ``RemnawaveError`` so callers can treat deletion as best-effort."""
+        panel_user = await self.get_user(username)  # None on 404
+        if panel_user is None or not panel_user.uuid:
+            return False
+        return await self.delete_user(panel_user.uuid)
+
     # VERIFY: POST /api/users/{uuid}/actions/reset-traffic -> response.isReset. Zeroes the user's
     #         used traffic for the current period (admin bulk "reset daily consumption"). Single
     #         bounded attempt per user; the caller logs + skips on failure (no retry loop).

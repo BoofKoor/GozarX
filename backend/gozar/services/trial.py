@@ -7,13 +7,14 @@ Change-location reuses the same cache; it never creates a second panel user.
 
 **The DB status flip is the LAST step of a claim.** ``status -> active_config`` + ``panel_username``
 are written only after BOTH the create and the subscription read succeed with >=1 usable link. A
-partial failure leaves the user ``available`` (an orphaned panel user is harmless — its 24h expiry
-cleans it up), so we never half-commit a user into a stuck state.
+partial failure leaves the user ``available``; the orphaned panel user from a partial create is
+cleaned up by the next reset/self-heal (Remnawave only DISABLES an expired user, it never deletes
+one), so we never half-commit a user into a stuck state.
 
 **Lazy self-heal.** Between a Phase-4 claim and the Phase-5 expiry webhook, an ``active_config``
 user whose trial has already ended would otherwise be stuck on "already active" forever. Whenever we
 touch such a user we re-read the live panel state we need anyway; if it reads expired / limited /
-missing we reset them to ``available`` so they can claim again.
+missing we reset them to ``available`` (deleting the dead panel account) so they can claim again.
 """
 
 from __future__ import annotations
@@ -262,6 +263,15 @@ class TrialService:
         return expires is not None and expires <= datetime.now(UTC)
 
     async def _reset(self, user: User) -> None:
+        # Delete the ended trial's panel account so expired users don't accumulate in Remnawave (the
+        # panel only DISABLES an expired user, never removes it). Best-effort + bounded: a 404 means
+        # it's already gone, and a transient error is logged and ignored so the reset still happens.
+        username = user.panel_username
+        if username:
+            try:
+                await self._panel.delete_user_by_username(username)
+            except RemnawaveError:
+                logger.warning("self-heal: panel delete failed for %s", user.telegram_id)
         user.status = UserStatus.available
         user.panel_username = None
         await self._clear_cache(user.telegram_id)

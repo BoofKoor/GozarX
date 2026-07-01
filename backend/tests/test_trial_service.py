@@ -69,6 +69,11 @@ class FakePanel:
         self.create_error = create_error
         self.created: list[tuple] = []
         self.sub_calls: list[str] = []
+        self.deleted: list[str] = []  # usernames the self-heal removed from the panel
+
+    async def delete_user_by_username(self, username: str) -> bool:
+        self.deleted.append(username)
+        return True
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids) -> PanelUser:
         self.created.append((username, traffic_bytes, expire_at, squad_uuids))
