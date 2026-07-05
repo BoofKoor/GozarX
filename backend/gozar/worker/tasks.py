@@ -35,7 +35,7 @@ from gozar.db.models.enums import Language, UserStatus
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
-from gozar.remnawave.schemas import Subscription
+from gozar.remnawave.schemas import PanelUser
 from gozar.services.content import ContentService
 from gozar.services.health import build_snapshot, sample_from
 from gozar.services.reminders import ReminderService
@@ -228,22 +228,29 @@ async def reset_all_active(ctx: dict, admin_id: int) -> None:
 
 
 # ── Trial reconcile sweep (panel-webhook fallback) ────────────────────────────────────────────
-def _reconcile_tokens(sub: Subscription) -> dict[str, str]:
-    """Reminder tokens built from the live subscription (mirrors the webhook's ``_reminder_tokens``,
-    sourced from the panel read instead of the event payload)."""
+def _reconcile_tokens(user: PanelUser) -> dict[str, str]:
+    """Reminder tokens built from the authoritative user record (mirrors the webhook's
+    ``_reminder_tokens`` — the webhook payload is the SAME ``GetFullUserResponseModel`` shape)."""
     return {
-        "used_traffic": human_bytes(sub.user.traffic_used_bytes),
-        "total_traffic": human_bytes(sub.user.traffic_limit_bytes),
-        "expire": human_remaining(sub.user.expires_at),
-        "remaining": human_remaining(sub.user.expires_at),
+        "used_traffic": human_bytes(user.traffic.used_bytes),
+        "total_traffic": human_bytes(user.traffic_limit_bytes),
+        "expire": human_remaining(user.expire_at),
+        "remaining": human_remaining(user.expire_at),
     }
 
 
 async def reconcile_trials(ctx: dict) -> None:
-    """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose live trial
-    is TERMINAL (time-expired / disabled / missing), reset them to claimable and send the expiry
-    reminder. A data-limited-but-time-valid trial is deliberately left alone (``_is_expired`` is
-    False for it) so it stays revivable by a referral bump — the data-limit nudge is webhook-only.
+    """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose panel
+    account is TERMINAL (time-expired / disabled / missing), reset them to claimable and send the
+    expiry reminder. A data-limited-but-time-valid trial is deliberately left alone
+    (``_panel_user_terminal`` is False for it) so it stays revivable by a referral bump — the
+    data-limit nudge is webhook-only.
+
+    Each user is probed with a single ``get_user`` (the authoritative user record), NOT
+    ``subscription``: a terminal trial has no active links, so the subscription path falls through
+    to the raw-config endpoint whose failure would raise and silently skip the user every sweep —
+    the exact reason expired accounts piled up. The user record is one call, needs no links, and its
+    ``status`` is the source of truth (and a 404 means it's already gone → still reset the user).
 
     Idempotent with the webhook — a user it already reset is no longer ``active_config``, so this
     never double-notifies. Best-effort throughout: one bounded panel attempt per user, and a panel
@@ -263,12 +270,16 @@ async def reconcile_trials(ctx: dict) -> None:
     healed = 0
     for telegram_id, username in targets:
         try:
-            sub, _ = await panel.subscription(username)  # bounded single attempt
+            # Authoritative user record (single call, no link resolution): its `status` is the
+            # source of truth and it never falls through to the raw-config endpoint the way
+            # `subscription()` does for a link-less expired user (which would raise and skip it).
+            panel_user = await panel.get_user(username)  # None on 404 — the account is already gone
         except RemnawaveError:
             continue  # transient — the next sweep retries
-        if not TrialService._is_expired(sub):
+        # A 404 (already deleted in the panel) is terminal too: reset the still-active_config user.
+        if panel_user is not None and not TrialService._panel_user_terminal(panel_user):
             continue  # trial still live (incl. data-limited-but-time-valid) — leave it
-        tokens = _reconcile_tokens(sub)
+        tokens = _reconcile_tokens(panel_user) if panel_user is not None else {}
 
         send: tuple[int, str, bool] | None = None
         async with sessionmaker() as session:
