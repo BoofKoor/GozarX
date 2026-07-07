@@ -15,36 +15,37 @@ import fakeredis.aioredis
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.user import UserRepository
-from gozar.remnawave.schemas import Subscription, SubscriptionUser
+from gozar.remnawave.schemas import PanelUser, UserTraffic
 from gozar.worker.tasks import reconcile_trials
 
 
-def _sub(status: str) -> tuple[Subscription, dict]:
+def _panel_user(status: str) -> PanelUser:
     expires = (datetime.now(UTC) + timedelta(hours=12)).isoformat()
-    sub = Subscription(
-        is_found=True,
-        user=SubscriptionUser(
-            user_status=status,
-            expires_at=expires,
-            traffic_used_bytes=1024**3,
-            traffic_limit_bytes=1024**3,
-            short_uuid="su",
-        ),
+    return PanelUser(
+        uuid="u",
+        username="g",
+        status=status,
+        expire_at=expires,
+        traffic_limit_bytes=1024**3,
+        traffic=UserTraffic(used_bytes=1024**3),
     )
-    return sub, {}
 
 
 class FakePanel:
-    """Maps a panel username to its current subscription status."""
+    """Maps a panel username to its current panel-user status (probed via ``get_user``).
 
-    def __init__(self, by_username: dict[str, str]) -> None:
+    ``None`` in the map models a 404 — the account was already deleted in the panel (still a
+    terminal state for the reconcile: the ``active_config`` Gozar user gets reset)."""
+
+    def __init__(self, by_username: dict[str, str | None]) -> None:
         self._by_username = by_username
         self.probed: list[str] = []
         self.deleted: list[str] = []
 
-    async def subscription(self, username: str):
+    async def get_user(self, username: str) -> PanelUser | None:
         self.probed.append(username)
-        return _sub(self._by_username[username])
+        status = self._by_username[username]
+        return _panel_user(status) if status is not None else None
 
     async def delete_user_by_username(self, username: str) -> bool:
         self.deleted.append(username)
@@ -104,7 +105,7 @@ async def test_reconcile_skips_data_limited_but_time_valid(db_sessions) -> None:
     await _add(db_sessions, 1, "g1")
 
     bot = FakeBot()
-    panel = FakePanel({"g1": "LIMITED"})  # _sub gives a future expireAt -> non-terminal
+    panel = FakePanel({"g1": "LIMITED"})  # _panel_user gives a future expireAt -> non-terminal
     ctx = {
         "sessionmaker": db_sessions,
         "panel": panel,
@@ -132,6 +133,25 @@ async def test_reconcile_is_idempotent(db_sessions) -> None:
 
     assert bot.sent == [1]
     assert await _status(db_sessions, 1) is UserStatus.available
+
+
+async def test_reconcile_resets_user_whose_panel_account_is_gone(db_sessions) -> None:
+    # get_user 404s (panel account already deleted — e.g. by a prior webhook or manually), yet the
+    # Gozar user is still active_config. That's terminal too: reset them so they can claim again.
+    await _add(db_sessions, 1, "g1")
+
+    bot = FakeBot()
+    panel = FakePanel({"g1": None})  # None -> get_user returns None (404)
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": panel,
+        "bot": bot,
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    assert await _status(db_sessions, 1) is UserStatus.available  # healed to claimable
+    assert bot.sent == [1]  # expiry reminder still sent
 
 
 async def test_reconcile_skips_user_disabled_reminders(db_sessions) -> None:

@@ -37,7 +37,7 @@ from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
-from gozar.remnawave.schemas import Subscription
+from gozar.remnawave.schemas import PanelUser, Subscription
 from gozar.services.settings_service import SettingKey, SettingsService
 
 logger = logging.getLogger("gozar.services.trial")
@@ -276,6 +276,22 @@ class TrialService:
         if sub.user.user_status.upper() in _ENDED_STATUSES:
             return True
         expires = _parse_dt(sub.user.expires_at)
+        return expires is not None and expires <= datetime.now(UTC)
+
+    @staticmethod
+    def _panel_user_terminal(user: PanelUser) -> bool:
+        """Terminal (delete + reset) test on the AUTHORITATIVE user record
+        (``GET /users/by-username`` -> ``status`` + ``expireAt``): EXPIRED / DISABLED, or the
+        expiry time has passed. A LIMITED user whose time is valid is NOT terminal (kept/revivable).
+
+        The background reconcile sweep uses THIS instead of ``_is_expired`` (which reads the
+        subscription endpoint): a terminal trial has no active links, so ``subscription()`` falls
+        through to the raw-config endpoint whose failure would mask the expiry. Reading the user
+        record needs a single call, never touches links, and its ``status`` is the source of
+        truth."""
+        if user.status.upper() in _ENDED_STATUSES:
+            return True
+        expires = _parse_dt(user.expire_at)
         return expires is not None and expires <= datetime.now(UTC)
 
     @staticmethod
