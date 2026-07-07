@@ -32,12 +32,14 @@ def test_users_columns() -> None:
         "reminder_enabled",
         "referred_by",
         "created_at",
+        "last_claim_at",
     }
     assert users.c.telegram_id.primary_key is True
     assert users.c.telegram_id.autoincrement is False
     assert users.c.panel_username.nullable is True
     assert users.c.referred_by.nullable is True
     assert users.c.referred_by.index is True
+    assert users.c.last_claim_at.nullable is True
 
 
 def test_enum_values() -> None:

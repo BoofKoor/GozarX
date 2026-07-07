@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime
 
 import fakeredis.aioredis
 
@@ -143,13 +144,19 @@ async def test_ban_missing_user_returns_none() -> None:
 
 
 async def test_reclaim_clears_today_and_heals_to_available() -> None:
-    user = User(telegram_id=7, status=UserStatus.active_config, panel_username="g7")
+    user = User(
+        telegram_id=7,
+        status=UserStatus.active_config,
+        panel_username="g7",
+        last_claim_at=datetime.now(UTC),
+    )
     redis = _redis()
     await redis.set(sub_cache_key(7), "cached")
     logs = FakeLogs()
     await _svc(users=FakeUsers(user=user), logs=logs, redis=redis).reclaim(7)
     assert user.status is UserStatus.available
     assert user.panel_username is None
+    assert user.last_claim_at is None  # cooldown anchor cleared so the guard frees them at once
     assert logs.deleted and logs.deleted[0][0] == 7  # rolling claim cooldown cleared
     assert await redis.get(sub_cache_key(7)) is None
 

@@ -163,6 +163,19 @@ def cooldown_remaining(last_claim: datetime | None, hours: int) -> str:
     return _human_duration(last_claim + timedelta(hours=max(hours, 1)) - datetime.now(UTC))
 
 
+def in_cooldown(last_claim: datetime | None, hours: int) -> bool:
+    """True while the rolling claim cooldown is still active (last claim less than ``hours`` ago).
+
+    The single predicate behind the claim guard — a claim exactly ``hours`` old no longer blocks, so
+    the user can re-claim the instant their trial expires (both anchored to the same claim time).
+    """
+    if last_claim is None:
+        return False
+    if last_claim.tzinfo is None:
+        last_claim = last_claim.replace(tzinfo=UTC)
+    return last_claim > cooldown_start(hours)
+
+
 def _gen_username(telegram_id: int) -> str:
     """A unique panel username per claim (each claim is a brand-new 24h user)."""
     return f"g{telegram_id}_{int(datetime.now(UTC).timestamp())}"
@@ -343,10 +356,15 @@ class TrialService:
         await self._store_cache(user.telegram_id, filtered, sub.user.expires_at)
         return sub, filtered
 
-    async def _retry_after(self, telegram_id: int, hours: int) -> str:
-        """Human time LEFT until the cooldown elapses (last claim + ``hours``); "—" if unknown."""
-        last = await self._config_log_repo.latest_created_at_for_user(telegram_id)
-        return cooldown_remaining(last, hours)
+    async def _last_claim_at(self, user: User) -> datetime | None:
+        """The rolling-cooldown anchor: when the user last PROVISIONED a trial.
+
+        Prefers the durable ``last_claim_at`` (set at provision, so it lines up with the trial's own
+        expiry); falls back to the newest delivered-config time for a user whose field is still
+        unset (the migration backfills existing rows, so this only covers a pre-backfill edge)."""
+        if user.last_claim_at is not None:
+            return user.last_claim_at
+        return await self._config_log_repo.latest_created_at_for_user(user.telegram_id)
 
     # --- public flow ----------------------------------------------------------------------------
     async def claim(self, user: User) -> ClaimResult:
@@ -362,20 +380,24 @@ class TrialService:
             # else: reset to available — fall through to a fresh claim.
 
         # 2. One claim per rolling `trial_hours` window (keyed off the user's LAST claim, so
-        #    exhausting the quota never lets them re-claim before the cooldown elapses).
+        #    exhausting the quota never lets them re-claim before the cooldown elapses). The anchor
+        #    is the PROVISION time (last_claim_at), so the window ends exactly when the trial does.
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
-        since = cooldown_start(hours)
-        if await self._config_log_repo.count_for_user_since(user.telegram_id, since):
-            return AlreadyClaimedToday(await self._retry_after(user.telegram_id, hours))
+        last_claim = await self._last_claim_at(user)
+        if in_cooldown(last_claim, hours):
+            return AlreadyClaimedToday(cooldown_remaining(last_claim, hours))
 
         # 3. Trial squad configured (first-run wizard done)?
         squad = await self._settings.get(SettingKey.TRIAL_SQUAD)
         if not squad:
             return NotReady()
 
-        # 4. Panel call 1 — create a fresh trial user. User stays `available` on failure.
+        # 4. Panel call 1 — create a fresh trial user. User stays `available` on failure. `claim_at`
+        #    is the shared anchor: the panel account expires at claim_at + hours, and so does the
+        #    cooldown (persisted at step 6), so the two can never drift apart.
         traffic_bytes = await compute_traffic_bytes(self._settings, user.referral_count)
-        expire_at = datetime.now(UTC) + timedelta(hours=hours)
+        claim_at = datetime.now(UTC)
+        expire_at = claim_at + timedelta(hours=hours)
         username = _gen_username(user.telegram_id)
         try:
             await self._panel.create_trial_user(username, traffic_bytes, expire_at, [squad])
@@ -397,6 +419,7 @@ class TrialService:
         await self._redis.delete(limited_notified_key(user.telegram_id))  # fresh episode
         user.status = UserStatus.active_config
         user.panel_username = username
+        user.last_claim_at = claim_at  # cooldown starts at provision, aligned with the panel expiry
         return Provisioned(list(filtered.keys()), human_bytes(traffic_bytes))
 
     async def status(self, user: User) -> StatusInfo | PanelError:

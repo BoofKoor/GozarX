@@ -109,6 +109,7 @@ class AdminService:
         await self._revoke_panel(user)  # delete the live panel account + drop the cached sub
         user.status = UserStatus.available
         user.panel_username = None
+        user.last_claim_at = None  # clear the cooldown anchor too, so the guard frees them at once
         await self._redis.delete(limited_notified_key(target_id))
         return user
 
