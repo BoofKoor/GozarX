@@ -6,6 +6,7 @@ DB-gated (real session) + fakeredis.
 from __future__ import annotations
 
 import os
+from datetime import UTC, datetime, timedelta
 
 import fakeredis.aioredis
 import pytest
@@ -130,6 +131,25 @@ async def test_outcome_carries_cooldown_token(session) -> None:
     # Caller-supplied panel tokens are merged with the always-present cooldown token.
     assert outcome.tokens["used_traffic"] == "1 GB"
     assert "cooldown_remaining" in outcome.tokens
+
+
+async def test_cooldown_token_anchored_on_last_claim_at(session) -> None:
+    # The "claim again in …" wait is computed from last_claim_at (provision), so a config claimed
+    # 23h ago under a 24h window yields a real ~1h remainder — never "—" and never keyed off a log.
+    user = await _add(
+        session,
+        telegram_id=9,
+        status=UserStatus.active_config,
+        panel_username="g9_x",
+        last_claim_at=datetime.now(UTC) - timedelta(hours=23),
+    )
+    service, _, _ = await _service(session)
+
+    outcome = await service.apply_event(_event("user.limited", "g9_x"))
+
+    assert outcome is not None
+    assert outcome.user is user
+    assert outcome.tokens["cooldown_remaining"] != "—"  # derived from last_claim_at, not "unknown"
 
 
 async def test_apply_ended_trial_resets_and_deletes(session) -> None:

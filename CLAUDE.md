@@ -68,7 +68,8 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 
 ## Data model
 - `users`: telegram_id (PK bigint) · status enum(available/active_config/banned) · language enum ·
-  referral_count · panel_username · reminder_enabled bool · referred_by bigint · created_at tz.
+  referral_count · panel_username · reminder_enabled bool · referred_by bigint · created_at tz ·
+  last_claim_at tz (provision time — the rolling-cooldown anchor, aligned with the trial's expiry).
 - `config_logs`: id · user_id FK · location · created_at tz (one row per claim).
 - `content`: unique (key, language) → body text. Editable bot copy.
 - `settings`: key → value string. Runtime values (trial squad, locations, daily_limit_mb,

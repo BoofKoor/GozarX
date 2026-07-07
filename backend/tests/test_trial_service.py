@@ -211,6 +211,38 @@ async def test_claim_cooldown_freed_after_window(session) -> None:
     assert user.status is UserStatus.active_config
 
 
+async def test_claim_records_last_claim_at_at_provision(session) -> None:
+    # The cooldown anchor is stamped when the panel account is CREATED (aligned with its expiry),
+    # not at the later location-pick — so the window can never end after the trial actually expires.
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session)
+
+    before = datetime.now(UTC)
+    assert isinstance(await trial.claim(user), Provisioned)
+    assert user.last_claim_at is not None
+    assert user.last_claim_at >= before
+
+
+async def test_cooldown_guard_keys_off_last_claim_at_without_any_log(session) -> None:
+    # A user provisioned just now (last_claim_at set) is blocked even with NO config_logs row: the
+    # window starts at provision, so it can't be bypassed by claiming and never picking a location.
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, last_claim_at=datetime.now(UTC))
+
+    assert isinstance(await trial.claim(user), AlreadyClaimedToday)
+    assert not panel.created  # no config_logs row exists, yet the guard still blocks
+
+
+async def test_cooldown_freed_when_last_claim_at_older_than_window(session) -> None:
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, last_claim_at=datetime.now(UTC) - timedelta(hours=25))
+
+    assert isinstance(await trial.claim(user), Provisioned)  # 25h > 24h window — freed
+
+
 async def test_claim_already_active_when_live(session) -> None:
     panel = FakePanel([(_sub(), {"Germany": "vless://de#Germany"})])
     trial = await _service(session, panel)

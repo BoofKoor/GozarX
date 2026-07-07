@@ -63,9 +63,11 @@ class ReminderService:
         self._redis = redis
         self._panel = panel
 
-    async def _cooldown_remaining(self, telegram_id: int) -> str:
+    async def _cooldown_remaining(self, user: User) -> str:
+        # Anchor on the provision time (`last_claim_at`) so the "claim again in …" wait lines up
+        # with the trial's expiry; fall back to the last delivered-config time for an unset row.
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
-        last = await self._logs.latest_created_at_for_user(telegram_id)
+        last = user.last_claim_at or await self._logs.latest_created_at_for_user(user.telegram_id)
         return cooldown_remaining(last, hours)
 
     async def _delete_panel_user(self, user: User) -> None:
@@ -92,7 +94,7 @@ class ReminderService:
         user.panel_username = None
         await self._redis.delete(sub_cache_key(user.telegram_id))
         await self._redis.delete(limited_notified_key(user.telegram_id))
-        cooldown = await self._cooldown_remaining(user.telegram_id)
+        cooldown = await self._cooldown_remaining(user)
         tokens = {**base_tokens, "cooldown_remaining": cooldown}
         return ReminderOutcome(user=user, content_key=content_key, tokens=tokens)
 
@@ -108,7 +110,7 @@ class ReminderService:
         )
         if not first:  # already nudged this episode — don't spam
             return None
-        cooldown = await self._cooldown_remaining(user.telegram_id)
+        cooldown = await self._cooldown_remaining(user)
         tokens = {**base_tokens, "cooldown_remaining": cooldown}
         return ReminderOutcome(user=user, content_key="reminder_limited", tokens=tokens)
 

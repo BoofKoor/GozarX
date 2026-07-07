@@ -29,3 +29,7 @@ class User(Base):
     # Inviter's telegram_id. Plain bigint (not a FK): the inviter may not exist as a row yet.
     referred_by: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # When the user last PROVISIONED a trial (the moment claim() creates the panel account) — the
+    # rolling-cooldown anchor. It lines up with the trial's own expiry (both = claim + trial_hours),
+    # unlike a config_logs row timestamped at the later location-pick. None until the first claim.
+    last_claim_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
