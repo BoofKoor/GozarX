@@ -217,7 +217,7 @@
   .app-btn{ display:inline-flex; align-items:center; gap:7px; flex:1; justify-content:center; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:9px 8px; cursor:pointer; transition:border-color .15s; }
   .app-btn:hover{ border-color:var(--primary); }
   .app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-  .app-glyph{ inline-size:18px; block-size:18px; border-radius:6px; display:grid; place-items:center; color:#fff; font-size:10px; font-weight:800; flex:none; }
+  .app-glyph{ inline-size:26px; block-size:26px; border-radius:8px; display:grid; place-items:center; color:#fff; font-size:11px; font-weight:800; letter-spacing:-.02em; flex:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.16), 0 1px 2px rgba(2,6,23,.22); }
 
   .qr-panel{ margin-block-start:12px; display:none; justify-content:center; }
   .qr-panel.show{ display:flex; }
@@ -308,6 +308,7 @@
       <div class="toolbar-spacer"></div>
       <div class="seg" role="group" aria-label="language"><button id="loc-fa" aria-pressed="true">فارسی</button><button id="loc-en" aria-pressed="false">EN</button></div>
       <div class="seg" role="group" aria-label="theme"><button id="th-light" aria-pressed="true" data-i18n="tb_light"></button><button id="th-dark" aria-pressed="false" data-i18n="tb_dark"></button></div>
+      <div class="seg" role="group" aria-label="platform preview"><button id="pf-ios" aria-pressed="false">iOS</button><button id="pf-android" aria-pressed="false">Android</button><button id="pf-desktop" aria-pressed="false" data-i18n="pf_desktop"></button></div>
     </div>
   </div>
 
@@ -366,7 +367,21 @@
     { flag:"🇳🇱", fa:"هلند", en:"Netherlands" },
     { flag:"🇨🇦", fa:"کانادا", en:"Canada" }
   ];
-  var APPS = [ {n:"v2rayNG",c:"#16A34A",g:"V"}, {n:"Hiddify",c:"#7C3AED",g:"H"}, {n:"Streisand",c:"#0EA5E9",g:"S"} ];
+  /* App tiles use each app's brand color + initial (a generic app-tile, not the
+     app's own artwork). Which apps show is chosen by detected platform. */
+  var APPS = {
+    v2rayng:  { n:"v2rayNG",   c1:"#4338CA", c2:"#1E1B4B", g:"V2" },
+    streisand:{ n:"Streisand", c1:"#28B7E8", c2:"#0E7FC0", g:"S"  },
+    happ:     { n:"Happ",      c1:"#7C5CFF", c2:"#5B3EE0", g:"H"  }
+  };
+  var PLATFORM_APPS = { ios:["streisand","happ"], android:["v2rayng","happ"], desktop:["happ","v2rayng","streisand"] };
+  function detectPlatform() {
+    var ua = navigator.userAgent || "";
+    if (/android/i.test(ua)) return "android";
+    if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+    return "desktop";
+  }
+  var platform = detectPlatform();
 
   /* emoji flag -> ISO 3166-1 alpha-2 (from regional-indicator code points) */
   function emojiToCC(e) {
@@ -395,7 +410,7 @@
       antibot:"با یک بررسی نامرئی در برابر ربات محافظت می‌شود",
       succ_title:"کانفیگ آماده است", succ_sub:"لینک را کپی کن یا در اپ باز کن.", ready:"آماده",
       active_title:"کانفیگ شما فعال است", active_sub:"می‌توانی کپی کنی یا لوکیشن را عوض کنی.",
-      link_label:"لینک کانفیگ", copy:"کپی", copied:"کپی شد", show_qr:"کد QR", open_in:"باز کردن در اپ",
+      link_label:"لینک کانفیگ", copy:"کپی", copied:"کپی شد", show_qr:"کد QR", open_in:"باز کردن در اپ", open_ios:"برای آیفون شما", open_android:"برای اندروید شما", pf_desktop:"دسکتاپ",
       time_left:"زمان باقی‌مانده", usage:"مصرف امروز", of:"از",
       change_loc:"تغییر لوکیشن",
       m_title:"حجم بیشتری می‌خواهی؟",
@@ -433,7 +448,7 @@
       antibot:"Protected against bots by an invisible check",
       succ_title:"Your config is ready", succ_sub:"Copy the link or open it in an app.", ready:"Ready",
       active_title:"Your config is active", active_sub:"Copy it, or switch its location.",
-      link_label:"Config link", copy:"Copy", copied:"Copied", show_qr:"QR code", open_in:"Open in app",
+      link_label:"Config link", copy:"Copy", copied:"Copied", show_qr:"QR code", open_in:"Open in app", open_ios:"For your iPhone", open_android:"For your Android", pf_desktop:"Desktop",
       time_left:"Time left", usage:"Today's usage", of:"of",
       change_loc:"Change location",
       m_title:"Want more daily volume?",
@@ -518,8 +533,10 @@
     return '<div class="copyfield"><code dir="ltr">'+link+'</code><button class="btn" data-action="copy" data-link="'+link.replace(/"/g,"&quot;")+'">'+(btnLabel||t("copy"))+'</button></div>';
   }
   function apps() {
-    return '<div class="apps"><span class="lbl">'+t("open_in")+'</span><div class="apps-row">'+
-      APPS.map(function(a){ return '<button class="app-btn" data-action="noop"><span class="app-glyph" style="background:'+a.c+'">'+a.g+'</span>'+a.n+'</button>'; }).join("")+'</div></div>';
+    var ids = PLATFORM_APPS[platform] || PLATFORM_APPS.desktop;
+    var label = platform==="ios" ? t("open_ios") : platform==="android" ? t("open_android") : t("open_in");
+    return '<div class="apps"><span class="lbl">'+label+'</span><div class="apps-row">'+
+      ids.map(function(id){ var a=APPS[id]; return '<button class="app-btn" data-action="noop"><span class="app-glyph" style="background:linear-gradient(135deg,'+a.c1+','+a.c2+')">'+a.g+'</span>'+a.n+'</button>'; }).join("")+'</div></div>';
   }
   function qrToggle() {
     return '<div class="cfg-actions"><button class="icon-btn" data-action="qr">'+svg("qr",2)+'<span class="qr-label">'+t("show_qr")+'</span></button></div>'+
@@ -683,6 +700,12 @@
   document.getElementById("loc-en").addEventListener("click",function(){setLocale("en");});
   document.getElementById("th-light").addEventListener("click",function(){setTheme("light");});
   document.getElementById("th-dark").addEventListener("click",function(){setTheme("dark");});
+  /* platform preview switcher (the real site auto-detects; this lets a reviewer
+     see each variant). It re-renders every widget so the app row updates. */
+  function setPlatform(p){ platform=p; ["ios","android","desktop"].forEach(function(x){ document.getElementById("pf-"+x).setAttribute("aria-pressed", x===p); }); renderHero("idle"); renderGallery(); }
+  document.getElementById("pf-ios").addEventListener("click",function(){setPlatform("ios");});
+  document.getElementById("pf-android").addEventListener("click",function(){setPlatform("android");});
+  document.getElementById("pf-desktop").addEventListener("click",function(){setPlatform("desktop");});
 
   var rt=document.documentElement.getAttribute("data-theme"), pd=window.matchMedia&&window.matchMedia("(prefers-color-scheme: dark)").matches;
   app.setAttribute("data-theme", rt==="dark"||(!rt&&pd)?"dark":"light");
@@ -690,6 +713,7 @@
   document.getElementById("th-dark").setAttribute("aria-pressed",app.getAttribute("data-theme")==="dark");
   new MutationObserver(function(){ var v=document.documentElement.getAttribute("data-theme"); if(v==="dark"||v==="light") setTheme(v); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
 
+  ["ios","android","desktop"].forEach(function(x){ document.getElementById("pf-"+x).setAttribute("aria-pressed", x===platform); });
   setLocale("fa");
 })();
 </script>
