@@ -1,0 +1,1150 @@
+<title>GozarX Design System — Phase 0</title>
+<style>
+  /* ============ GozarX Design System — Phase 0 specimen ============
+     Tokens per docs/website/UI_SPEC.md v1.1. Preview uses system font
+     fallbacks; production self-hosts Vazirmatn (fa) / Inter (en). */
+
+  html, body { margin: 0; padding: 0; }
+
+  #app {
+    /* --- theme-independent structure tokens --- */
+    --r-ctl: 12px;   /* buttons, inputs, chips */
+    --r-card: 16px;  /* cards */
+    --r-hero: 24px;  /* hero claim card */
+    --r-pill: 9999px;
+    --shadow-card: 0 1px 2px rgba(2,6,23,.06), 0 8px 24px rgba(2,6,23,.08);
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    line-height: var(--lh-body);
+    font-size: 16px;
+    transition: background .25s ease, color .25s ease;
+  }
+
+  #app[data-theme="light"] {
+    --bg: #F8FAFC; --surface: #FFFFFF; --raised: #FFFFFF;
+    --border: #E2E8F0; --text: #0F172A; --muted: #64748B;
+    --primary: #2563EB; --primary-hover: #1D4ED8; --primary-active: #1E40AF;
+    --on-primary: #FFFFFF;
+    --link: #2563EB;
+    --ring: #3B82F6;
+    --success: #10B981; --success-surface: #D1FAE5; --success-ink: #065F46;
+    --warning: #F59E0B; --warning-surface: #FEF3C7; --warning-ink: #92400E;
+    --danger:  #EF4444; --danger-surface:  #FEE2E2; --danger-ink:  #991B1B;
+    --brand-tint: #EFF6FF; --brand-tint-ink: #1D4ED8;
+    --glow: 0 4px 14px rgba(37,99,235,.35);
+    --backdrop: rgba(2,6,23,.45);
+  }
+  #app[data-theme="dark"] {
+    --bg: #020617; --surface: #0F172A; --raised: #1E293B;
+    --border: rgba(51,65,85,.4); --text: #F1F5F9; --muted: #94A3B8;
+    --primary: #3B82F6; --primary-hover: #60A5FA; --primary-active: #2563EB;
+    --on-primary: #0B1220; /* dark ink on brand-500 holds AA (white would be 3.7:1) */
+    --link: #60A5FA;
+    --ring: #3B82F6;
+    --success: #34D399; --success-surface: rgba(16,185,129,.14); --success-ink: #6EE7B7;
+    --warning: #FBBF24; --warning-surface: rgba(245,158,11,.14); --warning-ink: #FCD34D;
+    --danger:  #F87171; --danger-surface:  rgba(239,68,68,.14);  --danger-ink:  #FCA5A5;
+    --brand-tint: rgba(59,130,246,.14); --brand-tint-ink: #93C5FD;
+    --glow: 0 4px 18px rgba(59,130,246,.35);
+    --backdrop: rgba(2,6,23,.65);
+  }
+
+  #app[data-locale="fa"] {
+    --font: "Vazirmatn", "Segoe UI", Tahoma, system-ui, sans-serif;
+    --lh-body: 1.8; --lh-head: 1.4; --ls-head: 0;
+  }
+  #app[data-locale="en"] {
+    --font: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --lh-body: 1.6; --lh-head: 1.2; --ls-head: -0.01em;
+  }
+
+  #app *, #app *::before, #app *::after { box-sizing: border-box; }
+
+  /* ---------- layout ---------- */
+  .container { max-width: 1200px; margin-inline: auto; padding-inline: 24px; }
+  @media (min-width: 768px) { .container { padding-inline: 32px; } }
+  .section { padding-block: 48px; border-block-start: 1px solid var(--border); }
+  @media (min-width: 768px)  { .section { padding-block: 64px; } }
+  @media (min-width: 1100px) { .section { padding-block: 96px; } }
+
+  /* ---------- type ---------- */
+  .display { font-size: clamp(36px, 2.2vw + 28px, 56px); font-weight: 700; line-height: var(--lh-head); letter-spacing: var(--ls-head); text-wrap: balance; }
+  .h1 { font-size: clamp(30px, 1.1vw + 26px, 40px); font-weight: 700; line-height: var(--lh-head); letter-spacing: var(--ls-head); }
+  .h2 { font-size: clamp(26px, .65vw + 24px, 32px); font-weight: 700; line-height: var(--lh-head); letter-spacing: var(--ls-head); }
+  .h3 { font-size: clamp(20px, .45vw + 18px, 24px); font-weight: 700; line-height: var(--lh-head); }
+  .h4 { font-size: clamp(18px, .25vw + 17px, 20px); font-weight: 500; line-height: var(--lh-head); }
+  .body-lg { font-size: clamp(17px, .12vw + 16.5px, 18px); }
+  .body { font-size: 16px; }
+  .small { font-size: 14px; }
+  .caption { font-size: 12px; color: var(--muted); }
+  .muted { color: var(--muted); }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .section-title { margin: 0 0 8px; }
+  .section-lede { margin: 0 0 32px; max-width: 38rem; color: var(--muted); }
+  .eyebrow { font-size: 12px; font-weight: 700; color: var(--brand-tint-ink);
+    background: var(--brand-tint); border-radius: var(--r-pill);
+    padding: 4px 12px; display: inline-block; margin-block-end: 12px; }
+
+  /* ---------- toolbar ---------- */
+  .toolbar { position: sticky; inset-block-start: 0; z-index: 50;
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border-block-end: 1px solid var(--border); }
+  .toolbar-row { display: flex; align-items: center; gap: 16px; padding-block: 12px; flex-wrap: wrap; }
+  .brandmark { display: flex; align-items: center; gap: 10px; font-weight: 700; }
+  .brandmark .dot { inline-size: 28px; block-size: 28px; border-radius: 8px; flex: none;
+    background: linear-gradient(135deg, #2563EB, #06B6D4); }
+  [dir="rtl"] .brandmark .dot { background: linear-gradient(225deg, #2563EB, #06B6D4); }
+  .toolbar-spacer { flex: 1; }
+
+  .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-pill); }
+  .seg button { border: 0; background: transparent; color: var(--muted); font: inherit;
+    font-size: 13px; font-weight: 500; padding: 5px 14px; border-radius: var(--r-pill); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--primary); color: var(--on-primary); font-weight: 700; }
+  .seg button:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  /* ---------- swatches ---------- */
+  .swatch-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(84px, 1fr)); gap: 8px; }
+  .swatch { border-radius: var(--r-ctl); border: 1px solid var(--border); overflow: hidden; background: var(--surface); }
+  .swatch .chip { block-size: 56px; }
+  .swatch .meta { padding: 8px 10px; font-size: 11px; line-height: 1.5; }
+  .swatch .meta b { display: block; font-size: 12px; }
+  .swatch .meta code { direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, "SF Mono", Consolas, monospace; color: var(--muted); }
+  .swatch.hot { outline: 2px solid var(--ring); outline-offset: 2px; }
+
+  .pair-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .pair { border-radius: var(--r-ctl); padding: 14px 16px; border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .pair .lbl { font-weight: 500; font-size: 14px; }
+  .pair .sub { font-size: 11px; opacity: .75; direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, Consolas, monospace; }
+  .aa { font-size: 11px; font-weight: 700; border-radius: var(--r-pill); padding: 3px 10px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .aa.pass { background: var(--success-surface); color: var(--success-ink); }
+  .aa.large { background: var(--warning-surface); color: var(--warning-ink); }
+  .aa.fail { background: var(--danger-surface); color: var(--danger-ink); }
+
+  .gradient-hero { border-radius: var(--r-hero); padding: 40px 32px; color: #fff;
+    background: linear-gradient(135deg, #2563EB, #06B6D4); box-shadow: var(--glow); }
+  [dir="rtl"] .gradient-hero { background: linear-gradient(225deg, #2563EB, #06B6D4); }
+  .gradient-hero .h3 { margin: 0 0 4px; }
+  .gradient-hero p { margin: 0; opacity: .9; font-size: 14px; }
+
+  /* ---------- cards / panels ---------- */
+  .panel { background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-card); padding: 24px; box-shadow: var(--shadow-card); }
+  .panel h4 { margin: 0 0 4px; }
+  .panel .hint { margin: 0 0 20px; font-size: 13px; color: var(--muted); }
+  .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; align-items: start; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+
+  .card-demo { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card); padding: 16px; }
+  .card-demo.interactive { transition: transform .15s ease, box-shadow .15s ease; cursor: pointer; }
+  .card-demo.interactive:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+
+  /* ---------- buttons ---------- */
+  .btn { --btn-bg: var(--primary); --btn-ink: var(--on-primary);
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 1px solid transparent; border-radius: var(--r-ctl); cursor: pointer;
+    font: inherit; font-size: 15px; font-weight: 700; line-height: 1;
+    padding: 11px 20px; background: var(--btn-bg); color: var(--btn-ink);
+    transition: background .15s ease, transform .15s ease, box-shadow .15s ease; }
+  .btn.lg { font-size: 16px; padding: 15px 28px; }
+  .btn.primary { box-shadow: var(--glow); }
+  .btn.primary:hover, .btn.primary.is-hover { background: var(--primary-hover); }
+  .btn.primary:active, .btn.primary.is-active { background: var(--primary-active); transform: scale(.98); }
+  .btn.secondary { --btn-bg: var(--surface); --btn-ink: var(--text); border-color: var(--border); }
+  .btn.secondary:hover, .btn.secondary.is-hover { border-color: var(--primary); color: var(--link); }
+  .btn.secondary:active, .btn.secondary.is-active { transform: scale(.98); }
+  .btn.ghost { --btn-bg: transparent; --btn-ink: var(--link); font-weight: 500; }
+  .btn.ghost:hover, .btn.ghost.is-hover { background: var(--brand-tint); }
+  .btn.destructive { --btn-bg: var(--danger); --btn-ink: #fff; }
+  #app[data-theme="dark"] .btn.destructive { --btn-ink: #2b0707; }
+  .btn:disabled, .btn.is-disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
+  .btn:focus-visible, .btn.is-focus { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .btn .spinner { inline-size: 15px; block-size: 15px; border-radius: 50%;
+    border: 2px solid currentColor; border-inline-start-color: transparent;
+    animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .state-lbl { font-size: 11px; color: var(--muted); text-align: center; margin-block-start: 6px; }
+  .state-cell { display: flex; flex-direction: column; align-items: stretch; }
+
+  /* ---------- icons ---------- */
+  .icon { inline-size: 18px; block-size: 18px; flex: none; }
+  [dir="rtl"] .icon-dir { transform: scaleX(-1); }
+
+  /* ---------- inputs ---------- */
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 500; }
+  .input { font: inherit; font-size: 15px; color: var(--text); background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 11px 14px;
+    transition: border-color .15s ease, box-shadow .15s ease; inline-size: 100%; }
+  .input::placeholder { color: var(--muted); }
+  .input:focus-visible, .input.is-focus { outline: none; border-color: var(--ring); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 25%, transparent); }
+  .field.error .input { border-color: var(--danger); }
+  .field .help { font-size: 12px; color: var(--muted); }
+  .field.error .help { color: var(--danger-ink); }
+  .input:disabled { opacity: .5; cursor: not-allowed; }
+  .input-wrap { position: relative; }
+  .input-wrap .icon { position: absolute; inset-inline-start: 12px; inset-block-start: 50%;
+    transform: translateY(-50%); color: var(--muted); }
+  .input-wrap .input { padding-inline-start: 40px; }
+  select.input { appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+    background-position: calc(100% - 20px) 55%, calc(100% - 15px) 55%;
+    background-size: 5px 5px; background-repeat: no-repeat; }
+  [dir="rtl"] select.input { background-position: 20px 55%, 15px 55%; }
+
+  /* ---------- badges & chips ---------- */
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700;
+    border-radius: var(--r-pill); padding: 4px 12px; }
+  .badge.info { background: var(--brand-tint); color: var(--brand-tint-ink); }
+  .badge.success { background: var(--success-surface); color: var(--success-ink); }
+  .badge.warning { background: var(--warning-surface); color: var(--warning-ink); }
+  .badge.danger { background: var(--danger-surface); color: var(--danger-ink); }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip-loc { display: inline-flex; align-items: center; gap: 8px; cursor: pointer;
+    font: inherit; font-size: 14px; font-weight: 500; color: var(--text);
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r-pill); padding: 8px 16px; transition: all .15s ease; }
+  .chip-loc:hover { border-color: var(--primary); }
+  .chip-loc[aria-pressed="true"] { background: var(--primary); border-color: var(--primary);
+    color: var(--on-primary); font-weight: 700; }
+  .chip-loc:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+  .chip-loc .flag { font-size: 16px; }
+
+  /* ---------- tooltip ---------- */
+  .tip-wrap { position: relative; display: inline-block; }
+  .tooltip { position: absolute; inset-block-end: calc(100% + 8px); inset-inline-start: 50%;
+    transform: translateX(-50%); background: var(--text); color: var(--bg);
+    font-size: 12px; font-weight: 500; line-height: 1.5; padding: 6px 12px; border-radius: 8px;
+    white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .15s ease; }
+  [dir="rtl"] .tooltip { transform: translateX(50%); }
+  .tip-wrap:hover .tooltip, .tip-wrap:focus-within .tooltip, .tooltip.show { opacity: 1; }
+
+  /* ---------- toast ---------- */
+  .toast { display: flex; align-items: center; gap: 10px; background: var(--raised);
+    color: var(--text); border: 1px solid var(--border); border-inline-start: 4px solid var(--primary);
+    border-radius: var(--r-ctl); padding: 12px 16px; font-size: 14px; box-shadow: var(--shadow-card); }
+  .toast.success { border-inline-start-color: var(--success); }
+  .toast.error { border-inline-start-color: var(--danger); }
+  #toast-stack { position: fixed; inset-block-start: 76px; inset-inline-end: 24px; z-index: 90;
+    display: flex; flex-direction: column; gap: 8px; max-inline-size: min(90vw, 360px); }
+  #toast-stack .toast { animation: toast-in .25s ease; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
+
+  /* ---------- tabs ---------- */
+  .tabs { display: flex; gap: 4px; border-block-end: 1px solid var(--border); }
+  .tab { border: 0; background: none; font: inherit; font-size: 14px; font-weight: 500;
+    color: var(--muted); padding: 10px 16px; cursor: pointer; position: relative; }
+  .tab[aria-selected="true"] { color: var(--link); font-weight: 700; }
+  .tab[aria-selected="true"]::after { content: ""; position: absolute; inset-block-end: -1px;
+    inset-inline: 8px; block-size: 2px; border-radius: 2px; background: var(--primary); }
+  .tab:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; border-radius: 8px; }
+  .tabpanel { padding-block-start: 14px; font-size: 14px; color: var(--muted); }
+
+  /* ---------- accordion ---------- */
+  .acc { border: 1px solid var(--border); border-radius: var(--r-ctl); overflow: hidden; }
+  .acc + .acc { margin-block-start: 8px; }
+  .acc-head { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    inline-size: 100%; border: 0; background: var(--surface); color: var(--text);
+    font: inherit; font-size: 15px; font-weight: 500; padding: 14px 16px; cursor: pointer; text-align: start; }
+  .acc-head:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+  .acc-head .icon { transition: transform .25s ease; color: var(--muted); }
+  .acc[data-open="true"] .acc-head .icon { transform: rotate(180deg); }
+  .acc-body { display: none; padding: 0 16px 14px; font-size: 14px; color: var(--muted); background: var(--surface); }
+  .acc[data-open="true"] .acc-body { display: block; }
+
+  /* ---------- skeleton ---------- */
+  .sk { border-radius: 8px; background: linear-gradient(90deg, var(--border) 25%, color-mix(in srgb, var(--border) 40%, var(--surface)) 50%, var(--border) 75%);
+    background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+  .sk.avatar { inline-size: 44px; block-size: 44px; border-radius: 50%; }
+  .sk.line { block-size: 12px; }
+
+  /* ---------- progress ---------- */
+  .bar { block-size: 8px; border-radius: var(--r-pill); background: var(--border); overflow: hidden; }
+  .bar > i { display: block; block-size: 100%; border-radius: var(--r-pill);
+    background: var(--primary); inline-size: 62%; }
+  .segbar { display: flex; gap: 4px; }
+  .segbar i { flex: 1; block-size: 8px; border-radius: var(--r-pill); background: var(--border); }
+  .segbar i.on { background: var(--primary); }
+  .ring-wrap { display: flex; align-items: center; gap: 16px; }
+  .ring { inline-size: 84px; block-size: 84px; transform: rotate(-90deg); }
+  [dir="rtl"] .ring { transform: rotate(-90deg) scaleY(-1); }
+  .ring .track { fill: none; stroke: var(--border); stroke-width: 8; }
+  .ring .val { fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; }
+  .ring-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 16px; font-weight: 700; }
+  .ring-box { position: relative; inline-size: 84px; block-size: 84px; }
+
+  /* ---------- countdown / stat ---------- */
+  .countdown { font-size: clamp(26px, .65vw + 24px, 32px); font-weight: 700; font-variant-numeric: tabular-nums;
+    direction: ltr; unicode-bidi: isolate; letter-spacing: .02em; }
+  .stat-tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-card);
+    padding: 16px 20px; min-inline-size: 140px; }
+  .stat-tile .num { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat-tile .lbl { font-size: 13px; color: var(--muted); }
+
+  /* ---------- copy field ---------- */
+  .copyfield { display: flex; align-items: stretch; gap: 8px; }
+  .copyfield code { flex: 1; min-inline-size: 0; direction: ltr; unicode-bidi: isolate; text-align: left;
+    font-family: ui-monospace, "SF Mono", Consolas, monospace; font-size: 13px;
+    background: var(--bg); border: 1px solid var(--border); border-radius: var(--r-ctl);
+    padding: 11px 14px; white-space: nowrap; overflow-x: auto; color: var(--text); }
+  .copyfield .btn { flex: none; }
+
+  /* ---------- QR ---------- */
+  .qr-box { background: #fff; border: 1px solid var(--border); border-radius: var(--r-card);
+    padding: 12px; inline-size: 148px; }
+  .qr-box canvas { display: block; inline-size: 124px; block-size: 124px; image-rendering: pixelated; }
+
+  /* ---------- stepper ---------- */
+  .stepper { display: flex; align-items: flex-start; gap: 4px; }
+  .step { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+  .step .num { inline-size: 32px; block-size: 32px; border-radius: 50%; display: flex; align-items: center;
+    justify-content: center; font-size: 14px; font-weight: 700; background: var(--surface);
+    border: 2px solid var(--border); color: var(--muted); }
+  .step.done .num { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+  .step.active .num { border-color: var(--primary); color: var(--link); }
+  .step .lbl { font-size: 13px; font-weight: 500; }
+  .step.active .lbl { color: var(--link); font-weight: 700; }
+  .step-line { flex: 1; block-size: 2px; background: var(--border); margin-block-start: 15px; }
+  .step-line.done { background: var(--primary); }
+
+  /* ---------- ruler ---------- */
+  .ruler { display: flex; flex-direction: column; gap: 8px; }
+  .ruler .r-row { display: flex; align-items: center; gap: 12px; }
+  .ruler .r-bar { block-size: 16px; background: var(--primary); border-radius: 4px; opacity: .85; }
+  .ruler .r-lbl { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; min-inline-size: 90px; }
+
+  .radius-demo { display: flex; flex-wrap: wrap; gap: 16px; }
+  .radius-demo .rd { inline-size: 88px; block-size: 88px; background: var(--brand-tint);
+    border: 2px solid var(--primary); display: flex; align-items: flex-end; justify-content: center;
+    padding-block-end: 8px; font-size: 11px; font-weight: 700; color: var(--brand-tint-ink); }
+
+  /* ---------- LTR islands & bidi ---------- */
+  .ltr-island { direction: ltr; unicode-bidi: isolate; font-family: ui-monospace, Consolas, monospace;
+    font-size: .88em; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+
+  /* ---------- icon table ---------- */
+  .icon-table { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 768px) { .icon-table { grid-template-columns: 1fr 1fr; } }
+  .icon-cells { display: flex; flex-wrap: wrap; gap: 10px; }
+  .icon-cell { display: flex; align-items: center; gap: 10px; background: var(--surface);
+    border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 10px 14px; font-size: 13px; }
+  .icon-cell .icon { inline-size: 20px; block-size: 20px; color: var(--link); }
+
+  /* ---------- modal & sheet ---------- */
+  .overlay { position: fixed; inset: 0; background: var(--backdrop); z-index: 100;
+    display: none; align-items: center; justify-content: center; padding: 24px; }
+  .overlay.open { display: flex; }
+  .modal { background: var(--surface); color: var(--text); border-radius: var(--r-card);
+    border: 1px solid var(--border); box-shadow: var(--shadow-card); max-inline-size: 420px; inline-size: 100%;
+    padding: 24px; animation: pop .25s ease; }
+  @keyframes pop { from { opacity: 0; transform: scale(.96); } }
+  .overlay.sheet { align-items: flex-end; padding: 0; }
+  .overlay.sheet .modal { max-inline-size: 560px; border-start-start-radius: var(--r-hero);
+    border-start-end-radius: var(--r-hero); border-end-start-radius: 0; border-end-end-radius: 0;
+    animation: slide-up .3s ease; }
+  @keyframes slide-up { from { transform: translateY(24px); opacity: 0; } }
+  .sheet-handle { inline-size: 44px; block-size: 4px; border-radius: var(--r-pill);
+    background: var(--border); margin-inline: auto; margin-block-end: 16px; }
+  .modal h4 { margin: 0 0 8px; }
+  .modal p { margin: 0 0 20px; font-size: 14px; color: var(--muted); }
+  .modal .row { justify-content: flex-end; }
+
+  /* ---------- self-audit ---------- */
+  .audit { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .audit li { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+  .audit .icon { color: var(--success); margin-block-start: 3px; }
+
+  footer.spec-foot { padding-block: 40px; border-block-start: 1px solid var(--border);
+    font-size: 13px; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    #app *, #app *::before, #app *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+  }
+</style>
+
+<div id="app" data-theme="light" data-locale="fa" dir="rtl" lang="fa">
+
+  <!-- ======== toolbar ======== -->
+  <div class="toolbar">
+    <div class="container toolbar-row">
+      <div class="brandmark"><span class="dot"></span><span>GozarX <span class="muted" style="font-weight:500" data-i18n="tb_sub"></span></span></div>
+      <div class="toolbar-spacer"></div>
+      <div class="seg" role="group" aria-label="language">
+        <button id="loc-fa" aria-pressed="true">فارسی</button>
+        <button id="loc-en" aria-pressed="false">EN</button>
+      </div>
+      <div class="seg" role="group" aria-label="theme">
+        <button id="th-light" aria-pressed="true" data-i18n="tb_light"></button>
+        <button id="th-dark" aria-pressed="false" data-i18n="tb_dark"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======== intro ======== -->
+  <div class="container" style="padding-block: 48px 40px;">
+    <span class="eyebrow" data-i18n="intro_eyebrow"></span>
+    <h1 class="display" style="margin:0 0 12px;" data-i18n="intro_title"></h1>
+    <p class="body-lg muted" style="max-width:38rem; margin:0;" data-i18n="intro_lede"></p>
+    <p class="caption" style="margin:16px 0 0;" data-i18n="intro_fontnote"></p>
+  </div>
+
+  <!-- ======== 1. colors ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="c_title"></h2>
+      <p class="section-lede" data-i18n="c_lede"></p>
+
+      <h3 class="h4" style="margin:0 0 12px;" data-i18n="c_brand"></h3>
+      <div class="swatch-row" id="brand-swatches"></div>
+
+      <h3 class="h4" style="margin:32px 0 12px;" data-i18n="c_semantic"></h3>
+      <div class="row">
+        <span class="badge success" data-i18n="c_success"></span>
+        <span class="badge warning" data-i18n="c_warning"></span>
+        <span class="badge danger" data-i18n="c_danger"></span>
+        <span class="badge info" data-i18n="c_info"></span>
+      </div>
+
+      <h3 class="h4" style="margin:32px 0 12px;" data-i18n="c_pairs"></h3>
+      <p class="caption" style="margin:0 0 12px;" data-i18n="c_pairs_note"></p>
+      <div class="pair-grid" id="pair-grid"></div>
+
+      <h3 class="h4" style="margin:32px 0 12px;" data-i18n="c_gradient"></h3>
+      <div class="gradient-hero">
+        <div class="h3" data-i18n="c_gradient_t"></div>
+        <p data-i18n="c_gradient_d"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 2. typography ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="t_title"></h2>
+      <p class="section-lede" data-i18n="t_lede"></p>
+
+      <div class="stack" style="gap:20px;">
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">display · 56/36 · 700</div><div class="display" data-i18n="t_display"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">h1 · 40/30 · 700</div><div class="h1" data-i18n="t_h1"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">h2 · 32/26 · 700</div><div class="h2" data-i18n="t_h2"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">h3 · 24/20 · 700</div><div class="h3" data-i18n="t_h3"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">h4 · 20/18 · 500</div><div class="h4" data-i18n="t_h4"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">body-lg · 18/17 · 400</div><div class="body-lg" style="max-width:38rem;" data-i18n="t_bodylg"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">body · 16 · 400</div><div class="body" style="max-width:38rem;" data-i18n="t_body"></div></div>
+        <div><div class="caption" style="direction:ltr; unicode-bidi:isolate; text-align:start;">small · 14 / caption · 12</div><div class="small" data-i18n="t_small"></div><div class="caption" data-i18n="t_caption"></div></div>
+      </div>
+
+      <div class="comp-grid" style="margin-block-start:40px;">
+        <div class="panel">
+          <h4 data-i18n="t_mixed_t"></h4>
+          <p class="hint" data-i18n="t_mixed_d"></p>
+          <p class="body" style="margin:0;" id="mixed-par"></p>
+        </div>
+        <div class="panel">
+          <h4 data-i18n="t_digits_t"></h4>
+          <p class="hint" data-i18n="t_digits_d"></p>
+          <div class="row" style="gap:32px;">
+            <div><div class="caption" data-i18n="t_digits_fa"></div><div class="h3 tnum">۱۲۳٬۴۵۶٫۷۸</div></div>
+            <div><div class="caption" data-i18n="t_digits_en"></div><div class="h3 tnum" style="direction:ltr; unicode-bidi:isolate;">123,456.78</div></div>
+            <div><div class="caption" data-i18n="t_digits_tab"></div>
+              <div class="tnum" style="direction:ltr; unicode-bidi:isolate; text-align:end; font-weight:700;">380 MB<br>1,024 MB<br>12 MB</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 3. spacing & form ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="s_title"></h2>
+      <p class="section-lede" data-i18n="s_lede"></p>
+      <div class="comp-grid">
+        <div class="panel">
+          <h4 data-i18n="s_ruler_t"></h4>
+          <p class="hint" data-i18n="s_ruler_d"></p>
+          <div class="ruler" id="ruler"></div>
+        </div>
+        <div class="panel">
+          <h4 data-i18n="s_radius_t"></h4>
+          <p class="hint" data-i18n="s_radius_d"></p>
+          <div class="radius-demo">
+            <div class="rd" style="border-radius:12px;">12</div>
+            <div class="rd" style="border-radius:16px;">16</div>
+            <div class="rd" style="border-radius:24px;">24</div>
+            <div class="rd" style="border-radius:9999px;">pill</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h4 data-i18n="s_shadow_t"></h4>
+          <p class="hint" data-i18n="s_shadow_d"></p>
+          <div class="row" style="gap:20px;">
+            <div class="card-demo" style="box-shadow:var(--shadow-card); min-inline-size:120px;"><span class="small" data-i18n="s_shadow_card"></span></div>
+            <button class="btn primary" data-i18n="s_shadow_glow"></button>
+            <button class="btn secondary is-focus" data-i18n="s_focus"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 4. components ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="k_title"></h2>
+      <p class="section-lede" data-i18n="k_lede"></p>
+
+      <!-- buttons -->
+      <div class="panel" style="margin-block-end:16px;">
+        <h4 data-i18n="k_btn_t"></h4>
+        <p class="hint" data-i18n="k_btn_d"></p>
+        <div id="btn-matrix" class="stack" style="gap:20px;"></div>
+        <div class="row" style="margin-block-start:20px;">
+          <button class="btn primary lg"><svg class="icon icon-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span data-i18n="k_btn_lg"></span></button>
+          <button class="btn secondary lg" data-i18n="k_btn_lg2"></button>
+        </div>
+      </div>
+
+      <div class="comp-grid">
+        <!-- inputs -->
+        <div class="panel">
+          <h4 data-i18n="k_in_t"></h4>
+          <p class="hint" data-i18n="k_in_d"></p>
+          <div class="stack">
+            <div class="field"><label data-i18n="k_in_l1"></label><input class="input" data-i18n-ph="k_in_p1"></div>
+            <div class="field"><label data-i18n="k_in_l2"></label><input class="input is-focus" data-i18n-vl="k_in_v2"></div>
+            <div class="field error"><label data-i18n="k_in_l3"></label><input class="input" data-i18n-vl="k_in_v3"><span class="help" data-i18n="k_in_h3"></span></div>
+            <div class="field"><label data-i18n="k_in_l4"></label>
+              <select class="input"><option data-i18n="k_in_opt1"></option><option data-i18n="k_in_opt2"></option></select></div>
+            <div class="field"><label data-i18n="k_in_l5"></label>
+              <div class="input-wrap"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input class="input" data-i18n-ph="k_in_p5"></div></div>
+            <div class="field"><label data-i18n="k_in_l6"></label><input class="input" disabled data-i18n-vl="k_in_v6"></div>
+          </div>
+        </div>
+
+        <!-- chips + badges -->
+        <div class="panel">
+          <h4 data-i18n="k_chip_t"></h4>
+          <p class="hint" data-i18n="k_chip_d"></p>
+          <div class="chips" id="loc-chips" role="group">
+            <button class="chip-loc" aria-pressed="true"><span class="flag">🇩🇪</span><bdi>Germany</bdi></button>
+            <button class="chip-loc" aria-pressed="false"><span class="flag">🇺🇦</span><bdi>Ukraine</bdi></button>
+            <button class="chip-loc" aria-pressed="false"><span class="flag">🇺🇸</span><bdi>USA</bdi></button>
+            <button class="chip-loc" aria-pressed="false"><span class="flag">🇹🇷</span><bdi>Turkey</bdi></button>
+          </div>
+          <div class="row" style="margin-block-start:20px;">
+            <span class="badge info" data-i18n="k_badge1"></span>
+            <span class="badge success" data-i18n="k_badge2"></span>
+            <span class="badge warning" data-i18n="k_badge3"></span>
+            <span class="badge danger" data-i18n="k_badge4"></span>
+          </div>
+          <div style="margin-block-start:20px;">
+            <span class="tip-wrap">
+              <button class="btn secondary" data-i18n="k_tip_btn"></button>
+              <span class="tooltip show" data-i18n="k_tip_txt"></span>
+            </span>
+          </div>
+        </div>
+
+        <!-- progress -->
+        <div class="panel">
+          <h4 data-i18n="k_prog_t"></h4>
+          <p class="hint" data-i18n="k_prog_d"></p>
+          <div class="stack" style="gap:20px;">
+            <div><div class="row" style="justify-content:space-between; margin-block-end:6px;"><span class="small" data-i18n="k_prog_usage"></span><span class="small tnum" id="usage-lbl"></span></div><div class="bar"><i></i></div></div>
+            <div><div class="row" style="justify-content:space-between; margin-block-end:6px;"><span class="small" data-i18n="k_prog_inv"></span><span class="small tnum" id="inv-lbl"></span></div><div class="segbar" id="segbar"></div></div>
+            <div class="ring-wrap">
+              <div class="ring-box">
+                <svg class="ring" viewBox="0 0 84 84"><circle class="track" cx="42" cy="42" r="36"/><circle class="val" cx="42" cy="42" r="36" stroke-dasharray="85.9 226.2" /></svg>
+                <div class="ring-num" id="ring-num"></div>
+              </div>
+              <div><div class="small" style="font-weight:700;" data-i18n="k_ring_t"></div><div class="caption" data-i18n="k_ring_d"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- countdown + stats -->
+        <div class="panel">
+          <h4 data-i18n="k_cd_t"></h4>
+          <p class="hint" data-i18n="k_cd_d"></p>
+          <div class="caption" data-i18n="k_cd_lbl"></div>
+          <div class="countdown" id="countdown">07:12:44</div>
+          <div class="row" style="margin-block-start:20px;">
+            <div class="stat-tile"><div class="num" id="stat1"></div><div class="lbl" data-i18n="k_stat1"></div></div>
+            <div class="stat-tile"><div class="num" id="stat2"></div><div class="lbl" data-i18n="k_stat2"></div></div>
+          </div>
+        </div>
+
+        <!-- copy field + QR -->
+        <div class="panel">
+          <h4 data-i18n="k_cp_t"></h4>
+          <p class="hint" data-i18n="k_cp_d"></p>
+          <div class="copyfield">
+            <code id="cfg-link">vless://ab12cd34-ef56@de1.gozarx.net:443?type=ws&amp;security=tls#Germany</code>
+            <button class="btn primary" id="copy-btn" data-i18n="k_cp_btn"></button>
+          </div>
+          <div class="row" style="margin-block-start:20px; align-items:flex-start;">
+            <div class="qr-box"><canvas id="qr" width="31" height="31"></canvas></div>
+            <div style="flex:1; min-inline-size:180px;">
+              <div class="small" style="font-weight:700;" data-i18n="k_qr_t"></div>
+              <div class="caption" data-i18n="k_qr_d"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- tabs + accordion -->
+        <div class="panel">
+          <h4 data-i18n="k_tab_t"></h4>
+          <p class="hint" data-i18n="k_tab_d"></p>
+          <div class="tabs" role="tablist" id="tabs">
+            <button class="tab" role="tab" aria-selected="true" data-i18n="k_tab1"></button>
+            <button class="tab" role="tab" aria-selected="false" data-i18n="k_tab2"></button>
+            <button class="tab" role="tab" aria-selected="false" data-i18n="k_tab3"></button>
+          </div>
+          <div class="tabpanel" id="tabpanel" data-i18n="k_tabp1"></div>
+          <div style="margin-block-start:20px;">
+            <div class="acc" data-open="true">
+              <button class="acc-head"><span data-i18n="k_acc1_q"></span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="acc-body" data-i18n="k_acc1_a"></div>
+            </div>
+            <div class="acc" data-open="false">
+              <button class="acc-head"><span data-i18n="k_acc2_q"></span><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
+              <div class="acc-body" data-i18n="k_acc2_a"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- toast / modal / sheet / skeleton -->
+        <div class="panel">
+          <h4 data-i18n="k_ov_t"></h4>
+          <p class="hint" data-i18n="k_ov_d"></p>
+          <div class="stack">
+            <div class="toast success"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success)"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="k_toast_ok"></span></div>
+            <div class="toast error"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" style="color:var(--danger)"><path d="M12 8v5M12 16.5v.5"/><circle cx="12" cy="12" r="9"/></svg><span data-i18n="k_toast_err"></span></div>
+            <div class="row">
+              <button class="btn secondary" id="open-modal" data-i18n="k_open_modal"></button>
+              <button class="btn secondary" id="open-sheet" data-i18n="k_open_sheet"></button>
+              <button class="btn ghost" id="spawn-toast" data-i18n="k_spawn_toast"></button>
+            </div>
+            <div class="card-demo" style="display:flex; gap:12px; align-items:center;">
+              <div class="sk avatar"></div>
+              <div style="flex:1;" class="stack" ><div class="sk line" style="inline-size:70%;"></div><div class="sk line" style="inline-size:45%;"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- stepper -->
+        <div class="panel" style="grid-column: 1 / -1;">
+          <h4 data-i18n="k_st_t"></h4>
+          <p class="hint" data-i18n="k_st_d"></p>
+          <div class="stepper">
+            <div class="step done"><span class="num">✓</span><span class="lbl" data-i18n="k_st1"></span></div>
+            <div class="step-line done"></div>
+            <div class="step active"><span class="num" id="st-num2"></span><span class="lbl" data-i18n="k_st2"></span></div>
+            <div class="step-line"></div>
+            <div class="step"><span class="num" id="st-num3"></span><span class="lbl" data-i18n="k_st3"></span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 5. icon direction ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="i_title"></h2>
+      <p class="section-lede" data-i18n="i_lede"></p>
+      <div class="icon-table">
+        <div class="panel">
+          <h4 data-i18n="i_flip"></h4>
+          <p class="hint" data-i18n="i_flip_d"></p>
+          <div class="icon-cells">
+            <span class="icon-cell"><svg class="icon icon-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg><span data-i18n="i_arrow"></span></span>
+            <span class="icon-cell"><svg class="icon icon-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg><span data-i18n="i_chevron"></span></span>
+            <span class="icon-cell"><svg class="icon icon-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-11 11M22 2 15 22l-4-9-9-4Z"/></svg><span data-i18n="i_send"></span></span>
+            <span class="icon-cell"><svg class="icon icon-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v6"/></svg><span data-i18n="i_back"></span></span>
+          </div>
+        </div>
+        <div class="panel">
+          <h4 data-i18n="i_noflip"></h4>
+          <p class="hint" data-i18n="i_noflip_d"></p>
+          <div class="icon-cells">
+            <span class="icon-cell"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 4 5.5V12c0 5 3.5 8.5 8 10 4.5-1.5 8-5 8-10V5.5Z"/></svg><span data-i18n="i_shield"></span></span>
+            <span class="icon-cell"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/></svg><span data-i18n="i_globe"></span></span>
+            <span class="icon-cell"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 21h16"/></svg><span data-i18n="i_dl"></span></span>
+            <span class="icon-cell"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM19 19h2v2h-2z"/></svg><span data-i18n="i_qr"></span></span>
+            <span class="icon-cell"><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="i_check"></span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======== 6. self-audit ======== -->
+  <section class="section">
+    <div class="container">
+      <h2 class="h2 section-title" data-i18n="a_title"></h2>
+      <p class="section-lede" data-i18n="a_lede"></p>
+      <div class="panel">
+        <ul class="audit">
+          <li><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="a_1"></span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span id="audit-contrast"></span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="a_3"></span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="a_4"></span></li>
+          <li><svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg><span data-i18n="a_5"></span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer class="spec-foot">
+    <div class="container" data-i18n="foot"></div>
+  </footer>
+
+  <!-- overlays -->
+  <div class="overlay" id="modal-ov"><div class="modal" role="dialog" aria-modal="true">
+    <h4 data-i18n="m_title"></h4><p data-i18n="m_body"></p>
+    <div class="row"><button class="btn ghost close-ov" data-i18n="m_cancel"></button><button class="btn primary close-ov" data-i18n="m_ok"></button></div>
+  </div></div>
+  <div class="overlay sheet" id="sheet-ov"><div class="modal" role="dialog" aria-modal="true">
+    <div class="sheet-handle"></div>
+    <h4 data-i18n="sh_title"></h4><p data-i18n="sh_body"></p>
+    <button class="btn primary lg close-ov" style="inline-size:100%;" data-i18n="sh_ok"></button>
+  </div></div>
+  <div id="toast-stack"></div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var app = document.getElementById("app");
+
+  /* ---------------- i18n ---------------- */
+  var I = {
+    fa: {
+      tb_sub: "دیزاین سیستم · فاز ۰", tb_light: "روشن", tb_dark: "تاریک",
+      intro_eyebrow: "فاز ۰ از ۸ — برای بازبینی و تأیید",
+      intro_title: "دیزاین سیستم گذرایکس",
+      intro_lede: "زبان بصری کامل سایت: رنگ، تایپوگرافی، ریتم فاصله‌گذاری و همهٔ کامپوننت‌های پایه — در هر دو زبان، هر دو جهت و هر دو تم. با تولبار بالا سوئیچ کنید.",
+      intro_fontnote: "نکته: این پیش‌نمایش از فونت جایگزین سیستم استفاده می‌کند؛ در نسخهٔ نهایی Vazirmatn (فارسی) و Inter (انگلیسی) به‌صورت self-host بارگذاری می‌شوند.",
+      c_title: "۱ · رنگ‌ها", c_lede: "آبی برند (Gozar Blue) با محور ۶۰۰# در تم روشن و ۵۰۰# در تم تاریک. فیروزه‌ای فقط در گرادیان‌ها.",
+      c_brand: "طیف برند", c_semantic: "رنگ‌های معنایی (روی سطح تینت)",
+      c_success: "موفق — کانفیگ فعال شد", c_warning: "هشدار — حجم رو به پایان", c_danger: "خطا — کد نادرست", c_info: "اطلاع — داینامیک",
+      c_pairs: "جفت‌های کنتراست (محاسبهٔ زنده)", c_pairs_note: "نسبت‌ها همین لحظه با فرمول WCAG محاسبه می‌شوند — نه ادعا، سند. در تم تاریک متنِ روی دکمهٔ اصلی سرمه‌ای تیره است چون سفید روی brand-500 فقط ۳٫۷:۱ می‌شود.",
+      c_gradient: "گرادیان هیرو (در RTL آینه می‌شود)", c_gradient_t: "کانفیگ رایگان روزانه، در چند ثانیه", c_gradient_d: "زاویهٔ گرادیان در حالت راست‌چین به‌صورت خودکار قرینه شده است — همین حالا در حالت EN مقایسه کنید.",
+      t_title: "۲ · تایپوگرافی", t_lede: "فارسی: Vazirmatn با ارتفاع سطر ۱٫۸ و ارقام فارسی. انگلیسی: Inter با ارتفاع سطر ۱٫۶. متن فارسی هرگز فاصلهٔ حرفی نمی‌گیرد.",
+      t_display: "کانفیگ رایگان امروزت را بگیر",
+      t_h1: "هر ۲۴ ساعت، یک کانفیگ تازه",
+      t_h2: "با دعوت دوستان، حجم روزانه‌ات را بیشتر کن",
+      t_h3: "لوکیشن دلخواهت را انتخاب کن",
+      t_h4: "بدون ثبت‌نام، بدون ایمیل، بدون شماره",
+      t_bodylg: "گذرایکس هر روز یک کانفیگ آزمایشی رایگان به تو می‌دهد؛ کافی است لوکیشن را انتخاب کنی و دکمهٔ دریافت را بزنی. همه‌چیز کمتر از سی ثانیه طول می‌کشد.",
+      t_body: "حجم روزانه‌ات با هر دعوت موفق بیشتر می‌شود و اگر حجم امروزت تمام شود، با فقط یک دعوت همان لحظه دوباره فعال خواهد شد — بدون منتظرماندن تا فردا.",
+      t_small: "این متن ۱۴ پیکسلی برای توضیح‌های کوتاه زیر دکمه‌ها و فرم‌هاست.",
+      t_caption: "کپشن ۱۲ پیکسلی — برای لیبل توکن‌ها و متادیتا.",
+      t_mixed_t: "متن دوجهته (bidi)", t_mixed_d: "نام لاتین لوکیشن در <bdi> و لینک کانفیگ در جزیرهٔ LTR — وسط جملهٔ فارسی هیچ‌چیز به‌هم نمی‌ریزد.",
+      t_digits_t: "ارقام", t_digits_d: "کپی فارسی با ارقام فارسی؛ مقادیر فنی همیشه لاتین و LTR؛ شمارنده‌ها tabular بدون پرش عرض.",
+      t_digits_fa: "فارسی در کپی", t_digits_en: "لاتین در مقادیر فنی", t_digits_tab: "ستون tabular",
+      s_title: "۳ · فاصله و فرم", s_lede: "همهٔ فاصله‌ها مضرب ۴ پیکسل‌اند. کانتینر ۱۲۰۰px، گاتر ۲۴/۳۲. ریتم عمودی سکشن‌ها ۹۶/۶۴/۴۸.",
+      s_ruler_t: "خط‌کش گرید ۴px", s_ruler_d: "پله‌های استاندارد فاصله‌گذاری.",
+      s_radius_t: "شعاع گوشه‌ها", s_radius_d: "۱۲ دکمه/ورودی · ۱۶ کارت · ۲۴ کارت هیرو · pill چیپ‌ها.",
+      s_shadow_t: "سایه و فوکوس", s_shadow_d: "سایهٔ دولایهٔ نرم برای کارت‌ها؛ درخشش آبی فقط برای CTA اصلی؛ حلقهٔ فوکوس ۲px با آفست ۲px.",
+      s_shadow_card: "کارت", s_shadow_glow: "دکمهٔ اصلی", s_focus: "حالت فوکوس",
+      k_title: "۴ · کامپوننت‌ها", k_lede: "هر کامپوننت با تمام حالت‌هایش. حالت‌های hover/focus/active این‌جا سنجاق شده‌اند تا بدون ماوس هم دیده شوند.",
+      k_btn_t: "دکمه‌ها", k_btn_d: "چهار واریانت × شش حالت. اندازهٔ lg برای CTAهای هیرو.",
+      k_btn_lg: "دریافت کانفیگ", k_btn_lg2: "تغییر لوکیشن",
+      b_primary: "اصلی", b_secondary: "ثانویه", b_ghost: "شبح", b_destructive: "مخرب",
+      st_default: "پیش‌فرض", st_hover: "هاور", st_focus: "فوکوس", st_active: "فشرده", st_disabled: "غیرفعال", st_loading: "در حال انجام",
+      k_in_t: "ورودی‌ها", k_in_d: "متن، سلکت و جستجو — با راهنما و حالت خطا.",
+      k_in_l1: "کد دعوت", k_in_p1: "مثلاً GZR-4821",
+      k_in_l2: "در حالت فوکوس", k_in_v2: "درحال تایپ…",
+      k_in_l3: "کد انتقال", k_in_v3: "AB12", k_in_h3: "کد باید ۸ کاراکتر باشد.",
+      k_in_l4: "زبان", k_in_opt1: "فارسی", k_in_opt2: "English",
+      k_in_l5: "جستجو در سوالات", k_in_p5: "مثلاً «اتصال در اندروید»",
+      k_in_l6: "غیرفعال", k_in_v6: "قابل ویرایش نیست",
+      k_chip_t: "چیپ لوکیشن، بج و تولتیپ", k_chip_d: "انتخاب تکی؛ نام لاتین لوکیشن داخل bdi. تولتیپ برای نمایش سنجاق شده.",
+      k_badge1: "داینامیک", k_badge2: "فعال", k_badge3: "رو به اتمام", k_badge4: "منقضی",
+      k_tip_btn: "چرا حجم داینامیک؟", k_tip_txt: "مقدار از تنظیمات پنل می‌آید",
+      k_prog_t: "پیشرفت", k_prog_d: "نوار خطی، نوار قطعه‌ای دعوت‌ها و حلقهٔ مصرف — جهت‌آگاه.",
+      k_prog_usage: "مصرف امروز", k_prog_inv: "دعوت‌های موفق",
+      k_ring_t: "حلقهٔ مصرف", k_ring_d: "۳۸٪ از حجم روزانه",
+      k_cd_t: "شمارش معکوس و آمار", k_cd_d: "ارقام tabular؛ تایمر زنده است و در فارسی با ارقام فارسی نمایش داده می‌شود.",
+      k_cd_lbl: "تا دریافت بعدی",
+      k_stat1: "حجم روزانهٔ شما", k_stat2: "دعوت‌ها",
+      k_cp_t: "فیلد کپی و QR", k_cp_d: "لینک کانفیگ همیشه در جزیرهٔ LTR مونواسپیس؛ دکمهٔ کپی بازخورد فوری می‌دهد.",
+      k_cp_btn: "کپی", k_cp_done: "کپی شد ✓",
+      k_qr_t: "بلوک QR", k_qr_d: "برای اسکن سریع کانفیگ در موبایل — پس‌زمینه همیشه سفید تا در تم تاریک هم اسکن شود.",
+      k_tab_t: "تب و آکاردئون", k_tab_d: "نشانگر تب زیر عنوان فعال؛ شورون آکاردئون با چرخش، جهت‌آگاه.",
+      k_tab1: "اندروید", k_tab2: "آیفون", k_tab3: "ویندوز",
+      k_tabp1: "اپ v2rayNG را نصب کن، لینک را کپی کن و از منوی + گزینهٔ «Import from clipboard» را بزن.",
+      k_tabp2: "اپ Streisand را از اپ‌استور نصب کن و لینک کانفیگ را در آن وارد کن.",
+      k_tabp3: "کلاینت Hiddify برای ویندوز را دانلود و لینک را در بخش پروفایل‌ها اضافه کن.",
+      k_acc1_q: "کانفیگ رایگان واقعاً رایگان است؟", k_acc1_a: "بله. هر ۲۴ ساعت یک کانفیگ با حجم مشخص می‌گیری؛ نه ثبت‌نامی در کار است نه پرداختی.",
+      k_acc2_q: "اگر حجم امروزم تمام شود چه؟", k_acc2_a: "با یک دعوت موفق، همان کانفیگ همان لحظه دوباره فعال می‌شود — لازم نیست تا فردا صبر کنی.",
+      k_ov_t: "توست، مودال و باتم‌شیت", k_ov_d: "توست‌ها از سمت انتهای خط می‌آیند (در RTL یعنی چپ). اسکلتون برای حالت بارگذاری.",
+      k_toast_ok: "کانفیگ آماده شد — کپی‌اش کن!", k_toast_err: "کد انتقال نادرست است. دوباره امتحان کن.",
+      k_open_modal: "نمایش مودال", k_open_sheet: "نمایش باتم‌شیت", k_spawn_toast: "نمایش توست زنده",
+      k_st_t: "استپر (جهت‌آگاه)", k_st_d: "سه قدم اصلی محصول؛ در RTL از راست شروع می‌شود.",
+      k_st1: "انتخاب لوکیشن", k_st2: "دریافت کانفیگ", k_st3: "افزودن به اپ",
+      i_title: "۵ · جهت آیکون‌ها", i_lede: "قانون ثابت: آیکون‌های جهت‌دار در RTL آینه می‌شوند؛ آیکون‌های متقارن هرگز. همین حالا زبان را عوض کنید و ستون اول را تماشا کنید.",
+      i_flip: "آینه می‌شوند", i_flip_d: "کلاس icon-dir در حالت RTL این‌ها را قرینه می‌کند.",
+      i_noflip: "هرگز آینه نمی‌شوند", i_noflip_d: "فرم این‌ها مستقل از جهت زبان است.",
+      i_arrow: "فلش ادامه", i_chevron: "شورون", i_send: "ارسال", i_back: "بازگشت",
+      i_shield: "سپر", i_globe: "کره", i_dl: "دانلود", i_qr: "کد QR", i_check: "تیک",
+      a_title: "۶ · خودآزمایی", a_lede: "گزارش ممیزی این تحویل — طبق QUALITY BAR اسپک.",
+      a_1: "آینگی RTL/LTR: همهٔ استایل‌ها با لوجیکال پراپرتی؛ گرادیان، استپر، توست و آیکون‌های جهت‌دار در RTL قرینه می‌شوند.",
+      a_3: "ریتم ۴px: تمام فاصله‌ها مضرب ۴ (۴/۸/۱۲/۱۶/۲۴/۳۲/۴۸/۶۴/۹۶).",
+      a_4: "بدون اسکرول افقی در ۳۶۰px: گریدها auto-fit و لینک کانفیگ داخل ظرف overflow خودش است.",
+      a_5: "پوشش حالت‌ها: دکمه‌ها ۶ حالت، ورودی‌ها ۵ حالت، چیپ/تب/آکاردئون/توست/مودال/شیت/اسکلتون/پیشرفت/شمارش‌گر همه حاضرند.",
+      a_contrast: "کنتراست AA: {n} جفت کلیدی سنجیده شد — همه پاس ({d}).",
+      foot: "GozarX · فاز ۰ دیزاین سیستم · نسخهٔ ۱.۱ اسپک — پس از تأیید، توکن‌های همین فایل مبنای فازهای ۱ تا ۸ می‌شوند.",
+      m_title: "تغییر لوکیشن؟", m_body: "کانفیگ فعلی‌ات فعال می‌ماند و فقط لوکیشن جدید جایگزین می‌شود.",
+      m_cancel: "انصراف", m_ok: "تغییر بده",
+      sh_title: "نصب وب‌اپ گذرایکس", sh_body: "با نصب وب‌اپ، دسترسی سریع‌تر می‌شود و حجم هدیه به حجم روزانه‌ات اضافه خواهد شد.",
+      sh_ok: "نصب کن",
+      toast_live: "+۵۰۰ مگابایت به حجم روزانه‌ات اضافه شد",
+      copied: "لینک کانفیگ کپی شد",
+      pair_note_light: "تم روشن", pair_note_dark: "تم تاریک",
+      aa_pass: "AA ✓", aa_large: "فقط متن درشت", aa_fail: "رد",
+    },
+    en: {
+      tb_sub: "Design System · Phase 0", tb_light: "Light", tb_dark: "Dark",
+      intro_eyebrow: "Phase 0 of 8 — for review & approval",
+      intro_title: "GozarX Design System",
+      intro_lede: "The site's complete visual language: color, typography, spacing rhythm and every core component — in both languages, both directions, both themes. Switch with the toolbar above.",
+      intro_fontnote: "Note: this preview uses system font fallbacks; production self-hosts Vazirmatn (fa) and Inter (en).",
+      c_title: "1 · Color", c_lede: "Gozar Blue, anchored on 600 in light theme and 500 in dark. Cyan appears only inside gradients.",
+      c_brand: "Brand scale", c_semantic: "Semantic colors (on tint surfaces)",
+      c_success: "Success — config is live", c_warning: "Warning — volume running low", c_danger: "Error — invalid code", c_info: "Info — dynamic",
+      c_pairs: "Contrast pairs (computed live)", c_pairs_note: "Ratios are computed right now with the WCAG formula — evidence, not claims. In dark theme the primary button uses dark ink because white on brand-500 is only 3.7:1.",
+      c_gradient: "Hero gradient (mirrors in RTL)", c_gradient_t: "A free config every day, in seconds", c_gradient_d: "The gradient angle mirrors automatically in RTL — flip to فارسی and compare.",
+      t_title: "2 · Typography", t_lede: "Persian: Vazirmatn, 1.8 line-height, Persian digits. English: Inter, 1.6 line-height. Persian text is never letter-spaced.",
+      t_display: "Get today's free config",
+      t_h1: "A fresh config every 24 hours",
+      t_h2: "Grow your daily volume by inviting friends",
+      t_h3: "Pick your favorite location",
+      t_h4: "No signup, no email, no phone number",
+      t_bodylg: "GozarX hands you a free trial config every day; pick a location, press the button, and you're connected. The whole thing takes less than thirty seconds.",
+      t_body: "Your daily allowance grows with every successful invite — and if today's volume runs out, a single invite revives the same config instantly, no waiting until tomorrow.",
+      t_small: "This 14px text is for short helper lines under buttons and forms.",
+      t_caption: "12px caption — for token labels and metadata.",
+      t_mixed_t: "Bidirectional text", t_mixed_d: "Latin location names sit in <bdi>, config links in LTR islands — nothing breaks mid-sentence.",
+      t_digits_t: "Digits", t_digits_d: "Persian digits in fa copy; technical values always Latin and LTR; counters are tabular with zero width-jitter.",
+      t_digits_fa: "Persian in copy", t_digits_en: "Latin in technical values", t_digits_tab: "Tabular column",
+      s_title: "3 · Space & Form", s_lede: "Every gap is a multiple of 4px. Container 1200px, gutters 24/32. Section rhythm 96/64/48.",
+      s_ruler_t: "The 4px grid ruler", s_ruler_d: "The standard spacing steps.",
+      s_radius_t: "Corner radii", s_radius_d: "12 buttons/inputs · 16 cards · 24 hero card · pill chips.",
+      s_shadow_t: "Shadow & focus", s_shadow_d: "Soft two-layer shadow for cards; the blue glow is reserved for the primary CTA; 2px focus ring with 2px offset.",
+      s_shadow_card: "Card", s_shadow_glow: "Primary CTA", s_focus: "Focus state",
+      k_title: "4 · Components", k_lede: "Every component with every state. Hover/focus/active are pinned so they're visible without a mouse.",
+      k_btn_t: "Buttons", k_btn_d: "Four variants × six states. The lg size is for hero CTAs.",
+      k_btn_lg: "Get config", k_btn_lg2: "Change location",
+      b_primary: "Primary", b_secondary: "Secondary", b_ghost: "Ghost", b_destructive: "Destructive",
+      st_default: "Default", st_hover: "Hover", st_focus: "Focus", st_active: "Active", st_disabled: "Disabled", st_loading: "Loading",
+      k_in_t: "Inputs", k_in_d: "Text, select and search — with helper and error states.",
+      k_in_l1: "Invite code", k_in_p1: "e.g. GZR-4821",
+      k_in_l2: "Focused", k_in_v2: "Typing…",
+      k_in_l3: "Transfer code", k_in_v3: "AB12", k_in_h3: "The code must be 8 characters.",
+      k_in_l4: "Language", k_in_opt1: "فارسی", k_in_opt2: "English",
+      k_in_l5: "Search the FAQ", k_in_p5: "e.g. “connect on Android”",
+      k_in_l6: "Disabled", k_in_v6: "Not editable",
+      k_chip_t: "Location chips, badges & tooltip", k_chip_d: "Single-select; Latin names wrapped in bdi. Tooltip pinned open for display.",
+      k_badge1: "Dynamic", k_badge2: "Active", k_badge3: "Running low", k_badge4: "Expired",
+      k_tip_btn: "Why dynamic volume?", k_tip_txt: "The value comes from panel settings",
+      k_prog_t: "Progress", k_prog_d: "Linear bar, segmented invite bar and the usage ring — all direction-aware.",
+      k_prog_usage: "Today's usage", k_prog_inv: "Successful invites",
+      k_ring_t: "Usage ring", k_ring_d: "38% of the daily volume",
+      k_cd_t: "Countdown & stats", k_cd_d: "Tabular digits; the timer is live and localizes to Persian digits in fa.",
+      k_cd_lbl: "Next config in",
+      k_stat1: "Your daily volume", k_stat2: "Invites",
+      k_cp_t: "Copy field & QR", k_cp_d: "Config links always live in an LTR monospace island; the copy button gives instant feedback.",
+      k_cp_btn: "Copy", k_cp_done: "Copied ✓",
+      k_qr_t: "QR block", k_qr_d: "For scanning the config on mobile — the background stays white so it scans in dark theme too.",
+      k_tab_t: "Tabs & accordion", k_tab_d: "Tab indicator under the active label; accordion chevron rotates, direction-aware.",
+      k_tab1: "Android", k_tab2: "iPhone", k_tab3: "Windows",
+      k_tabp1: "Install v2rayNG, copy the link, then choose “Import from clipboard” from the + menu.",
+      k_tabp2: "Install Streisand from the App Store and paste the config link into it.",
+      k_tabp3: "Download the Hiddify client for Windows and add the link under Profiles.",
+      k_acc1_q: "Is the free config really free?", k_acc1_a: "Yes. Every 24 hours you get a config with a set volume; no signup, no payment.",
+      k_acc2_q: "What if I use up today's volume?", k_acc2_a: "One successful invite revives the same config instantly — no waiting until tomorrow.",
+      k_ov_t: "Toast, modal & bottom-sheet", k_ov_d: "Toasts enter from the inline-end side (left in RTL). Skeletons cover loading.",
+      k_toast_ok: "Your config is ready — copy it!", k_toast_err: "That transfer code is invalid. Try again.",
+      k_open_modal: "Show modal", k_open_sheet: "Show bottom-sheet", k_spawn_toast: "Spawn a live toast",
+      k_st_t: "Stepper (direction-aware)", k_st_d: "The product's three core steps; starts from the right in RTL.",
+      k_st1: "Pick a location", k_st2: "Get the config", k_st3: "Import to app",
+      i_title: "5 · Icon direction", i_lede: "The fixed rule: directional icons mirror in RTL; symmetric icons never do. Switch language now and watch the first column.",
+      i_flip: "Mirror in RTL", i_flip_d: "The icon-dir class flips these under RTL.",
+      i_noflip: "Never mirror", i_noflip_d: "Their form is independent of text direction.",
+      i_arrow: "Forward arrow", i_chevron: "Chevron", i_send: "Send", i_back: "Back",
+      i_shield: "Shield", i_globe: "Globe", i_dl: "Download", i_qr: "QR code", i_check: "Check",
+      a_title: "6 · Self-audit", a_lede: "This deliverable's audit report — per the spec's QUALITY BAR.",
+      a_1: "RTL/LTR mirroring: all styles use logical properties; gradient, stepper, toasts and directional icons mirror in RTL.",
+      a_3: "4px rhythm: every gap is a multiple of 4 (4/8/12/16/24/32/48/64/96).",
+      a_4: "No horizontal scroll at 360px: grids are auto-fit and config links scroll inside their own container.",
+      a_5: "State coverage: buttons ×6, inputs ×5, chips/tabs/accordion/toast/modal/sheet/skeleton/progress/countdown all present.",
+      a_contrast: "AA contrast: {n} key pairs measured — all pass ({d}).",
+      foot: "GozarX · Phase 0 design system · Spec v1.1 — once approved, these tokens govern Phases 1–8.",
+      m_title: "Change location?", m_body: "Your current config stays active; only the location is replaced.",
+      m_cancel: "Cancel", m_ok: "Change it",
+      sh_title: "Install the GozarX web app", sh_body: "Installing the web app gives you faster access and adds a bonus to your daily volume.",
+      sh_ok: "Install",
+      toast_live: "+500 MB added to your daily volume",
+      copied: "Config link copied",
+      pair_note_light: "Light theme", pair_note_dark: "Dark theme",
+      aa_pass: "AA ✓", aa_large: "Large text only", aa_fail: "Fail",
+    }
+  };
+
+  var locale = "fa";
+  function t(k) { return (I[locale] && I[locale][k]) || I.en[k] || k; }
+  function faDigits(s) {
+    return locale === "fa" ? String(s).replace(/\d/g, function (d) { return "۰۱۲۳۴۵۶۷۸۹"[+d]; }) : String(s);
+  }
+
+  function applyI18n() {
+    app.querySelectorAll("[data-i18n]").forEach(function (el) { el.textContent = t(el.getAttribute("data-i18n")); });
+    app.querySelectorAll("[data-i18n-ph]").forEach(function (el) { el.placeholder = t(el.getAttribute("data-i18n-ph")); });
+    app.querySelectorAll("[data-i18n-vl]").forEach(function (el) { el.value = t(el.getAttribute("data-i18n-vl")); });
+    document.getElementById("mixed-par").innerHTML = locale === "fa"
+      ? 'برای اتصال، لوکیشن <bdi>Germany 🇩🇪</bdi> را انتخاب کن و لینک <span class="ltr-island">vless://ab12@de1.gozarx.net:443</span> را در اپ خودت وارد کن؛ کل کار کمتر از ۳۰ ثانیه طول می‌کشد.'
+      : 'Pick the <bdi>Germany 🇩🇪</bdi> location and paste <span class="ltr-island">vless://ab12@de1.gozarx.net:443</span> into your app — even the Persian label <bdi>«کانفیگ امروز»</bdi> stays readable mid-sentence.';
+    document.getElementById("usage-lbl").textContent = faDigits("380") + " / " + faDigits("1,024") + " MB";
+    document.getElementById("inv-lbl").textContent = faDigits(3) + " / " + faDigits(10);
+    document.getElementById("ring-num").textContent = faDigits("38") + "٪".replace("٪", locale === "fa" ? "٪" : "%");
+    document.getElementById("stat1").textContent = locale === "fa" ? "۱٫۵ گیگابایت" : "1.5 GB";
+    document.getElementById("stat2").textContent = faDigits(3) + (locale === "fa" ? " از ۱۰" : " of 10");
+    document.getElementById("st-num2").textContent = faDigits(2);
+    document.getElementById("st-num3").textContent = faDigits(3);
+    renderButtons(); renderPairs(); renderRuler(); renderAudit();
+  }
+
+  /* ---------------- locale & theme ---------------- */
+  function setLocale(l) {
+    locale = l;
+    app.setAttribute("data-locale", l);
+    app.setAttribute("dir", l === "fa" ? "rtl" : "ltr");
+    app.setAttribute("lang", l);
+    document.getElementById("loc-fa").setAttribute("aria-pressed", l === "fa");
+    document.getElementById("loc-en").setAttribute("aria-pressed", l === "en");
+    applyI18n();
+  }
+  function setTheme(th) {
+    app.setAttribute("data-theme", th);
+    document.getElementById("th-light").setAttribute("aria-pressed", th === "light");
+    document.getElementById("th-dark").setAttribute("aria-pressed", th === "dark");
+  }
+  document.getElementById("loc-fa").addEventListener("click", function () { setLocale("fa"); });
+  document.getElementById("loc-en").addEventListener("click", function () { setLocale("en"); });
+  document.getElementById("th-light").addEventListener("click", function () { setTheme("light"); });
+  document.getElementById("th-dark").addEventListener("click", function () { setTheme("dark"); });
+
+  /* ---------------- brand swatches ---------------- */
+  var BRAND = [["50","#EFF6FF"],["100","#DBEAFE"],["200","#BFDBFE"],["300","#93C5FD"],["400","#60A5FA"],
+               ["500","#3B82F6"],["600","#2563EB"],["700","#1D4ED8"],["800","#1E40AF"],["900","#1E3A8A"],["950","#172554"]];
+  var sw = document.getElementById("brand-swatches");
+  BRAND.forEach(function (b) {
+    var d = document.createElement("div");
+    d.className = "swatch" + (b[0] === "600" || b[0] === "500" ? " hot" : "");
+    d.innerHTML = '<div class="chip" style="background:' + b[1] + '"></div><div class="meta"><b>brand-' + b[0] + "</b><code>" + b[1] + "</code></div>";
+    sw.appendChild(d);
+  });
+
+  /* ---------------- contrast (WCAG) ---------------- */
+  function lum(hex) {
+    var c = hex.replace("#", "");
+    var v = [0, 2, 4].map(function (i) {
+      var x = parseInt(c.substr(i, 2), 16) / 255;
+      return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4);
+    });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+  }
+  function ratio(fg, bg) {
+    var a = lum(fg) + 0.05, b = lum(bg) + 0.05;
+    return a > b ? a / b : b / a;
+  }
+  var PAIRS = [
+    { fgK: "btn_ink_l", fg: "#FFFFFF", bg: "#2563EB", th: "light", lblFa: "متن دکمهٔ اصلی", lblEn: "Primary button label" },
+    { fg: "#0F172A", bg: "#F8FAFC", th: "light", lblFa: "متن روی پس‌زمینه", lblEn: "Text on background" },
+    { fg: "#64748B", bg: "#FFFFFF", th: "light", lblFa: "متن کم‌رنگ روی سطح", lblEn: "Muted on surface" },
+    { fg: "#2563EB", bg: "#FFFFFF", th: "light", lblFa: "لینک روی سطح", lblEn: "Link on surface" },
+    { fg: "#0B1220", bg: "#3B82F6", th: "dark", lblFa: "متن دکمهٔ اصلی", lblEn: "Primary button label" },
+    { fg: "#F1F5F9", bg: "#020617", th: "dark", lblFa: "متن روی پس‌زمینه", lblEn: "Text on background" },
+    { fg: "#94A3B8", bg: "#0F172A", th: "dark", lblFa: "متن کم‌رنگ روی سطح", lblEn: "Muted on surface" },
+    { fg: "#60A5FA", bg: "#0F172A", th: "dark", lblFa: "لینک روی سطح", lblEn: "Link on surface" }
+  ];
+  function renderPairs() {
+    var g = document.getElementById("pair-grid");
+    g.innerHTML = "";
+    PAIRS.forEach(function (p) {
+      var r = ratio(p.fg, p.bg);
+      var cls = r >= 4.5 ? "pass" : r >= 3 ? "large" : "fail";
+      var badge = r >= 4.5 ? t("aa_pass") : r >= 3 ? t("aa_large") : t("aa_fail");
+      var d = document.createElement("div");
+      d.className = "pair";
+      d.style.background = p.bg; d.style.color = p.fg;
+      d.innerHTML = '<span><span class="lbl">' + (locale === "fa" ? p.lblFa : p.lblEn) + '</span><br><span class="sub">' +
+        p.fg + " / " + p.bg + " · " + (locale === "fa" ? t("pair_note_" + p.th) : t("pair_note_" + p.th)) +
+        '</span></span><span class="aa ' + cls + '">' + badge + " · " + faDigits(r.toFixed(2)) + ":" + faDigits(1) + "</span>";
+      g.appendChild(d);
+    });
+  }
+
+  /* ---------------- ruler ---------------- */
+  function renderRuler() {
+    var r = document.getElementById("ruler");
+    r.innerHTML = "";
+    [4, 8, 12, 16, 24, 32, 48, 64, 96].forEach(function (px) {
+      var row = document.createElement("div");
+      row.className = "r-row";
+      row.innerHTML = '<span class="r-lbl">' + faDigits(px) + "px · " + faDigits(px / 4) + "×</span>" +
+        '<span class="r-bar" style="inline-size:' + px * 2.5 + 'px"></span>';
+      r.appendChild(row);
+    });
+  }
+
+  /* ---------------- button matrix ---------------- */
+  function renderButtons() {
+    var M = document.getElementById("btn-matrix");
+    M.innerHTML = "";
+    [["primary", "b_primary"], ["secondary", "b_secondary"], ["ghost", "b_ghost"], ["destructive", "b_destructive"]].forEach(function (v) {
+      var wrap = document.createElement("div");
+      wrap.innerHTML = '<div class="caption" style="margin-block-end:8px;">' + t(v[1]) + "</div>";
+      var row = document.createElement("div");
+      row.className = "row";
+      [["st_default", ""], ["st_hover", "is-hover"], ["st_focus", "is-focus"], ["st_active", "is-active"], ["st_disabled", "is-disabled"], ["st_loading", "loading"]].forEach(function (s) {
+        var cell = document.createElement("div");
+        cell.className = "state-cell";
+        var b = document.createElement("button");
+        b.className = "btn " + v[0] + (s[1] && s[1] !== "loading" ? " " + s[1] : "");
+        if (s[1] === "is-disabled") b.disabled = true;
+        if (s[1] === "loading") { b.innerHTML = '<span class="spinner" aria-hidden="true"></span><span>' + t("st_loading") + "…</span>"; }
+        else b.textContent = t(v[1]);
+        cell.appendChild(b);
+        var lbl = document.createElement("div");
+        lbl.className = "state-lbl";
+        lbl.textContent = t(s[0]);
+        cell.appendChild(lbl);
+        row.appendChild(cell);
+      });
+      wrap.appendChild(row);
+      M.appendChild(wrap);
+    });
+  }
+
+  /* ---------------- segbar ---------------- */
+  var seg = document.getElementById("segbar");
+  for (var i = 0; i < 10; i++) { var s = document.createElement("i"); if (i < 3) s.className = "on"; seg.appendChild(s); }
+
+  /* ---------------- chips ---------------- */
+  document.getElementById("loc-chips").addEventListener("click", function (e) {
+    var b = e.target.closest(".chip-loc");
+    if (!b) return;
+    this.querySelectorAll(".chip-loc").forEach(function (c) { c.setAttribute("aria-pressed", "false"); });
+    b.setAttribute("aria-pressed", "true");
+  });
+
+  /* ---------------- tabs ---------------- */
+  var tabs = document.getElementById("tabs");
+  tabs.addEventListener("click", function (e) {
+    var b = e.target.closest(".tab");
+    if (!b) return;
+    var all = Array.prototype.slice.call(tabs.querySelectorAll(".tab"));
+    all.forEach(function (x) { x.setAttribute("aria-selected", "false"); });
+    b.setAttribute("aria-selected", "true");
+    var idx = all.indexOf(b) + 1;
+    var p = document.getElementById("tabpanel");
+    p.setAttribute("data-i18n", "k_tabp" + idx);
+    p.textContent = t("k_tabp" + idx);
+  });
+
+  /* ---------------- accordion ---------------- */
+  app.querySelectorAll(".acc-head").forEach(function (h) {
+    h.addEventListener("click", function () {
+      var acc = h.closest(".acc");
+      acc.setAttribute("data-open", acc.getAttribute("data-open") === "true" ? "false" : "true");
+    });
+  });
+
+  /* ---------------- overlays & toast ---------------- */
+  function wireOverlay(btnId, ovId) {
+    var ov = document.getElementById(ovId);
+    document.getElementById(btnId).addEventListener("click", function () { ov.classList.add("open"); });
+    ov.addEventListener("click", function (e) { if (e.target === ov || e.target.closest(".close-ov")) ov.classList.remove("open"); });
+  }
+  wireOverlay("open-modal", "modal-ov");
+  wireOverlay("open-sheet", "sheet-ov");
+  document.getElementById("spawn-toast").addEventListener("click", function () {
+    var el = document.createElement("div");
+    el.className = "toast success";
+    el.innerHTML = '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="color:var(--success)"><path d="m5 13 4 4L19 7"/></svg><span>' + t("toast_live") + "</span>";
+    document.getElementById("toast-stack").appendChild(el);
+    setTimeout(function () { el.remove(); }, 3200);
+  });
+
+  /* ---------------- copy field ---------------- */
+  var copyBtn = document.getElementById("copy-btn");
+  copyBtn.addEventListener("click", function () {
+    var txt = document.getElementById("cfg-link").textContent;
+    if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(function () {});
+    copyBtn.textContent = t("k_cp_done");
+    setTimeout(function () { copyBtn.textContent = t("k_cp_btn"); }, 1600);
+  });
+
+  /* ---------------- countdown ---------------- */
+  var remain = 7 * 3600 + 12 * 60 + 44;
+  function tick() {
+    remain = Math.max(0, remain - 1);
+    var h = String(Math.floor(remain / 3600)).padStart(2, "0"),
+        m = String(Math.floor((remain % 3600) / 60)).padStart(2, "0"),
+        s = String(remain % 60).padStart(2, "0");
+    document.getElementById("countdown").textContent = faDigits(h + ":" + m + ":" + s);
+  }
+  setInterval(tick, 1000);
+
+  /* ---------------- QR placeholder (deterministic) ---------------- */
+  (function drawQR() {
+    var cv = document.getElementById("qr"), ctx = cv.getContext("2d"), n = 31, seed = 42;
+    function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+    ctx.fillStyle = "#fff"; ctx.fillRect(0, 0, n, n);
+    ctx.fillStyle = "#0F172A";
+    for (var y = 2; y < n - 2; y++) for (var x = 2; x < n - 2; x++) if (rnd() > 0.5) ctx.fillRect(x, y, 1, 1);
+    function finder(x, y) {
+      ctx.fillStyle = "#0F172A"; ctx.fillRect(x, y, 7, 7);
+      ctx.fillStyle = "#fff"; ctx.fillRect(x + 1, y + 1, 5, 5);
+      ctx.fillStyle = "#0F172A"; ctx.fillRect(x + 2, y + 2, 3, 3);
+    }
+    finder(2, 2); finder(n - 9, 2); finder(2, n - 9);
+  })();
+
+  /* ---------------- audit ---------------- */
+  function renderAudit() {
+    var pass = PAIRS.filter(function (p) { return ratio(p.fg, p.bg) >= 4.5; }).length;
+    var det = PAIRS.map(function (p) { return faDigits(ratio(p.fg, p.bg).toFixed(1)); }).join(locale === "fa" ? "، " : ", ");
+    document.getElementById("audit-contrast").textContent =
+      t("a_contrast").replace("{n}", faDigits(PAIRS.length)).replace("{d}", det) +
+      (pass === PAIRS.length ? "" : " ⚠");
+  }
+
+  /* ---------------- init (theme from viewer) ---------------- */
+  var rootTheme = document.documentElement.getAttribute("data-theme");
+  var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  setTheme(rootTheme === "dark" || (!rootTheme && prefersDark) ? "dark" : "light");
+  new MutationObserver(function () {
+    var v = document.documentElement.getAttribute("data-theme");
+    if (v === "dark" || v === "light") setTheme(v);
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  setLocale("fa");
+  tick();
+})();
+</script>
