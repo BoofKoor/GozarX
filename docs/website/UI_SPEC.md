@@ -23,6 +23,7 @@
 | استک ساخت (بعد از UI) | **Next.js (App Router)** به‌صورت کانتینر جدا پشت همان nginx. سایت در ریشهٔ دامنه؛ پنل ادمین فعلی به `‎/admin‎` منتقل می‌شود. |
 | سطح جدایی از بات | **زیرساخت مشترک، محصول جدا.** همان سرور/پنل Remnawave/دیتابیس/پنل ادمین (بخش جداگانهٔ «وب‌سایت»)، ولی کاربران سایت از کاربران بات کاملاً جدا نگهداری می‌شوند و اقتصاد سایت کلیدهای تنظیمات مخصوص خودش (`site_*`) را دارد. |
 | تلگرام در سایت | **حذف کامل از UI.** هیچ لاگین/اتصال/ماموریت/تبلیغ تلگرامی در سایت وجود ندارد. (تصمیم v1.1 — جایگزین اتصال اختیاری تلگرامِ v1.0.) |
+| فونت | **فارسی: یکان‌بخ (Yekan Bakh Pro 3.1)** — نسخهٔ Variable برای پوشش وزن‌های ۴۰۰/۵۰۰/۷۰۰ از یک فایل. **انگلیسی: Inter.** هر دو self-host، بدون CDN. فایل‌ها در `docs/website/design/fonts/` vendored شده‌اند. یکان‌بخ فونت تجاری/مالکیتی است — لایسنس آن باید تهیه شود (fontiran.com). |
 
 **واقعیت‌های محصول که طراحی باید به آن‌ها وفادار باشد** (منطق از همین ریپو reuse می‌شود):
 
@@ -105,9 +106,14 @@ text #F1F5F9, muted #94A3B8.
 All text must pass WCAG AA (4.5:1; 3:1 for ≥24px bold). Theme follows system, manual toggle wins.
 
 TYPOGRAPHY
-fa: "Vazirmatn" (400/500/700), digits in Persian form (۰۱۲۳) inside copy; technical strings
-(config links, usernames, codes) always Latin digits and LTR-isolated. en: "Inter" (400/500/700).
-Never letter-space Persian text. Numeric UI (counters, timers, usage) uses tabular numerals.
+fa: "Yekan Bakh" (Yekan Bakh Pro 3.1 — use the Variable build, wght axis 100–950, so 400 body /
+500 labels / 700 headings all come from one file; the static family has NO 500, so the VF is
+required for a standard 400/500/700 scale). Use the Latin-digit build and localize digits in code
+(Persian form ۰۱۲۳ inside copy) so technical strings (config links, usernames, codes) stay Latin
+and LTR-isolated — do NOT rely on the FaNum build, which would force Persian digits onto technical
+strings too. en: "Inter" (Variable, 400/500/700). Never letter-space Persian text. Give Persian
+single-line chrome (buttons, chips, tabs, badges) line-height ≥1.4 so descenders (ج چ ح ی) never
+clip. Numeric UI (counters, timers, usage) uses tabular numerals.
 Scale (desktop / mobile, px): display 56/36 · h1 40/30 · h2 32/26 · h3 24/20 · h4 20/18 ·
 body-lg 18/17 · body 16 · small 14 · caption 12. Line-height: fa body 1.8, fa headings 1.4;
 en body 1.6, en headings 1.2. en headings letter-spacing -0.01em.
