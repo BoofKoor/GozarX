@@ -1,11 +1,15 @@
-# اسپک طراحی UI وب‌سایت GozarX — نسخهٔ ۱.۰
+# اسپک طراحی UI وب‌سایت GozarX — نسخهٔ ۱.۱
 
-این سند، اسپک کامل و مرحله‌به‌مرحلهٔ طراحی رابط کاربری وب‌سایت GozarX است: نسخهٔ وبِ همان محصولِ
-بات تلگرام (کانفیگ آزمایشی رایگان روزانه از پنل Remnawave، رشد حجم روزانه با دعوت دوستان)، با
-هدف سئوی قوی روی کلیدواژه‌های فارسی و تجربهٔ کاربری درجه‌یک دوزبانه (fa/en، RTL/LTR کامل).
+این سند، اسپک کامل و مرحله‌به‌مرحلهٔ طراحی رابط کاربری وب‌سایت GozarX است: یک **محصول مستقل از
+بات تلگرام** (کانفیگ آزمایشی رایگان روزانه از پنل Remnawave، رشد حجم روزانه با دعوت دوستان) که
+روی همان زیرساخت سوار می‌شود، با هدف سئوی قوی روی کلیدواژه‌های فارسی و تجربهٔ کاربری درجه‌یک
+دوزبانه (fa/en، RTL/LTR کامل).
 
 هر «فاز» یک پرامپت آمادهٔ کپی‌کردن برای Claude Design دارد + چک‌لیست پذیرش برای تأیید شما.
 **تا فازی تأیید نشده، فاز بعدی شروع نمی‌شود.**
+
+> تاریخچه: v1.0 → v1.1: جداسازی محصول سایت از بات (زیرساخت مشترک، کاربران و اقتصاد جدا با
+> کلیدهای `site_*`) و حذف کامل تلگرام از UI سایت (جایگزین تداوم بین‌دستگاهی: «کد انتقال»).
 
 ---
 
@@ -14,17 +18,18 @@
 | تصمیم | انتخاب نهایی |
 |---|---|
 | صفحهٔ اول | **ابزار دریافت = هیرو.** ویجت دریافت کانفیگ، خودِ هیروی صفحهٔ اصلی است (الگوی speedtest.net). بخش‌های معرفی/اعتماد/سئو زیر آن. |
-| احراز هویت دریافت اول | **بدون لاگین.** هویت دستگاه = کوکی امضاشدهٔ httpOnly + هش اثر انگشت مرورگر + آی‌پی، به‌علاوهٔ Cloudflare Turnstile نامرئی. بعد از دریافت موفق، «اتصال تلگرام» به‌صورت اختیاری پیشنهاد می‌شود (حفظ سوابق/دعوت‌ها بین دستگاه‌ها + اتصال به اکوسیستم بات). |
+| احراز هویت | **بدون لاگین، همیشه.** هویت دستگاه = کوکی امضاشدهٔ httpOnly + هش اثر انگشت مرورگر + آی‌پی، به‌علاوهٔ Cloudflare Turnstile نامرئی. تداوم بین‌دستگاه‌ها با «کد انتقال» یک‌بارمصرف (فاز ۶) — نه هیچ حسابی. |
 | زبان و URL | **فارسی در ریشهٔ دامنه** (RTL)، انگلیسی زیر `‎/en/‎` (LTR). hreflang دوطرفه + x-default. هیچ ریدایرکت خودکار مبتنی بر IP؛ فقط بنر پیشنهاد تغییر زبان. |
-| استک ساخت (بعد از UI) | **Next.js (App Router)** به‌صورت کانتینر جدا پشت همان nginx. سایت در ریشهٔ دامنه؛ پنل ادمین فعلی به `‎/admin‎` منتقل می‌شود. مدیریت سایت به‌صورت بخش جداگانه در همان پنل ادمین اضافه می‌شود. |
+| استک ساخت (بعد از UI) | **Next.js (App Router)** به‌صورت کانتینر جدا پشت همان nginx. سایت در ریشهٔ دامنه؛ پنل ادمین فعلی به `‎/admin‎` منتقل می‌شود. |
+| سطح جدایی از بات | **زیرساخت مشترک، محصول جدا.** همان سرور/پنل Remnawave/دیتابیس/پنل ادمین (بخش جداگانهٔ «وب‌سایت»)، ولی کاربران سایت از کاربران بات کاملاً جدا نگهداری می‌شوند و اقتصاد سایت کلیدهای تنظیمات مخصوص خودش (`site_*`) را دارد. |
+| تلگرام در سایت | **حذف کامل از UI.** هیچ لاگین/اتصال/ماموریت/تبلیغ تلگرامی در سایت وجود ندارد. (تصمیم v1.1 — جایگزین اتصال اختیاری تلگرامِ v1.0.) |
 
-**واقعیت‌های محصول که طراحی باید به آن‌ها وفادار باشد** (از کد فعلی):
+**واقعیت‌های محصول که طراحی باید به آن‌ها وفادار باشد** (منطق از همین ریپو reuse می‌شود):
 
-- هر کاربر هر `trial_hours` ساعت (پیش‌فرض ۲۴) **یک** کانفیگ می‌گیرد؛ کول‌داون «چرخشی» است
+- هر کاربر هر `site_trial_hours` ساعت (پیش‌فرض ۲۴) **یک** کانفیگ می‌گیرد؛ کول‌داون «چرخشی» است
   (از لحظهٔ آخرین دریافت)، نه نیمه‌شب.
-- حجم روزانه = `daily_limit_mb` (پیش‌فرض ۱GB) + `referral_reward_mb` (پیش‌فرض ۵۰۰MB) به‌ازای هر
-  دعوت موفق، تا سقف `referral_reward_limit` (پیش‌فرض ۱۰) دعوت. **هیچ عددی در UI هاردکد نمی‌شود؛
-  همه از تنظیمات می‌آیند.**
+- حجم روزانه = `site_daily_limit_mb` + `site_referral_reward_mb` به‌ازای هر دعوت موفق، تا سقف
+  `site_referral_reward_limit` دعوت. **هیچ عددی در UI هاردکد نمی‌شود؛ همه از تنظیمات می‌آیند.**
 - لوکیشن‌ها با «نام remark» شناخته می‌شوند (مثل `Germany 🇩🇪`) و لیستشان runtime است.
 - کانفیگِ حجم‌تمام‌شده ولی زمان‌دار، با یک دعوت موفق **همان لحظه دوباره فعال می‌شود** (revive) —
   این یک لحظهٔ طلایی UX است و باید در طراحی دیده شود.
@@ -36,10 +41,14 @@
 
 ## ۱) پروتکل کار با Claude Design
 
-1. **بلوک CONTEXT** (بخش ۲ همین سند) را کپی کنید و اول هر گفتگو/پرامپت بچسبانید.
-2. پرامپت همان فاز را زیر آن بچسبانید و اجرا کنید.
+1. در claude.ai یک Project بسازید و **بلوک CONTEXT** (بخش ۲) را در Project Instructions بگذارید
+   (یا اول هر چت پیست کنید).
+2. برای هر فاز یک چت جدید؛ فقط پرامپت همان فاز را بفرستید.
 3. خروجی را با **چک‌لیست پذیرش** همان فاز بررسی کنید؛ اشکالات را در همان گفتگو اصلاح بخواهید.
-4. فقط بعد از تأیید شما، سراغ فاز بعدی بروید.
+4. بعد از تأیید فاز ۰، «بلوک نهایی CSS variables» را از Claude بگیرید و به انتهای Project
+   Instructions اضافه کنید تا فازهای بعد به توکن‌های قطعی وفادار بمانند.
+5. فایل HTML نهایی هر فاز را آرشیو کنید (`phase-0.html` … `phase-8.html`) — ورودی فاز ساخت.
+6. فقط بعد از تأیید شما، سراغ فاز بعدی بروید.
 
 **قوانین طلایی (برای هر فاز، بدون استثنا):**
 
@@ -60,14 +69,15 @@
 === GOZARX WEBSITE — DESIGN CONTEXT (paste before every phase prompt) ===
 
 PRODUCT
-GozarX gives every visitor a FREE daily trial VPN config (V2Ray/VLESS links from a Remnawave
-panel). One config per rolling 24h window (configurable "trial_hours"). Daily allowance starts at
-~1 GB (configurable) and grows by ~500 MB per successful friend invite, capped at 10 invites (all
-configurable — NEVER hardcode these numbers in copy; render them as dynamic values). Locations
-(e.g. "Germany 🇩🇪", "Ukraine 🇺🇦") are dynamic strings with flag emojis. A config whose data ran
-out (but time remains) is INSTANTLY revived when one invited friend claims — design celebrates
-this. No login for the first claim (invisible anti-bot + device identity); after success we softly
-offer "Connect Telegram" to keep history/invites across devices.
+GozarX is a standalone website that gives every visitor a FREE daily trial VPN config (V2Ray/VLESS
+links). One config per rolling 24h window (configurable "trial_hours"). Daily allowance starts at
+~1 GB (configurable) and grows by ~500 MB per successful friend invite, capped (all numbers
+configurable — NEVER hardcode them in copy; render as dynamic values). Locations (e.g.
+"Germany 🇩🇪", "Ukraine 🇺🇦") are dynamic strings with flag emojis. A config whose data ran out
+(but time remains) is INSTANTLY revived when one invited friend claims — design celebrates this.
+Identity is purely device-based (signed cookie + light fingerprint + invisible anti-bot check):
+there is NO login, NO signup, NO email, NO phone number, and NO Telegram anywhere in the UI.
+This "zero signup" promise is a core brand differentiator — surface it proudly.
 
 AUDIENCE & LANGUAGES
 Primary: Persian-speaking users (Iran), often on Android, often slow/filtered networks — fast,
@@ -76,8 +86,9 @@ lives under /en/. Every screen must be designed in BOTH directions — RTL is no
 afterthought, it is the primary art direction.
 
 BRAND & TONE
-Name: "GozarX" (fa copy may use «گذر»). Tone: friendly, direct, trustworthy — no corporate stiffness,
-no childish slang. Short sentences. Persian copy is written natively (not translated-sounding).
+Name: "GozarX" (fa copy may use «گذر»). Tone: friendly, direct, trustworthy — no corporate
+stiffness, no childish slang. Short sentences. Persian copy is written natively (not
+translated-sounding).
 
 COLOR TOKENS (CSS custom properties; light / dark)
 --brand-50:#EFF6FF --brand-100:#DBEAFE --brand-200:#BFDBFE --brand-300:#93C5FD
@@ -116,13 +127,13 @@ prefers-reduced-motion (fade-only fallbacks).
 
 RTL/LTR RULES (hard requirements)
 1. dir="rtl" on <html> for fa, dir="ltr" for en; fonts swap with locale.
-2. CSS logical properties ONLY (margin-inline-start, padding-inline-end, inset-inline, text-align:
-   start…). No physical left/right values anywhere.
+2. CSS logical properties ONLY (margin-inline-start, padding-inline-end, inset-inline,
+   text-align: start…). No physical left/right values anywhere.
 3. Directional icons (arrows, chevrons, "next/back") flip in RTL; symmetric icons (shield, globe,
    download, QR) never flip. Progress bars & steppers run inline-start → inline-end.
 4. Config links / URLs / codes render in dedicated LTR islands: dir="ltr" + unicode-bidi:isolate,
-   monospace, with copy button. Mixed-direction lines (e.g. English location name inside Persian
-   sentence) wrap the foreign fragment in <bdi>.
+   monospace, with copy button. Mixed-direction lines (e.g. English location name inside a
+   Persian sentence) wrap the foreign fragment in <bdi>.
 5. fa copy uses Persian digits & Persian punctuation (،؛؟) and «guillemets»; en uses Latin.
 6. Gradients/asymmetric decorations mirror their angle in RTL.
 
@@ -148,14 +159,14 @@ no horizontal scroll at 360px ✓, all states present ✓.
 /locations              فهرست لوکیشن‌ها (گرید کارت‌ها)
 /location/{slug}        لندینگ سئو هر لوکیشن (ukraine, germany, usa-static-ip …) — ویجت با لوکیشن پیش‌انتخاب
 /l/{slug}               لندینگ‌های کلیدواژه‌ای (free-v2ray-config, free-vpn-daily …) — ساخته‌شده از پنل ادمین
-/rewards                «حجم بیشتر» — کارت‌های ماموریت (PWA، اعلان، دعوت، …)
+/rewards                «حجم بیشتر» — کارت‌های ماموریت (دعوت، PWA، اعلان، streak)
 /invite/{code}          لینک دعوت (فرود → ویجت دریافت + ثبت referrer)
-/status                 «وضعیت من» — داشبورد سبکِ مبتنی بر دستگاه (مصرف، تاریخچه، دعوت‌ها، اتصال تلگرام)
+/status                 «وضعیت من» — داشبورد سبکِ مبتنی بر دستگاه (مصرف، تاریخچه، دعوت‌ها، انتقال دستگاه)
 /guides                 راهنمای اتصال — فهرست پلتفرم‌ها
 /guides/{platform}      android / ios / windows / macos / linux (اپ‌ها: v2rayNG، Hiddify، Streisand…)
 /faq                    سوالات متداول (دسته‌بندی + جستجو)
 /blog + /blog/{slug}    مقالات سئویی
-/about  /contact        دربارهٔ ما / پشتیبانی (تلگرام)
+/about  /contact        دربارهٔ ما / فرم تماس (بدون هیچ فیلد هویتی اجباری)
 /terms  /privacy        قوانین / حریم خصوصی
 /offline  /404  /500    صفحات سیستمی
 ```
@@ -181,7 +192,7 @@ Using the GozarX CONTEXT above, build a single-page design-system specimen:
 1. Color plate: full brand scale + semantic colors + neutrals, rendered in both themes, each
    swatch labeled with its token name and hex, with an AA-contrast badge on text/background pairs.
 2. Typography specimen: full type scale in BOTH locales side by side (fa Vazirmatn-style RTL,
-   en Inter-style LTR), including a mixed-direction paragraph (Persian sentence containing
+   en Inter-style LTR), including a mixed-direction paragraph (a Persian sentence containing
    "Germany 🇩🇪" and a vless:// link rendered as an LTR island) and Persian vs Latin digits.
 3. Spacing & radius scale: visual ruler of the 4px rhythm, section paddings, container widths,
    radius set.
@@ -227,32 +238,34 @@ S1 IDLE (first visit): title ("Get today's free config" / «کانفیگ رای�
    scrollable row of location chips (flag emoji + name, single-select, e.g. Germany 🇩🇪,
    Ukraine 🇺🇦, USA 🇺🇸, Turkey 🇹🇷), big primary CTA "Get config" / «دریافت کانفیگ», reassurance
    microcopy under CTA: no signup · free · renews every 24h (dynamic hours). A barely-visible
-   anti-bot note ("protected by invisible check"). NO login anywhere.
+   anti-bot note ("protected by an invisible check"). NO login anywhere.
 S2 PROVISIONING: CTA morphs to loading (spinner + "Preparing your config…"), chips disabled,
    subtle progress shimmer. Must feel < 3s.
 S3 SUCCESS (Provisioned): celebratory but tasteful reveal — check morph on the CTA, then the
    config panel: location title, LTR monospace copy-field with the vless:// link + big copy
    button, QR toggle, "open in app" quick actions (v2rayNG, Hiddify, Streisand — icon buttons),
-   remaining-time countdown (e.g. 23:59:12, tabular), usage meter 0 of 1 GB. Below: two soft
-   upsell cards side by side: "Connect Telegram to keep your history & invites" (optional, one
-   tap, dismissible) and "Want more volume? Earn free MB →" (links to rewards).
+   remaining-time countdown (e.g. 23:59:12, tabular), usage meter 0 of 1 GB. Below: ONE
+   dismissible missions strip: "Want more daily volume?" with dynamic reward chips
+   (Invite a friend +N MB · Install web app +N MB · Turn on notifications +N MB) linking to the
+   missions page. No account/login upsell of any kind.
 S4 ACTIVE (returning user, config still valid): compact status header ("Your config is active"),
    countdown + usage meter (e.g. 380 MB of 1 GB), copy-field + QR + open-in-app again, secondary
-   action "Change location" which re-opens the location chips inline (picker within the same
-   subscription — instant, no new claim).
-S5 COOLDOWN (AlreadyClaimedToday, trial ended): friendly lock state — "Next config in 07:12:44"
-   (live countdown derived from the user's own last claim), plus a rewards strip: task chips
-   (Invite a friend +500 MB, Install app +MB, Turn on notifications +MB) so the wait converts.
-S6 DATA EXHAUSTED but time remains (LIMITED): distinct warm state — "Today's volume is used up"
-   with the usage meter full, and the golden revive offer: "Invite ONE friend and this config
-   comes back to life instantly" with invite-link copy button + share sheet trigger. Show the
-   revived confirmation micro-state too.
-S7 EMPTY (NoLocations/NotReady): graceful maintenance state — illustration, "Locations are being
-   refreshed, check back soon", link to Telegram bot as fallback.
-S8 ERROR (PanelError): transient error card — "Something hiccuped, your claim is untouched",
-   single Retry button (one retry only), link to FAQ/support. Never blame the user.
-Also design the tiny inline Turnstile-badge placement and a compact widget variant (for SEO
-landing pages, location pre-selected and non-scrollable header). Deliver per QUALITY BAR.
+   action "Change location" which re-opens the location chips inline (instant switch within the
+   same trial — no new claim).
+S5 COOLDOWN (trial ended, next claim locked): friendly lock state — "Next config in 07:12:44"
+   (live countdown derived from the user's own last claim), plus the missions strip so the wait
+   converts.
+S6 DATA EXHAUSTED but time remains: distinct warm state — "Today's volume is used up" with the
+   usage meter full, and the golden revive offer: "Invite ONE friend and this config comes back
+   to life instantly" with an invite-link copy-field + native share button (Web Share API). Show
+   the revived confirmation micro-state too.
+S7 EMPTY (no locations / not configured): graceful maintenance state — illustration, "Locations
+   are being refreshed, check back soon", link to the FAQ.
+S8 ERROR (transient panel failure): calm error card — "Something hiccuped, your claim is
+   untouched", a single Retry button (one retry only), link to FAQ/support. Never blame the user.
+
+Also design the tiny inline anti-bot badge placement and a COMPACT widget variant (for SEO
+landing pages: location pre-selected, shorter header). Deliver per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
@@ -261,7 +274,7 @@ landing pages, location pre-selected and non-scrollable header). Deliver per QUA
 - [ ] هیچ عدد اقتصادی (حجم/ساعت/جایزه) هاردکد ننوشته شده — همه با لِیبل «داینامیک» مشخص‌اند.
 - [ ] حالت revive (S6) واضح، جذاب و قابل‌فهم است — مهم‌ترین لحظهٔ رشد ویروسی محصول.
 - [ ] شمارش‌گرها tabular و بدون پرش عرض‌اند؛ تایمر در fa با ارقام فارسی است.
-- [ ] کارت «اتصال تلگرام» قابل‌رد‌شدن (dismiss) است و اجباری به نظر نمی‌رسد.
+- [ ] نوار ماموریت‌ها قابل‌بستن (dismiss) است و هیچ‌جا حس لاگین/ثبت‌نام وجود ندارد.
 
 ---
 
@@ -284,20 +297,21 @@ bottom-sheet menu. Active-page indicator.
    روزانه، در چند ثانیه») + one supporting line. Under the widget: trust chips (No signup ·
    Free forever · New config every 24h · ~N users — dynamic).
 2. HOW IT WORKS: 3 steps (pick location → get config → import to app), direction-aware stepper.
-3. LOCATIONS GRID: flag cards linking to location landing pages, each with "get →" affordance;
+3. LOCATIONS GRID: flag cards linking to location landing pages, each with a "get →" affordance;
    "all locations" link.
-4. MORE VOLUME STRIP: 3–4 mission cards (Invite friends +MB each up to cap, Install web app +MB,
-   Enable notifications +MB) with a "see all missions" link — numbers rendered as dynamic tokens.
+4. MORE VOLUME STRIP: 3–4 mission cards (Invite friends +N MB each up to a cap, Install web app
+   +N MB, Enable notifications +N MB, Daily check-in) with a "see all missions" link — numbers
+   rendered as dynamic tokens.
 5. APPS ROW: v2rayNG / Hiddify / Streisand / Windows clients with platform icons → guides.
 6. STATS BAND: configs delivered, active locations, uptime — animated count-up, tabular.
 7. FAQ TEASER: top 5 questions, accordion.
-8. TELEGRAM BAND: cross-promo for the existing Telegram bot («همین سرویس در تلگرام») with a
-   deep-link button.
+8. PRIVACY/TRUST BAND: the "zero signup" promise — «بدون ثبت‌نام، بدون ایمیل، بدون شماره» with a
+   one-line plain-language note on device-based identity and a link to the Privacy page.
 9. BLOG TEASER: 3 article cards (title, read-time, tag).
-FOOTER: 4 columns (product, resources, legal, language links fa/en), Telegram channel & support
-links, small print. 
+FOOTER: 4 columns (product, resources, legal, language links fa/en) + small print. No social or
+messenger links anywhere; support goes through the Contact page.
 Also include: the language-suggestion banner (shown when browser locale ≠ page locale — never an
-auto-redirect), scroll-triggered reveals (respect reduced motion). Deliver per QUALITY BAR.
+auto-redirect), scroll-triggered reveals (respect reduced motion). Deliver per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
@@ -305,6 +319,7 @@ auto-redirect), scroll-triggered reveals (respect reduced motion). Deliver per Q
 - [ ] هدر sticky در RTL آینهٔ کامل LTR است؛ منوی موبایل bottom-sheet روان دارد.
 - [ ] گرادیان‌ها و استپر در RTL جهتشان برعکس شده.
 - [ ] بنر پیشنهاد زبان طراحی شده (بدون ریدایرکت خودکار).
+- [ ] باند «بدون ثبت‌نام» شفاف و اعتمادساز است؛ هیچ لینک پیام‌رسان/شبکهٔ اجتماعی در صفحه نیست.
 - [ ] چگالی محتوایی صفحه برای سئو کافی است ولی شلوغ نشده؛ سلسله‌مراتب H1→H2 منطقی است.
 
 ---
@@ -313,16 +328,14 @@ auto-redirect), scroll-triggered reveals (respect reduced motion). Deliver per Q
 
 **هدف:** موتور رشد. کارت‌های ماموریت با حالت‌های کامل.
 
-ماموریت‌های مصوب + پیشنهادی (همه با مقدار جایزهٔ داینامیک از تنظیمات پنل):
+ماموریت‌های نهایی (همه با مقدار جایزهٔ داینامیک از تنظیمات پنل):
 
-| ماموریت | جایزه (کلید تنظیمات پیشنهادی برای فاز ساخت) | نوع |
+| ماموریت | جایزه (کلید تنظیمات برای فاز ساخت) | نوع |
 |---|---|---|
-| دعوت دوستان (به‌ازای هر نفر، تا سقف) | `referral_reward_mb` × سقف `referral_reward_limit` (موجود) | تکرارشونده با سقف |
+| دعوت دوستان (به‌ازای هر نفر، تا سقف) | `site_referral_reward_mb` × سقف `site_referral_reward_limit` | تکرارشونده با سقف |
 | نصب وب‌اپ (PWA) | `site_reward_pwa_mb` | یک‌باره |
 | روشن‌کردن اعلان‌ها | `site_reward_push_mb` | یک‌باره |
-| اتصال تلگرام | `site_reward_tg_link_mb` | یک‌باره (پیشنهاد من) |
-| عضویت در کانال تلگرام | `site_reward_channel_mb` | یک‌باره، قابل‌راستی‌آزمایی با بات (پیشنهاد من) |
-| ورود روزانه (streak) | `site_reward_streak_mb` بعد از `site_streak_days` روز پیاپی | تکرارشونده (پیشنهاد من) |
+| ورود روزانه (streak) | `site_reward_streak_mb` بعد از `site_streak_days` روز پیاپی | تکرارشونده |
 
 **پرامپت:**
 
@@ -332,26 +345,27 @@ PHASE 3 — "MORE VOLUME" MISSIONS PAGE (/rewards)
 Using the CONTEXT + approved system, design the missions page:
 - Page header: current daily allowance as a hero stat (ring gauge, e.g. «۱٫۵ گیگابایت در روز»)
   with a breakdown line (base + invites + missions — all dynamic).
-- INVITE CARD (primary, larger): personal invite link in an LTR copy-field, share buttons
-  (Telegram, WhatsApp, generic share), progress "3 of 10 invites" with a segmented progress bar,
-  "+500 MB per friend" dynamic label, and the revive reminder ("an invite can instantly revive an
+- INVITE CARD (primary, larger): personal invite link in an LTR copy-field, a native share
+  button (Web Share API sheet) + copy, progress "3 of 10 invites" with a segmented progress bar,
+  "+N MB per friend" dynamic label, and the revive reminder ("an invite can instantly revive an
   exhausted config").
 - MISSION CARDS grid, each with icon, title, dynamic reward chip (+N MB), state variants:
   available / in-progress / done-claimed (checkmark, muted) / unavailable-on-this-device (e.g.
-  PWA already installed, iOS notification limitations — with a gentle explainer tooltip):
-  Install web app · Enable notifications · Connect Telegram · Join Telegram channel · Daily
-  check-in streak (7-day dots row, direction-aware).
+  web app already installed, iOS notification limitations — with a gentle explainer tooltip):
+  Install web app · Enable notifications · Daily check-in streak (7-day dots row,
+  direction-aware).
 - Claim interaction: mission completes → card flips to success with a "+N MB added to your daily
   volume" toast.
 - Fine-print block: rules (per-device, anti-abuse note) in muted small text.
-Both locales, both themes, mobile+desktop, per QUALITY BAR.
+Both locales, both themes, mobile+desktop, per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
-- [ ] همهٔ جایزه‌ها لیبل داینامیک دارند؛ هیچ «۵۰۰ مگابایت» هاردکدی در طرح قطعی نشده.
+- [ ] همهٔ جایزه‌ها لیبل داینامیک دارند؛ هیچ عددی هاردکد قطعی نشده.
 - [ ] پیشرفت دعوت‌ها segmented و جهت‌آگاه است؛ سقف دعوت نمایش داده می‌شود.
 - [ ] حالت‌های done / unavailable هر کارت طراحی شده.
 - [ ] ردیف streak در RTL از راست شروع می‌شود.
+- [ ] اشتراک‌گذاری با share بومی مرورگر است (بدون دکمهٔ اختصاصی هیچ پیام‌رسانی).
 
 ---
 
@@ -370,7 +384,7 @@ A) LANDING TEMPLATE — demonstrate with TWO filled examples: fa «کانفیگ 
    and fa «آیپی ثابت آمریکا» (/l/usa-static-ip); include one en example too.
    Structure top→bottom:
    1. Breadcrumb (Home › Locations › Ukraine).
-   2. H1 with the exact keyword + one-line promise.
+   2. H1 with the exact keyword + a one-line promise.
    3. The COMPACT claim widget (Phase-1 variant) with the location PRE-SELECTED — zero clicks
       between landing and claiming.
    4. Benefit trio for this location (latency, use-cases, IP type) as icon cards.
@@ -382,7 +396,7 @@ A) LANDING TEMPLATE — demonstrate with TWO filled examples: fa «کانفیگ 
    9. Final CTA band repeating the claim button.
 B) LOCATIONS INDEX (/locations): filterable grid of location cards (flag, name, "popular" badge,
    claim shortcut), plus a short intro paragraph for SEO.
-Both locales, both themes, mobile+desktop, per QUALITY BAR.
+Both locales, both themes, mobile+desktop, per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
@@ -405,59 +419,68 @@ Using the CONTEXT + approved system, design:
    (v2rayNG, Streisand, Hiddify, …) and difficulty/time chips.
 2. GUIDE DETAIL (/guides/android as the example): sticky in-page TOC (direction-aware), numbered
    step cards with screenshot placeholders (16:9, labeled), copy-fields for the config link, a
-   troubleshooting accordion, "was this helpful?" feedback row, prev/next platform links.
+   troubleshooting accordion, a "was this helpful?" feedback row, prev/next platform links.
    This page will carry HowTo schema — keep steps semantically clean.
 3. FAQ PAGE (/faq): search input, category tabs (Getting started, Volume & invites, Apps,
    Troubleshooting), accordions; empty search-result state.
 4. BLOG: index (featured post + card grid, tag filter) and post template (cover, meta row with
-   Persian date + read-time, beautiful fa long-form typography, LTR code/link islands, in-article
-   CTA band with the compact claim widget, related posts).
-5. ABOUT + CONTACT: short mission block, Telegram support card (bot + channel deep links),
-   response-time note. No email forms.
-6. TERMS + PRIVACY: clean legal template (numbered sections, sticky TOC), privacy page explicitly
-   explains the device-identity approach in plain language (what we store, what we never store).
-Both locales, both themes, mobile+desktop, per QUALITY BAR.
+   Persian date + read-time, beautiful fa long-form typography, LTR code/link islands, an
+   in-article CTA band with the compact claim widget, related posts).
+5. ABOUT + CONTACT: short mission block; CONTACT is a lightweight form (topic select + message +
+   optional reply handle — nothing required beyond the message), with success/error states, an
+   expected-response-time note, and FAQ deflection links above the form. No email addresses, no
+   social/messenger links.
+6. TERMS + PRIVACY: clean legal template (numbered sections, sticky TOC); the privacy page
+   explicitly explains the device-identity approach in plain language (what we store, what we
+   never store — no name, no email, no phone).
+Both locales, both themes, mobile+desktop, per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
 - [ ] TOC چسبان در RTL سمت درست است و اسکرول‌اسپای دارد.
 - [ ] تایپوگرافی مقالهٔ فارسی (فاصله‌ها، نقل‌قول، لیست‌ها) بی‌نقص است؛ جزیره‌های LTR تمیزند.
+- [ ] فرم تماس بدون هیچ فیلد اجباریِ هویتی است و حالت موفق/خطا دارد.
 - [ ] صفحهٔ حریم خصوصی، هویت دستگاه را به زبان ساده و صادقانه توضیح می‌دهد.
 - [ ] جستجوی FAQ حالت خالی دارد.
 
 ---
 
-### فاز ۶ — «وضعیت من» + اتصال تلگرام
+### فاز ۶ — «وضعیت من» + انتقال دستگاه
 
-**هدف:** داشبورد سبک مبتنی بر دستگاه (بدون لاگین)، با مسیر ارتقا به هویت تلگرامی.
+**هدف:** داشبورد سبک مبتنی بر دستگاه (بدون لاگین). تداوم بین‌دستگاهی با «کد انتقال» یک‌بارمصرف —
+مکانیزم بدون‌حساب برای اینکه پاک‌شدن کوکی/تعویض گوشی، سوابق و دعوت‌های کاربر را نابود نکند.
+(اگر این قابلیت را نخواستید، بند 2 پرامپت را حذف کنید.)
 
 **پرامپت:**
 
 ```text
-PHASE 6 — MY STATUS (/status) + TELEGRAM CONNECT FLOW
+PHASE 6 — MY STATUS (/status) + DEVICE TRANSFER
 
 Using the CONTEXT + approved system, design:
 1. STATUS DASHBOARD (device-identity based, no login):
-   - Top stat row: today's usage ring (e.g. 380 MB of 1 GB), time remaining countdown, daily
+   - Top stat row: today's usage ring (e.g. 380 MB of 1 GB), time-remaining countdown, daily
      allowance, invites count (3 of 10) — all dynamic, tabular.
    - Active config card (reuses Phase-1 S4 essentials) or, if none, an inline claim CTA.
    - Claim history list (last N: date · location · status chip), empty state for new devices.
    - Missions summary strip linking to /rewards.
-   - Settings block: language, theme, notifications toggle (with permission-state awareness).
-2. TELEGRAM CONNECT:
-   - The "why connect" card: keeps volume/invites/history across devices, sync with the bot.
-   - Flow: tap → modal with deep-link button ("Open Telegram") + 6-digit fallback code in an LTR
-     copy-field → waiting state (polling animation) → connected success state showing the
-     Telegram handle, with a subtle "disconnect" option.
-   - The connected variant of the whole dashboard (badge in header area, cross-device note).
-3. NEW-DEVICE-WITH-ACCOUNT state: "Have you used GozarX before? Connect Telegram to restore."
-Both locales, both themes, mobile+desktop, per QUALITY BAR.
+   - Settings block: language, theme, notifications toggle (permission-state aware).
+   - A subtle identity note: "Your history lives on this browser" with a link to Device Transfer.
+2. DEVICE TRANSFER (account-less cross-device continuity):
+   - "Move to a new device" card → modal: generates a one-time 8-character code (LTR monospace
+     copy-field) with a 10-minute expiry countdown; states: generated/waiting → redeemed-success
+     → expired (regenerate).
+   - On the NEW device (empty dashboard): "Used GozarX before? Enter your transfer code" entry
+     point with a code input; success state (identity restored, stats animate in) and error
+     states (wrong / expired code).
+3. Danger row: "Reset this device's data" with a confirm dialog.
+Both locales, both themes, mobile+desktop, per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
-- [ ] داشبورد بدون هیچ لاگینی معنا دارد؛ اتصال تلگرام «ارتقا»ست نه دیوار.
-- [ ] فلوی اتصال ۳ حالت دارد: در انتظار / موفق / خطا-انقضای کد.
-- [ ] حالت خالی (دستگاه نو) و حالت restore طراحی شده.
+- [ ] داشبورد بدون هیچ لاگینی معنا دارد؛ هیچ ردی از حساب/پیام‌رسان نیست.
+- [ ] فلوی انتقال همهٔ حالت‌ها را دارد: در انتظار / موفق / منقضی / کد اشتباه.
+- [ ] حالت خالی (دستگاه نو) و نقطهٔ ورود «قبلاً استفاده کرده‌ای؟» طراحی شده.
+- [ ] کد انتقال LTR و مونواسپیس است؛ تایمر انقضا tabular.
 
 ---
 
@@ -478,11 +501,11 @@ Using the CONTEXT + approved system, design:
 3. Offline page (/offline): friendly, shows the last cached config (if any) in a copy-field,
    retry button.
 4. 404: playful lost-connection illustration, search + top links. 500/maintenance: calm tone,
-   Telegram status link.
-5. Global loading skeletons (homepage hero + status page), toast stack position (top-start in
-   RTL, top-end in LTR? pick and justify), and the app-update available toast ("refresh for the
-   new version").
-Both locales, both themes, mobile+desktop, per QUALITY BAR.
+   a retry button and a link to the FAQ — no external status links.
+5. Global loading skeletons (homepage hero + status page), toast stack position (define it
+   direction-aware: top-start vs top-end — pick one and justify), and the app-update toast
+   ("refresh for the new version").
+Both locales, both themes, mobile+desktop, per the QUALITY BAR.
 ```
 
 **چک‌لیست پذیرش:**
@@ -504,17 +527,18 @@ Take ALL approved phases and produce an audit report + corrected deliverables wh
 1. RTL/LTR: walk every screen in both directions; list every asymmetry (icon flips, gradient
    angles, progress direction, toast position, chevron direction in accordions, stepper flow,
    scroll shadows). Fix and re-render offenders.
-2. Spacing rhythm: verify every gap/padding is on the 4px grid and section rhythm (96/64/48) is
-   consistent across pages; flag inconsistencies in a table.
+2. Spacing rhythm: verify every gap/padding is on the 4px grid and the section rhythm (96/64/48)
+   is consistent across pages; flag inconsistencies in a table.
 3. Contrast & a11y: AA check on every text/background token pair in both themes; focus order and
    focus-visible on all interactive elements; hit-targets ≥44px on mobile; reduced-motion
    variants exist.
 4. Copy pass: fa copy natural (no translationese), Persian digits everywhere in fa except LTR
    technical islands; en copy idiomatic; terminology consistent (config / کانفیگ, volume / حجم,
-   invite / دعوت — one term each, sitewide).
+   invite / دعوت — one term each, sitewide). Confirm ZERO login/signup/account/messenger wording
+   anywhere.
 5. Responsive matrix: 360 / 768 / 1280 for every page; no horizontal scroll anywhere.
-6. State coverage: cross-check the claim widget's 8 states + mission card states + connect flow
-   states all exist in final files.
+6. State coverage: cross-check that the claim widget's 8 states + mission-card states + device-
+   transfer states + PWA/notification states all exist in the final files.
 Output: a pass/fail table per page per check, then corrected final HTML files.
 ```
 
@@ -557,15 +581,22 @@ Output: a pass/fail table per page per check, then corrected final HTML files.
 - **سرویس جدید `site`** (Next.js standalone) در docker-compose، پشت همان nginx:
   `/` → site، `‎/admin‎` → SPA فعلی، `‎/api‎`، `‎/tg‎`، `‎/panel-webhook‎` مثل قبل → app.
 - **API عمومی** زیر `‎/api/public/*‎` (جدا از `‎/api/admin‎`): `POST /claim`، `GET /status`،
-  `GET /locations`، `POST /rewards/claim`، `POST /telegram/link`، `POST /push/subscribe` —
-  با rate-limit در Redis بر پایهٔ device+IP و راستی‌آزمایی Turnstile سمت سرور. منطق claim از
-  **همان `TrialService`** استفاده می‌کند (لایه‌بندی موجود: delivery جدید → services موجود).
-- **هویت دستگاه:** کوکی امضاشدهٔ httpOnly (UUID + HMAC) + هش fingerprint سبک + bucket آی‌پی؛
-  جدول‌های جدید: `site_devices`، `site_rewards`، `push_subscriptions`؛ اتصال اختیاری به `users`
-  موجود از طریق فلوی deep-link بات (کد ۶ رقمی).
-- **بخش جدید پنل ادمین «وب‌سایت»:** تنظیمات جایزه‌های سایت (کلیدهای جدول فاز ۳)، CRUD
-  لندینگ‌های کلیدواژه‌ای (slug، عنوان/متا/محتوا per-locale)، آمار قیف سایت (بازدید→claim)،
-  مدیریت push broadcast (از همان arq worker).
+  `GET /locations`، `POST /rewards/claim`، `POST /push/subscribe`، `POST /transfer/create`،
+  `POST /transfer/redeem`، `POST /contact` — با rate-limit در Redis بر پایهٔ device+IP و
+  راستی‌آزمایی Turnstile سمت سرور. منطق claim از **همان `TrialService`** استفاده می‌کند
+  (لایه‌بندی موجود: delivery جدید → services موجود).
+- **هویت دستگاه:** کوکی امضاشدهٔ httpOnly (UUID + HMAC) + هش fingerprint سبک + bucket آی‌پی.
+  کد انتقال: یک‌بارمصرف، ۸ کاراکتری، انقضای ۱۰ دقیقه، ذخیره در Redis.
+- **جدایی داده‌ای از بات:** کاربران سایت در جدول‌های خودشان — `site_devices`، `site_claims`،
+  `site_rewards`، `push_subscriptions`، `site_messages` (فرم تماس) — و هیچ ردیفی در جدول
+  `users` بات نمی‌سازند.
+- **اقتصاد مستقل سایت (settings):** `site_trial_squad` (می‌تواند همان squad بات یا squad جدا
+  باشد)، `site_trial_hours`، `site_daily_limit_mb`، `site_referral_reward_mb`،
+  `site_referral_reward_limit`، `site_reward_pwa_mb`، `site_reward_push_mb`،
+  `site_reward_streak_mb`، `site_streak_days`.
+- **بخش جدید پنل ادمین «وب‌سایت»:** تنظیمات بالا، CRUD لندینگ‌های کلیدواژه‌ای (slug،
+  عنوان/متا/محتوا per-locale)، آمار قیف سایت (بازدید→claim)، اینباکس فرم تماس، و مدیریت
+  push broadcast (از همان arq worker).
 - همهٔ قراردادهای CLAUDE.md پابرجاست: اعداد از settings، کپی از content (کلیدهای `site_*`)،
   بدون retry بی‌کران، لوکیشن با نام remark.
 
@@ -575,6 +606,6 @@ Output: a pass/fail table per page per check, then corrected final HTML files.
 
 - [ ] هر ۹ فاز (۰–۸) تأیید شده و فایل‌های نهایی HTML یکجا آرشیو شده‌اند.
 - [ ] بستهٔ توکن نهایی (CSS variables) و جدول آیکون‌های flip استخراج شده.
-- [ ] لیست کامل کپی‌های دو‌زبانه (microcopy) از فایل‌ها بیرون کشیده و به‌عنوان کلیدهای `content`
+- [ ] لیست کامل کپی‌های دوزبانه (microcopy) از فایل‌ها بیرون کشیده و به‌عنوان کلیدهای `content`
   آماده شده (برای seed فاز ساخت).
 - [ ] تصمیم‌های باز باقی‌مانده: هیچ. (اگر در طول فازها تصمیم تازه‌ای اضافه شد، همین‌جا ثبت شود.)
