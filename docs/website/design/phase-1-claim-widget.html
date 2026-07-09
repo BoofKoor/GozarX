@@ -49,8 +49,11 @@
   }
   #app[data-locale="fa"]{ --font:"Yekan Bakh VF","Vazirmatn",Tahoma,"Segoe UI",system-ui,sans-serif; --lh-body:1.8; --lh-head:1.55; --ls-head:0; }
   #app[data-locale="en"]{ --font:"Inter Variable","Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --lh-body:1.6; --lh-head:1.2; --ls-head:-.01em; }
-  #app[data-locale="fa"] .btn, #app[data-locale="fa"] .loc-card .nm, #app[data-locale="fa"] .seg button,
+  #app[data-locale="fa"] .btn, #app[data-locale="fa"] .seg button,
   #app[data-locale="fa"] .badge, #app[data-locale="fa"] .pill, #app[data-locale="fa"] .chip { line-height:1.4; }
+  /* Persian country labels: a hair larger, medium weight, roomy line box so
+     descenders (ن ی ج) never clip under overflow:hidden. */
+  #app[data-locale="fa"] .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.75; }
 
   #app *, #app *::before, #app *::after { box-sizing:border-box; }
   .container { max-width:1160px; margin-inline:auto; padding-inline:20px; }
@@ -152,15 +155,19 @@
   .loc-card[aria-pressed="true"]{ border-color:var(--primary); background:var(--brand-tint); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent); }
   .loc-card .flag-wrap{ position:relative; }
   .flag{ display:block; inline-size:40px; block-size:40px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; }
-  .loc-card .nm{ font-size:12.5px; font-weight:600; color:var(--text); max-inline-size:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.6; color:var(--text); max-inline-size:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-block-end:1px; }
   .loc-card[aria-pressed="true"] .nm{ color:var(--brand-tint-ink); font-weight:700; }
   .loc-online{ position:absolute; inset-block-start:-1px; inset-inline-end:-1px; inline-size:11px; block-size:11px; border-radius:50%; background:var(--success); border:2px solid var(--surface); }
   .loc-card[aria-pressed="true"] .loc-online{ border-color:var(--brand-tint); }
   .loc-check{ position:absolute; inset-block-start:6px; inset-inline-end:6px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--primary); color:#fff; display:none; place-items:center; box-shadow:var(--glow-sm); }
   .loc-card[aria-pressed="true"] .loc-check{ display:grid; }
   .loc-check .ic{ inline-size:12px; block-size:12px; }
-  .loc-rec{ position:absolute; inset-block-start:6px; inset-inline-start:6px; font-size:9.5px; font-weight:800; color:var(--warning-ink); background:var(--warning-surface); border-radius:var(--r-pill); padding:2px 6px; letter-spacing:.02em; }
+  /* 'popular' badge: a small pill floating on the card's top edge (a tab), star +
+     label. Sits above the flag, so no overlap; hides when the card is selected. */
+  .loc-rec{ position:absolute; inset-block-start:-9px; inset-inline-start:10px; z-index:2; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; line-height:1.5; color:var(--warning-ink); background:var(--surface); border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; box-shadow:var(--shadow-sm); }
+  .loc-rec svg{ inline-size:11px; block-size:11px; color:var(--warning); flex:none; }
   .loc-card[aria-pressed="true"] .loc-rec{ display:none; }
+  .loc-grid{ padding-block-start:2px; }
 
   /* CTA block */
   .cta-wrap{ margin-block-start:20px; }
@@ -382,7 +389,7 @@
       trust1:"بدون ثبت‌نام", trust2:"همیشه رایگان", trust3:"هر ۲۴ ساعت تازه",
       w_title:"کانفیگ رایگان امروز", w_sub:"یک لوکیشن انتخاب کن و بگیر",
       allowance:"{v} امروز", pick:"لوکیشن را انتخاب کن", pick_count:"{n} لوکیشن",
-      rec:"پیشنهادی",
+      rec:"محبوب",
       cta_get:"دریافت کانفیگ", cta_prep:"در حال آماده‌سازی کانفیگ…",
       reassure1:"بدون ثبت‌نام", reassure2:"رایگان", reassure3:"هر {h} ساعت تازه",
       antibot:"با یک بررسی نامرئی در برابر ربات محافظت می‌شود",
@@ -420,7 +427,7 @@
       trust1:"No signup", trust2:"Free forever", trust3:"Fresh every 24h",
       w_title:"Today's free config", w_sub:"Pick a location and claim",
       allowance:"{v} today", pick:"Choose a location", pick_count:"{n} locations",
-      rec:"popular",
+      rec:"Popular",
       cta_get:"Get config", cta_prep:"Preparing your config…",
       reassure1:"No signup", reassure2:"Free", reassure3:"Renews every {h}h",
       antibot:"Protected against bots by an invisible check",
@@ -481,7 +488,7 @@
   /* ---- sub-builders ---- */
   function locGrid(selIdx, disabled) {
     var cards = LOCS.map(function (l, i) {
-      var rec = l.rec ? '<span class="loc-rec">'+t("rec")+'</span>' : '';
+      var rec = l.rec ? '<span class="loc-rec"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.6l2.7 5.5 6 .9-4.35 4.24 1.03 6L12 16.9l-5.38 2.84 1.03-6L3.3 9l6-.9z"/></svg>'+t("rec")+'</span>' : '';
       return '<button class="loc-card" role="radio" aria-pressed="'+(i===selIdx)+'" data-action="pick-loc" data-i="'+i+'"'+(disabled?' disabled':'')+'>'+
         rec +
         '<span class="loc-check">'+svg("check",2.6)+'</span>'+
