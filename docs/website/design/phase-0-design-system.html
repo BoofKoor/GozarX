@@ -52,6 +52,7 @@
     --brand-tint: #EFF6FF; --brand-tint-ink: #1D4ED8;
     --glow: 0 4px 14px rgba(37,99,235,.35);
     --backdrop: rgba(2,6,23,.45);
+    --logo-ink: #0F172A; --logo-accent: #2563EB;
   }
   #app[data-theme="dark"] {
     --bg: #020617; --surface: #0F172A; --raised: #1E293B;
@@ -66,6 +67,7 @@
     --brand-tint: rgba(59,130,246,.14); --brand-tint-ink: #93C5FD;
     --glow: 0 4px 18px rgba(59,130,246,.35);
     --backdrop: rgba(2,6,23,.65);
+    --logo-ink: #F1F5F9; --logo-accent: #3B82F6;
   }
 
   #app[data-locale="fa"] {
@@ -120,10 +122,24 @@
     border-block-end: 1px solid var(--border); }
   .toolbar-row { display: flex; align-items: center; gap: 16px; padding-block: 12px; flex-wrap: wrap; }
   .brandmark { display: flex; align-items: center; gap: 10px; font-weight: 700; }
-  .brandmark .dot { inline-size: 28px; block-size: 28px; border-radius: 8px; flex: none;
-    background: linear-gradient(135deg, #2563EB, #06B6D4); }
-  [dir="rtl"] .brandmark .dot { background: linear-gradient(225deg, #2563EB, #06B6D4); }
+  /* Logo fills come from --logo-ink/--logo-accent (custom props inherit across
+     the <use> shadow boundary; class selectors would not). */
+  .logo { display: block; block-size: 26px; inline-size: auto; flex: none; }
   .toolbar-spacer { flex: 1; }
+
+  /* brand-mark showcase: proves the logo reads on every ground */
+  .brand-show { display: flex; flex-wrap: wrap; gap: 12px; margin-block-start: 20px; }
+  .brand-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    inline-size: 150px; block-size: 108px; border-radius: var(--r-card); border: 1px solid var(--border); }
+  .brand-tile .logo { block-size: 40px; }
+  .brand-tile .cap { font-size: 11px; }
+  .brand-tile.on-light { background: #FFFFFF; --logo-ink: #0F172A; --logo-accent: #2563EB; }
+  .brand-tile.on-light .cap { color: #64748B; }
+  .brand-tile.on-dark { background: #020617; border-color: #1E293B; --logo-ink: #F1F5F9; --logo-accent: #3B82F6; }
+  .brand-tile.on-dark .cap { color: #94A3B8; }
+  .brand-tile.on-brand { background: linear-gradient(135deg, #2563EB, #06B6D4); border: 0; --logo-ink: #FFFFFF; --logo-accent: #BFDBFE; }
+  [dir="rtl"] .brand-tile.on-brand { background: linear-gradient(225deg, #2563EB, #06B6D4); }
+  .brand-tile.on-brand .cap { color: rgba(255,255,255,.85); }
 
   .seg { display: inline-flex; padding: 3px; gap: 2px; background: var(--surface);
     border: 1px solid var(--border); border-radius: var(--r-pill); }
@@ -399,10 +415,18 @@
 
 <div id="app" data-theme="light" data-locale="fa" dir="rtl" lang="fa">
 
+  <!-- brand logo sprite (fills via --logo-ink / --logo-accent, which inherit across <use>) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+    <symbol id="gz-logo" viewBox="0 0 639 508">
+      <path fill="var(--logo-ink)" d="M403.076 96.9894L452.145 12C455.224 6.66672 451.375 0 445.217 0H151.172C148.314 0 145.673 1.52478 144.244 3.99999L2.3094 249.838C0.880339 252.313 0.880333 255.363 2.3094 257.838L144.244 503.676C145.673 506.151 148.314 507.676 151.172 507.676H445.287C451.445 507.676 455.294 501.01 452.215 495.676L319.518 265.838C316.439 260.505 308.741 260.505 305.662 265.838L255.311 353.048C253.882 355.523 253.882 358.573 255.311 361.048L274.733 394.687C277.812 400.02 273.963 406.687 267.804 406.687H212.584C209.725 406.687 207.084 405.162 205.655 402.687L122.027 257.838C120.598 255.363 120.598 252.313 122.027 249.838L205.655 104.989C207.084 102.514 209.725 100.989 212.584 100.989H396.147C399.006 100.989 401.647 99.4646 403.076 96.9894Z"/>
+      <path fill="var(--logo-accent)" d="M624.832 0H523.233C520.364 0 517.714 1.53705 516.289 4.02804L375.687 249.847C374.274 252.318 374.28 255.354 375.703 257.819L517.648 503.675C519.077 506.15 521.718 507.675 524.576 507.675H624.832C630.99 507.675 634.839 501.008 631.76 495.675L494.444 257.838C493.015 255.363 493.015 252.313 494.444 249.838L631.76 12C634.84 6.66667 630.991 0 624.832 0Z"/>
+    </symbol>
+  </svg>
+
   <!-- ======== toolbar ======== -->
   <div class="toolbar">
     <div class="container toolbar-row">
-      <div class="brandmark"><span class="dot"></span><span>GozarX <span class="muted" style="font-weight:500" data-i18n="tb_sub"></span></span></div>
+      <div class="brandmark"><svg class="logo" viewBox="0 0 639 508" role="img" aria-label="GozarX"><use href="#gz-logo"/></svg><span>GozarX <span class="muted" style="font-weight:500" data-i18n="tb_sub"></span></span></div>
       <div class="toolbar-spacer"></div>
       <div class="seg" role="group" aria-label="language">
         <button id="loc-fa" aria-pressed="true">فارسی</button>
@@ -421,6 +445,11 @@
     <h1 class="display" style="margin:0 0 12px;" data-i18n="intro_title"></h1>
     <p class="body-lg muted" style="max-width:38rem; margin:0;" data-i18n="intro_lede"></p>
     <p class="caption" style="margin:16px 0 0;" data-i18n="intro_fontnote"></p>
+    <div class="brand-show">
+      <div class="brand-tile on-light"><svg class="logo" viewBox="0 0 639 508" role="img" aria-label="GozarX"><use href="#gz-logo"/></svg><span class="cap" data-i18n="brand_light"></span></div>
+      <div class="brand-tile on-dark"><svg class="logo" viewBox="0 0 639 508" role="img" aria-label="GozarX"><use href="#gz-logo"/></svg><span class="cap" data-i18n="brand_dark"></span></div>
+      <div class="brand-tile on-brand"><svg class="logo" viewBox="0 0 639 508" role="img" aria-label="GozarX"><use href="#gz-logo"/></svg><span class="cap" data-i18n="brand_brand"></span></div>
+    </div>
   </div>
 
   <!-- ======== 1. colors ======== -->
@@ -760,6 +789,7 @@
       tb_sub: "دیزاین سیستم · فاز ۰", tb_light: "روشن", tb_dark: "تاریک",
       intro_eyebrow: "فاز ۰ از ۸ — برای بازبینی و تأیید",
       intro_title: "دیزاین سیستم گذرایکس",
+      brand_light: "روی سطح روشن", brand_dark: "روی سطح تاریک", brand_brand: "روی گرادیان برند",
       intro_lede: "زبان بصری کامل سایت: رنگ، تایپوگرافی، ریتم فاصله‌گذاری و همهٔ کامپوننت‌های پایه — در هر دو زبان، هر دو جهت و هر دو تم. با تولبار بالا سوئیچ کنید.",
       intro_fontnote: "فونت‌ها زنده و داخل همین فایل جاسازی شده‌اند (بدون CDN): فارسی با «یکان‌بخ» نسخهٔ Variable (وزن‌های ۴۰۰ متن، ۵۰۰ لِیبل، ۷۰۰ تیتر — همه از یک فایل تأمین می‌شوند) و انگلیسی با Inter. یکان‌بخ وزن ۵۰۰ استاتیک ندارد؛ نسخهٔ Variable آن را دقیق درون‌یابی می‌کند.",
       c_title: "۱ · رنگ‌ها", c_lede: "آبی برند (Gozar Blue) با محور ۶۰۰# در تم روشن و ۵۰۰# در تم تاریک. فیروزه‌ای فقط در گرادیان‌ها.",
@@ -846,6 +876,7 @@
       tb_sub: "Design System · Phase 0", tb_light: "Light", tb_dark: "Dark",
       intro_eyebrow: "Phase 0 of 8 — for review & approval",
       intro_title: "GozarX Design System",
+      brand_light: "On light surface", brand_dark: "On dark surface", brand_brand: "On brand gradient",
       intro_lede: "The site's complete visual language: color, typography, spacing rhythm and every core component — in both languages, both directions, both themes. Switch with the toolbar above.",
       intro_fontnote: "Fonts are live and embedded in this file (no CDN): Persian in Yekan Bakh, Variable build (weights 400 body, 500 labels, 700 headings — all from one file), and English in Inter. Yekan Bakh ships no static 500; the Variable build interpolates it exactly.",
       c_title: "1 · Color", c_lede: "Gozar Blue, anchored on 600 in light theme and 500 in dark. Cyan appears only inside gradients.",
