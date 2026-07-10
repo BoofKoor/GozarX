@@ -115,6 +115,26 @@ async def bump_live_trial(
         logger.warning("site live-bump failed for device %s", device.uuid)
 
 
+async def reset_device_to_available(
+    panel: RemnawaveClient, redis: Redis, device: SiteDevice
+) -> None:
+    """Self-heal a device with an ENDED trial back to claimable: free the panel account
+    (best-effort, single bounded call), flip the row to ``available`` + drop its panel username, and
+    clear its cached sub + data-limit nudge guard. Shared by the lazy self-heal (SiteTrialService)
+    and the proactive teardown on an expiry webhook / reconcile sweep (SiteReminderService), so all
+    three reset the exact same state."""
+    username = device.site_panel_username
+    if username:
+        try:
+            await panel.delete_user_by_username(username)
+        except RemnawaveError:
+            logger.warning("site self-heal: panel delete failed for %s", device.uuid)
+    device.status = SiteDeviceStatus.available
+    device.site_panel_username = None
+    await redis.delete(site_sub_cache_key(device.uuid))
+    await redis.delete(site_limited_notified_key(device.uuid))
+
+
 class SiteTrialService:
     def __init__(
         self,
@@ -169,16 +189,7 @@ class SiteTrialService:
 
     # --- self-heal ------------------------------------------------------------------------------
     async def _reset(self, device: SiteDevice) -> None:
-        username = device.site_panel_username
-        if username:
-            try:
-                await self._panel.delete_user_by_username(username)
-            except RemnawaveError:
-                logger.warning("site self-heal: panel delete failed for %s", device.uuid)
-        device.status = SiteDeviceStatus.available
-        device.site_panel_username = None
-        await self._clear_cache(device.uuid)
-        await self._redis.delete(site_limited_notified_key(device.uuid))
+        await reset_device_to_available(self._panel, self._redis, device)
 
     async def _refresh_active(
         self, device: SiteDevice

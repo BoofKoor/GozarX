@@ -325,6 +325,23 @@ DEFAULT_SITE_CONTENT: dict[str, dict[Language, str]] = {
         Language.fa: "بدون ثبت‌نام و بدون ایمیل. کانفیگ امروزت را بگیر و با دعوت دوستان حجم روزانه‌ات را بیشتر کن.",
         Language.en: "No signup, no email. Grab today's config and grow your daily volume by inviting friends.",
     },
+    # Web Push nudge copy — sent server-side (panel webhook / reconcile), localized per subscription.
+    "site_push_expired_title": {
+        Language.fa: "کانفیگ آزمایشی‌ات تمام شد",
+        Language.en: "Your trial config ended",
+    },
+    "site_push_expired_body": {
+        Language.fa: "دوباره سر بزن و کانفیگ رایگان امروزت را بگیر.",
+        Language.en: "Come back and grab today's free config.",
+    },
+    "site_push_limited_title": {
+        Language.fa: "حجم امروزت تمام شد",
+        Language.en: "You're out of volume",
+    },
+    "site_push_limited_body": {
+        Language.fa: "با دعوت دوستان حجم بیشتری بگیر تا همین کانفیگ دوباره فعال شود.",
+        Language.en: "Invite friends to earn more volume and revive this same config.",
+    },
 }
 
 

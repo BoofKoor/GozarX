@@ -36,5 +36,8 @@ class PushSubscription(Base):
     endpoint: Mapped[str] = mapped_column(String(512))
     p256dh: Mapped[str] = mapped_column(String(255))
     auth: Mapped[str] = mapped_column(String(255))
+    # The browser's UI locale, captured at subscribe time — a server-initiated push (expiry / volume
+    # nudge, broadcast) has no request context, so it localizes copy from this per-sub value.
+    locale: Mapped[str] = mapped_column(String(8), default="fa", server_default="fa")
     active: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
