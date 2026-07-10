@@ -21,6 +21,7 @@ from gozar.config.settings import get_settings
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.site_claim import SiteClaimRepository
+from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.remnawave.errors import RemnawaveError
 from gozar.remnawave.schemas import PanelUser, Subscription, SubscriptionUser
 from gozar.services.settings_service import SettingsService, SiteSettingKey
@@ -95,7 +96,11 @@ async def _service(session, panel, **overrides) -> SiteTrialService:
     redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
     await redis.set(SETTINGS_KEY, json.dumps({**_BASE, **overrides}))
     return SiteTrialService(
-        panel, SettingsService(session, redis), SiteClaimRepository(session), redis
+        panel,
+        SettingsService(session, redis),
+        SiteClaimRepository(session),
+        SiteRewardRepository(session),
+        redis,
     )
 
 

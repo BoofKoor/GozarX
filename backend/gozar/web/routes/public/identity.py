@@ -79,6 +79,19 @@ def fingerprint_hash(request: Request) -> str:
     return hashlib.sha256(f"{ua}|{al}".encode()).hexdigest()[:64]
 
 
+def _referrer(request: Request, new_uuid: str) -> str | None:
+    """The inviter's device uuid from a ``?ref=`` link, captured once when a device is minted. Just
+    a format check — a non-existent referrer simply earns no credit later (no DB read here)."""
+    ref = request.query_params.get("ref", "")
+    if not ref or ref == new_uuid:
+        return None
+    try:
+        uuid_lib.UUID(ref)
+    except ValueError:
+        return None
+    return ref
+
+
 async def current_device(request: Request, response: Response, session: DbSession) -> SiteDevice:
     """Resolve (or mint) the caller's ``site_devices`` row from the signed cookie.
 
@@ -101,6 +114,7 @@ async def current_device(request: Request, response: Response, session: DbSessio
         new_uuid,
         fingerprint_hash=fingerprint_hash(request),
         ip_bucket=ip_bucket(request, secret),
+        referred_by=_referrer(request, new_uuid),
     )
     response.set_cookie(
         DEVICE_COOKIE,

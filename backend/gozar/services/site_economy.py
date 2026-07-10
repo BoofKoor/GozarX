@@ -10,7 +10,9 @@ from __future__ import annotations
 
 from collections.abc import Collection
 
+from gozar.db.models.site_device import SiteDevice
 from gozar.db.models.site_reward import SiteRewardType
+from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 
 # Fallbacks used ONLY if the (seeded) setting is missing — not a place to encode economics.
@@ -46,3 +48,25 @@ async def site_compute_traffic_bytes(
         total_mb += await settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0)
 
     return total_mb * _MB
+
+
+def streak_is_active(device: SiteDevice, streak_days: int) -> bool:
+    """Whether the device's daily-visit streak has reached the qualifying length."""
+    return streak_days > 0 and device.streak_count >= streak_days
+
+
+async def site_device_allowance_bytes(
+    settings: SettingsService, device: SiteDevice, reward_repo: SiteRewardRepository
+) -> int:
+    """A device's FULL current daily allowance: base + capped referral bonus + its claimed one-time
+    rewards (PWA / notifications) + the streak bonus while its streak qualifies. The single source
+    reused by claim provisioning, the status quote, and the referral/reward live-bump — so all four
+    always agree."""
+    rewards = await reward_repo.types_for_device(device.uuid)
+    streak_days = await settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
+    return await site_compute_traffic_bytes(
+        settings,
+        device.referral_count,
+        rewards=rewards,
+        streak_active=streak_is_active(device, streak_days),
+    )

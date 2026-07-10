@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from gozar.config.settings import get_settings
 from gozar.db.repositories.site_claim import SiteClaimRepository
+from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.settings_service import SettingsService
 from gozar.services.site_trial import SiteTrialService
 from gozar.web.dependencies import DbSession
@@ -40,6 +41,7 @@ class StatusResponse(BaseModel):
     streak_days: int
     location: str | None = None
     link: str | None = None
+    ref_code: str  # this device's referral code — the SPA builds "?ref=<ref_code>" invite links
 
 
 class PublicConfig(BaseModel):
@@ -54,6 +56,7 @@ def _service(request: Request, session) -> SiteTrialService:
         state.panel,
         SettingsService(session, state.redis),
         SiteClaimRepository(session),
+        SiteRewardRepository(session),
         state.redis,
     )
 
@@ -61,7 +64,7 @@ def _service(request: Request, session) -> SiteTrialService:
 @router.get("/status", response_model=StatusResponse)
 async def get_status(request: Request, session: DbSession, device: CurrentDevice) -> StatusResponse:
     info = await _service(request, session).status(device)
-    return StatusResponse(**vars(info))
+    return StatusResponse(**vars(info), ref_code=device.uuid)
 
 
 @router.get("/config", response_model=PublicConfig)

@@ -12,7 +12,10 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
 from gozar.db.repositories.site_claim import SiteClaimRepository
+from gozar.db.repositories.site_device import SiteDeviceRepository
+from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.settings_service import SettingsService
+from gozar.services.site_referral import SiteReferralService
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
     Delivered,
@@ -58,8 +61,25 @@ def _service(request: Request, session) -> SiteTrialService:
         state.panel,
         SettingsService(session, state.redis),
         SiteClaimRepository(session),
+        SiteRewardRepository(session),
         state.redis,
     )
+
+
+async def _maybe_credit_referrer(request: Request, session, device) -> None:
+    """On a device's FIRST-ever claim, credit its referrer (in the same session, so the +1 commits
+    with the claim). Best-effort — a missing/self/blocked referrer is simply not credited."""
+    if await SiteClaimRepository(session).count_for_device(device.uuid) != 1:
+        return
+    state = request.app.state
+    referral = SiteReferralService(
+        SiteDeviceRepository(session),
+        SiteRewardRepository(session),
+        SettingsService(session, state.redis),
+        state.panel,
+        state.redis,
+    )
+    await referral.award_first_claim(device)
 
 
 @router.get("/locations", response_model=LocationsResponse)
@@ -88,6 +108,8 @@ async def post_claim(
 
     result = await _service(request, session).claim(device, body.location)
     if isinstance(result, Delivered):
+        if not result.changed:
+            await _maybe_credit_referrer(request, session, device)
         return ClaimResponse(
             ok=True,
             location=result.location,

@@ -26,10 +26,11 @@ from redis.asyncio import Redis
 from gozar.cache.redis import site_limited_notified_key, site_sub_cache_key
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.site_claim import SiteClaimRepository
+from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.remnawave.schemas import Subscription
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_economy import site_compute_traffic_bytes
+from gozar.services.site_economy import site_device_allowance_bytes
 from gozar.services.trial import (
     AlreadyClaimedToday,
     NoLocations,
@@ -95,17 +96,38 @@ class _Cached:
     expires: str | None
 
 
+async def bump_live_trial(
+    panel: RemnawaveClient, redis: Redis, device: SiteDevice, new_daily_bytes: int
+) -> None:
+    """Raise a device's live-trial panel limit to a new allowance — also the LIMITED->ACTIVE revive
+    path (PATCHing a higher limit re-activates a data-exhausted account). Best-effort: a single
+    bounded call, logged and ignored on failure; drops the nudge guard + cached sub on success.
+    Shared by the referral credit and the reward claim (both raise the same device's allowance)."""
+    if device.status != SiteDeviceStatus.active_config or not device.site_panel_username:
+        return
+    try:
+        panel_user = await panel.get_user(device.site_panel_username)
+        if panel_user and panel_user.uuid:
+            await panel.update_traffic_limit(panel_user.uuid, new_daily_bytes)
+            await redis.delete(site_limited_notified_key(device.uuid))
+            await redis.delete(site_sub_cache_key(device.uuid))
+    except RemnawaveError:
+        logger.warning("site live-bump failed for device %s", device.uuid)
+
+
 class SiteTrialService:
     def __init__(
         self,
         panel: RemnawaveClient,
         settings: SettingsService,
         site_claim_repo: SiteClaimRepository,
+        site_reward_repo: SiteRewardRepository,
         redis: Redis,
     ) -> None:
         self._panel = panel
         self._settings = settings
         self._claims = site_claim_repo
+        self._rewards = site_reward_repo
         self._redis = redis
 
     # --- settings / cache -----------------------------------------------------------------------
@@ -195,9 +217,11 @@ class SiteTrialService:
             return location_name, links[location_name]
         return next(iter(links.items()))
 
+    async def _allowance_bytes(self, device: SiteDevice) -> int:
+        return await site_device_allowance_bytes(self._settings, device, self._rewards)
+
     async def _allowance_size(self, device: SiteDevice) -> str:
-        traffic = await site_compute_traffic_bytes(self._settings, device.referral_count)
-        return human_bytes(traffic)
+        return human_bytes(await self._allowance_bytes(device))
 
     async def _deliver(
         self,
@@ -263,7 +287,7 @@ class SiteTrialService:
             return NotReady()
 
         # 4. Panel call 1 — create a fresh trial account. Device stays available on failure.
-        traffic = await site_compute_traffic_bytes(self._settings, device.referral_count)
+        traffic = await self._allowance_bytes(device)
         claim_at = datetime.now(UTC)
         expire_at = claim_at + timedelta(hours=hours)
         username = self._username(device)
@@ -319,7 +343,7 @@ class SiteTrialService:
                     elif links:
                         location, link = next(iter(links.items()))
 
-        daily_bytes = await site_compute_traffic_bytes(self._settings, device.referral_count)
+        daily_bytes = await self._allowance_bytes(device)
         hours = await self._hours()
         cooling = in_cooldown(device.last_claim_at, hours)
         return SiteStatusInfo(
