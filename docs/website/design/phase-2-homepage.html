@@ -199,7 +199,8 @@
   .mcard{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
   .mcard .mi{ inline-size:44px; block-size:44px; border-radius:13px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; margin-block-end:14px; } .mcard .mi .ic{ inline-size:22px; block-size:22px; }
   .mcard h3{ font-size:16px; font-weight:700; margin:0 0 6px; } .mcard p{ font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.6; }
-  .mcard .rw{ display:inline-flex; align-items:center; gap:5px; font-weight:800; font-size:13px; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:5px 12px; font-variant-numeric:tabular-nums; }
+  .mcard .rw{ display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:13px; line-height:1.5; color:var(--success-ink); background:var(--success-surface); border:1px solid color-mix(in srgb,var(--success) 22%,transparent); border-radius:var(--r-pill); padding:6px 13px; font-variant-numeric:tabular-nums; }
+  .mcard .rw .ic{ inline-size:14px; block-size:14px; flex:none; }
 
   /* APPS row */
   .approw{ display:grid; gap:14px; grid-template-columns:1fr; } @media (min-width:760px){ .approw{ grid-template-columns:repeat(3,1fr); } }
@@ -421,7 +422,7 @@
       how3_t:"در اپ وارد کن", how3_d:"لینک را کپی کن یا QR را اسکن کن و در اپ مخصوص دستگاهت وارد شو.",
       loc_eyebrow:"لوکیشن‌ها", loc_title:"از هر کشوری که بخواهی", loc_sub:"کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.", loc_all:"مشاهدهٔ همهٔ لوکیشن‌ها", loc_go:"دریافت",
       mv_eyebrow:"حجم بیشتر، رایگان", mv_title:"حجم روزانه‌ات را بیشتر کن", mv_sub:"چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.", mv_all:"مشاهدهٔ همهٔ ماموریت‌ها",
-      mv1_t:"دعوت دوستان", mv1_d:"به‌ازای هر دوست که کانفیگ بگیرد، حجم روزانه‌ات بیشتر می‌شود.", mv2_t:"نصب وب‌اپ", mv2_d:"وب‌اپ را روی دستگاهت نصب کن و حجم هدیه بگیر.", mv3_t:"روشن‌کردن اعلان‌ها", mv3_d:"اعلان‌ها را فعال کن تا از کانفیگ آماده باخبر شوی.", mv4_t:"ورود روزانه", mv4_d:"چند روز پیاپی سر بزن و پاداش استریک بگیر.", mv_streak:"+حجم استریک",
+      mv1_t:"دعوت دوستان", mv1_d:"به‌ازای هر دوست که کانفیگ بگیرد، حجم روزانه‌ات بیشتر می‌شود.", mv2_t:"نصب وب‌اپ", mv2_d:"وب‌اپ را روی دستگاهت نصب کن و حجم هدیه بگیر.", mv3_t:"روشن‌کردن اعلان‌ها", mv3_d:"اعلان‌ها را فعال کن تا از کانفیگ آماده باخبر شوی.", mv4_t:"ورود روزانه", mv4_d:"چند روز پیاپی سر بزن و پاداش استریک بگیر.", mv_streak:"حجم استریک",
       app_eyebrow:"اپ‌های سازگار", app_title:"در اپ دلخواهت باز کن", app_sub:"کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.", app_guide:"راهنمای اتصال",
       stat1:"کانفیگ تحویل‌شده", stat2:"لوکیشن فعال", stat3:"آپ‌تایم",
       faq_eyebrow:"سوالات متداول", faq_title:"سوالی داری؟", faq_all:"مشاهدهٔ همهٔ سوالات",
@@ -463,7 +464,7 @@
       how3_t:"Import into your app", how3_d:"Copy the link or scan the QR, then import it into the app for your device.",
       loc_eyebrow:"Locations", loc_title:"From any country you like", loc_sub:"Ukraine, Germany, USA and more — all free, every day.", loc_all:"See all locations", loc_go:"Get",
       mv_eyebrow:"More volume, free", mv_title:"Grow your daily volume", mv_sub:"Do a few simple things and multiply your daily allowance — all with no payment.", mv_all:"See all missions",
-      mv1_t:"Invite friends", mv1_d:"Every friend who claims a config grows your daily volume.", mv2_t:"Install web app", mv2_d:"Install the web app on your device and get bonus volume.", mv3_t:"Enable notifications", mv3_d:"Turn on notifications to know when your config is ready.", mv4_t:"Daily check-in", mv4_d:"Visit a few days in a row and earn a streak reward.", mv_streak:"+streak volume",
+      mv1_t:"Invite friends", mv1_d:"Every friend who claims a config grows your daily volume.", mv2_t:"Install web app", mv2_d:"Install the web app on your device and get bonus volume.", mv3_t:"Enable notifications", mv3_d:"Turn on notifications to know when your config is ready.", mv4_t:"Daily check-in", mv4_d:"Visit a few days in a row and earn a streak reward.", mv_streak:"streak volume",
       app_eyebrow:"Compatible apps", app_title:"Open in your favorite app", app_sub:"Configs work with every popular client. Pick the app that fits your device.", app_guide:"Setup guide",
       stat1:"Configs delivered", stat2:"Active locations", stat3:"Uptime",
       faq_eyebrow:"FAQ", faq_title:"Got a question?", faq_all:"See all questions",
@@ -554,7 +555,7 @@
     document.getElementById("locrow").innerHTML=LOCS.slice(0,8).map(function(l){ return '<a class="locbig" href="#"><span class="flag-wrap" style="position:relative">'+flagImg(l.flag,52)+'</span><span class="nm">'+locName(l)+'</span><span class="go">'+t("loc_go")+svg("arrow",2.4,"ic-dir")+'</span></a>'; }).join("");
   }
   function renderMissions(){
-    var m=[["mv1_t","mv1_d","users","+"+mbTxt(CFG.rewardMB)],["mv2_t","mv2_d","download","+"+mbTxt(200)],["mv3_t","mv3_d","bell","+"+mbTxt(150)],["mv4_t","mv4_d","cal",t("mv_streak")]];
+    var m=[["mv1_t","mv1_d","users",mbTxt(CFG.rewardMB)],["mv2_t","mv2_d","download",mbTxt(200)],["mv3_t","mv3_d","bell",mbTxt(150)],["mv4_t","mv4_d","cal",t("mv_streak")]];
     document.getElementById("missiongrid").innerHTML=m.map(function(x){ return '<div class="mcard"><div class="mi">'+svg(x[2],2)+'</div><h3>'+t(x[0])+'</h3><p>'+t(x[1])+'</p><span class="rw">'+svg("bolt",2.2)+x[3]+'</span></div>'; }).join("");
   }
   function renderApps(){
