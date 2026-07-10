@@ -9,9 +9,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from gozar.web.routes.public import claim, rewards, status
+from gozar.web.routes.public import claim, contact, device, rewards, status, transfer
 
 router = APIRouter(prefix="/public")
 router.include_router(status.router)
 router.include_router(claim.router)
 router.include_router(rewards.router)
+router.include_router(transfer.router)
+router.include_router(device.router)
+router.include_router(contact.router)

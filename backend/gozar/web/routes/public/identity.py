@@ -92,12 +92,34 @@ def _referrer(request: Request, new_uuid: str) -> str | None:
     return ref
 
 
+def set_device_cookie(response: Response, request: Request, device_uuid: str) -> None:
+    """Write the signed device cookie onto ``response`` — shared by the first-visit mint and the
+    transfer-redeem identity switch (P6), so both set identical flags. ``Secure`` follows the
+    request scheme (https behind nginx via ``--proxy-headers``; http in local dev/tests) so the
+    cookie round-trips in every environment."""
+    secret = get_settings().site_cookie_secret.get_secret_value()
+    response.set_cookie(
+        DEVICE_COOKIE,
+        sign_device(device_uuid, secret),
+        max_age=COOKIE_MAX_AGE,
+        httponly=True,
+        secure=request.url.scheme == "https",
+        samesite="lax",
+        path="/",
+    )
+
+
+def clear_device_cookie(response: Response) -> None:
+    """Delete the device cookie (P6 device reset). The cookie is httpOnly, so only the server can
+    clear it; the browser then mints a fresh identity on its next request."""
+    response.delete_cookie(DEVICE_COOKIE, path="/")
+
+
 async def current_device(request: Request, response: Response, session: DbSession) -> SiteDevice:
     """Resolve (or mint) the caller's ``site_devices`` row from the signed cookie.
 
     Returns the existing device for a valid cookie; otherwise mints a new uuid + device row and sets
-    the signed cookie on the response. ``Secure`` follows the request scheme (https behind nginx via
-    ``--proxy-headers``; http in local dev/tests) so the cookie round-trips in every environment.
+    the signed cookie on the response.
     """
     settings = get_settings()
     secret = settings.site_cookie_secret.get_secret_value()
@@ -116,15 +138,7 @@ async def current_device(request: Request, response: Response, session: DbSessio
         ip_bucket=ip_bucket(request, secret),
         referred_by=_referrer(request, new_uuid),
     )
-    response.set_cookie(
-        DEVICE_COOKIE,
-        sign_device(new_uuid, secret),
-        max_age=COOKIE_MAX_AGE,
-        httponly=True,
-        secure=request.url.scheme == "https",
-        samesite="lax",
-        path="/",
-    )
+    set_device_cookie(response, request, new_uuid)
     return device
 
 

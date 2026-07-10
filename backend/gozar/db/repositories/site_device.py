@@ -53,6 +53,12 @@ class SiteDeviceRepository(BaseRepository):
         )
         return created, True
 
+    async def delete(self, device: SiteDevice) -> None:
+        """Hard-delete a device row (the P6 reset). ``site_claims`` + ``site_rewards`` follow via
+        their ``ON DELETE CASCADE`` foreign keys."""
+        await self.session.delete(device)
+        await self.session.flush()
+
     async def get_by_site_panel_username(self, username: str) -> SiteDevice | None:
         """Reverse lookup for the panel webhook: map a site panel username back to its device."""
         return await self.session.scalar(

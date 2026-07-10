@@ -6,6 +6,7 @@ from gozar.db.repositories.content import ContentRepository
 from gozar.db.repositories.settings import SettingsRepository
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
+from gozar.db.repositories.site_message import SiteMessageRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.db.repositories.user import UserRepository
 
@@ -16,6 +17,7 @@ __all__ = [
     "SettingsRepository",
     "SiteClaimRepository",
     "SiteDeviceRepository",
+    "SiteMessageRepository",
     "SiteRewardRepository",
     "UserRepository",
 ]
