@@ -26,6 +26,7 @@ from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
 from gozar.web.routes import admin as admin_api
 from gozar.web.routes import health, panel, telegram
+from gozar.web.routes import public as public_api
 
 logger = logging.getLogger("gozar")
 
@@ -103,6 +104,7 @@ def create_app() -> FastAPI:
     app.include_router(telegram.router)  # POST /tg/{secret}
     app.include_router(panel.router)  # POST /panel-webhook (Remnawave expiry/limit events)
     app.include_router(admin_api.router, prefix="/api")  # JWT admin API at /api/admin/*
+    app.include_router(public_api.router, prefix="/api")  # open site API at /api/public/*
 
     # CORS for the admin SPA: the panel's own origin (prod) + the Vite dev server (local).
     settings = get_settings()
