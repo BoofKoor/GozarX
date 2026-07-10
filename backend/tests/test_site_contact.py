@@ -21,6 +21,7 @@ from gozar.config.settings import get_settings
 from gozar.db.models.site_message import SiteMessage
 from gozar.db.repositories.site_message import SiteMessageRepository
 from gozar.web.app import create_app
+from gozar.web.routes.public.contact import _CONTACT_IP_LIMIT
 
 _SETTINGS = {"site_daily_limit_mb": "1024"}
 
@@ -125,3 +126,14 @@ async def test_contact_rate_limited(env, db_sessions) -> None:
     async with db_sessions() as s:
         rows = (await s.scalars(select(SiteMessage))).all()
     assert len(rows) == 5  # the throttled request stored nothing
+
+
+async def test_contact_ip_backstop_throttles_cookieless(env) -> None:
+    client, _app = env
+    # A cookieless client is minted a FRESH device each request, so the per-device limit never
+    # bites; the per-IP backstop stops the flood after _CONTACT_IP_LIMIT.
+    for _ in range(_CONTACT_IP_LIMIT):
+        client.cookies.clear()
+        assert (await client.post("/api/public/contact", json={"body": "x"})).status_code == 200
+    client.cookies.clear()
+    assert (await client.post("/api/public/contact", json={"body": "x"})).status_code == 429

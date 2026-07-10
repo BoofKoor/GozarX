@@ -135,3 +135,13 @@ async def test_endpoint_reset_clears_identity(env, db_sessions) -> None:
     # ...and the browser now mints a brand-new identity (cookie was cleared).
     second = (await client.get("/api/public/status")).json()["ref_code"]
     assert second != first
+
+
+async def test_endpoint_reset_cookieless_does_not_clear(env) -> None:
+    client, _app = env
+    client.cookies.clear()
+    # A cookieless (e.g. cross-site CSRF) reset must NOT emit a cookie-clearing Set-Cookie — that
+    # would delete a victim's identity cookie. It still returns ok (it has nothing of its own).
+    resp = await client.post("/api/public/device/reset")
+    assert resp.status_code == 200 and resp.json()["ok"] is True
+    assert not resp.headers.get_list("set-cookie")

@@ -57,7 +57,9 @@ async def reset_device(request: Request, response: Response, session: DbSession)
             await SiteDeviceService(
                 SiteDeviceRepository(session), request.app.state.panel, redis
             ).reset(device)
-
-    # Always clear the cookie — the caller ends up with a clean slate whether or not a row existed.
-    clear_device_cookie(response)
+        # Clear the cookie ONLY for a caller who presented a valid signed cookie. A cookieless
+        # caller (e.g. a cross-site CSRF POST — SameSite=lax withholds the cookie) has nothing of
+        # its own to clear; clearing unconditionally would let such a request delete a victim's
+        # identity cookie and orphan their device.
+        clear_device_cookie(response)
     return ResetResponse(ok=True)

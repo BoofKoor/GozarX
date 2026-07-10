@@ -23,6 +23,10 @@ router = APIRouter(tags=["public"])
 # A few messages per hour per device — enough for a genuine back-and-forth, hostile to bulk spam.
 _CONTACT_LIMIT = 5
 _CONTACT_WINDOW = 3600
+# A stable per-IP backstop: a cookieless client is minted a FRESH device (uuid) each request, so the
+# per-device limit alone never bites it — the IP limit stops a cookieless flood. Kept generous so a
+# CGNAT-shared IP of real users (common in Iran) is never throttled; only a true flood trips it.
+_CONTACT_IP_LIMIT = 30
 
 _LOCALES = ("fa", "en")
 
@@ -58,9 +62,17 @@ async def submit_contact(
     body: ContactRequest, request: Request, session: DbSession, device: CurrentDevice
 ) -> ContactResponse:
     redis = request.app.state.redis
-    if not await rate_limit_ok(
+    per_device = await rate_limit_ok(
         redis, "contact", device.uuid, limit=_CONTACT_LIMIT, window_seconds=_CONTACT_WINDOW
-    ):
+    )
+    per_ip = await rate_limit_ok(
+        redis,
+        "contact_ip",
+        client_ip(request),
+        limit=_CONTACT_IP_LIMIT,
+        window_seconds=_CONTACT_WINDOW,
+    )
+    if not per_device or not per_ip:
         raise HTTPException(status_code=429, detail="rate_limited")
 
     http = getattr(request.app.state, "http", None)

@@ -45,9 +45,14 @@ async def rate_limit_ok(
     redis: Redis, bucket: str, identifier: str, *, limit: int, window_seconds: int
 ) -> bool:
     """Fixed-window limiter: allow up to ``limit`` hits per ``window_seconds`` for
-    ``(bucket, identifier)``. Returns True while under the limit. The counter ALWAYS gets a TTL."""
+    ``(bucket, identifier)``. Returns True while under the limit. The counter ALWAYS gets a TTL.
+
+    The window's TTL is stamped atomically at creation via ``SET NX EX`` (a single command), so the
+    key can never exist without an expiry — a plain ``INCR`` + separate ``EXPIRE`` could leave a
+    TTL-less counter if the process died between the two, permanently throttling that identifier in
+    the eviction-less shared db0. ``SET NX`` is a no-op on an existing key, so the window is fixed
+    (anchored to the first hit), not sliding."""
     key = site_ratelimit_key(bucket, identifier)
+    await redis.set(key, 0, ex=max(window_seconds, 1), nx=True)
     count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, max(window_seconds, 1))
     return count <= max(limit, 1)
