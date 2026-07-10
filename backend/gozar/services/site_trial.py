@@ -64,6 +64,32 @@ SiteClaimResult = Delivered | AlreadyClaimedToday | NotReady | NoLocations | Pan
 
 
 @dataclass(frozen=True)
+class SiteStatusInfo:
+    """The 'my status' view. ``live`` is False when the panel was unreachable — the device-level
+    fields (allowance, invites, history, cooldown) are still valid, only the live traffic isn't."""
+
+    status: str
+    active: bool
+    has_config: bool
+    live: bool
+    data_exhausted: bool
+    daily_limit: str
+    daily_limit_bytes: int
+    usage: str
+    usage_bytes: int
+    remaining: str  # time left on the current config
+    cooldown: str  # time until the next fresh claim ("" when already elapsed)
+    can_claim: bool
+    configs: int  # claim-history count
+    referral_count: int
+    referral_cap: int
+    streak_count: int
+    streak_days: int
+    location: str | None  # current config's location NAME
+    link: str | None  # current config's link
+
+
+@dataclass(frozen=True)
 class _Cached:
     links: dict[str, str]
     expires: str | None
@@ -263,3 +289,57 @@ class SiteTrialService:
         device.site_panel_username = username
         device.last_claim_at = claim_at  # cooldown starts at provision, aligned with panel expiry
         return await self._deliver(device, filtered, expires, location_name, changed=False)
+
+    async def status(self, device: SiteDevice) -> SiteStatusInfo:
+        """The full 'my status' view. Reads live panel traffic for an active device (self-healing an
+        ended trial); degrades to ``live=False`` (never an error) when the panel is unreachable, so
+        the device-level fields (allowance, invites, history, cooldown) always render."""
+        active = device.status == SiteDeviceStatus.active_config
+        live, exhausted, usage_bytes = True, False, 0
+        usage, remaining = "—", "—"  # unknown until live traffic is read
+        location: str | None = None
+        link: str | None = None
+        if active:
+            try:
+                refreshed = await self._refresh_active(device)
+            except RemnawaveError:
+                live = False  # transient — keep the device active, just no live traffic
+            else:
+                if refreshed is None:
+                    active = False  # self-healed to available
+                else:
+                    sub, links = refreshed
+                    usage_bytes = sub.user.traffic_used_bytes
+                    usage = human_bytes(usage_bytes)
+                    remaining = human_remaining(sub.user.expires_at)
+                    exhausted = TrialService._is_data_exhausted(sub)
+                    loc = await self._claims.latest_location_for_device(device.uuid)
+                    if loc and loc in links:
+                        location, link = loc, links[loc]
+                    elif links:
+                        location, link = next(iter(links.items()))
+
+        daily_bytes = await site_compute_traffic_bytes(self._settings, device.referral_count)
+        hours = await self._hours()
+        cooling = in_cooldown(device.last_claim_at, hours)
+        return SiteStatusInfo(
+            status=device.status,
+            active=active,
+            has_config=active,
+            live=live,
+            data_exhausted=exhausted,
+            daily_limit=human_bytes(daily_bytes),
+            daily_limit_bytes=daily_bytes,
+            usage=usage,
+            usage_bytes=usage_bytes,
+            remaining=remaining,
+            cooldown=cooldown_remaining(device.last_claim_at, hours) if cooling else "",
+            can_claim=not cooling,
+            configs=await self._claims.count_for_device(device.uuid),
+            referral_count=device.referral_count,
+            referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
+            streak_count=device.streak_count,
+            streak_days=await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+            location=location,
+            link=link,
+        )

@@ -43,16 +43,24 @@ _BASE = {
     SiteSettingKey.SITE_TRIAL_HOURS: "24",
 }
 _GB = 1024 * 1024 * 1024
+_MB = 1024 * 1024
 
 
 def _iso(hours: float) -> str:
     return (datetime.now(UTC) + timedelta(hours=hours)).isoformat()
 
 
-def _sub(*, status: str = "ACTIVE", expires_hours: float = 12) -> Subscription:
+def _sub(
+    *, status: str = "ACTIVE", expires_hours: float = 12, used: int = 0, limit: int = 0
+) -> Subscription:
     return Subscription(
         is_found=True,
-        user=SubscriptionUser(user_status=status, expires_at=_iso(expires_hours)),
+        user=SubscriptionUser(
+            user_status=status,
+            expires_at=_iso(expires_hours),
+            traffic_used_bytes=used,
+            traffic_limit_bytes=limit,
+        ),
     )
 
 
@@ -237,6 +245,82 @@ async def test_available_locations_active_uses_cache(session) -> None:
     assert set(await svc.available_locations(device)) == {"Germany", "Ukraine"}
 
 
+# --- status (P4) --------------------------------------------------------------------------------
+
+
+async def test_status_available_fresh_device(session) -> None:
+    svc = await _service(session, FakePanel([]))
+    device = await _device(session)
+    info = await svc.status(device)
+    assert info.active is False
+    assert info.has_config is False
+    assert info.live is True
+    assert info.can_claim is True
+    assert info.configs == 0
+    assert info.daily_limit_bytes == _GB  # base allowance
+
+
+async def test_status_active_reports_live_traffic_and_location(session) -> None:
+    panel = FakePanel([(_sub(used=200 * _MB, limit=_GB), _TWO)])
+    svc = await _service(session, panel)
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-live"
+    )
+    await SiteClaimRepository(session).add(device.uuid, "Germany")  # current config location
+
+    info = await svc.status(device)
+
+    assert info.active is True and info.has_config is True and info.live is True
+    assert info.usage_bytes == 200 * _MB
+    assert info.remaining != "—"
+    assert info.location == "Germany"
+    assert info.link == "vless://de#Germany"
+    assert info.configs == 1
+
+
+async def test_status_cooldown_blocks_next_claim(session) -> None:
+    svc = await _service(session, FakePanel([]))
+    device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=2))
+    info = await svc.status(device)
+    assert info.can_claim is False
+    assert info.cooldown  # a non-empty "time until next claim"
+
+
+async def test_status_panel_down_degrades_not_errors(session) -> None:
+    panel = FakePanel([RemnawaveError("down")])  # subscription raises a transient error
+    svc = await _service(session, panel)
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-x"
+    )
+    info = await svc.status(device)
+    assert info.live is False  # panel unreachable
+    assert info.active is True  # device still considered active (state untouched)
+    assert info.usage == "—"
+
+
+async def test_status_data_exhausted_stays_active(session) -> None:
+    panel = FakePanel([(_sub(status="LIMITED"), _TWO)])
+    svc = await _service(session, panel)
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-lim"
+    )
+    info = await svc.status(device)
+    assert info.data_exhausted is True
+    assert info.active is True  # LIMITED but time valid -> revivable, stays active
+
+
+async def test_status_active_expired_self_heals(session) -> None:
+    panel = FakePanel([(_sub(status="EXPIRED"), {})])
+    svc = await _service(session, panel)
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-dead"
+    )
+    info = await svc.status(device)
+    assert info.active is False  # self-healed to available
+    assert device.status == SiteDeviceStatus.available
+    assert "s-dead" in panel.deleted
+
+
 # --- endpoints ----------------------------------------------------------------------------------
 
 
@@ -276,7 +360,12 @@ async def test_endpoint_claim_then_status(claim_env) -> None:
     assert body["location"] == "Germany"
     assert body["link"] == "vless://de#Germany"
     status = await client.get("/api/public/status")
-    assert status.json()["has_config"] is True
+    body = status.json()
+    assert body["has_config"] is True
+    assert body["active"] is True
+    assert body["location"] == "Germany"
+    assert body["link"] == "vless://de#Germany"
+    assert body["configs"] == 1
 
 
 async def test_endpoint_locations(claim_env) -> None:

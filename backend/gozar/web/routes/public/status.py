@@ -1,27 +1,45 @@
 """Public read-only endpoints: device status + public runtime config.
 
-``GET /status`` resolves (or mints) the caller's device and reports its state from the
-``site_devices`` row alone — no panel call yet (the live quota/traffic view is fleshed out in P4).
-``GET /config`` hands the SPA the public keys it needs at runtime (CLAUDE.md 'runtime config').
+``GET /status`` returns the full 'my status' view — device fields (allowance, invites, history,
+cooldown) plus live panel traffic for an active device, degrading to ``live=false`` (never an error)
+when the panel is unreachable. ``GET /config`` hands the SPA the public keys it needs at runtime.
 """
 
 from __future__ import annotations
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from gozar.config.settings import get_settings
-from gozar.db.models.site_device import SiteDeviceStatus
+from gozar.db.repositories.site_claim import SiteClaimRepository
+from gozar.services.settings_service import SettingsService
+from gozar.services.site_trial import SiteTrialService
+from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice
 
 router = APIRouter(tags=["public"])
 
 
-class DeviceStatus(BaseModel):
+class StatusResponse(BaseModel):
     status: str
+    active: bool
     has_config: bool
+    live: bool
+    data_exhausted: bool
+    daily_limit: str
+    daily_limit_bytes: int
+    usage: str
+    usage_bytes: int
+    remaining: str
+    cooldown: str
+    can_claim: bool
+    configs: int
     referral_count: int
+    referral_cap: int
     streak_count: int
+    streak_days: int
+    location: str | None = None
+    link: str | None = None
 
 
 class PublicConfig(BaseModel):
@@ -30,14 +48,20 @@ class PublicConfig(BaseModel):
     turnstile_enabled: bool
 
 
-@router.get("/status", response_model=DeviceStatus)
-async def get_status(device: CurrentDevice) -> DeviceStatus:
-    return DeviceStatus(
-        status=device.status,
-        has_config=device.status == SiteDeviceStatus.active_config,
-        referral_count=device.referral_count,
-        streak_count=device.streak_count,
+def _service(request: Request, session) -> SiteTrialService:
+    state = request.app.state
+    return SiteTrialService(
+        state.panel,
+        SettingsService(session, state.redis),
+        SiteClaimRepository(session),
+        state.redis,
     )
+
+
+@router.get("/status", response_model=StatusResponse)
+async def get_status(request: Request, session: DbSession, device: CurrentDevice) -> StatusResponse:
+    info = await _service(request, session).status(device)
+    return StatusResponse(**vars(info))
 
 
 @router.get("/config", response_model=PublicConfig)

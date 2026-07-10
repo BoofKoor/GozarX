@@ -31,3 +31,13 @@ class SiteClaimRepository(BaseRepository):
         return await self.session.scalar(
             select(func.max(SiteClaim.created_at)).where(SiteClaim.device_uuid == device_uuid)
         )
+
+    async def latest_location_for_device(self, device_uuid: str) -> str | None:
+        """The location NAME of the device's most recent delivery — the 'current config' the status
+        screen shows (its link is looked up in the cached subscription map by this name)."""
+        return await self.session.scalar(
+            select(SiteClaim.location)
+            .where(SiteClaim.device_uuid == device_uuid)
+            .order_by(SiteClaim.created_at.desc())
+            .limit(1)
+        )

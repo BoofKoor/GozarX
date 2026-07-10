@@ -127,6 +127,7 @@ async def site_client(db_sessions) -> AsyncIterator[httpx.AsyncClient]:
     app = create_app()
     app.state.sessionmaker = db_sessions
     app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = None  # an available device never calls the panel; status stays device-level
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as client:
         yield client
