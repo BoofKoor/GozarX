@@ -18,7 +18,7 @@ from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 from gozar.db.repositories.settings import SettingsRepository
 from gozar.db.session import create_engine, create_sessionmaker
-from gozar.services.settings_service import SettingKey
+from gozar.services.settings_service import SettingKey, SiteSettingKey
 
 logger = logging.getLogger("gozar.seed")
 
@@ -30,6 +30,19 @@ DEFAULT_SETTINGS: dict[str, str] = {
     SettingKey.TRIAL_HOURS: "24",
     SettingKey.ADS_ENABLED: "false",
     SettingKey.CONFIGS_PER_PAGE: "8",
+}
+
+# Website economics — a SEPARATE economy, editable from the panel's 'website' section.
+# site_trial_squad + site_locations are wizard-picked (not seeded), like their bot counterparts.
+DEFAULT_SITE_SETTINGS: dict[str, str] = {
+    SiteSettingKey.SITE_TRIAL_HOURS: "24",
+    SiteSettingKey.SITE_DAILY_LIMIT_MB: "1024",
+    SiteSettingKey.SITE_REFERRAL_REWARD_MB: "500",
+    SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT: "10",
+    SiteSettingKey.SITE_REWARD_PWA_MB: "200",
+    SiteSettingKey.SITE_REWARD_PUSH_MB: "150",
+    SiteSettingKey.SITE_REWARD_STREAK_MB: "300",
+    SiteSettingKey.SITE_STREAK_DAYS: "7",
 }
 
 # Core user-facing copy per language; placeholders are {token}. Button labels live in the in-code
@@ -292,6 +305,29 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
 }
 
 
+# Website copy — a SEPARATE content namespace (``site_*`` keys) so it never appears in the bot's
+# Texts editor, and vice-versa. Bilingual only (fa/en); the site has no Russian. Full microcopy lands
+# with the site app (P8) — this is the SEO/hero starter set that establishes the pattern.
+DEFAULT_SITE_CONTENT: dict[str, dict[Language, str]] = {
+    "site_meta_title": {
+        Language.fa: "گذرایکس — کانفیگ آزمایشی رایگان روزانه",
+        Language.en: "GozarX — Free daily trial config",
+    },
+    "site_meta_description": {
+        Language.fa: "هر روز یک کانفیگ آزمایشی رایگان بگیر — بدون ثبت‌نام، سریع و ساده. حجم روزانه‌ات را با دعوت دوستان بیشتر کن.",
+        Language.en: "Get a free daily trial config — no signup, fast and simple. Grow your daily volume by inviting friends.",
+    },
+    "site_hero_title": {
+        Language.fa: "کانفیگ آزمایشی رایگان، هر روز",
+        Language.en: "A free trial config, every day",
+    },
+    "site_hero_sub": {
+        Language.fa: "بدون ثبت‌نام و بدون ایمیل. کانفیگ امروزت را بگیر و با دعوت دوستان حجم روزانه‌ات را بیشتر کن.",
+        Language.en: "No signup, no email. Grab today's config and grow your daily volume by inviting friends.",
+    },
+}
+
+
 async def _run() -> None:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
@@ -301,16 +337,20 @@ async def _run() -> None:
         async with sessionmaker() as session:
             settings_repo = SettingsRepository(session)
             content_repo = ContentRepository(session)
-            for key, value in DEFAULT_SETTINGS.items():
+            for key, value in {**DEFAULT_SETTINGS, **DEFAULT_SITE_SETTINGS}.items():
                 await settings_repo.add_default(key, value)
-            for key, bodies in DEFAULT_CONTENT.items():
-                for lang, body in bodies.items():
-                    await content_repo.add_default(key, lang, body)
+            for bodies_by_key in (DEFAULT_CONTENT, DEFAULT_SITE_CONTENT):
+                for key, bodies in bodies_by_key.items():
+                    for lang, body in bodies.items():
+                        await content_repo.add_default(key, lang, body)
             await session.commit()
         logger.info(
-            "seed: ensured %d settings + %d content keys (defaults only, existing rows untouched)",
+            "seed: ensured %d settings (%d bot + %d site) + %d content keys "
+            "(defaults only, existing rows untouched)",
+            len(DEFAULT_SETTINGS) + len(DEFAULT_SITE_SETTINGS),
             len(DEFAULT_SETTINGS),
-            len(DEFAULT_CONTENT),
+            len(DEFAULT_SITE_SETTINGS),
+            len(DEFAULT_CONTENT) + len(DEFAULT_SITE_CONTENT),
         )
     finally:
         await engine.dispose()
