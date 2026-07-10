@@ -14,7 +14,8 @@
   #app[data-locale="en"]{ --font:"Inter Variable","Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --lh-body:1.6; --lh-head:1.2; --ls-head:-.01em; }
   #app[data-locale="fa"] .btn, #app[data-locale="fa"] .seg button, #app[data-locale="fa"] .navlink, #app[data-locale="fa"] .chip { line-height:1.4; }
   #app *, #app *::before, #app *::after{ box-sizing:border-box; }
-  .container{ max-width:1120px; margin-inline:auto; padding-inline:20px; } @media (min-width:768px){ .container{ padding-inline:32px; } }
+  #app button{ font-family:inherit; } /* buttons don't inherit font-family by default — keep Persian text in Yekan Bakh */
+  .container{ max-width:1120px; margin-inline:auto; padding-inline:20px; } @media (min-width:768px){ .container{ padding-inline:32px; } } @media (max-width:359px){ .container{ padding-inline:16px; } }
   .logo{ display:block; block-size:28px; inline-size:auto; flex:none; } .muted{ color:var(--muted); } .tnum{ font-variant-numeric:tabular-nums; } a{ color:inherit; }
 
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px; border:1px solid transparent; border-radius:var(--r-btn); cursor:pointer; font:inherit; font-size:15px; font-weight:700; padding:11px 18px; background:var(--primary); color:var(--on-primary); transition:background .18s,transform .1s,box-shadow .18s,filter .18s; text-decoration:none; }
@@ -27,7 +28,7 @@
 
   /* header (same as homepage) */
   header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
-  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; } .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
+  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; } @media (max-width:360px){ .hd-row{ gap:6px; } .hd-ctrls{ gap:6px; } .icon-only{ inline-size:36px; block-size:36px; } } .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
   nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px; } @media (min-width:1000px){ nav.mainnav{ display:flex; } }
   .navlink{ font-size:14.5px; font-weight:600; color:var(--muted); text-decoration:none; padding:8px 12px; border-radius:10px; transition:color .15s,background .15s; } .navlink:hover{ color:var(--text); background:var(--sunken); } .navlink.active{ color:var(--link); background:var(--brand-tint); }
   .hd-spacer{ flex:1; } .hd-ctrls{ display:flex; align-items:center; gap:8px; }

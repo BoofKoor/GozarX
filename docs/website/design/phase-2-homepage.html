@@ -46,8 +46,9 @@
   #app[data-locale="fa"] .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.75; }
 
   #app *, #app *::before, #app *::after{ box-sizing:border-box; }
+  #app button{ font-family:inherit; } /* buttons don't inherit font-family by default — keep Persian text in Yekan Bakh */
   .container{ max-width:1180px; margin-inline:auto; padding-inline:20px; }
-  @media (min-width:768px){ .container{ padding-inline:32px; } }
+  @media (min-width:768px){ .container{ padding-inline:32px; } } @media (max-width:359px){ .container{ padding-inline:16px; } }
   .logo{ display:block; block-size:28px; inline-size:auto; flex:none; }
   .muted{ color:var(--muted); } .tnum{ font-variant-numeric:tabular-nums; }
   a{ color:inherit; }
@@ -75,11 +76,11 @@
   .lang-banner{ background:var(--brand-tint); border-block-end:1px solid var(--brand-tint-2); font-size:13px; }
   .lang-banner .row{ display:flex; align-items:center; justify-content:center; gap:12px; padding-block:8px; flex-wrap:wrap; color:var(--brand-tint-ink); }
   .lang-banner a{ font-weight:700; text-decoration:underline; cursor:pointer; }
-  .lang-banner .x{ border:0; background:transparent; color:inherit; cursor:pointer; font-size:16px; line-height:1; }
+  .lang-banner .x{ border:0; background:transparent; color:inherit; cursor:pointer; font-size:16px; line-height:1; inline-size:32px; block-size:32px; display:inline-grid; place-items:center; border-radius:8px; flex:none; }
   .lang-banner.hide{ display:none; }
 
   header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
-  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; }
+  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; } @media (max-width:360px){ .hd-row{ gap:6px; } .hd-ctrls{ gap:6px; } .icon-only{ inline-size:36px; block-size:36px; } }
   .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
   nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px; }
   @media (min-width:1000px){ nav.mainnav{ display:flex; } }
@@ -177,7 +178,7 @@
   .meter{ margin-block-start:16px; } .meter .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:8px; font-size:12.5px; } .meter .k{ color:var(--muted); display:inline-flex; align-items:center; gap:6px; } .meter .k .ic{ inline-size:14px; block-size:14px; } .meter .v{ font-weight:700; font-variant-numeric:tabular-nums; } .bar{ block-size:9px; border-radius:var(--r-pill); background:var(--sunken-2); overflow:hidden; } .bar>i{ display:block; block-size:100%; border-radius:var(--r-pill); background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); transition:inline-size .5s ease; }
   .cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; } .cd .seg2{ min-inline-size:46px; padding:8px 6px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); text-align:center; } .cd .seg2 b{ display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; } .cd .seg2 span{ font-size:9px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; } .cd .colon{ font-size:20px; font-weight:800; color:var(--faint); } .cd-label{ text-align:center; font-size:12.5px; color:var(--muted); margin-block-end:4px; }
   .divider{ block-size:1px; background:var(--border); margin-block:18px; border:0; }
-  .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); } .missions.hide{ display:none; } .missions-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:11px; } .missions-head .t{ font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:7px; } .missions-head .t .ic{ inline-size:16px; block-size:16px; color:var(--warning); } .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:26px; block-size:26px; border-radius:8px; display:grid; place-items:center; } .x-btn:hover{ background:var(--border); color:var(--text); }
+  .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); } .missions.hide{ display:none; } .missions-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:11px; } .missions-head .t{ font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:7px; } .missions-head .t .ic{ inline-size:16px; block-size:16px; color:var(--warning); } .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:32px; block-size:32px; border-radius:8px; display:grid; place-items:center; margin-inline-end:-4px; } .x-btn:hover{ background:var(--border); color:var(--text); }
   .m-chips{ display:flex; flex-direction:column; gap:7px; } .m-chip{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; } .m-chip:hover{ border-color:var(--primary); transform:translateX(2px); } [dir="rtl"] .m-chip:hover{ transform:translateX(-2px); } .m-chip .mi{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; } .m-chip .mi .ic{ inline-size:16px; block-size:16px; } .m-chip .mt{ flex:1; min-inline-size:0; display:flex; flex-direction:column; gap:1px; } .m-chip .mn{ display:block; font-weight:600; font-size:13px; } .m-chip .md{ display:block; font-size:11px; color:var(--muted); } .m-chip .rw{ font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
   /* HOW IT WORKS */

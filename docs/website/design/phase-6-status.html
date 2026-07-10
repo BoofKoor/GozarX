@@ -15,7 +15,8 @@
   #app[data-locale="en"]{ --font:"Inter Variable","Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --lh-body:1.6; --lh-head:1.2; --ls-head:-.01em; }
   #app[data-locale="fa"] .btn, #app[data-locale="fa"] .seg button, #app[data-locale="fa"] .navlink, #app[data-locale="fa"] .chip { line-height:1.4; }
   #app *, #app *::before, #app *::after{ box-sizing:border-box; }
-  .container{ max-width:1060px; margin-inline:auto; padding-inline:20px; } @media (min-width:768px){ .container{ padding-inline:32px; } }
+  #app button{ font-family:inherit; } /* buttons don't inherit font-family by default — keep Persian text in Yekan Bakh */
+  .container{ max-width:1060px; margin-inline:auto; padding-inline:20px; } @media (min-width:768px){ .container{ padding-inline:32px; } } @media (max-width:359px){ .container{ padding-inline:16px; } }
   .logo{ display:block; block-size:28px; inline-size:auto; flex:none; } .muted{ color:var(--muted); } .tnum{ font-variant-numeric:tabular-nums; } a{ color:inherit; }
   #app svg.ic{ inline-size:18px; block-size:18px; flex:none; }
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px; border:1px solid transparent; border-radius:var(--r-btn); cursor:pointer; font:inherit; font-size:15px; font-weight:700; padding:11px 18px; background:var(--primary); color:var(--on-primary); transition:background .18s,transform .1s,box-shadow .18s,filter .18s; text-decoration:none; }
@@ -27,7 +28,7 @@
   .eyebrow{ display:inline-flex; align-items:center; gap:7px; font-size:12px; font-weight:700; color:var(--brand-tint-ink); background:var(--brand-tint); border:1px solid var(--brand-tint-2); border-radius:var(--r-pill); padding:5px 13px; } .eyebrow .ic{ inline-size:14px; block-size:14px; }
 
   header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
-  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; } .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
+  .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; } @media (max-width:360px){ .hd-row{ gap:6px; } .hd-ctrls{ gap:6px; } .icon-only{ inline-size:36px; block-size:36px; } } .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
   nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px; } @media (min-width:1000px){ nav.mainnav{ display:flex; } }
   .navlink{ font-size:14.5px; font-weight:600; color:var(--muted); text-decoration:none; padding:8px 12px; border-radius:10px; } .navlink:hover{ color:var(--text); background:var(--sunken); } .navlink.active{ color:var(--link); background:var(--brand-tint); }
   .hd-spacer{ flex:1; } .hd-ctrls{ display:flex; align-items:center; gap:8px; }
@@ -44,6 +45,7 @@
   .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); }
   .grid-stats{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-block-end:16px; } @media (min-width:760px){ .grid-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
   .stat{ padding:18px; display:flex; align-items:center; gap:14px; } .stat .sic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); } .stat .sic .ic{ inline-size:22px; block-size:22px; } .stat .sv{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; } .stat .sl{ font-size:12.5px; color:var(--muted); }
+  @media (max-width:360px){ .stat{ padding:14px 12px; gap:10px; } .stat .sv{ font-size:16.5px; } .stat .sic, .stat .ring-mini{ inline-size:40px; block-size:40px; } }
   .ring-mini{ position:relative; inline-size:44px; block-size:44px; flex:none; } .ring-mini svg{ transform:rotate(-90deg); } [dir="rtl"] .ring-mini svg{ transform:rotate(-90deg) scaleY(-1); } .ring-mini .tk{ fill:none; stroke:var(--sunken-2); stroke-width:5; } .ring-mini .vl{ fill:none; stroke:var(--primary); stroke-width:5; stroke-linecap:round; } .ring-mini .pct{ position:absolute; inset:0; display:grid; place-items:center; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
   .cd-inline{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; display:inline-block; }
 

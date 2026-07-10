@@ -56,8 +56,9 @@
   #app[data-locale="fa"] .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.75; }
 
   #app *, #app *::before, #app *::after { box-sizing:border-box; }
+  #app button{ font-family:inherit; } /* buttons don't inherit font-family by default — keep Persian text in Yekan Bakh */
   .container { max-width:1160px; margin-inline:auto; padding-inline:20px; }
-  @media (min-width:768px){ .container{ padding-inline:32px; } }
+  @media (min-width:768px){ .container{ padding-inline:32px; } } @media (max-width:359px){ .container{ padding-inline:16px; } }
   .logo { display:block; block-size:26px; inline-size:auto; flex:none; }
   .muted{ color:var(--muted); } .tnum{ font-variant-numeric:tabular-nums; }
 
@@ -214,6 +215,7 @@
   .apps{ margin-block-start:12px; }
   .apps .lbl{ font-size:12px; color:var(--muted); margin-block-end:8px; display:block; }
   .apps-row{ display:flex; gap:8px; }
+  @media (max-width:360px){ .apps-row{ flex-wrap:wrap; } .apps-row .app-btn{ flex:1 1 calc(50% - 4px); } }
   .app-btn{ display:inline-flex; align-items:center; gap:7px; flex:1; justify-content:center; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:9px 8px; cursor:pointer; transition:border-color .15s; }
   .app-btn:hover{ border-color:var(--primary); }
   .app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
@@ -251,7 +253,7 @@
   .missions-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:11px; }
   .missions-head .t{ font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:7px; }
   .missions-head .t .ic{ inline-size:16px; block-size:16px; color:var(--warning); }
-  .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:26px; block-size:26px; border-radius:8px; display:grid; place-items:center; }
+  .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:32px; block-size:32px; border-radius:8px; display:grid; place-items:center; margin-inline-end:-4px; }
   .x-btn:hover{ background:var(--border); color:var(--text); } .x-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
   .m-chips{ display:flex; flex-direction:column; gap:7px; }
   .m-chip{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s, transform .12s; }
