@@ -18,6 +18,7 @@ import asyncio
 import json
 import logging
 from enum import StrEnum
+from urllib.parse import urlparse
 
 from pywebpush import WebPushException, webpush
 from redis.asyncio import Redis
@@ -34,6 +35,31 @@ logger = logging.getLogger("gozar.services.push")
 _GONE_STATUSES = {404, 410}
 # ~20 sends/s — a courteous ceiling for a bulk broadcast fan-out (mirrors the bot's send throttle).
 PUSH_SEND_DELAY = 0.05
+
+# Real Web Push service hosts. A stored endpoint is POSTed server-side (by the sender + broadcast),
+# so anything outside these is an SSRF into the internal network / metadata → reject it. Covers
+# effectively every real browser: Chromium (FCM), Firefox (autopush), Safari (APNs), Edge (WNS).
+_ALLOWED_PUSH_HOST_SUFFIXES = (
+    "googleapis.com",  # fcm.googleapis.com — Chrome / Edge / Opera / Brave
+    "mozilla.com",  # updates.push.services.mozilla.com — Firefox
+    "push.apple.com",  # web.push.apple.com — Safari
+    "notify.windows.com",  # *.notify.windows.com — legacy Edge (WNS)
+)
+
+
+def is_allowed_push_endpoint(endpoint: str) -> bool:
+    """True only for an https URL whose host is a known Web Push service. The SSRF guard, enforced
+    at subscribe (reject before storing) AND at send (defense-in-depth for any pre-existing row)."""
+    try:
+        parsed = urlparse(endpoint)
+    except ValueError:
+        return False
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme != "https" or not host:
+        return False
+    return any(
+        host == suffix or host.endswith("." + suffix) for suffix in _ALLOWED_PUSH_HOST_SUFFIXES
+    )
 
 
 class PushOutcome(StrEnum):
@@ -63,6 +89,11 @@ async def send_push(info: dict[str, object], payload_json: str) -> PushOutcome:
     subject = settings.vapid_subject
     if not private_key or not subject:
         logger.warning("web push not configured (VAPID key/subject) — skipping send")
+        return PushOutcome.FAILED
+    if not is_allowed_push_endpoint(str(info.get("endpoint", ""))):
+        # Defense-in-depth: never POST server-side to a non-allowlisted host (SSRF). New rows are
+        # already rejected at subscribe; this covers any endpoint stored before the guard existed.
+        logger.warning("web push endpoint not allowlisted — skipping send")
         return PushOutcome.FAILED
 
     def _blocking() -> None:

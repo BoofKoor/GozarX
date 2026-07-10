@@ -22,6 +22,8 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import async_object_session
 
 from gozar.cache.redis import site_limited_notified_key, site_sub_cache_key
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
@@ -117,22 +119,44 @@ async def bump_live_trial(
 
 async def reset_device_to_available(
     panel: RemnawaveClient, redis: Redis, device: SiteDevice
-) -> None:
+) -> bool:
     """Self-heal a device with an ENDED trial back to claimable: free the panel account
     (best-effort, single bounded call), flip the row to ``available`` + drop its panel username, and
     clear its cached sub + data-limit nudge guard. Shared by the lazy self-heal (SiteTrialService)
-    and the proactive teardown on an expiry webhook / reconcile sweep (SiteReminderService), so all
-    three reset the exact same state."""
+    and the proactive teardown on an expiry webhook / reconcile sweep (SiteReminderService).
+
+    The row flip is a compare-and-swap on the panel username, NOT a blind write: a concurrent
+    re-claim (which swaps in a fresh panel account in another session) makes the guarded UPDATE
+    match zero rows, so we never clobber the new trial back to available. Returns True iff this call
+    performed the reset — the caller skips the now-stale expiry nudge when it returns False.
+    """
     username = device.site_panel_username
     if username:
         try:
             await panel.delete_user_by_username(username)
         except RemnawaveError:
             logger.warning("site self-heal: panel delete failed for %s", device.uuid)
-    device.status = SiteDeviceStatus.available
-    device.site_panel_username = None
+    session = async_object_session(device)
+    guard = (
+        SiteDevice.site_panel_username.is_(None)
+        if username is None
+        else SiteDevice.site_panel_username == username
+    )
+    result = await session.execute(
+        update(SiteDevice)
+        .where(SiteDevice.uuid == device.uuid, guard)
+        .values(status=SiteDeviceStatus.available, site_panel_username=None)
+        .execution_options(synchronize_session=False)
+    )
+    did_reset = bool(result.rowcount)
+    if did_reset:
+        # We hold the row lock until commit, so syncing the in-memory read-model (a redundant,
+        # same-value ORM write on flush) cannot be clobbered by a concurrent claim.
+        device.status = SiteDeviceStatus.available
+        device.site_panel_username = None
     await redis.delete(site_sub_cache_key(device.uuid))
     await redis.delete(site_limited_notified_key(device.uuid))
+    return did_reset
 
 
 class SiteTrialService:

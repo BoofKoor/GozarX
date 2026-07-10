@@ -131,3 +131,40 @@ async def test_apply_ended_trial_skips_non_active(session) -> None:
     redis = await _redis()
     device = await _device(session, status=SiteDeviceStatus.available)
     assert await _svc(session, redis, _Panel()).apply_ended_trial(device, {}) is None
+
+
+async def test_reset_is_compare_and_swap(db_sessions) -> None:
+    # A stale expiry teardown for "s-x" must NOT clobber a config the user re-claimed to "s-y" in
+    # the read->write window: the CAS matches 0 rows, returns False, and leaves "s-y" as-is.
+    from sqlalchemy import update
+
+    from gozar.services.site_trial import reset_device_to_available
+
+    redis = await _redis()
+    async with db_sessions() as s0:
+        s0.add(
+            SiteDevice(
+                uuid="dev-1", status=SiteDeviceStatus.active_config, site_panel_username="s-x"
+            )
+        )
+        await s0.commit()
+
+    async with db_sessions() as reset_s:
+        device = await SiteDeviceRepository(reset_s).get("dev-1")  # loaded pointing at "s-x"
+        # Concurrent re-claim swaps in a fresh account and commits BEFORE the teardown writes.
+        async with db_sessions() as claim_s:
+            await claim_s.execute(
+                update(SiteDevice)
+                .where(SiteDevice.uuid == "dev-1")
+                .values(site_panel_username="s-y", status=SiteDeviceStatus.active_config)
+            )
+            await claim_s.commit()
+
+        did_reset = await reset_device_to_available(_Panel(), redis, device)
+        await reset_s.commit()
+
+    assert did_reset is False  # guard missed — no clobber
+    async with db_sessions() as s:
+        row = await SiteDeviceRepository(s).get("dev-1")
+    assert row.status == SiteDeviceStatus.active_config  # the re-claimed trial is intact
+    assert row.site_panel_username == "s-y"

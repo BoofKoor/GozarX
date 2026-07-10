@@ -9,18 +9,30 @@ guarded by a Redis rate limit only, no Turnstile. The push REWARD is separate (P
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
+from gozar.services.push import is_allowed_push_endpoint
 from gozar.web.dependencies import DbSession
-from gozar.web.routes.public.identity import CurrentDevice
+from gozar.web.routes.public.identity import CurrentDevice, client_ip
 from gozar.web.routes.public.security import rate_limit_ok
 
 router = APIRouter(tags=["public"])
 
 _SUB_LIMIT = 20
 _SUB_WINDOW = 3600
+# Per-IP backstop: a cookieless client is minted a fresh device uuid each request, so the per-device
+# cap never bites it — the IP cap stops a cookieless flood. Generous so a CGNAT-shared IP is fine.
+_SUB_IP_LIMIT = 60
 _LOCALES = ("fa", "en")
+
+
+def _validate_endpoint(value: str) -> str:
+    # Reject a non-https / non-push-service endpoint BEFORE storing it — the server later POSTs to
+    # it, so an internal URL here would be an SSRF (the sender re-checks as defense-in-depth).
+    if not is_allowed_push_endpoint(value):
+        raise ValueError("invalid push endpoint")
+    return value
 
 
 class SubscribeRequest(BaseModel):
@@ -28,6 +40,8 @@ class SubscribeRequest(BaseModel):
     p256dh: str = Field(min_length=1, max_length=255)
     auth: str = Field(min_length=1, max_length=255)
     locale: str = "fa"
+
+    _check_endpoint = field_validator("endpoint")(staticmethod(_validate_endpoint))
 
 
 class UnsubscribeRequest(BaseModel):
@@ -38,17 +52,23 @@ class PushResponse(BaseModel):
     ok: bool
 
 
+async def _rate_limited(request: Request, device_uuid: str) -> bool:
+    """Per-device cap + a per-IP backstop (a cookieless caller mints a fresh device per request)."""
+    redis = request.app.state.redis
+    per_device = await rate_limit_ok(
+        redis, "push_sub", device_uuid, limit=_SUB_LIMIT, window_seconds=_SUB_WINDOW
+    )
+    per_ip = await rate_limit_ok(
+        redis, "push_sub_ip", client_ip(request), limit=_SUB_IP_LIMIT, window_seconds=_SUB_WINDOW
+    )
+    return not (per_device and per_ip)
+
+
 @router.post("/push/subscribe", response_model=PushResponse)
 async def subscribe(
     body: SubscribeRequest, request: Request, session: DbSession, device: CurrentDevice
 ) -> PushResponse:
-    if not await rate_limit_ok(
-        request.app.state.redis,
-        "push_sub",
-        device.uuid,
-        limit=_SUB_LIMIT,
-        window_seconds=_SUB_WINDOW,
-    ):
+    if await _rate_limited(request, device.uuid):
         raise HTTPException(status_code=429, detail="rate_limited")
     locale = body.locale if body.locale in _LOCALES else "fa"
     await PushSubscriptionRepository(session).upsert(
@@ -65,13 +85,7 @@ async def subscribe(
 async def unsubscribe(
     body: UnsubscribeRequest, request: Request, session: DbSession, device: CurrentDevice
 ) -> PushResponse:
-    if not await rate_limit_ok(
-        request.app.state.redis,
-        "push_sub",
-        device.uuid,
-        limit=_SUB_LIMIT,
-        window_seconds=_SUB_WINDOW,
-    ):
+    if await _rate_limited(request, device.uuid):
         raise HTTPException(status_code=429, detail="rate_limited")
     await PushSubscriptionRepository(session).deactivate(body.endpoint)
     return PushResponse(ok=True)

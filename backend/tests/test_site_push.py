@@ -26,6 +26,7 @@ from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.services import push
 from gozar.services.content import ContentService
 from gozar.web.app import create_app
+from gozar.web.routes.public.push import _SUB_IP_LIMIT
 
 _SETTINGS = {"site_daily_limit_mb": "1024"}
 
@@ -92,7 +93,7 @@ def _configure_vapid(monkeypatch) -> None:
     get_settings.cache_clear()
 
 
-_INFO = {"endpoint": "https://push/x", "keys": {"p256dh": "k", "auth": "a"}}
+_INFO = {"endpoint": "https://fcm.googleapis.com/fcm/send/x", "keys": {"p256dh": "k", "auth": "a"}}
 
 
 async def test_send_push_sent(monkeypatch) -> None:
@@ -215,18 +216,75 @@ async def env(db_sessions) -> AsyncIterator[tuple[httpx.AsyncClient, object]]:
     get_settings.cache_clear()
 
 
+_FCM = "https://fcm.googleapis.com/fcm/send/z"
+
+
 async def test_endpoint_subscribe_then_unsubscribe(env, db_sessions) -> None:
     client, _app = env
-    sub = {"endpoint": "https://push/z", "p256dh": "k", "auth": "a", "locale": "en"}
+    sub = {"endpoint": _FCM, "p256dh": "k", "auth": "a", "locale": "en"}
     assert (await client.post("/api/public/push/subscribe", json=sub)).json()["ok"] is True
     async with db_sessions() as s:
         row = (await s.scalars(select(PushSubscription))).one()
-    assert row.endpoint == "https://push/z" and row.locale == "en" and row.active is True
+    assert row.endpoint == _FCM and row.locale == "en" and row.active is True
     assert row.device_uuid is not None  # tied to the minted device
 
-    assert (
-        await client.post("/api/public/push/unsubscribe", json={"endpoint": "https://push/z"})
-    ).json()["ok"] is True
+    assert (await client.post("/api/public/push/unsubscribe", json={"endpoint": _FCM})).json()[
+        "ok"
+    ] is True
     async with db_sessions() as s:
         row = (await s.scalars(select(PushSubscription))).one()
     assert row.active is False
+
+
+async def test_is_allowed_push_endpoint() -> None:
+    ok = [
+        "https://fcm.googleapis.com/fcm/send/x",
+        "https://updates.push.services.mozilla.com/wpush/v2/x",
+        "https://web.push.apple.com/x",
+        "https://abc.notify.windows.com/w/",
+    ]
+    bad = [
+        "http://fcm.googleapis.com/x",  # not https
+        "https://169.254.169.254/latest/meta-data/",  # cloud metadata (SSRF)
+        "https://localhost/x",
+        "https://evil.com/x",
+        "https://evilgoogleapis.com/x",  # suffix must be a dotted boundary
+        "ftp://x",
+        "not a url",
+    ]
+    assert all(push.is_allowed_push_endpoint(e) for e in ok)
+    assert not any(push.is_allowed_push_endpoint(e) for e in bad)
+
+
+async def test_subscribe_rejects_ssrf_endpoint(env) -> None:
+    client, _app = env
+    ssrf = {
+        "endpoint": "https://169.254.169.254/latest/meta-data/",
+        "p256dh": "k",
+        "auth": "a",
+    }
+    # Rejected at the API boundary (pydantic 422) before it can ever be stored + POSTed server-side.
+    assert (await client.post("/api/public/push/subscribe", json=ssrf)).status_code == 422
+
+
+async def test_send_push_rejects_non_allowlisted(monkeypatch) -> None:
+    _configure_vapid(monkeypatch)
+    called = []
+    monkeypatch.setattr(push, "webpush", lambda **kwargs: called.append(1))
+    info = {"endpoint": "https://evil.com/x", "keys": {"p256dh": "k", "auth": "a"}}
+    assert await push.send_push(info, "{}") is push.PushOutcome.FAILED
+    assert called == []  # defense-in-depth: never POSTs to a non-push host
+    get_settings.cache_clear()
+
+
+async def test_subscribe_ip_backstop_throttles_cookieless(env) -> None:
+    client, _app = env
+    # Cookieless clients mint a fresh device each request, so the per-device cap never bites; the
+    # per-IP backstop stops the flood after _SUB_IP_LIMIT.
+    for i in range(_SUB_IP_LIMIT):
+        client.cookies.clear()
+        sub = {"endpoint": f"https://fcm.googleapis.com/fcm/send/{i}", "p256dh": "k", "auth": "a"}
+        assert (await client.post("/api/public/push/subscribe", json=sub)).status_code == 200
+    client.cookies.clear()
+    flood = {"endpoint": "https://fcm.googleapis.com/fcm/send/last", "p256dh": "k", "auth": "a"}
+    assert (await client.post("/api/public/push/subscribe", json=flood)).status_code == 429

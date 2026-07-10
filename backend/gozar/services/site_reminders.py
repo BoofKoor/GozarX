@@ -84,8 +84,11 @@ class SiteReminderService:
             return None
         return SiteNudge(device.uuid, *_LIMITED_KEYS, tokens)
 
-    async def _expired(self, device: SiteDevice, tokens: dict[str, str]) -> SiteNudge:
-        await reset_device_to_available(self._panel, self._redis, device)
+    async def _expired(self, device: SiteDevice, tokens: dict[str, str]) -> SiteNudge | None:
+        # Compare-and-swap reset: if a concurrent re-claim already swapped in a fresh trial, the
+        # reset is a no-op and we skip the stale "trial ended" nudge.
+        if not await reset_device_to_available(self._panel, self._redis, device):
+            return None
         return SiteNudge(device.uuid, *_EXPIRED_KEYS, tokens)
 
     async def apply_event(self, event: WebhookUserEvent) -> SiteNudge | None:
