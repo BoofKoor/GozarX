@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from gozar.web.routes.public import status
+from gozar.web.routes.public import claim, status
 
 router = APIRouter(prefix="/public")
 router.include_router(status.router)
+router.include_router(claim.router)
