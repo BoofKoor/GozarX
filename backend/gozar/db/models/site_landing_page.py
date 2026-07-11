@@ -40,4 +40,7 @@ class SiteLandingPage(Base):
     location_remark: Mapped[str | None] = mapped_column(String(128), nullable=True)
     published: Mapped[bool] = mapped_column(Boolean, default=True, server_default=text("true"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # onupdate keeps the edit time fresh on every admin save (SQLAlchemy-side, no DDL change).
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

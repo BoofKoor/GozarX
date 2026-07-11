@@ -5,7 +5,7 @@ The site analogue of ``UserRepository``, keyed by the opaque device ``uuid`` (ne
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.base import BaseRepository
@@ -75,3 +75,14 @@ class SiteDeviceRepository(BaseRepository):
             )
         )
         return [(uuid, name) for uuid, name in rows.all() if name]
+
+    async def count(self) -> int:
+        """Total device identities ever minted — the site funnel's top ('visits')."""
+        return int(await self.session.scalar(select(func.count()).select_from(SiteDevice)) or 0)
+
+    async def count_by_status(self) -> dict[str, int]:
+        """``{status: count}`` over all devices (available / active_config / blocked)."""
+        rows = await self.session.execute(
+            select(SiteDevice.status, func.count()).group_by(SiteDevice.status)
+        )
+        return {str(status): int(n) for status, n in rows.all()}

@@ -41,3 +41,43 @@ class SiteClaimRepository(BaseRepository):
             .order_by(SiteClaim.created_at.desc())
             .limit(1)
         )
+
+    # --- admin site funnel stats (grouped aggregates; mirror ConfigLogRepository) ----------------
+    async def count_since(self, since: datetime) -> int:
+        """Total site claims at or after ``since`` (admin stats: 'configs today')."""
+        return int(
+            await self.session.scalar(
+                select(func.count()).select_from(SiteClaim).where(SiteClaim.created_at >= since)
+            )
+            or 0
+        )
+
+    async def distinct_device_count(self) -> int:
+        """How many distinct devices ever claimed ≥1 config — the funnel conversion numerator."""
+        return int(
+            await self.session.scalar(select(func.count(func.distinct(SiteClaim.device_uuid)))) or 0
+        )
+
+    async def daily_counts(self, since: datetime) -> list[tuple[str, int]]:
+        """Site claims per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending."""
+        day = func.date(SiteClaim.created_at).label("day")
+        rows = await self.session.execute(
+            select(day, func.count())
+            .where(SiteClaim.created_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
+
+    async def location_counts(self, since: datetime, limit: int = 10) -> list[tuple[str, int]]:
+        """Site claims grouped by location at/after ``since`` → ``[(location, count), …]`` busiest
+        first (matched by remark NAME)."""
+        count = func.count().label("n")
+        rows = await self.session.execute(
+            select(SiteClaim.location, count)
+            .where(SiteClaim.created_at >= since)
+            .group_by(SiteClaim.location)
+            .order_by(count.desc())
+            .limit(limit)
+        )
+        return [(loc, int(n)) for loc, n in rows.all()]

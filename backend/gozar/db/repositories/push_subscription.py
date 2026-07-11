@@ -8,7 +8,7 @@ transient error (the v1 mass-deletion lesson); the sender maps that to ``deactiv
 
 from __future__ import annotations
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from gozar.db.models.push_subscription import PushSubscription
@@ -69,3 +69,14 @@ class PushSubscriptionRepository(BaseRepository):
             select(PushSubscription).where(PushSubscription.active.is_(True))
         )
         return list(rows.all())
+
+    async def count_active(self) -> int:
+        """How many active subscriptions — the push-broadcast recipient echo (admin panel)."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(PushSubscription)
+                .where(PushSubscription.active.is_(True))
+            )
+            or 0
+        )
