@@ -15,6 +15,10 @@ RUN npm ci
 
 # 2) App source, then the production build → .next/standalone + .next/static.
 COPY frontend/site/ ./
+# Next bakes the next.config `/api` rewrite target at BUILD time, so set the app origin here.
+# Behind nginx this rewrite never fires (nginx routes /api to the app first); baking the real value
+# just keeps any future server-side /api call correct.
+ENV BACKEND_ORIGIN=http://app:8000
 RUN npm run build
 
 FROM node:22-alpine AS runtime

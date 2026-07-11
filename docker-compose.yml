@@ -64,10 +64,9 @@ services:
       dockerfile: docker/Dockerfile.site
     image: gozar-site:local
     restart: unless-stopped
-    # No backend secrets — only where to reach the app for any server-side call. Browser /api
-    # requests are routed to the app by nginx before they ever reach this container.
-    environment:
-      BACKEND_ORIGIN: http://app:8000
+    # No backend secrets and no runtime env: the site only serves pages. Browser /api requests are
+    # routed to the app by nginx; the next.config /api rewrite target is baked at build time in
+    # Dockerfile.site (Next evaluates rewrites during `next build`, not at runtime).
     depends_on:
       app:
         condition: service_started

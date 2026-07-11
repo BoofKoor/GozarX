@@ -218,8 +218,8 @@ intake_admin() {
 
 intake_optional() {
     step "Optional settings"
-    ask ADMIN_DOMAIN "Separate admin domain (blank to serve on $DOMAIN)" "$(env_get ADMIN_DOMAIN || echo '')"
-    ask BACKUP_CHANNEL_ID "Telegram channel ID for DB backups (blank to disable)" "$(env_get BACKUP_CHANNEL_ID || echo '')"
+    ask_optional ADMIN_DOMAIN "Separate admin domain (blank to serve on $DOMAIN)" "$(env_get ADMIN_DOMAIN)"
+    ask_optional BACKUP_CHANNEL_ID "Telegram channel ID for DB backups (blank to disable)" "$(env_get BACKUP_CHANNEL_ID)"
     ask TZ_VALUE "Timezone" "$(env_get TZ || echo UTC)"
 }
 
@@ -483,9 +483,13 @@ verify() {
 
     # 1b) Website root + admin panel (now under /admin), when the site is configured.
     if [ -n "${SITE_DOMAIN:-}" ]; then
-        local scode acode
-        scode="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
-            --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/" 2>/dev/null || true)"
+        local scode="" acode
+        for _ in $(seq 10); do
+            scode="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
+                --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/" 2>/dev/null || true)"
+            [ "$scode" = "200" ] && break
+            sleep 2
+        done
         [ "$scode" = "200" ] && ok "https://$DOMAIN/ (website) → 200" \
             || warn "website root got '${scode:-none}' — see: docker compose logs site"
         acode="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
