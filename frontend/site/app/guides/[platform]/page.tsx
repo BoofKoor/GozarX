@@ -29,7 +29,7 @@ export default async function GuidePage({ params }: { params: Promise<{ platform
       <div className="container" style={{ maxWidth: 720 }}>
         <p className="hint">
           <Link href="/guides" style={{ color: "var(--link)" }}>
-            ← {labels.backToGuides}
+            {locale === "fa" ? "→" : "←"} {labels.backToGuides}
           </Link>
         </p>
         <h1 className="mt-2">{heading(locale === "fa", g.name, g.app)}</h1>

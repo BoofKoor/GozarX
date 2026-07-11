@@ -33,7 +33,7 @@ export function FaqList({ locale }: { locale: Locale }) {
         aria-label={labels.search}
       />
 
-      <div className="seg mt-4" role="group" aria-label={labels.title} style={{ flexWrap: "wrap" }}>
+      <div className="seg mt-4" role="group" aria-label={labels.categories} style={{ flexWrap: "wrap" }}>
         <button aria-pressed={cat === "all"} onClick={() => setCat("all")}>
           {labels.all}
         </button>
@@ -54,6 +54,7 @@ export function FaqList({ locale }: { locale: Locale }) {
                 className="between"
                 style={{ width: "100%", textAlign: "start", color: "var(--text)", fontWeight: 700 }}
                 aria-expanded={open === i}
+                aria-controls={`faq-panel-${i}`}
                 onClick={() => setOpen(open === i ? null : i)}
               >
                 <span>{it.q}</span>
@@ -61,7 +62,11 @@ export function FaqList({ locale }: { locale: Locale }) {
                   {open === i ? "−" : "+"}
                 </span>
               </button>
-              {open === i && <p className="mt-2">{it.a}</p>}
+              {open === i && (
+                <p id={`faq-panel-${i}`} role="region" className="mt-2">
+                  {it.a}
+                </p>
+              )}
             </div>
           ))}
         </div>

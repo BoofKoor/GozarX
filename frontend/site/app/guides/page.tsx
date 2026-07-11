@@ -21,7 +21,7 @@ export default async function GuidesPage() {
           {GUIDES[locale].map((g) => (
             <Link key={g.platform} href={`/guides/${g.platform}`} className="card card-pad" style={{ display: "block", color: "var(--text)" }}>
               <div className="between">
-                <h3 style={{ fontSize: 20 }}>{g.name}</h3>
+                <h2 style={{ fontSize: 20 }}>{g.name}</h2>
                 <span className="chip chip-success">{labels.easy}</span>
               </div>
               <p className="hint mt-2">

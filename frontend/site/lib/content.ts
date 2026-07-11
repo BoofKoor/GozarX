@@ -95,13 +95,17 @@ export interface FaqItem {
   a: string;
 }
 
-export const FAQ_LABELS: Record<Locale, { title: string; sub: string; search: string; empty: string; all: string }> = {
+export const FAQ_LABELS: Record<
+  Locale,
+  { title: string; sub: string; search: string; empty: string; all: string; categories: string }
+> = {
   fa: {
     title: "سوالات متداول",
     sub: "پاسخ سریع به پرتکرارترین سوال‌ها. اگر جوابت این‌جا نبود، از صفحهٔ تماس بپرس.",
     search: "جستجو در سوالات…",
     empty: "سوالی با این عبارت پیدا نشد.",
     all: "همه",
+    categories: "دسته‌ها",
   },
   en: {
     title: "Frequently asked questions",
@@ -109,6 +113,7 @@ export const FAQ_LABELS: Record<Locale, { title: string; sub: string; search: st
     search: "Search questions…",
     empty: "No question matches that phrase.",
     all: "All",
+    categories: "Categories",
   },
 };
 

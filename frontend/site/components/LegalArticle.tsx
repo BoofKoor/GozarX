@@ -25,7 +25,7 @@ export function LegalArticle({
           {sections.map((s, i) =>
             s.important ? (
               <div key={i} className="card card-pad" style={{ borderColor: "var(--primary)", background: "var(--brand-tint)" }}>
-                <h3 style={{ fontSize: 20 }}>{s.h}</h3>
+                <h2 style={{ fontSize: 20 }}>{s.h}</h2>
                 <p className="mt-2" style={{ color: "var(--text)" }}>
                   <strong style={{ color: "var(--primary)" }}>{LEGAL_IMPORTANT[locale]} </strong>
                   {s.body}
@@ -33,7 +33,7 @@ export function LegalArticle({
               </div>
             ) : (
               <div key={i}>
-                <h3 style={{ fontSize: 20 }}>{s.h}</h3>
+                <h2 style={{ fontSize: 20 }}>{s.h}</h2>
                 <p className="mt-2">{s.body}</p>
               </div>
             ),
