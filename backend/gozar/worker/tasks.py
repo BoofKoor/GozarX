@@ -32,14 +32,19 @@ from gozar.bot.replies import preview_options
 from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language, UserStatus
+from gozar.db.models.site_device import SiteDeviceStatus
 from gozar.db.repositories.config_log import ConfigLogRepository
+from gozar.db.repositories.push_subscription import PushSubscriptionRepository
+from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
 from gozar.remnawave.schemas import PanelUser
+from gozar.services import push
 from gozar.services.content import ContentService
 from gozar.services.health import build_snapshot, sample_from
 from gozar.services.reminders import ReminderService
 from gozar.services.settings_service import SettingsService
+from gozar.services.site_reminders import SiteReminderService, nudge_tokens
 from gozar.services.trial import TrialService, human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.worker.tasks")
@@ -311,6 +316,112 @@ async def reconcile_trials(ctx: dict) -> None:
 
     if healed:
         logger.info("reconcile_trials: healed %d ended trial(s)", healed)
+
+
+# ── Site Web Push: broadcast + reconcile sweep ────────────────────────────────────────────────
+async def site_push_broadcast(ctx: dict, title: str, body: str, url: str = "") -> None:
+    """Fan a Web Push out to every ACTIVE site subscription (admin-composed copy). Prunes a
+    subscription ONLY on a 404/410 from the push service (never on a transient error — the v1
+    mass-deletion lesson). Bulk push runs in the worker, never in a handler.
+    """
+    sessionmaker = ctx.get("sessionmaker")
+    if sessionmaker is None:
+        logger.warning("site_push_broadcast: worker missing sessionmaker; skipping")
+        return
+
+    payload = json.dumps({"title": title, "body": body, "url": url})
+    async with sessionmaker() as session:
+        subs = await PushSubscriptionRepository(session).list_active()
+        jobs = [(s.endpoint, push.subscription_info(s)) for s in subs]
+
+    sent = failed = 0
+    gone: list[str] = []
+    for endpoint, info in jobs:
+        outcome = await push.send_push(info, payload)
+        if outcome is push.PushOutcome.SENT:
+            sent += 1
+        elif outcome is push.PushOutcome.GONE:
+            gone.append(endpoint)
+        else:
+            failed += 1
+        await asyncio.sleep(push.PUSH_SEND_DELAY)
+
+    if gone:
+        async with sessionmaker() as session:
+            repo = PushSubscriptionRepository(session)
+            for endpoint in gone:
+                await repo.deactivate(endpoint)
+            await session.commit()
+    logger.info(
+        "site_push_broadcast: sent %d · failed %d · pruned %d (of %d)",
+        sent,
+        failed,
+        len(gone),
+        len(jobs),
+    )
+
+
+async def site_reconcile(ctx: dict) -> None:
+    """Site fallback for the panel webhook: sweep ``active_config`` devices and self-heal any whose
+    panel trial is TERMINAL (time-expired / disabled / missing) — reset to claimable + push an
+    'ended' nudge. A data-limited-but-time-valid trial is deliberately left alone (revivable by a
+    referral/reward bump; the data-limit nudge is webhook-only, mirroring the bot).
+
+    Single bounded ``get_user`` per device (the authoritative record, NOT ``subscription`` — a
+    terminal trial has no links and would fall through to the raw-config endpoint and mask the
+    expiry). Idempotent with the webhook: a device it already reset is no longer ``active_config``,
+    and it re-verifies the row is unchanged since the probe before mutating.
+    """
+    sessionmaker = ctx.get("sessionmaker")
+    panel = ctx.get("panel")
+    redis = ctx.get("cache_redis")
+    if sessionmaker is None or panel is None or redis is None:
+        logger.warning("site_reconcile: worker missing sessionmaker/panel/redis; skipping")
+        return
+
+    async with sessionmaker() as session:
+        targets = await SiteDeviceRepository(session).list_active_with_panel()
+
+    healed = 0
+    for uuid, username in targets:
+        try:
+            panel_user = await panel.get_user(username)  # None on 404 — the account is already gone
+        except RemnawaveError:
+            continue  # transient — the next sweep retries (single bounded call, never a loop)
+        if panel_user is not None and not TrialService._panel_user_terminal(panel_user):
+            continue  # trial still live (incl. data-limited-but-time-valid) — leave it
+        tokens = nudge_tokens(panel_user) if panel_user is not None else {}
+
+        nudge = None
+        async with sessionmaker() as session:
+            devices = SiteDeviceRepository(session)
+            device = await devices.get(uuid)
+            # Skip if it was reset (webhook) or re-claimed (new panel user) since we probed.
+            if (
+                device is None
+                or device.site_panel_username != username
+                or device.status != SiteDeviceStatus.active_config
+            ):
+                continue
+            service = SiteReminderService(devices, SettingsService(session, redis), redis, panel)
+            nudge = await service.apply_ended_trial(device, tokens)
+            await session.commit()
+
+        if nudge is not None:  # push only AFTER the reset is durable
+            await push.deliver_device_push(
+                sessionmaker,
+                redis,
+                nudge.device_uuid,
+                title_key=nudge.title_key,
+                body_key=nudge.body_key,
+                url="/",
+                tokens=nudge.tokens,
+            )
+        healed += 1
+        await asyncio.sleep(0.02)
+
+    if healed:
+        logger.info("site_reconcile: healed %d ended trial(s)", healed)
 
 
 # ── Nightly database backup ───────────────────────────────────────────────────────────────────

@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.5",
     "bcrypt>=4.2",
     "pyjwt>=2.9",
+    "pywebpush>=2.3.0",
 ]
 
 [dependency-groups]

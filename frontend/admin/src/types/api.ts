@@ -248,3 +248,104 @@ export interface HealthSample {
   mem_pct: number;
   disk_pct: number;
 }
+
+// --- Phase 9: website ("site") admin section (/api/admin/site/*) ---
+export interface SiteSettings {
+  trial_squad: string | null;
+  locations: string[];
+  trial_hours: number;
+  daily_limit_mb: number;
+  referral_reward_mb: number;
+  referral_reward_limit: number;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
+}
+
+export type SiteSettingsPatch = Partial<Omit<SiteSettings, "trial_squad">>;
+
+export interface SiteSetupPayload {
+  trial_squad: string;
+  locations: string[];
+  trial_hours: number;
+  daily_limit_mb: number;
+  referral_reward_mb: number;
+  referral_reward_limit: number;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
+}
+
+export interface SiteLandingPage {
+  id: number;
+  slug: string;
+  locale: string;
+  title: string;
+  meta_description: string;
+  heading: string | null;
+  body: string;
+  location_remark: string | null;
+  published: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SiteLandingInput {
+  slug: string;
+  locale: string;
+  title: string;
+  meta_description: string;
+  heading: string | null;
+  body: string;
+  location_remark: string | null;
+  published: boolean;
+}
+
+export interface SiteMessage {
+  id: number;
+  subject: string;
+  body: string;
+  reply_handle: string | null;
+  locale: string;
+  device_uuid: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface SiteMessagePage {
+  items: SiteMessage[];
+  total: number;
+  unread: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SitePushAudience {
+  recipients: number;
+}
+
+export interface SitePushInput {
+  title: string;
+  body: string;
+  url: string;
+}
+
+export interface SitePushResult {
+  queued: boolean;
+  recipients: number;
+}
+
+export interface SiteStats {
+  total_devices: number;
+  devices_claimed: number;
+  active_configs: number;
+  conversion_pct: number;
+  configs_today: number;
+  push_subscribers: number;
+  range_days: number;
+  status_counts: Record<string, number>;
+  claims_series: DayPoint[];
+  top_locations: NamedCount[];
+}

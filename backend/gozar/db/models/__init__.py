@@ -7,7 +7,13 @@ from gozar.db.models.button_config import ButtonConfig
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.content import Content
 from gozar.db.models.enums import Language, UserStatus, language_enum, user_status_enum
+from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.setting import Setting
+from gozar.db.models.site_claim import SiteClaim
+from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
+from gozar.db.models.site_landing_page import SiteLandingPage
+from gozar.db.models.site_message import SiteMessage
+from gozar.db.models.site_reward import SiteReward, SiteRewardType
 from gozar.db.models.user import User
 
 __all__ = [
@@ -15,7 +21,15 @@ __all__ = [
     "ConfigLog",
     "Content",
     "Language",
+    "PushSubscription",
     "Setting",
+    "SiteClaim",
+    "SiteDevice",
+    "SiteDeviceStatus",
+    "SiteLandingPage",
+    "SiteMessage",
+    "SiteReward",
+    "SiteRewardType",
     "User",
     "UserStatus",
     "language_enum",

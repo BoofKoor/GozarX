@@ -19,11 +19,14 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from gozar.bot.replies import preview_options
 from gozar.config.settings import get_settings
 from gozar.db.repositories.config_log import ConfigLogRepository
+from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.services.content import ContentService
+from gozar.services.push import deliver_device_push
 from gozar.services.reminders import ReminderService
 from gozar.services.settings_service import SettingsService
+from gozar.services.site_reminders import SiteReminderService
 from gozar.services.trial import human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.web.panel")
@@ -95,4 +98,30 @@ async def panel_webhook(
             )
         except Exception:  # blocked user / transient — best-effort, never fail the webhook
             logger.warning("reminder send failed (ignored)")
+
+    # Site path: the SAME signed webhook drives the device site too. Route by username — a site
+    # panel user (``s{uuid8}_{ts}``) resolves here; a bot username never does, so ≤1 branch acts.
+    # Self-heal / one-shot guard is committed BEFORE any push (durable-before-visible); push is
+    # best-effort and never fails the webhook.
+    site_nudge = None
+    if panel is not None:
+        async with sessionmaker() as session:
+            site_service = SiteReminderService(
+                SiteDeviceRepository(session), SettingsService(session, redis), redis, panel
+            )
+            site_nudge = await site_service.apply_event(event)
+            await session.commit()
+    if site_nudge is not None:
+        try:
+            await deliver_device_push(
+                sessionmaker,
+                redis,
+                site_nudge.device_uuid,
+                title_key=site_nudge.title_key,
+                body_key=site_nudge.body_key,
+                url="/",
+                tokens=site_nudge.tokens,
+            )
+        except Exception:  # transient push failure — best-effort, never fail the webhook
+            logger.warning("site push nudge failed (ignored)")
     return {"ok": True}

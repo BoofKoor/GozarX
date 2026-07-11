@@ -33,6 +33,8 @@ from gozar.worker.tasks import (
     reconcile_trials,
     reset_all_active,
     sample_health,
+    site_push_broadcast,
+    site_reconcile,
 )
 
 logger = logging.getLogger("gozar.worker")
@@ -79,14 +81,18 @@ class WorkerSettings:
         reconcile_trials,
         backup_database,
         sample_health,
+        site_push_broadcast,
+        site_reconcile,
     ]
     # Nightly DB backup at 03:00 (UTC container clock); a system-health sample every minute
     # (second=0) feeds the monitoring page's history; a trial reconcile sweep every 15 min as the
-    # panel-webhook fallback (notify + reset users whose data ran out / trial expired).
+    # panel-webhook fallback (notify + reset users whose data ran out / trial expired). The site
+    # reconcile sweep runs on the same cadence, staggered off the bot's to spread panel load.
     cron_jobs = [
         cron(backup_database, hour=3, minute=0),
         cron(sample_health, second=0),
         cron(reconcile_trials, minute={0, 15, 30, 45}),
+        cron(site_reconcile, minute={5, 20, 35, 50}),
     ]
     on_startup = _startup
     on_shutdown = _shutdown

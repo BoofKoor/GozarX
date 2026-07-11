@@ -36,3 +36,29 @@ def limited_notified_key(telegram_id: int) -> str:
     transition no longer gates the reminder, so this key does: SET NX before sending, cleared on a
     fresh claim / expiry reset / referral revive, and TTL'd to the trial window as a safety net."""
     return f"cache:limited_notified:{telegram_id}"
+
+
+# --- website (site_*) keys — a separate namespace so bot and site never collide in the shared db0.
+# Every caller MUST set a TTL: Redis runs one shared db0 with no eviction.
+def site_sub_cache_key(device_uuid: str) -> str:
+    """Per-device trial subscription cache (picker remark->link map + expiry) — the site analogue of
+    ``sub_cache_key``, keyed by device uuid instead of telegram id."""
+    return f"site:sub:{device_uuid}"
+
+
+def site_limited_notified_key(device_uuid: str) -> str:
+    """One-shot guard for the site's data-limit push nudge (the site analogue of
+    ``limited_notified_key``)."""
+    return f"site:limited_notified:{device_uuid}"
+
+
+def site_ratelimit_key(bucket: str, identifier: str) -> str:
+    """Fixed-window rate-limit counter for a public endpoint, keyed by ``bucket`` (e.g. "claim") and
+    an ``identifier`` (device uuid or IP bucket). INCR + EXPIRE; the TTL is the window."""
+    return f"site:rl:{bucket}:{identifier}"
+
+
+def site_transfer_key(code: str) -> str:
+    """One-time device-transfer code -> source device payload. Stored SET ex=600 nx, GETDEL on
+    redeem (10-minute expiry)."""
+    return f"site:transfer:{code}"

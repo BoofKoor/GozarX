@@ -51,6 +51,20 @@ class Settings(BaseSettings):
     admin_username: str = "admin"
     admin_password_hash: str = ""
 
+    # ── Website (separate product on shared infra) ────────────────────────
+    # Public domain the site is served from (root of the domain; the admin SPA moves to /admin).
+    site_domain: str = ""
+    # HMAC key that signs the httpOnly device-identity cookie (UUID + HMAC). Empty in dev.
+    site_cookie_secret: SecretStr = SecretStr("")
+    # Cloudflare Turnstile (anti-abuse on the public endpoints). Empty ⇒ verification is skipped
+    # (dev/build); production keys are provisioned by the installer. site_key is public.
+    turnstile_secret: SecretStr = SecretStr("")
+    turnstile_site_key: str = ""
+    # Web Push (VAPID). Empty ⇒ push disabled; keys minted by the installer. public key is public.
+    vapid_private_key: SecretStr = SecretStr("")
+    vapid_public_key: str = ""
+    vapid_subject: str = ""  # mailto: or https: contact for the VAPID 'sub' claim.
+
     # ── Misc ──────────────────────────────────────────────────────────────
     log_level: str = "INFO"
     log_json: bool = False

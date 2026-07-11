@@ -16,7 +16,7 @@ from gozar.db.repositories.settings import SettingsRepository
 
 
 class SettingKey:
-    """Canonical setting keys (avoid stringly-typed lookups scattered across the codebase)."""
+    """Canonical BOT setting keys (avoid stringly-typed lookups scattered across the codebase)."""
 
     TRIAL_SQUAD = "trial_internal_squad"
     LOCATIONS = "locations"
@@ -26,6 +26,26 @@ class SettingKey:
     TRIAL_HOURS = "trial_hours"
     ADS_ENABLED = "ads_enabled"
     CONFIGS_PER_PAGE = "configs_per_page"
+
+
+class SiteSettingKey:
+    """Canonical WEBSITE setting keys (``site_*``) — a fully independent economy from the bot's.
+
+    Same ``settings`` table and ``SettingsService`` accessors; the ``site_`` prefix is the only
+    thing keeping the two economies apart. ``SITE_TRIAL_SQUAD`` / ``SITE_LOCATIONS`` are
+    wizard-picked (not seeded), exactly like their bot counterparts.
+    """
+
+    SITE_TRIAL_SQUAD = "site_trial_squad"
+    SITE_LOCATIONS = "site_locations"
+    SITE_TRIAL_HOURS = "site_trial_hours"
+    SITE_DAILY_LIMIT_MB = "site_daily_limit_mb"
+    SITE_REFERRAL_REWARD_MB = "site_referral_reward_mb"
+    SITE_REFERRAL_REWARD_LIMIT = "site_referral_reward_limit"
+    SITE_REWARD_PWA_MB = "site_reward_pwa_mb"
+    SITE_REWARD_PUSH_MB = "site_reward_push_mb"
+    SITE_REWARD_STREAK_MB = "site_reward_streak_mb"
+    SITE_STREAK_DAYS = "site_streak_days"
 
 
 _TRUE = {"1", "true", "yes", "on"}

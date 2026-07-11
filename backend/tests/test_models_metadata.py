@@ -13,11 +13,19 @@ def _table(name: str):
 
 def test_all_tables_registered() -> None:
     assert set(Base.metadata.tables) == {
+        # bot
         "users",
         "config_logs",
         "content",
         "settings",
         "button_configs",
+        # website (separate product, shared infra)
+        "site_devices",
+        "site_claims",
+        "site_rewards",
+        "push_subscriptions",
+        "site_messages",
+        "site_landing_pages",
     }
 
 
