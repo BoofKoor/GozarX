@@ -1,0 +1,33 @@
+# syntax=docker/dockerfile:1
+#
+# Builds the Next.js website (frontend/site) and runs its standalone server on :3100.
+# next.config.ts sets `output: "standalone"`, so the build emits a self-contained server bundle
+# (.next/standalone/server.js) plus the static assets; the runtime stage carries only that + Node
+# (no build toolchain). The build context is the repo root so we can COPY frontend/site/.
+# Behind nginx: `/` -> this container; `/api` is routed to the app by nginx before it reaches here.
+
+FROM node:22-alpine AS build
+WORKDIR /app
+
+# 1) Dependency layer — cached unless the lockfile changes.
+COPY frontend/site/package.json frontend/site/package-lock.json ./
+RUN npm ci
+
+# 2) App source, then the production build → .next/standalone + .next/static.
+COPY frontend/site/ ./
+RUN npm run build
+
+FROM node:22-alpine AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+ENV PORT=3100
+ENV HOSTNAME=0.0.0.0
+
+# The standalone bundle (server.js + minimal node_modules), then the static assets + public/ it
+# serves. Order matters: standalone first (it lays down .next/), then static into .next/static.
+COPY --from=build /app/.next/standalone ./
+COPY --from=build /app/.next/static ./.next/static
+COPY --from=build /app/public ./public
+
+EXPOSE 3100
+CMD ["node", "server.js"]

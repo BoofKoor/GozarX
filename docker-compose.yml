@@ -57,6 +57,27 @@ services:
     <<: *backend
     command: ["python", "-m", "gozar.worker.main"]
 
+  site:
+    # The Next.js website (standalone server on :3100). nginx proxies `/` here in production.
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.site
+    image: gozar-site:local
+    restart: unless-stopped
+    # No backend secrets — only where to reach the app for any server-side call. Browser /api
+    # requests are routed to the app by nginx before they ever reach this container.
+    environment:
+      BACKEND_ORIGIN: http://app:8000
+    depends_on:
+      app:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
   nginx:
     # Builds the admin SPA into the nginx image (docker/Dockerfile.frontend); the SPA is served
     # from /usr/share/nginx/html by the mounted nginx.conf. The Phase 9 TLS overlay only adds
@@ -73,6 +94,8 @@ services:
     depends_on:
       app:
         condition: service_healthy
+      site:
+        condition: service_started
 
 volumes:
   pg_data:

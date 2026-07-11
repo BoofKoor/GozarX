@@ -76,6 +76,15 @@ ask() {
     printf -v "$__var" '%s' "$__input"
 }
 
+# ask_optional VAR "Label" "default" — like ask, but a blank answer is accepted (no re-prompt loop).
+ask_optional() {
+    local __var="$1" __label="$2" __default="${3:-}" __input=""
+    if [ -n "${!__var:-}" ]; then return 0; fi
+    if [ "${NONINTERACTIVE:-0}" = "1" ]; then printf -v "$__var" '%s' "$__default"; return 0; fi
+    read -r -p "$__label [${__default:-blank}]: " __input </dev/tty || __input=""
+    printf -v "$__var" '%s' "${__input:-$__default}"
+}
+
 # ask_secret VAR "Label" — hidden, entered twice, must match.
 ask_secret() {
     local __var="$1" __label="$2" __a="" __b=""
@@ -214,6 +223,14 @@ intake_optional() {
     ask TZ_VALUE "Timezone" "$(env_get TZ || echo UTC)"
 }
 
+intake_site() {
+    step "Website"
+    ask SITE_DOMAIN "Website domain (serves at /, admin moves to /admin)" "$(env_get SITE_DOMAIN || echo "$DOMAIN")"
+    ask_optional TURNSTILE_SITE_KEY "Cloudflare Turnstile site key (blank to disable)" "$(env_get TURNSTILE_SITE_KEY)"
+    ask_optional TURNSTILE_SECRET "Cloudflare Turnstile secret (blank to disable)" "$(env_get TURNSTILE_SECRET)"
+    ask VAPID_SUBJECT "Web Push contact for VAPID (mailto:…)" "$(env_get VAPID_SUBJECT || echo "mailto:admin@$DOMAIN")"
+}
+
 generate_secrets() {
     step "Generating secrets"
     # Reuse anything already in .env so re-runs never rotate live secrets — rotating
@@ -222,9 +239,14 @@ generate_secrets() {
     WEBHOOK_HEADER_SECRET="$(env_get WEBHOOK_HEADER_SECRET)"; WEBHOOK_HEADER_SECRET="${WEBHOOK_HEADER_SECRET:-$(gen_secret)}"
     PANEL_WEBHOOK_SECRET="$(env_get PANEL_WEBHOOK_SECRET)";   PANEL_WEBHOOK_SECRET="${PANEL_WEBHOOK_SECRET:-$(gen_secret)}"
     ADMIN_JWT_SECRET="$(env_get ADMIN_JWT_SECRET)";           ADMIN_JWT_SECRET="${ADMIN_JWT_SECRET:-$(gen_secret)}"
+    SITE_COOKIE_SECRET="$(env_get SITE_COOKIE_SECRET)";       SITE_COOKIE_SECRET="${SITE_COOKIE_SECRET:-$(gen_secret)}"
     POSTGRES_USER="$(env_get POSTGRES_USER)";                 POSTGRES_USER="${POSTGRES_USER:-gozar}"
     POSTGRES_DB="$(env_get POSTGRES_DB)";                     POSTGRES_DB="${POSTGRES_DB:-gozar}"
     POSTGRES_PASSWORD="$(env_get POSTGRES_PASSWORD)";         POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(gen_secret)}"
+    # VAPID keypair is minted post-build (needs the app image); seed from any existing .env so the
+    # first write_env has them set (set -u) and mint_vapid only generates when absent.
+    VAPID_PRIVATE_KEY="$(env_get VAPID_PRIVATE_KEY)"
+    VAPID_PUBLIC_KEY="$(env_get VAPID_PUBLIC_KEY)"
     ok "secrets ready (existing values preserved)"
 }
 
@@ -266,6 +288,15 @@ ADMIN_USERNAME=$ADMIN_USERNAME
 # bcrypt hash; '\$' is doubled so Compose passes it through verbatim.
 ADMIN_PASSWORD_HASH=$hash_escaped
 
+# ── Website ──
+SITE_DOMAIN=$SITE_DOMAIN
+SITE_COOKIE_SECRET=$SITE_COOKIE_SECRET
+TURNSTILE_SECRET=$TURNSTILE_SECRET
+TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY
+VAPID_PRIVATE_KEY=$VAPID_PRIVATE_KEY
+VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY
+VAPID_SUBJECT=$VAPID_SUBJECT
+
 # ── Misc ──
 LOG_LEVEL=INFO
 LOG_JSON=false
@@ -280,6 +311,35 @@ build_images() {
     step "Building images (this can take a few minutes)"
     docker compose build || die "docker compose build failed"
     ok "images built"
+}
+
+mint_vapid() {
+    # Mint the Web Push VAPID keypair (raw base64url EC P-256, the format pywebpush/browsers want)
+    # inside the built app image — same pattern as mint_admin_hash. Reuse-if-present; failure is
+    # non-fatal (push simply stays disabled). Runs after build_images, before mint_admin_hash's
+    # write_env so the keys land in .env.
+    if [ -n "$VAPID_PRIVATE_KEY" ] && [ -n "$VAPID_PUBLIC_KEY" ]; then
+        ok "reusing existing VAPID keypair"
+        return 0
+    fi
+    step "Minting Web Push (VAPID) keypair"
+    local out
+    out="$(docker compose run --rm --no-deps -T app python -c '
+import base64
+from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives import serialization
+k = ec.generate_private_key(ec.SECP256R1())
+b = lambda x: base64.urlsafe_b64encode(x).rstrip(b"=").decode()
+print(b(k.private_numbers().private_value.to_bytes(32, "big")))
+print(b(k.public_key().public_bytes(serialization.Encoding.X962, serialization.PublicFormat.UncompressedPoint)))
+' 2>/dev/null || true)"
+    VAPID_PRIVATE_KEY="$(printf '%s\n' "$out" | sed -n '1p' | tr -d '\r')"
+    VAPID_PUBLIC_KEY="$(printf '%s\n' "$out" | sed -n '2p' | tr -d '\r')"
+    if [ -n "$VAPID_PRIVATE_KEY" ] && [ -n "$VAPID_PUBLIC_KEY" ]; then
+        ok "VAPID keypair minted"
+    else
+        warn "VAPID mint failed — Web Push stays disabled (set VAPID_* in .env later)"
+    fi
 }
 
 mint_admin_hash() {
@@ -303,6 +363,7 @@ render_tls_nginx() {
 # Browser → Cloudflare (edge cert) → origin (this cert). Set Cloudflare SSL/TLS to "Full (strict)".
 
 upstream gozar_app { server app:8000; }
+upstream gozar_site { server site:3100; }
 
 # Redirect plain HTTP to HTTPS.
 server {
@@ -354,9 +415,20 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    location / {
+    # Admin SPA under /admin/ (Vite base "/admin/", copied to html/admin by Dockerfile.frontend).
+    location = /admin { return 301 /admin/; }
+    location /admin/ {
         root /usr/share/nginx/html;
-        try_files $uri /index.html;
+        try_files $uri /admin/index.html;
+    }
+
+    # Everything else -> the Next.js website.
+    location / {
+        proxy_pass http://gozar_site;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 EOF
@@ -409,6 +481,19 @@ verify() {
         warn "health did not return 200 (got '${code:-none}') — see: docker compose logs app"
     fi
 
+    # 1b) Website root + admin panel (now under /admin), when the site is configured.
+    if [ -n "${SITE_DOMAIN:-}" ]; then
+        local scode acode
+        scode="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
+            --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/" 2>/dev/null || true)"
+        [ "$scode" = "200" ] && ok "https://$DOMAIN/ (website) → 200" \
+            || warn "website root got '${scode:-none}' — see: docker compose logs site"
+        acode="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
+            --resolve "$DOMAIN:443:127.0.0.1" "https://$DOMAIN/admin/" 2>/dev/null || true)"
+        [ "$acode" = "200" ] && ok "https://$DOMAIN/admin/ (panel) → 200" \
+            || warn "admin panel got '${acode:-none}'"
+    fi
+
     # 2) Admin login round-trip — proves the bcrypt hash survived Compose's interpolation.
     local login
     login="$(curl -sk --max-time 8 --resolve "$DOMAIN:443:127.0.0.1" \
@@ -440,9 +525,13 @@ report() {
     printf '\n%s%s GozarX is installed %s\n' "$C_BOLD" "$C_GREEN" "$C_RESET" >&2
     cat >&2 <<EOF
 
-  Admin panel : https://$DOMAIN   (login: $ADMIN_USERNAME)
+  Website     : https://$DOMAIN
+  Admin panel : https://$DOMAIN/admin   (login: $ADMIN_USERNAME)
   Bot         : @$BOT_USERNAME
   Config      : $ENV_FILE   (chmod 600 — keep private)
+
+  Website     : configure the trial squad, locations & economy in the panel's
+                'وب‌سایت' section. Turnstile + Web Push are optional (blank ⇒ off).
 
   Cloudflare  : DNS record for $DOMAIN must be Proxied (orange cloud);
                 SSL/TLS mode = Full (strict).
@@ -485,10 +574,12 @@ EOF
     intake_panel
     intake_admin
     intake_optional
+    intake_site
     generate_secrets
     write_env ""          # initial .env (empty hash) so `docker compose run` can read it
     build_images
-    mint_admin_hash       # rewrites .env with the real hash
+    mint_vapid            # mint the VAPID keypair in the built image, before the .env rewrite
+    mint_admin_hash       # rewrites .env with the real hash + the minted VAPID keys
     generate_tls
     bring_up
     verify
