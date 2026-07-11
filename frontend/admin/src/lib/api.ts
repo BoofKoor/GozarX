@@ -33,8 +33,9 @@ function notifyWaiters(token: string | null): void {
 
 function bounceToLogin(): void {
   clearAuth();
-  if (window.location.pathname !== "/login") {
-    window.location.replace("/login");
+  // The panel is mounted under /admin/ (router basename), so the login route is /admin/login.
+  if (window.location.pathname !== "/admin/login") {
+    window.location.replace("/admin/login");
   }
 }
 

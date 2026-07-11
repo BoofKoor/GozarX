@@ -17,4 +17,6 @@ COPY frontend/admin/ ./
 RUN npm run build
 
 FROM nginx:1.27
-COPY --from=build /app/dist /usr/share/nginx/html
+# The SPA is served under /admin/ (Vite `base`), so its built assets live in the admin/ subdir;
+# nginx's `location /admin/` serves them with an /admin/index.html fallback.
+COPY --from=build /app/dist /usr/share/nginx/html/admin

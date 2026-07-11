@@ -6,6 +6,9 @@ import { defineConfig } from "vite";
 
 // https://vite.dev/config/
 export default defineConfig({
+  // The admin panel is served under /admin/ (the website owns the domain root). Vite prefixes all
+  // built asset URLs with this base; the router uses a matching basename (see main.tsx).
+  base: "/admin/",
   plugins: [react()],
   resolve: {
     alias: { "@": path.resolve(__dirname, "./src") },
