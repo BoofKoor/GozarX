@@ -248,3 +248,32 @@ export interface HealthSample {
   mem_pct: number;
   disk_pct: number;
 }
+
+// --- Phase 9: website ("site") admin section (/api/admin/site/*) ---
+export interface SiteSettings {
+  trial_squad: string | null;
+  locations: string[];
+  trial_hours: number;
+  daily_limit_mb: number;
+  referral_reward_mb: number;
+  referral_reward_limit: number;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
+}
+
+export type SiteSettingsPatch = Partial<Omit<SiteSettings, "trial_squad">>;
+
+export interface SiteSetupPayload {
+  trial_squad: string;
+  locations: string[];
+  trial_hours: number;
+  daily_limit_mb: number;
+  referral_reward_mb: number;
+  referral_reward_limit: number;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
+}

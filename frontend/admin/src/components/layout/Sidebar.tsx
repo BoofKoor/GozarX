@@ -2,6 +2,7 @@ import { clsx } from "clsx";
 import {
   Activity,
   FileText,
+  Globe,
   LayoutDashboard,
   Megaphone,
   MousePointerClick,
@@ -19,6 +20,7 @@ const items = [
   { to: "/buttons", label: "دکمه‌ها", icon: MousePointerClick },
   { to: "/system", label: "سیستم", icon: Activity },
   { to: "/settings", label: "تنظیمات", icon: SettingsIcon },
+  { to: "/site/settings", label: "وب‌سایت", icon: Globe },
 ];
 
 export function Sidebar() {
