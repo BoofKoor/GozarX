@@ -9,8 +9,14 @@ from gozar.web.routes.admin import (
     broadcast,
     buttons,
     dashboard,
+    inbox,
+    landing,
     settings,
     setup,
+    site_push,
+    site_settings,
+    site_setup,
+    site_stats,
     system,
     texts,
     users,
@@ -26,3 +32,10 @@ router.include_router(buttons.router)
 router.include_router(users.router)
 router.include_router(broadcast.router)
 router.include_router(system.router)
+# Website ("site") admin section (P9).
+router.include_router(site_setup.router)
+router.include_router(site_settings.router)
+router.include_router(landing.router)
+router.include_router(inbox.router)
+router.include_router(site_push.router)
+router.include_router(site_stats.router)
