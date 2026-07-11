@@ -107,7 +107,10 @@ export function SiteSetup() {
             ) : (
               <select
                 value={trialSquad}
-                onChange={(e) => setTrialSquad(e.target.value)}
+                onChange={(e) => {
+                  setTrialSquad(e.target.value);
+                  setLocations(""); // a new squad has its own locations; empty => derive them all
+                }}
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
               >
                 {(squads ?? []).map((s) => (

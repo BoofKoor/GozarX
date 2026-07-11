@@ -31,13 +31,6 @@ export function useRefreshSiteLocations() {
   });
 }
 
-export function useSiteSetupStatus() {
-  return useQuery({
-    queryKey: ["site-setup-status"],
-    queryFn: async () => (await api.get<SetupStatus>("/admin/site/setup/status")).data,
-  });
-}
-
 export function useSiteDerivableLocations(squad: string) {
   return useQuery({
     queryKey: ["site-derivable-locations", squad],

@@ -1,4 +1,11 @@
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -36,13 +43,17 @@ const EMPTY: FormState = {
 };
 
 export function SiteSettings() {
-  const { data, isLoading } = useSiteSettings();
+  const { data, isLoading, isError } = useSiteSettings();
   const update = useUpdateSiteSettings();
   const refresh = useRefreshSiteLocations();
   const [form, setForm] = useState<FormState>(EMPTY);
+  const hydrated = useRef(false);
 
+  // Hydrate the form once from the server. Later cache writes (save / refresh-locations) must not
+  // reset in-progress edits — refreshFromSquad applies just the new locations itself.
   useEffect(() => {
-    if (data) {
+    if (data && !hydrated.current) {
+      hydrated.current = true;
       setForm({
         trial_hours: data.trial_hours,
         daily_limit_mb: data.daily_limit_mb,
@@ -61,6 +72,17 @@ export function SiteSettings() {
     return (
       <div className="flex justify-center py-20">
         <Spinner className="h-8 w-8 text-brand" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold">وب‌سایت</h1>
+        <Card className="max-w-xl">
+          <p className="text-sm text-red-500">دریافت تنظیمات وب‌سایت از سرور ممکن نشد.</p>
+        </Card>
       </div>
     );
   }
