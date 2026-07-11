@@ -5,13 +5,20 @@ import { DEFAULT_LOCALE, dir, isLocale, type Locale } from "@/lib/i18n";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PwaRegister } from "@/components/PwaRegister";
+import { LogoSymbol } from "@/components/LogoSymbol";
+import { RevealObserver } from "@/components/RevealObserver";
+import { SiteProvider } from "@/lib/useSite";
 
-async function resolve(): Promise<{ locale: Locale; theme: "light" | "dark" }> {
+type Theme = "light" | "dark";
+
+async function resolve(): Promise<{ locale: Locale; theme: Theme | undefined }> {
   const store = await cookies();
   const rawLocale = store.get("locale")?.value ?? "";
   const locale: Locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
   const rawTheme = store.get("theme")?.value;
-  const theme = rawTheme === "dark" ? "dark" : "light";
+  // Only an EXPLICIT choice sets data-theme. With no cookie we leave it unset so the CSS
+  // `@media (prefers-color-scheme)` fallback follows the OS (no flash, no client JS needed).
+  const theme: Theme | undefined = rawTheme === "dark" ? "dark" : rawTheme === "light" ? "light" : undefined;
   return { locale, theme };
 }
 
@@ -34,22 +41,19 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Runs before paint: if the visitor has no explicit theme cookie, honor prefers-color-scheme so the
-// first frame isn't the wrong theme. suppressHydrationWarning covers the attribute it may flip.
-const THEME_SCRIPT = `(function(){try{if(!document.cookie.includes("theme=")){var d=matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";document.documentElement.setAttribute("data-theme",d);var a=document.getElementById("app");if(a)a.setAttribute("data-theme",d);}}catch(e){}})();`;
-
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const { locale, theme } = await resolve();
   return (
     <html lang={locale} dir={dir(locale)} data-theme={theme} suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
       <body suppressHydrationWarning>
         <div id="app" data-locale={locale} data-theme={theme} suppressHydrationWarning>
-          <Header locale={locale} theme={theme} />
-          <main>{children}</main>
-          <Footer locale={locale} />
+          <LogoSymbol />
+          <SiteProvider locale={locale}>
+            <Header locale={locale} theme={theme} />
+            <main>{children}</main>
+            <Footer locale={locale} />
+            <RevealObserver />
+          </SiteProvider>
         </div>
         <PwaRegister />
       </body>

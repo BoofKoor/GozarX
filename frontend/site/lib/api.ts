@@ -81,8 +81,19 @@ async function post<T>(path: string, body?: unknown): Promise<T> {
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body ?? {}),
   });
-  if (!res.ok && res.status >= 500) throw new ApiError(res.status, path);
-  return (await res.json()) as T;
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    // 5xx: a real server error → throw so the caller shows a retryable failure.
+    if (res.status >= 500) throw new ApiError(res.status, path);
+    // 4xx security guards (429 rate-limited / 403 turnstile_failed) come back as {detail: "..."}.
+    // Surface that as {ok:false, reason} so callers render the SAME state screens as domain 200s
+    // instead of a misleading generic error.
+    return {
+      ok: false,
+      reason: typeof data.detail === "string" ? data.detail : `http_${res.status}`,
+    } as T;
+  }
+  return data as T;
 }
 
 export class ApiError extends Error {

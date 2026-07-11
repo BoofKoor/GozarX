@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
+import { Icon } from "@/components/Icon";
 
+// Device transfer — faithful reproduction of the design's `.transfer-card`. Two halves:
+//  • Generate: mint a one-time 8-char code (XXXX-XXXX, LTR) with a live mm:ss expiry to move this
+//    device's history/volume/invites elsewhere.
+//  • Restore: enter a code from another device to bring that history here.
+// No login anywhere — identity is device-scoped. Reset lives in the status page's danger row.
 function fmt(code: string): string {
   return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 }
@@ -17,19 +23,19 @@ export function TransferCard({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const [code, setCode] = useState<string | null>(null);
   const [left, setLeft] = useState(0);
+  const [copied, setCopied] = useState(false);
   const [entry, setEntry] = useState("");
   const [restoreErr, setRestoreErr] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [confirmReset, setConfirmReset] = useState(false);
+  const [restored, setRestored] = useState(false);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (left <= 0) return;
+    if (left <= 0) {
+      if (code) setCode(null);
+      return;
+    }
     const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
     return () => clearInterval(id);
-  }, [left]);
-  useEffect(() => {
-    if (left === 0 && code) setCode(null);
   }, [left, code]);
 
   async function generate() {
@@ -45,14 +51,25 @@ export function TransferCard({ locale }: { locale: Locale }) {
     }
   }
 
+  async function copyCode() {
+    if (!code) return;
+    try {
+      await navigator.clipboard.writeText(fmt(code));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+
   async function restore() {
     setRestoreErr(false);
     setBusy(true);
     try {
-      const res = await api.redeemTransfer(entry);
+      const res = await api.redeemTransfer(entry.replace(/-/g, "").trim());
       if (res.ok) {
-        setMsg(t("transfer.restored"));
-        setTimeout(() => window.location.reload(), 900);
+        setRestored(true);
+        setTimeout(() => window.location.reload(), 1000);
       } else {
         setRestoreErr(true);
       }
@@ -63,83 +80,85 @@ export function TransferCard({ locale }: { locale: Locale }) {
     }
   }
 
-  async function doReset() {
-    setBusy(true);
-    try {
-      await api.resetDevice();
-      window.location.reload();
-    } finally {
-      setBusy(false);
-      setConfirmReset(false);
-    }
-  }
-
   return (
-    <div className="card card-pad stack">
-      <strong>{t("transfer.title")}</strong>
-      <p className="hint">{t("transfer.sub")}</p>
-
-      {code ? (
-        <div className="stack center">
-          <div className="codebox code-lg">{fmt(code)}</div>
-          <span className="chip chip-muted tnum">
-            {t("transfer.codeExpires")}: {mmss(left)}
-          </span>
+    <div className="card transfer-card">
+      {/* Generate side */}
+      <div className="th">
+        <div className="ti">
+          <Icon name="device" sw={2} />
         </div>
+        <div>
+          <h2>{t("tm_gen_title")}</h2>
+        </div>
+      </div>
+      <p>{t("tm_gen_sub")}</p>
+      {code ? (
+        <>
+          <div className="bigcode" style={{ marginBlockStart: 14 }}>
+            <code>{fmt(code)}</code>
+            <button className="btn" type="button" onClick={copyCode}>
+              {copied ? t("copied") : t("tm_copy")}
+            </button>
+          </div>
+          <div className="expiry">
+            <Icon name="clock" sw={2} />
+            <span>{t("tm_expiry")}</span> <b>{mmss(left)}</b>
+          </div>
+        </>
       ) : (
-        <button className="btn btn-primary" disabled={busy} onClick={generate}>
+        <button
+          className="btn block"
+          type="button"
+          disabled={busy}
+          onClick={generate}
+          style={{ marginBlockStart: 14 }}
+        >
+          <Icon name="device" sw={2} />
           {t("transfer.generate")}
         </button>
       )}
 
-      <hr style={{ border: 0, borderTop: "1px solid var(--border)", margin: "6px 0" }} />
+      <hr className="divider" style={{ margin: "18px 0" }} />
 
-      <strong>{t("transfer.restoreTitle")}</strong>
-      <p className="hint">{t("transfer.restoreSub")}</p>
-      <div className="row" style={{ flexWrap: "wrap" }}>
-        <input
-          className={`input codebox${restoreErr ? "" : ""}`}
-          style={{ flex: "1 1 200px", direction: "ltr" }}
-          placeholder={t("transfer.restorePlaceholder")}
-          value={entry}
-          onChange={(e) => setEntry(e.target.value)}
-          maxLength={9}
-        />
-        <button className="btn btn-ghost" disabled={busy || !entry} onClick={restore}>
-          {t("transfer.restoreBtn")}
-        </button>
-      </div>
-      {restoreErr && <p className="err-text">{t("transfer.badCode")}</p>}
-      {msg && <p className="chip chip-success">{msg}</p>}
-
-      <hr style={{ border: 0, borderTop: "1px solid var(--border)", margin: "6px 0" }} />
-      <button
-        className="btn btn-ghost"
-        style={{ color: "var(--danger-ink)" }}
-        onClick={() => setConfirmReset(true)}
-      >
-        {locale === "fa" ? "پاک‌کردن دادهٔ این دستگاه" : "Reset this device's data"}
-      </button>
-
-      {confirmReset && (
-        <div className="modal-backdrop" onClick={() => setConfirmReset(false)}>
-          <div className="modal stack" onClick={(e) => e.stopPropagation()}>
-            <strong style={{ fontSize: 18 }}>{locale === "fa" ? "مطمئنی؟" : "Are you sure?"}</strong>
-            <p className="muted">
-              {locale === "fa"
-                ? "همهٔ سوابق، حجم و دعوت‌های این مرورگر پاک می‌شود. برگشت‌پذیر نیست."
-                : "All history, volume and invites on this browser will be erased. This can't be undone."}
-            </p>
-            <div className="row" style={{ justifyContent: "flex-end" }}>
-              <button className="btn btn-ghost" onClick={() => setConfirmReset(false)}>
-                {locale === "fa" ? "انصراف" : "Cancel"}
-              </button>
-              <button className="btn btn-primary" style={{ background: "var(--danger)" }} disabled={busy} onClick={doReset}>
-                {locale === "fa" ? "بله، پاک کن" : "Yes, reset"}
-              </button>
-            </div>
-          </div>
+      {/* Restore side */}
+      <div className="th">
+        <div className="ti">
+          <Icon name="download" sw={2} />
         </div>
+        <div>
+          <h2>{t("restore_t")}</h2>
+        </div>
+      </div>
+      <p>{t("restore_d")}</p>
+      {restored ? (
+        <p className="perm-tag granted" style={{ marginBlockStart: 14, display: "inline-block" }}>
+          {t("restored")}
+        </p>
+      ) : (
+        <>
+          <div className={`code-input${restoreErr ? " err" : ""}`}>
+            <input
+              maxLength={9}
+              placeholder={t("restore_ph")}
+              aria-label={t("restore_ph")}
+              value={entry}
+              onChange={(e) => {
+                setEntry(e.target.value);
+                setRestoreErr(false);
+              }}
+            />
+            <button
+              className="btn"
+              type="button"
+              disabled={busy || entry.trim().length < 8}
+              onClick={restore}
+            >
+              <Icon name="check" sw={2.4} />
+              {t("restore_btn")}
+            </button>
+          </div>
+          <div className="code-err">{t("restore_err")}</div>
+        </>
       )}
     </div>
   );

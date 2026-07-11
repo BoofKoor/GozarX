@@ -2,6 +2,8 @@
 // not the DB). Dynamic values (config links, usage, locations) come from /api/public. fa is the
 // default (RTL); en is LTR. Keep keys flat and stable.
 
+import { DESIGN_COPY } from "@/lib/design-copy";
+
 export const LOCALES = ["fa", "en"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "fa";
@@ -22,6 +24,8 @@ const fa: Dict = {
   "nav.guides": "راهنما",
   "nav.faq": "سوالات",
   "nav.contact": "تماس",
+  nav_contact: "تماس",
+  mv_reward: "حجم بیشتر",
   "nav.getConfig": "دریافت کانفیگ",
   "theme.toggle": "تغییر تم",
   "hero.eyebrow": "بدون ثبت‌نام · بدون ایمیل",
@@ -114,6 +118,8 @@ const en: Dict = {
   "nav.guides": "Guides",
   "nav.faq": "FAQ",
   "nav.contact": "Contact",
+  nav_contact: "Contact",
+  mv_reward: "more volume",
   "nav.getConfig": "Get config",
   "theme.toggle": "Toggle theme",
   "hero.eyebrow": "No signup · No email",
@@ -205,7 +211,13 @@ export function getDict(locale: Locale): Dict {
   return DICTS[locale] ?? fa;
 }
 export type Translator = (key: string) => string;
+
+// Lookup order: this module's chrome keys, then the verbatim design copy (DESIGN_COPY, the faithful
+// per-page copy from the Phase 0-8 artifacts), then fa fallback, then the raw key. So the rebuilt
+// design components (design keys) and the older content pages (dotted keys) both resolve.
 export function translator(locale: Locale): Translator {
   const d = getDict(locale);
-  return (key: string) => d[key] ?? key;
+  const design = DESIGN_COPY[locale] ?? DESIGN_COPY.fa;
+  const designFa = DESIGN_COPY.fa;
+  return (key: string) => d[key] ?? design[key] ?? designFa[key] ?? key;
 }
