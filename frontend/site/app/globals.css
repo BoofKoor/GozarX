@@ -534,7 +534,10 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 #app[data-theme="dark"] .btn.danger{ color:#2b0707; }
 .btn.danger.o{ background:transparent; color:var(--danger-ink); border-color:color-mix(in srgb,var(--danger) 40%,var(--border)); }
 .sheet-ov{ position:fixed; inset:0; z-index:80; background:var(--backdrop); display:none; }
-.page-head{ padding-block:28px 6px; display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.page-head{ padding-block:28px 6px; }
+/* Only the status dashboard uses the flex space-between header (phase-6); content pages (contact/
+   faq) are a plain block, so this must not be a bare `.page-head` rule (it bled onto them). */
+.status-page .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
 .page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:10px 0 6px; }
 .page-head .idnote{ font-size:13px; color:var(--muted); display:inline-flex; align-items:center; gap:7px; }
 .page-head .idnote .ic{ inline-size:15px; block-size:15px; }
@@ -659,8 +662,8 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .btn.grad:hover{ filter:brightness(1.06); }
 /* header (same as homepage) */
   header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
-/* page */
-  .page-head{ text-align:center; max-width:44rem; margin:0 auto; padding-block:36px 8px; }
+/* page (rewards page — scoped so it doesn't center/constrain the content-page headers) */
+  .mgrid-page .page-head{ text-align:center; max-width:44rem; margin:0 auto; padding-block:36px 8px; }
 .page-head .eyebrow{ margin-block-end:14px; }
 .page-head p{ font-size:16px; color:var(--muted); margin:0; }
 .sec.pb{ padding-block:24px 64px; }
@@ -770,6 +773,8 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--brand-tint); }
 .hint { font-size: 13px; color: var(--faint); }
 .err-text { color: var(--danger-ink); font-size: 13px; margin-top: 6px; }
+/* Base chip must precede the color modifiers so `.chip-success/-warning` win the cascade. */
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
 .chip-success { background: var(--success-surface); color: var(--success-ink); }
 .chip-warning { background: var(--warning-surface); color: var(--warning-ink); }
 .chip-muted { background: var(--sunken); color: var(--muted); }
@@ -839,7 +844,6 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 /* ============ Compat utilities used by content/guide pages (undefined after the CSS merge) ============ */
 .row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .between{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
-.chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
 /* How-it-works step connector (restored dropped media rule) */
 @media (min-width:760px){
   .step .conn{ display:block; position:absolute; inset-block-start:44px; inset-inline-start:100%; inline-size:20px; block-size:2px; background:var(--border); }
