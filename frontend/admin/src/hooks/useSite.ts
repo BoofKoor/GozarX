@@ -131,11 +131,10 @@ export function useSitePushAudience() {
 }
 
 export function useSendSitePush() {
-  const qc = useQueryClient();
+  // Sending doesn't change the subscriber count, so no cache invalidation is needed.
   return useMutation({
     mutationFn: async (body: SitePushInput) =>
       (await api.post<SitePushResult>("/admin/site/push/", body)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-push-audience"] }),
   });
 }
 
@@ -145,5 +144,6 @@ export function useSiteStats(days: number) {
     queryKey: ["site-stats", days],
     queryFn: async () =>
       (await api.get<SiteStats>("/admin/site/stats/", { params: { days } })).data,
+    placeholderData: keepPreviousData, // keep the prior numbers while a new range loads
   });
 }

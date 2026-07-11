@@ -33,7 +33,7 @@ const BLANK: SiteLandingInput = {
 function saveError(e: unknown): string {
   if (isAxiosError(e)) {
     if (e.response?.status === 409) return "این نشانی (slug) در این زبان قبلاً وجود دارد.";
-    if (e.response?.status === 422) return "ورودی نامعتبر است (زبان باید fa یا en باشد).";
+    if (e.response?.status === 422) return "ورودی نامعتبر است (زبان، نشانی و عنوان را بررسی کنید).";
   }
   return "ذخیره نشد.";
 }
@@ -247,7 +247,11 @@ function LandingEditor({
           ) : (
             <span />
           )}
-          <Button type="submit" loading={create.isPending || update.isPending}>
+          <Button
+            type="submit"
+            loading={create.isPending || update.isPending}
+            disabled={!form.slug.trim() || !form.title.trim()}
+          >
             <Save className="h-4 w-4" /> ذخیره
           </Button>
         </div>

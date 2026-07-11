@@ -21,6 +21,7 @@ export function SiteStats() {
   const { data, isLoading } = useSiteStats(days);
 
   const topMax = data ? Math.max(1, ...data.top_locations.map((l) => l.count)) : 1;
+  const claimsMax = data ? Math.max(1, ...data.claims_series.map((d) => d.count)) : 1;
 
   return (
     <div className="space-y-6">
@@ -68,6 +69,26 @@ export function SiteStats() {
               tone="warning"
             />
           </div>
+
+          <Card>
+            <h3 className="mb-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+              دریافت روزانه ({days} روز اخیر)
+            </h3>
+            {data.claims_series.length === 0 ? (
+              <p className="py-4 text-center text-sm text-slate-400">داده‌ای نیست.</p>
+            ) : (
+              <div className="flex h-24 items-end gap-1" dir="ltr">
+                {data.claims_series.map((d) => (
+                  <div
+                    key={d.day}
+                    title={`${d.day}: ${d.count}`}
+                    className="flex-1 rounded-t bg-brand/70"
+                    style={{ height: `${(d.count / claimsMax) * 100}%`, minHeight: 2 }}
+                  />
+                ))}
+              </div>
+            )}
+          </Card>
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>

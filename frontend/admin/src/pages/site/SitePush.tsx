@@ -69,6 +69,7 @@ export function SitePush() {
           <input
             className={INPUT}
             dir="ltr"
+            maxLength={512}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             placeholder="/status"

@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { ChevronLeft, ChevronRight, Mail, MailOpen } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
@@ -23,6 +23,14 @@ export function SiteInbox() {
   const items = data?.items ?? [];
   const selected = items.find((m) => m.id === selectedId) ?? null;
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
+
+  // Reading in unread-only mode shrinks the list; if the current page falls past the end, step back.
+  useEffect(() => {
+    if (page > totalPages) {
+      setPage(totalPages);
+      setSelectedId(null);
+    }
+  }, [totalPages, page]);
 
   function reset(nextUnread: boolean) {
     setUnreadOnly(nextUnread);
