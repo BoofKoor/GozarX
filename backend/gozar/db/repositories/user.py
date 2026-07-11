@@ -81,7 +81,10 @@ class UserRepository(BaseRepository):
     ) -> list[User]:
         """A page of users (newest first) for the admin panel, with optional status + search."""
         stmt = _filtered(select(User), status, search)
-        stmt = stmt.order_by(User.created_at.desc()).limit(limit).offset(offset)
+        # telegram_id (PK) tiebreak: created_at can tie for users who ran /start in the same second,
+        # and without a unique tiebreak LIMIT/OFFSET paging would drop/duplicate them across pages.
+        stmt = stmt.order_by(User.created_at.desc(), User.telegram_id.desc())
+        stmt = stmt.limit(limit).offset(offset)
         result = await self.session.scalars(stmt)
         return list(result.all())
 
