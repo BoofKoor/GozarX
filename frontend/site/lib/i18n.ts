@@ -15,6 +15,13 @@ export function dir(locale: Locale): "rtl" | "ltr" {
   return locale === "fa" ? "rtl" : "ltr";
 }
 
+// Latin → Persian digits for fa (the design renders all numerals localized). Technical strings
+// (config links, transfer codes) stay Latin/LTR — never run this on those.
+export function faDigits(s: string | number, locale: Locale): string {
+  const str = String(s);
+  return locale === "fa" ? str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : str;
+}
+
 type Dict = Record<string, string>;
 
 const fa: Dict = {

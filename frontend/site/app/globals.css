@@ -525,7 +525,9 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
   
   html,body{ margin:0; padding:0; }
 #app[data-locale="fa"] .btn, #app[data-locale="fa"] .seg button, #app[data-locale="fa"] .navlink, #app[data-locale="fa"] .chip { line-height:1.4; }
-#app svg.ic{ inline-size:18px; block-size:18px; flex:none; }
+/* Base icon size + no-shrink default. Low specificity (single class) so the design's per-context
+   sizes (.status-ic .ic=25, .state-art .ic=32, .loc-check .ic=12, …) win over this fallback. */
+.ic{ inline-size:18px; block-size:18px; flex:none; }
 .btn.block{ inline-size:100%; }
 .btn.sm{ font-size:13.5px; padding:9px 14px; }
 .btn.danger{ background:var(--danger); color:#fff; }
@@ -704,8 +706,9 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .revive-note{ display:flex; align-items:flex-start; gap:9px; margin-block-start:18px; background:var(--warning-surface); border:1px solid color-mix(in srgb,var(--warning) 38%,var(--border)); border-radius:var(--r-card); padding:12px 14px; font-size:13px; color:var(--text); line-height:1.7; }
 .revive-note .ic{ inline-size:18px; block-size:18px; color:var(--warning-ink); flex:none; margin-block-start:2px; }
 .revive-note b{ color:var(--warning-ink); }
-/* MISSION grid */
-  .sec-title{ font-size:clamp(22px,3.6vw,28px); font-weight:800; line-height:var(--lh-head); letter-spacing:var(--ls-head); margin:0 0 6px; }
+/* MISSION grid (rewards page — scoped so it doesn't shrink the homepage .sec-title, which is the
+   larger phase-2 size defined earlier). */
+.mgrid-page .sec-title{ font-size:clamp(22px,3.6vw,28px); margin:0 0 6px; }
 .sec-lede{ font-size:15px; color:var(--muted); margin:0 0 24px; }
 .mgrid{ display:grid; gap:16px; grid-template-columns:1fr; }
 .mcard[data-state="available"]:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); }
@@ -833,3 +836,13 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .tab{ border:1px solid var(--border); background:var(--surface); color:var(--muted); font:inherit; font-size:13.5px; font-weight:600; padding:8px 15px; border-radius:var(--r-pill); cursor:pointer; line-height:1.4; }
 .tab[aria-pressed="true"]{ background:var(--brand-tint); border-color:var(--primary); color:var(--brand-tint-ink); font-weight:700; }
 .empty{ text-align:center; color:var(--muted); padding:36px 0; font-size:14.5px; }
+/* ============ Compat utilities used by content/guide pages (undefined after the CSS merge) ============ */
+.row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.between{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
+/* How-it-works step connector (restored dropped media rule) */
+@media (min-width:760px){
+  .step .conn{ display:block; position:absolute; inset-block-start:44px; inset-inline-start:100%; inline-size:20px; block-size:2px; background:var(--border); }
+  [dir="rtl"] .step .conn{ inset-inline-start:auto; inset-inline-end:100%; }
+  .steps .step:last-child .conn{ display:none; }
+}

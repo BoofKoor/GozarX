@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
 
@@ -114,7 +114,7 @@ export function UsageMeter({
           {t("usage")}
         </span>
         <span className="v tnum">
-          {used} {t("of")} {total}
+          {faDigits(used, locale)} {t("of")} {faDigits(total, locale)}
         </span>
       </div>
       <div className={cls}>

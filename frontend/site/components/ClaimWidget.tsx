@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { api, type ClaimResponse } from "@/lib/api";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
@@ -62,7 +62,9 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
   const serverHasConfig = !!status?.has_config;
   const link = serverHasConfig ? status?.link ?? null : result?.ok ? result.link ?? null : null;
   const hasConfig = serverHasConfig || (!!result?.ok && !!result.link);
-  const fresh = !!result?.ok; // just claimed this session → celebrate (S3) vs returning (S4)
+  // Just provisioned this session → celebrate (S3). A change-location claim returns changed=true;
+  // that's the calm returning view (S4), not a fresh-claim celebration.
+  const fresh = !!result?.ok && !result.changed;
   const exhausted = !!status?.data_exhausted;
   const canClaim = status?.can_claim ?? true;
   const pct =
@@ -235,7 +237,7 @@ function WidgetHead({
       </div>
       {allowance && (
         <span className="allowance">
-          <Icon name="bolt" sw={2} /> {t("allowance").replace("{v}", allowance)}
+          <Icon name="bolt" sw={2} /> {faDigits(t("allowance").replace("{v}", allowance), locale)}
         </span>
       )}
     </div>
@@ -260,7 +262,7 @@ function Picker({
     <>
       <div className="pick-label">
         <span className="l">{t("pick")}</span>
-        <span className="c tnum">{t("pick_count").replace("{n}", String(locations.length))}</span>
+        <span className="c tnum">{faDigits(t("pick_count").replace("{n}", String(locations.length)), locale)}</span>
       </div>
       <div
         className="loc-grid"
@@ -347,7 +349,7 @@ function CtaBlock({
       <div className="reassure">
         <span className="r"><Icon name="check" sw={2.6} /> {t("reassure1")}</span>
         <span className="r"><Icon name="check" sw={2.6} /> {t("reassure2")}</span>
-        <span className="r"><Icon name="check" sw={2.6} /> {t("reassure3").replace("{h}", String(trialHours ?? 24))}</span>
+        <span className="r"><Icon name="check" sw={2.6} /> {faDigits(t("reassure3").replace("{h}", String(trialHours ?? 24)), locale)}</span>
       </div>
       <div className="antibot">
         <Icon name="shield" sw={2} /> {t("antibot")}

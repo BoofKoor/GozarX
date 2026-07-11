@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
@@ -114,6 +115,11 @@ export default async function HomePage() {
               </div>
             ))}
           </div>
+          <div className="center-more reveal">
+            <Link className="link-more" href="/status">
+              {t("mv_all")}
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -151,6 +157,9 @@ export default async function HomePage() {
                 {t("tb3")}
               </span>
             </div>
+            <Link className="link-more" href="/privacy">
+              {t("trust_link")}
+            </Link>
           </div>
         </div>
       </section>
