@@ -106,6 +106,10 @@ async def test_site_settings_update_and_refresh_locations(site_client: httpx.Asy
     assert (
         await site_client.put("/api/admin/site/settings/", json={"referral_reward_mb": -9})
     ).json()["referral_reward_mb"] == 0
+    # trial_hours is floored to 1 (never 0)
+    assert (
+        await site_client.put("/api/admin/site/settings/", json={"trial_hours": 0})
+    ).json()["trial_hours"] == 1
     # refresh-locations needs a squad; 400 before setup
     assert (await site_client.post("/api/admin/site/settings/refresh-locations")).status_code == 400
     await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})

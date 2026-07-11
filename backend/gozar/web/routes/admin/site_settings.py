@@ -65,16 +65,16 @@ async def _read(settings: SettingsService) -> SiteSettingsOut:
     )
 
 
-# Numeric field -> setting key (stored as strings; negatives clamped to 0, hours to >=1 at read).
+# Numeric field -> (setting key, min floor). Stored as strings; trial_hours floored to 1, rest to 0.
 _NUM_FIELDS = (
-    ("trial_hours", SiteSettingKey.SITE_TRIAL_HOURS),
-    ("daily_limit_mb", SiteSettingKey.SITE_DAILY_LIMIT_MB),
-    ("referral_reward_mb", SiteSettingKey.SITE_REFERRAL_REWARD_MB),
-    ("referral_reward_limit", SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT),
-    ("reward_pwa_mb", SiteSettingKey.SITE_REWARD_PWA_MB),
-    ("reward_push_mb", SiteSettingKey.SITE_REWARD_PUSH_MB),
-    ("reward_streak_mb", SiteSettingKey.SITE_REWARD_STREAK_MB),
-    ("streak_days", SiteSettingKey.SITE_STREAK_DAYS),
+    ("trial_hours", SiteSettingKey.SITE_TRIAL_HOURS, 1),
+    ("daily_limit_mb", SiteSettingKey.SITE_DAILY_LIMIT_MB, 0),
+    ("referral_reward_mb", SiteSettingKey.SITE_REFERRAL_REWARD_MB, 0),
+    ("referral_reward_limit", SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
+    ("reward_pwa_mb", SiteSettingKey.SITE_REWARD_PWA_MB, 0),
+    ("reward_push_mb", SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
+    ("reward_streak_mb", SiteSettingKey.SITE_REWARD_STREAK_MB, 0),
+    ("streak_days", SiteSettingKey.SITE_STREAK_DAYS, 0),
 )
 
 
@@ -92,10 +92,10 @@ async def update_site_settings(
     settings = _settings(request, session)
     if body.locations is not None:
         await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(body.locations))
-    for field, key in _NUM_FIELDS:
+    for field, key, floor in _NUM_FIELDS:
         value = getattr(body, field)
         if value is not None:
-            await settings.set(key, str(max(0, value)))
+            await settings.set(key, str(max(floor, value)))
     return await _read(settings)
 
 

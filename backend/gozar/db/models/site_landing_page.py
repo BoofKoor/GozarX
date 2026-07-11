@@ -28,6 +28,10 @@ from gozar.db.base import Base
 class SiteLandingPage(Base):
     __tablename__ = "site_landing_pages"
     __table_args__ = (UniqueConstraint("slug", "locale", name="uq_site_landing_slug_locale"),)
+    # Fetch server-computed created_at/updated_at via RETURNING on write, so reading them after a
+    # flush (serializing the row in the admin API) never triggers a lazy sync refresh — which would
+    # MissingGreenlet in the async session, esp. on the onupdate after an edit.
+    __mapper_args__ = {"eager_defaults": True}
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     slug: Mapped[str] = mapped_column(String(128), index=True)

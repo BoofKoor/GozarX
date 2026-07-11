@@ -12,6 +12,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy.exc import IntegrityError
 
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.repositories.site_landing_page import SiteLandingPageRepository
@@ -87,16 +88,21 @@ async def create_page(
     repo = SiteLandingPageRepository(session)
     if await repo.get_by_slug(body.slug, body.locale) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "a page with this slug+locale already exists")
-    page = await repo.create(
-        slug=body.slug,
-        locale=body.locale,
-        title=body.title,
-        meta_description=body.meta_description,
-        heading=body.heading,
-        body=body.body,
-        location_remark=body.location_remark,
-        published=body.published,
-    )
+    try:
+        page = await repo.create(
+            slug=body.slug,
+            locale=body.locale,
+            title=body.title,
+            meta_description=body.meta_description,
+            heading=body.heading,
+            body=body.body,
+            location_remark=body.location_remark,
+            published=body.published,
+        )
+    except IntegrityError as exc:  # a concurrent create won the (slug, locale) race
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "a page with this slug+locale already exists"
+        ) from exc
     return _out(page)
 
 
@@ -122,17 +128,22 @@ async def update_page(
     clash = await repo.get_by_slug(body.slug, body.locale)
     if clash is not None and clash.id != page_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "a page with this slug+locale already exists")
-    page = await repo.update(
-        page,
-        slug=body.slug,
-        locale=body.locale,
-        title=body.title,
-        meta_description=body.meta_description,
-        heading=body.heading,
-        body=body.body,
-        location_remark=body.location_remark,
-        published=body.published,
-    )
+    try:
+        page = await repo.update(
+            page,
+            slug=body.slug,
+            locale=body.locale,
+            title=body.title,
+            meta_description=body.meta_description,
+            heading=body.heading,
+            body=body.body,
+            location_remark=body.location_remark,
+            published=body.published,
+        )
+    except IntegrityError as exc:  # a concurrent write took (slug, locale) between check and flush
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "a page with this slug+locale already exists"
+        ) from exc
     return _out(page)
 
 
