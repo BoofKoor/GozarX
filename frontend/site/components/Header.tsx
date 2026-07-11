@@ -43,6 +43,12 @@ export function Header({ locale, theme }: { locale: Locale; theme: "light" | "da
           <Link href="/status" className="navlink">
             {t("nav.status")}
           </Link>
+          <Link href="/guides" className="navlink hide-sm">
+            {t("nav.guides")}
+          </Link>
+          <Link href="/faq" className="navlink hide-sm">
+            {t("nav.faq")}
+          </Link>
           <Link href="/contact" className="navlink hide-sm">
             {t("nav.contact")}
           </Link>

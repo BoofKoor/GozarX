@@ -23,6 +23,8 @@ export function Footer({ locale }: { locale: Locale }) {
           <h4>{t("nav.home")}</h4>
           <Link href="/">{t("nav.home")}</Link>
           <Link href="/status">{t("nav.status")}</Link>
+          <Link href="/guides">{t("nav.guides")}</Link>
+          <Link href="/faq">{t("nav.faq")}</Link>
           <Link href="/contact">{t("nav.contact")}</Link>
         </div>
         <div className="foot-col">
