@@ -1,6 +1,6 @@
 COMPOSE := docker compose
 
-.PHONY: help up down logs ps build sync migrate revision upgrade seed fmt lint check test shell install
+.PHONY: help up down logs ps build sync migrate revision upgrade seed fmt lint check test test-db shell install
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -44,8 +44,17 @@ lint: ## Lint code (ruff)
 check: ## Byte-compile the package
 	cd backend && uv run python -m compileall -q gozar
 
-test: ## Run tests
+test: ## Run tests (DB-gated tests skip without a Postgres — see test-db)
 	cd backend && uv run pytest
+
+test-db: ## Run the FULL suite (incl. DB tests) against a throwaway Postgres (needs docker)
+	@docker rm -f gozar-test-db >/dev/null 2>&1 || true
+	docker run --rm -d --name gozar-test-db -e POSTGRES_PASSWORD=test -e POSTGRES_DB=gozar_test \
+		-p 5433:5432 postgres:16 >/dev/null
+	@echo "waiting for postgres…" && sleep 5
+	-cd backend && TEST_DATABASE_URL=postgresql+asyncpg://postgres:test@localhost:5433/gozar_test \
+		uv run pytest -q
+	@docker rm -f gozar-test-db >/dev/null 2>&1 || true
 
 shell: ## Open a shell in the app container
 	$(COMPOSE) exec app sh
