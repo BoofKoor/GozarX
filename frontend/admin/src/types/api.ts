@@ -277,3 +277,75 @@ export interface SiteSetupPayload {
   reward_streak_mb: number;
   streak_days: number;
 }
+
+export interface SiteLandingPage {
+  id: number;
+  slug: string;
+  locale: string;
+  title: string;
+  meta_description: string;
+  heading: string | null;
+  body: string;
+  location_remark: string | null;
+  published: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SiteLandingInput {
+  slug: string;
+  locale: string;
+  title: string;
+  meta_description: string;
+  heading: string | null;
+  body: string;
+  location_remark: string | null;
+  published: boolean;
+}
+
+export interface SiteMessage {
+  id: number;
+  subject: string;
+  body: string;
+  reply_handle: string | null;
+  locale: string;
+  device_uuid: string | null;
+  read: boolean;
+  created_at: string | null;
+}
+
+export interface SiteMessagePage {
+  items: SiteMessage[];
+  total: number;
+  unread: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SitePushAudience {
+  recipients: number;
+}
+
+export interface SitePushInput {
+  title: string;
+  body: string;
+  url: string;
+}
+
+export interface SitePushResult {
+  queued: boolean;
+  recipients: number;
+}
+
+export interface SiteStats {
+  total_devices: number;
+  devices_claimed: number;
+  active_configs: number;
+  conversion_pct: number;
+  configs_today: number;
+  push_subscribers: number;
+  range_days: number;
+  status_counts: Record<string, number>;
+  claims_series: DayPoint[];
+  top_locations: NamedCount[];
+}

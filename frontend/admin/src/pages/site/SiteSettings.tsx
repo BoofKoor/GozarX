@@ -9,6 +9,7 @@ import {
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
+import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
@@ -80,6 +81,7 @@ export function SiteSettings() {
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-bold">وب‌سایت</h1>
+        <SiteTabs />
         <Card className="max-w-xl">
           <p className="text-sm text-red-500">دریافت تنظیمات وب‌سایت از سرور ممکن نشد.</p>
         </Card>
@@ -92,6 +94,7 @@ export function SiteSettings() {
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-bold">وب‌سایت</h1>
+        <SiteTabs />
         <Card className="max-w-xl">
           <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
             وب‌سایت هنوز راه‌اندازی نشده است. ابتدا اسکواد آزمایشی و اقتصاد آن را تنظیم کنید.
@@ -149,6 +152,7 @@ export function SiteSettings() {
           تغییر اسکواد / راه‌اندازی مجدد
         </Link>
       </div>
+      <SiteTabs />
       <Card className="max-w-xl">
         <form onSubmit={submit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">

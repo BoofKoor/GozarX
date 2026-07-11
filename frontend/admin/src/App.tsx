@@ -9,8 +9,12 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Login } from "@/pages/Login";
 import { Settings } from "@/pages/Settings";
 import { Setup } from "@/pages/setup/Setup";
+import { SiteInbox } from "@/pages/site/SiteInbox";
+import { SiteLandingPages } from "@/pages/site/SiteLandingPages";
+import { SitePush } from "@/pages/site/SitePush";
 import { SiteSettings } from "@/pages/site/SiteSettings";
 import { SiteSetup } from "@/pages/site/SiteSetup";
+import { SiteStats } from "@/pages/site/SiteStats";
 import { System } from "@/pages/System";
 import { Texts } from "@/pages/Texts";
 import { Users } from "@/pages/Users";
@@ -34,6 +38,10 @@ export default function App() {
             {/* Website ("site") admin section (P9). */}
             <Route path="/site/settings" element={<SiteSettings />} />
             <Route path="/site/setup" element={<SiteSetup />} />
+            <Route path="/site/pages" element={<SiteLandingPages />} />
+            <Route path="/site/inbox" element={<SiteInbox />} />
+            <Route path="/site/push" element={<SitePush />} />
+            <Route path="/site/stats" element={<SiteStats />} />
           </Route>
         </Route>
       </Route>
