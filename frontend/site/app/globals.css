@@ -148,6 +148,8 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .icon-only .ic{ inline-size:19px; block-size:19px; }
 .status-btn{ display:none; }
 .burger{ display:grid; }
+/* desktop (≥1000px): show the "My status" button, hide the burger (restored post-merge) */
+@media (min-width:1000px){ .status-btn{ display:inline-flex; } .burger{ display:none; } }
 .th-btn .sun{ display:none; }
 .th-btn .moon{ display:block; }
 #app[data-theme="dark"] .th-btn .sun{ display:block; }
@@ -537,7 +539,7 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .page-head .idnote a{ color:var(--link); text-decoration:none; font-weight:600; }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); }
 .grid-stats{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-block-end:16px; }
-.stat{ padding:18px; display:flex; align-items:center; gap:14px; }
+.card.stat{ padding:18px; display:flex; align-items:center; gap:14px; }
 .stat .sic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
 .stat .sic .ic{ inline-size:22px; block-size:22px; }
 .stat .sv{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }

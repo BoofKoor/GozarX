@@ -44,9 +44,7 @@ export function HomeApps({ locale }: { locale: Locale }) {
         <div className="approw reveal">
           {order.map((id) => (
             <Link key={id} className="appcard" href="/guides">
-              <span className="big-ico">
-                <img src={APPS[id].icon} alt="" width={52} height={52} />
-              </span>
+              <img className="big-ico" src={APPS[id].icon} alt="" width={52} height={52} />
               <span className="at">
                 <span className="an">{APPS[id].n}</span>
                 <span className="ap">{APPS[id].pf}</span>

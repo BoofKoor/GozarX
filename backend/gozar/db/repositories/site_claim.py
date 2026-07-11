@@ -38,7 +38,9 @@ class SiteClaimRepository(BaseRepository):
         return await self.session.scalar(
             select(SiteClaim.location)
             .where(SiteClaim.device_uuid == device_uuid)
-            .order_by(SiteClaim.created_at.desc())
+            # id.desc() tiebreak: two claims can share created_at (server_default now()); without it
+            # LIMIT 1 could pick the wrong one as the "current config".
+            .order_by(SiteClaim.created_at.desc(), SiteClaim.id.desc())
             .limit(1)
         )
 

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { type Locale, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
+import { Icon } from "@/components/Icon";
 
 // ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
 export function Flag({ name, size = 40 }: { name: string; size?: number }) {
@@ -18,7 +19,7 @@ export function Flag({ name, size = 40 }: { name: string; size?: number }) {
   );
 }
 
-// ---- CopyField: LTR monospace island + copy button ----
+// ---- CopyField: LTR monospace island + copy button (design `.copyfield`) ----
 export function CopyField({ value, locale }: { value: string; locale: Locale }) {
   const t = translator(locale);
   const [copied, setCopied] = useState(false);
@@ -33,8 +34,8 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
   }
   return (
     <div className="copyfield">
-      <code>{value}</code>
-      <button className="btn secondary" onClick={copy} type="button">
+      <code dir="ltr">{value}</code>
+      <button className={`btn${copied ? " copied" : ""}`} onClick={copy} type="button">
         {copied ? t("copied") : t("copy")}
       </button>
     </div>
@@ -78,12 +79,12 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   }
   return (
     <div className="apps">
-      <span className="apps-label">{label}</span>
+      <span className="lbl">{label}</span>
       <div className="apps-row">
-        {PLATFORM_APPS[platform].map((key) => (
+        {(PLATFORM_APPS[platform] ?? PLATFORM_APPS.desktop).map((key) => (
           <button key={key} className="app-btn" type="button" onClick={() => openIn(key)}>
-            <img src={APPS[key].icon} alt="" width={26} height={26} />
-            <span>{flash === key ? t("copied") : APPS[key].n}</span>
+            <img className="app-ico" src={APPS[key].icon} alt="" width={26} height={26} />
+            {flash === key ? t("copied") : APPS[key].n}
           </button>
         ))}
       </div>
@@ -91,7 +92,7 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   );
 }
 
-// ---- UsageMeter ----
+// ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
 export function UsageMeter({
   used,
   total,
@@ -107,11 +108,13 @@ export function UsageMeter({
   const cls = pct >= 100 ? "bar full" : pct >= 80 ? "bar warn" : "bar";
   return (
     <div className="meter">
-      <div className="meter-head">
-        <GaugeIcon />
-        <span>
-          {t("usage")} · <strong className="tnum">{used}</strong> {t("of")}{" "}
-          <span className="tnum">{total}</span>
+      <div className="row">
+        <span className="k">
+          <Icon name="gauge" sw={2} />
+          {t("usage")}
+        </span>
+        <span className="v tnum">
+          {used} {t("of")} {total}
         </span>
       </div>
       <div className={cls}>
@@ -121,7 +124,7 @@ export function UsageMeter({
   );
 }
 
-// ---- Countdown: parse "Xh Ym Zs" (incl. Persian digits) → live segmented HH:MM:SS ----
+// ---- Countdown: parse "Xh Ym Zs" (incl. Persian digits) → live segmented HH:MM:SS (design `.cd`) ----
 function toSeconds(s: string): number {
   const norm = s.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
   const h = /(\d+)\s*(h|ساعت)/.exec(norm);
@@ -143,6 +146,7 @@ export function Countdown({
   locale: Locale;
   onDone?: () => void;
 }) {
+  const t = translator(locale);
   const [left, setLeft] = useState(() => toSeconds(from));
   const doneRef = useRef(false);
   useEffect(() => {
@@ -166,16 +170,25 @@ export function Countdown({
   const digits = (n: string) =>
     locale === "fa" ? n.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : n;
   return (
-    <div className="cd-wrap">
-      <span className="cd-label">{label}</span>
+    <>
+      <div className="cd-label">{label}</div>
       <div className="cd" dir="ltr">
-        <span className="seg tnum">{digits(pad(h))}</span>
-        <span className="cd-colon">:</span>
-        <span className="seg tnum">{digits(pad(m))}</span>
-        <span className="cd-colon">:</span>
-        <span className="seg tnum">{digits(pad(s))}</span>
+        <span className="seg">
+          <b>{digits(pad(h))}</b>
+          <span>{t("cd_h")}</span>
+        </span>
+        <span className="colon">:</span>
+        <span className="seg">
+          <b>{digits(pad(m))}</b>
+          <span>{t("cd_m")}</span>
+        </span>
+        <span className="colon">:</span>
+        <span className="seg">
+          <b>{digits(pad(s))}</b>
+          <span>{t("cd_s")}</span>
+        </span>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -195,12 +208,4 @@ export function InlineCountdown({ from, locale }: { from: string; locale: Locale
   const txt = `${h}:${pad(m)}:${pad(s)}`;
   const out = locale === "fa" ? txt.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : txt;
   return <span dir="ltr">{out}</span>;
-}
-
-function GaugeIcon() {
-  return (
-    <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-      <path d="M12 13.5 15.5 10M4.5 18a9 9 0 1 1 15 0" />
-    </svg>
-  );
 }

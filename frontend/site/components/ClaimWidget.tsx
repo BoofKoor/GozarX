@@ -1,16 +1,19 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, type ClaimResponse } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
+import { Icon } from "@/components/Icon";
 import { locName } from "@/components/widget/flags";
 import { AppButtons, CopyField, Countdown, Flag, UsageMeter } from "@/components/widget/pieces";
 import { Missions } from "@/components/widget/Missions";
 
 type Mode = "idle" | "provisioning";
 
+// Faithful reproduction of docs/website/design/phase-1-claim-widget.html — the 8-state claim widget.
+// State is derived from the live /status; class names match the ported design CSS exactly.
 export function ClaimWidget({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const t = translator(locale);
   const { status, config, locations, loading, offline, reload } = useSite();
@@ -24,7 +27,12 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
   const locs = locations ?? [];
 
-  // Auto-select the first "popular" (or first) location once loaded, matching the design's preset.
+  // The server is authoritative once loaded: if it reports no config (e.g. after a device reset),
+  // drop any stale optimistic claim result so we don't keep showing a revoked config.
+  useEffect(() => {
+    if (status && !status.has_config) setResult(null);
+  }, [status]);
+
   const selected = picked ?? (compact && locs.length ? locs[0] : null);
 
   const doClaim = useCallback(async () => {
@@ -33,6 +41,7 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
     setErrState(false);
     try {
       const res = await api.claim(selected, token || undefined);
+      setToken(""); // Turnstile tokens are single-use — never resubmit a consumed one.
       if (res.ok) {
         setResult(res);
         setChangeLoc(false);
@@ -49,14 +58,31 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
     }
   }, [selected, token, mode, reload]);
 
-  // ---- derive the display state from the live status ----
-  const link = result?.link ?? status?.link ?? null;
-  const hasConfig = !!link && (result?.ok || status?.has_config);
+  // ---- derive the display state from the live status (status wins; result is the pre-reload view) ----
+  const serverHasConfig = !!status?.has_config;
+  const link = serverHasConfig ? status?.link ?? null : result?.ok ? result.link ?? null : null;
+  const hasConfig = serverHasConfig || (!!result?.ok && !!result.link);
+  const fresh = !!result?.ok; // just claimed this session → celebrate (S3) vs returning (S4)
   const exhausted = !!status?.data_exhausted;
   const canClaim = status?.can_claim ?? true;
-  const pct = status && status.daily_limit_bytes > 0
-    ? Math.round((status.usage_bytes / status.daily_limit_bytes) * 100)
-    : 0;
+  const pct =
+    status && status.daily_limit_bytes > 0
+      ? Math.round((status.usage_bytes / status.daily_limit_bytes) * 100)
+      : 0;
+
+  const cta = (
+    <CtaBlock
+      locale={locale}
+      disabled={!selected}
+      busy={mode === "provisioning"}
+      onClaim={doClaim}
+      needsTurnstile={needsTurnstile}
+      token={token}
+      siteKey={config?.turnstile_site_key ?? ""}
+      onToken={setToken}
+      trialHours={status?.trial_hours}
+    />
+  );
 
   // ---------- loading ----------
   if (loading) {
@@ -74,10 +100,10 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
     return (
       <div className="widget">
         <CenterState kind="err" title={t("err_title")} sub={t("err_sub")}>
-          <button className="btn cta" onClick={() => { setErrState(false); void reload(); }}>
+          <button className="btn" onClick={() => { setErrState(false); void reload(); }}>
             {t("err_retry")}
           </button>
-          <a className="btn secondary" href="/faq">{t("err_help")}</a>
+          <a className="btn ghost" href="/faq">{t("err_help")}</a>
         </CenterState>
       </div>
     );
@@ -96,52 +122,50 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
 
   // ---------- S3/S4 delivered config ----------
   if (hasConfig && link) {
-    const loc = result?.location ?? status?.location ?? "";
+    const loc = (fresh ? result?.location : status?.location) ?? status?.location ?? "";
     return (
       <div className="widget">
-        <StatusHead kind="ok" title={t("active_title")} sub={t("active_sub")} />
-        {loc && (
-          <div className="cfg-loc">
-            <Flag name={loc} size={34} />
-            <span className="nm">{locName(loc)}</span>
-            <span className="pill ready">{t("ready")}</span>
-          </div>
-        )}
-        <div className="link-block">
-          <span className="link-label">{t("link_label")}</span>
+        <div className="cfg">
+          <StatusHead
+            kind="ok"
+            title={fresh ? `${t("succ_title")} 🎉` : t("active_title")}
+            sub={fresh ? t("succ_sub") : t("active_sub")}
+          />
+          {loc && (
+            <div className="cfg-loc">
+              <Flag name={loc} size={34} />
+              <span className="nm">{locName(loc)}</span>
+              <span className="ok">
+                <Icon name="check" sw={2.6} /> {t("ready")}
+              </span>
+            </div>
+          )}
+          <span className="field-label">{t("link_label")}</span>
           <CopyField value={link} locale={locale} />
+          <AppButtons link={link} locale={locale} />
+          <UsageMeter used={status?.usage ?? "0"} total={status?.daily_limit ?? "—"} pct={pct} locale={locale} />
+          {status?.remaining && status.remaining !== "—" ? (
+            <>
+              <hr className="divider" />
+              <Countdown from={status.remaining} label={t("time_left")} locale={locale} onDone={reload} />
+            </>
+          ) : null}
+          {changeLoc ? (
+            <>
+              <Picker locale={locale} locations={locs} selected={selected} onPick={setPicked} />
+              {cta}
+            </>
+          ) : (
+            <button
+              className="btn secondary block"
+              style={{ marginBlockStart: 16 }}
+              onClick={() => { setChangeLoc(true); setToken(""); }}
+            >
+              <Icon name="swap" sw={2} /> {t("change_loc")}
+            </button>
+          )}
+          {fresh && !changeLoc && <Missions locale={locale} refCode={status?.ref_code ?? ""} />}
         </div>
-        <AppButtons link={link} locale={locale} />
-        <UsageMeter used={status?.usage ?? "0"} total={status?.daily_limit ?? "—"} pct={pct} locale={locale} />
-        {status?.cooldown ? (
-          <Countdown from={status.cooldown} label={t("time_left")} locale={locale} onDone={reload} />
-        ) : null}
-        {changeLoc ? (
-          <Picker
-            locale={locale}
-            locations={locs}
-            selected={selected}
-            onPick={setPicked}
-            status={status}
-          />
-        ) : (
-          <button className="btn secondary block" onClick={() => setChangeLoc(true)}>
-            <SwapIcon /> {t("change_loc")}
-          </button>
-        )}
-        {changeLoc && (
-          <CtaBlock
-            locale={locale}
-            disabled={!selected}
-            busy={mode === "provisioning"}
-            onClaim={doClaim}
-            needsTurnstile={needsTurnstile}
-            token={token}
-            siteKey={config?.turnstile_site_key ?? ""}
-            onToken={setToken}
-            trialHours={status?.streak_days}
-          />
-        )}
       </div>
     );
   }
@@ -152,7 +176,9 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
       <div className="widget">
         <StatusHead kind="wait" title={t("cd_title")} sub={t("cd_sub")} />
         {status?.cooldown ? (
-          <Countdown from={status.cooldown} label={t("cd_next")} locale={locale} onDone={reload} />
+          <div style={{ paddingBlock: 6 }}>
+            <Countdown from={status.cooldown} label={t("cd_next")} locale={locale} onDone={reload} />
+          </div>
         ) : null}
         <Missions locale={locale} refCode={status?.ref_code ?? ""} />
       </div>
@@ -179,20 +205,9 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
         locations={locs}
         selected={selected}
         onPick={setPicked}
-        status={status}
         disabled={mode === "provisioning"}
       />
-      <CtaBlock
-        locale={locale}
-        disabled={!selected}
-        busy={mode === "provisioning"}
-        onClaim={doClaim}
-        needsTurnstile={needsTurnstile}
-        token={token}
-        siteKey={config?.turnstile_site_key ?? ""}
-        onToken={setToken}
-        trialHours={status?.streak_days}
-      />
+      {cta}
     </div>
   );
 }
@@ -212,15 +227,15 @@ function WidgetHead({
   return (
     <div className="w-head">
       <span className="w-badge" aria-hidden>
-        <BoltIcon />
+        <Icon name="bolt" sw={2.2} />
       </span>
       <div className="wt">
-        <strong>{t("w_title")}</strong>
-        {!compact && <span>{t("w_sub")}</span>}
+        <p className="w-title">{t("w_title")}</p>
+        {!compact && <p className="w-sub">{t("w_sub")}</p>}
       </div>
       {allowance && (
         <span className="allowance">
-          <BoltIcon /> {t("allowance").replace("{v}", allowance)}
+          <Icon name="bolt" sw={2} /> {t("allowance").replace("{v}", allowance)}
         </span>
       )}
     </div>
@@ -232,24 +247,27 @@ function Picker({
   locations,
   selected,
   onPick,
-  status,
   disabled,
 }: {
   locale: Locale;
   locations: string[];
   selected: string | null;
   onPick: (v: string) => void;
-  status: ReturnType<typeof useSite>["status"];
   disabled?: boolean;
 }) {
   const t = translator(locale);
   return (
     <>
       <div className="pick-label">
-        <span>{t("pick")}</span>
-        <span className="pick-count tnum">{t("pick_count").replace("{n}", String(locations.length))}</span>
+        <span className="l">{t("pick")}</span>
+        <span className="c tnum">{t("pick_count").replace("{n}", String(locations.length))}</span>
       </div>
-      <div className="loc-grid" role="radiogroup" aria-label={t("pick")} aria-disabled={disabled}>
+      <div
+        className="loc-grid"
+        role="radiogroup"
+        aria-label={t("pick")}
+        style={disabled ? { opacity: 0.55, pointerEvents: "none" } : undefined}
+      >
         {locations.map((loc, i) => {
           const on = selected === loc;
           return (
@@ -262,22 +280,24 @@ function Picker({
               disabled={disabled}
               onClick={() => onPick(loc)}
             >
-              {i === 0 && !on && <span className="loc-rec">{t("rec")}</span>}
-              <span className="loc-flagwrap">
+              {i === 0 && (
+                <span className="loc-rec">
+                  <Icon name="spark" sw={2.2} />
+                  {t("rec")}
+                </span>
+              )}
+              <span className="loc-check" aria-hidden>
+                <Icon name="check" sw={2.6} />
+              </span>
+              <span className="flag-wrap">
                 <Flag name={loc} size={40} />
                 <span className="loc-online" aria-hidden />
               </span>
               <span className="nm">{locName(loc)}</span>
-              {on && (
-                <span className="loc-check" aria-hidden>
-                  <CheckIcon />
-                </span>
-              )}
             </button>
           );
         })}
       </div>
-      {void status}
     </>
   );
 }
@@ -312,30 +332,40 @@ function CtaBlock({
         disabled={disabled || busy || (needsTurnstile && !token)}
         onClick={onClaim}
       >
-        <BoltIcon />
-        {busy ? t("cta_prep") : t("cta_get")}
-        {!busy && <ArrowIcon />}
+        {busy ? (
+          <>
+            <span className="spinner" /> {t("cta_prep")}
+          </>
+        ) : (
+          <>
+            <Icon name="bolt" sw={2.2} />
+            {t("cta_get")}
+            <Icon name="arrow" sw={2.4} cls="ic-dir" />
+          </>
+        )}
       </button>
       <div className="reassure">
-        <span><CheckIcon /> {t("reassure1")}</span>
-        <span><CheckIcon /> {t("reassure2")}</span>
-        <span><CheckIcon /> {t("reassure3").replace("{h}", String(trialHours ?? 24))}</span>
+        <span className="r"><Icon name="check" sw={2.6} /> {t("reassure1")}</span>
+        <span className="r"><Icon name="check" sw={2.6} /> {t("reassure2")}</span>
+        <span className="r"><Icon name="check" sw={2.6} /> {t("reassure3").replace("{h}", String(trialHours ?? 24))}</span>
       </div>
       <div className="antibot">
-        <ShieldIcon /> {t("antibot")}
+        <Icon name="shield" sw={2} /> {t("antibot")}
       </div>
     </div>
   );
 }
 
-function StatusHead({ kind, title, sub }: { kind: string; title: string; sub: string }) {
-  const icon = kind === "ok" ? <CheckIcon /> : kind === "wait" ? <ClockIcon /> : <WarnIcon />;
+function StatusHead({ kind, title, sub }: { kind: "ok" | "wait" | "warn"; title: string; sub: string }) {
+  const icon = kind === "ok" ? "check" : kind === "wait" ? "clock" : "warn";
   return (
     <div className="status-head">
-      <span className={`sic ${kind}`} aria-hidden>{icon}</span>
-      <div className="ti">
-        <strong>{title}</strong>
-        <span>{sub}</span>
+      <div className={`status-ic ${kind}`} aria-hidden>
+        <Icon name={icon} sw={2.2} />
+      </div>
+      <div>
+        <p className="st-t">{title}</p>
+        <p className="st-d">{sub}</p>
       </div>
     </div>
   );
@@ -354,12 +384,14 @@ function CenterState({
 }) {
   return (
     <div className="center-state">
-      <span className={`cs-art ${kind}`} aria-hidden>
-        {kind === "empty" ? <GlobeIcon /> : <PlugIcon />}
-      </span>
-      <strong>{title}</strong>
-      <p>{sub}</p>
-      <div className="cs-actions">{children}</div>
+      <div className={`state-art ${kind}`} aria-hidden>
+        <Icon name={kind === "empty" ? "globe" : "plug"} sw={1.9} />
+      </div>
+      <p className="ct">{title}</p>
+      <p className="cd2">{sub}</p>
+      <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -382,30 +414,21 @@ function ReviveBlock({ locale, refCode }: { locale: Locale; refCode: string }) {
   }
   return (
     <div className="revive">
-      <div className="revive-head">
-        <SparkIcon />
-        <strong>{t("revive_t")}</strong>
+      <div className="rt">
+        <Icon name="spark" sw={2.2} /> {t("revive_t")}
       </div>
-      <p dangerouslySetInnerHTML={{ __html: t("revive_d").replace(/\*\*(.+?)\*\*/g, "<b>$1</b>") }} />
-      <span className="invite-label">{t("invite_label")}</span>
+      {/* revive_d is verbatim design copy (a build-time constant in design-copy.ts) with intentional
+          <b> emphasis — never user/API data — so rendering it as HTML is safe. */}
+      <p className="rd" dangerouslySetInnerHTML={{ __html: t("revive_d") }} />
+      <span className="field-label" style={{ marginBlockEnd: 8 }}>
+        {t("invite_label")}
+      </span>
       <div className="copyfield">
-        <code>{link}</code>
-        <button className="btn secondary" onClick={share}>
-          {copied ? t("copied") : t("share")}
+        <code dir="ltr">{link}</code>
+        <button className="btn secondary" style={{ flex: "none" }} onClick={share}>
+          <Icon name="share" sw={2} /> {copied ? t("copied") : t("share")}
         </button>
       </div>
     </div>
   );
 }
-
-// icons
-function BoltIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z" /></svg>; }
-function ArrowIcon() { return <svg className="ic ic-dir" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M5 12h14M13 6l6 6-6 6" /></svg>; }
-function CheckIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 6 9 17l-5-5" /></svg>; }
-function SwapIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7" /></svg>; }
-function ShieldIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 3 5 6v5c0 4.5 3 8 7 10 4-2 7-5.5 7-10V6l-7-3Z" /></svg>; }
-function ClockIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>; }
-function WarnIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 9v4M12 17h.01M10.3 3.9 2 18a2 2 0 0 0 1.7 3h16.6a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /></svg>; }
-function GlobeIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3.5 3 14 0 18M12 3c-3 3.5-3 14 0 18" /></svg>; }
-function PlugIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0V8ZM12 16v6" /></svg>; }
-function SparkIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden><path d="M12 2l1.8 5.2L19 9l-5.2 1.8L12 16l-1.8-5.2L5 9l5.2-1.8L12 2Z" /></svg>; }

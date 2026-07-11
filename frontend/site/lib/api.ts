@@ -22,6 +22,7 @@ export interface StatusResponse {
   referral_cap: number;
   streak_count: number;
   streak_days: number;
+  trial_hours: number;
   location: string | null;
   link: string | null;
   ref_code: string;

@@ -60,8 +60,8 @@ export function ContactForm({ locale }: { locale: Locale }) {
     <form className={`form-card${sent ? " sent" : ""}`} onSubmit={submit} noValidate>
       <div className="form-body">
         <div className="field">
-          <label>{t("c_topic")}</label>
-          <select className="inp" value={subject} onChange={(e) => setSubject(e.target.value)}>
+          <label htmlFor="c-topic">{t("c_topic")}</label>
+          <select id="c-topic" className="inp" value={subject} onChange={(e) => setSubject(e.target.value)}>
             <option value="" disabled>
               {t("c_topic_ph")}
             </option>
@@ -73,25 +73,29 @@ export function ContactForm({ locale }: { locale: Locale }) {
           </select>
         </div>
         <div className={`field${emptyErr ? " err" : ""}`}>
-          <label>{t("c_msg")}</label>
+          <label htmlFor="c-msg">{t("c_msg")}</label>
           <textarea
+            id="c-msg"
             ref={msgRef}
             className="inp"
             placeholder={t("c_msg_ph")}
             value={message}
+            aria-invalid={emptyErr}
+            aria-describedby={emptyErr ? "c-msg-err" : undefined}
             onChange={(e) => {
               setMessage(e.target.value);
               if (e.target.value.trim()) setEmptyErr(false);
             }}
             maxLength={5000}
           />
-          <span className="errmsg">{t("c_err")}</span>
+          <span className="errmsg" id="c-msg-err">{t("c_err")}</span>
         </div>
         <div className="field">
-          <label>
+          <label htmlFor="c-handle">
             {t("c_handle")} <span className="opt">{t("c_handle_opt")}</span>
           </label>
           <input
+            id="c-handle"
             className="inp"
             placeholder={t("c_handle_ph")}
             value={reply}

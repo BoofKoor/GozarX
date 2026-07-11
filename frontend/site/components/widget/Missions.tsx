@@ -5,10 +5,11 @@ import { api } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
+import { Icon } from "@/components/Icon";
 
-// "Want more daily volume?" strip — invite (Web Share), install PWA, enable notifications. Reward
-// amounts come from the site_* settings (not exposed to the client), so the chips show the action,
-// not a hardcoded MB figure. Dismissible.
+// "Want more daily volume?" strip (design `.missions`) — invite (Web Share), install PWA, enable
+// notifications. Reward MB comes from site_* settings (not exposed to the client), so each chip
+// shows the action affordance, not a hardcoded figure. Dismissible.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
   const { config, reload } = useSite();
@@ -58,41 +59,46 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   }
 
   const chips = [
-    { key: "invite", icon: <UsersIcon />, title: t("m_invite"), desc: t("m_invite_d"), action: invite, cta: t("share") },
-    { key: "pwa", icon: <DownloadIcon />, title: t("m_pwa"), desc: t("m_pwa_d"), action: claimPwa, cta: "＋" },
-    { key: "push", icon: <BellIcon />, title: t("m_push"), desc: t("m_push_d"), action: enablePush, cta: "＋" },
+    { key: "invite", ic: "users", title: t("m_invite"), desc: t("m_invite_d"), action: invite, rw: <Icon name="share" sw={2} /> },
+    { key: "pwa", ic: "download", title: t("m_pwa"), desc: t("m_pwa_d"), action: claimPwa, rw: "＋" },
+    { key: "push", ic: "bell", title: t("m_push"), desc: t("m_push_d"), action: enablePush, rw: "＋" },
   ];
 
   return (
     <div className="missions">
-      <div className="m-head">
-        <span className="m-title">
-          <GiftIcon /> {t("m_title")}
+      <div className="missions-head">
+        <span className="t">
+          <Icon name="gift" sw={2} /> {t("m_title")}
         </span>
-        <button className="m-x" aria-label={t("common.close")} onClick={() => setHidden(true)}>
-          ✕
+        <button className="x-btn" aria-label={t("common.close")} onClick={() => setHidden(true)}>
+          <Icon name="x" sw={2} />
         </button>
       </div>
       <div className="m-chips">
         {chips.map((c) => (
-          <div key={c.key} className="m-chip">
-            <span className="m-ic" aria-hidden>{c.icon}</span>
-            <div className="m-body">
-              <strong>{c.title}</strong>
-              <span>{c.desc}</span>
-            </div>
-            <button className="btn secondary m-do" disabled={busy === c.key} onClick={c.action}>
-              {busy === c.key ? "…" : c.cta}
-            </button>
-          </div>
+          <button
+            key={c.key}
+            className="m-chip"
+            type="button"
+            disabled={busy === c.key}
+            onClick={c.action}
+          >
+            <span className="mi">
+              <Icon name={c.ic} sw={2} />
+            </span>
+            <span className="mt">
+              <span className="mn">{c.title}</span>
+              <span className="md">{c.desc}</span>
+            </span>
+            <span className="rw">{busy === c.key ? "…" : c.rw}</span>
+          </button>
         ))}
       </div>
-      {flash && <div className="toast-wrap"><div className="toast">{flash}</div></div>}
+      {flash && (
+        <div className="toast-wrap">
+          <div className="toast">{flash}</div>
+        </div>
+      )}
     </div>
   );
 }
-
-function GiftIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7S9 2 6.5 3.5 8 7 12 7ZM12 7s3-5 5.5-3.5S16 7 12 7Z" /></svg>; }
-function UsersIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" /></svg>; }
-function DownloadIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" /></svg>; }
-function BellIcon() { return <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0" /></svg>; }

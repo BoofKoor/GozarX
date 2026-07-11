@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
@@ -19,6 +19,16 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
   const router = useRouter();
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
+
+  // Let Escape close the mobile nav sheet (it's a modal surface).
+  useEffect(() => {
+    if (!sheet) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSheet(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheet]);
 
   function switchLocale(next: Locale) {
     if (next === locale) return;
@@ -54,7 +64,7 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
           </Link>
           <nav className="mainnav">
             {NAV.map((n) => (
-              <Link key={n.href} href={n.href}>
+              <Link key={n.href} className="navlink" href={n.href}>
                 {t(n.key)}
               </Link>
             ))}
@@ -91,13 +101,13 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
       </header>
 
       {/* mobile sheet */}
-      <div className={`sheet-ov${sheet ? " show" : ""}`} onClick={() => setSheet(false)} />
-      <div className={`sheet${sheet ? " show" : ""}`}>
+      <div className={`sheet-ov${sheet ? " open" : ""}`} onClick={() => setSheet(false)} />
+      <div className={`sheet${sheet ? " open" : ""}`} role="dialog" aria-modal="true" aria-label={t("nav.home")}>
         <div className="sheet-handle" />
         <nav id="sheetnav">
           {[{ href: "/", key: "nav.home" }, ...NAV, { href: "/status", key: "nav_status" }].map(
             (n) => (
-              <Link key={n.href} href={n.href} onClick={() => setSheet(false)}>
+              <Link key={n.href} className="navlink" href={n.href} onClick={() => setSheet(false)}>
                 {t(n.key)}
               </Link>
             ),

@@ -31,7 +31,7 @@ export function FaqList({ locale }: { locale: Locale }) {
     <>
       <div className="faq-tools">
         <div className="idx-search">
-          <Icon name="help" sw={2} />
+          <Icon name="search" sw={2} />
           <input
             type="search"
             value={query}

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
@@ -263,6 +263,18 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
   const t = translator(locale);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+
+  // While the confirm dialog is open: move focus into it and let Escape dismiss it.
+  useEffect(() => {
+    if (!asking) return;
+    cancelRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !busy) setAsking(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [asking, busy]);
 
   async function reset() {
     setBusy(true);
@@ -294,6 +306,7 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
             className="modal"
             role="dialog"
             aria-modal
+            aria-labelledby="rm-title"
             style={{ maxInlineSize: 400 }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -304,10 +317,11 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
               >
                 <Icon name="trash" sw={2.2} />
               </div>
-              <h3 style={{ marginBlockEnd: 8 }}>{t("rm_t")}</h3>
+              <h3 id="rm-title" style={{ marginBlockEnd: 8 }}>{t("rm_t")}</h3>
               <p className="msub">{t("rm_p")}</p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button
+                  ref={cancelRef}
                   className="btn ghost block"
                   disabled={busy}
                   onClick={() => setAsking(false)}
