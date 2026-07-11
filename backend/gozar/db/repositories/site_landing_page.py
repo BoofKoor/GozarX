@@ -27,7 +27,11 @@ class SiteLandingPageRepository(BaseRepository):
         stmt = select(SiteLandingPage).where(SiteLandingPage.published.is_(True))
         if locale is not None:
             stmt = stmt.where(SiteLandingPage.locale == locale)
-        rows = await self.session.scalars(stmt.order_by(SiteLandingPage.slug))
+        # (slug, locale) is the unique key — order by both for a stable, deterministic result when
+        # two locales share a slug (ordering by slug alone leaves their relative order undefined).
+        rows = await self.session.scalars(
+            stmt.order_by(SiteLandingPage.slug, SiteLandingPage.locale)
+        )
         return list(rows.all())
 
     async def get(self, id_: int) -> SiteLandingPage | None:

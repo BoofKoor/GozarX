@@ -1,72 +1,168 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
+import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
-import { RewardsTeaser } from "@/components/RewardsTeaser";
+import { HomeLocations } from "@/components/home/HomeLocations";
+import { HomeApps } from "@/components/home/HomeApps";
+import { HomeStats } from "@/components/home/HomeStats";
+import { HomeFaq } from "@/components/home/HomeFaq";
 
+// Homepage — faithful reproduction of docs/website/design/phase-2-homepage.html. Section order:
+// hero (copy + live claim widget) → how it works → locations → more volume → apps → stats band →
+// FAQ → trust band. Interactive/live sections (widget, locations, apps, FAQ) are client islands;
+// the rest is static marketing rendered server-side. No economic numbers are hardcoded.
 export default async function HomePage() {
   const locale = await getLocale();
   const t = translator(locale);
+
+  const steps = [
+    { t: "how1_t", d: "how1_d", ic: "pin" },
+    { t: "how2_t", d: "how2_d", ic: "bolt" },
+    { t: "how3_t", d: "how3_d", ic: "download" },
+  ] as const;
+  const missions = [
+    { t: "mv1_t", d: "mv1_d", ic: "users", rw: "mv_reward" },
+    { t: "mv2_t", d: "mv2_d", ic: "download", rw: "mv_reward" },
+    { t: "mv3_t", d: "mv3_d", ic: "bell", rw: "mv_reward" },
+    { t: "mv4_t", d: "mv4_d", ic: "cal", rw: "mv_streak" },
+  ] as const;
   return (
     <>
-      <section className="hero">
+      {/* HERO */}
+      <section className="hero" id="hero">
         <div className="container hero-inner">
-          <div>
-            <span className="eyebrow">{t("hero.eyebrow")}</span>
-            <h1>{t("hero.title")}</h1>
-            <p className="lead">{t("hero.sub")}</p>
-            <div className="hero-cta">
-              <Link href="/status" className="btn btn-primary btn-lg">
-                {t("hero.cta")}
-              </Link>
-              <Link href="/status" className="btn btn-ghost btn-lg">
-                {t("hero.ctaStatus")}
-              </Link>
-            </div>
-            <div className="hero-trust">
-              <span>✓ {t("trust.noSignup")}</span>
-              <span>✓ {t("trust.noEmail")}</span>
-              <span>✓ {t("trust.daily")}</span>
-              <span>✓ {t("trust.private")}</span>
+          <div className="hero-copy">
+            <span className="eyebrow">
+              <Icon name="spark" sw={2.2} />
+              <span>{t("hero_eyebrow")}</span>
+            </span>
+            <h1>
+              {t("hero_h1_a")} <span className="grad">{t("hero_h1_b")}</span>
+            </h1>
+            <p className="sub">{t("hero_sub")}</p>
+            <div className="trust-row">
+              <span className="pill">
+                <Icon name="check" sw={2.4} />
+                {t("trust1")}
+              </span>
+              <span className="pill">
+                <Icon name="check" sw={2.4} />
+                {t("trust2")}
+              </span>
+              <span className="pill">
+                <Icon name="check" sw={2.4} />
+                {t("trust3")}
+              </span>
+              <span className="pill">
+                <Icon name="users" sw={2.4} />
+                {t("trust4")}
+              </span>
             </div>
           </div>
-          <div className="hero-art" aria-hidden>
-            <div className="stack">
-              <div className="between">
-                <strong style={{ fontSize: 18 }}>GozarX</strong>
-                <span className="chip" style={{ background: "rgba(255,255,255,.16)", color: "inherit" }}>
-                  {t("trust.daily")}
+          <div id="hero-widget">
+            <ClaimWidget locale={locale} />
+          </div>
+        </div>
+      </section>
+
+      {/* HOW IT WORKS */}
+      <section className="sec" id="how">
+        <div className="container">
+          <div className="sec-head reveal">
+            <span className="eyebrow">{t("how_eyebrow")}</span>
+            <h2 className="sec-title">{t("how_title")}</h2>
+            <p className="sec-sub">{t("how_sub")}</p>
+          </div>
+          <div className="steps reveal">
+            {steps.map((s) => (
+              <div className="step" key={s.t}>
+                <div className="num">
+                  <Icon name={s.ic} sw={2} />
+                </div>
+                <h3>{t(s.t)}</h3>
+                <p>{t(s.d)}</p>
+                <span className="conn" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* LOCATIONS (live) */}
+      <HomeLocations locale={locale} />
+
+      {/* MORE VOLUME */}
+      <section className="sec" id="rewards">
+        <div className="container">
+          <div className="sec-head reveal">
+            <span className="eyebrow">{t("mv_eyebrow")}</span>
+            <h2 className="sec-title">{t("mv_title")}</h2>
+            <p className="sec-sub">{t("mv_sub")}</p>
+          </div>
+          <div className="missiongrid reveal">
+            {missions.map((m) => (
+              <div className="mcard" key={m.t}>
+                <div className="mi">
+                  <Icon name={m.ic} sw={2} />
+                </div>
+                <h3>{t(m.t)}</h3>
+                <p>{t(m.d)}</p>
+                <span className="rw">
+                  <Icon name="bolt" sw={2.2} />
+                  {t(m.rw)}
                 </span>
               </div>
-              <div className="meter" style={{ background: "rgba(255,255,255,.18)" }}>
-                <i style={{ width: "62%", background: "#fff" }} />
-              </div>
-              <div className="row" style={{ gap: 16, marginTop: 8 }}>
-                <div>
-                  <div style={{ opacity: 0.8, fontSize: 12 }}>{t("status.usage")}</div>
-                  <div className="tnum" style={{ fontSize: 22, fontWeight: 800 }}>380 MB</div>
-                </div>
-                <div>
-                  <div style={{ opacity: 0.8, fontSize: 12 }}>{t("status.dailyLimit")}</div>
-                  <div className="tnum" style={{ fontSize: 22, fontWeight: 800 }}>1 GB</div>
-                </div>
-              </div>
+            ))}
+          </div>
+          <div className="center-more reveal">
+            <Link className="link-more" href="/status">
+              {t("mv_all")}
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* APPS (platform-ordered) */}
+      <HomeApps locale={locale} />
+
+      {/* STATS band (live location count) */}
+      <HomeStats locale={locale} />
+
+      {/* FAQ teaser (live accordion) */}
+      <HomeFaq locale={locale} />
+
+      {/* TRUST band */}
+      <section className="sec">
+        <div className="container">
+          <div className="trust-card reveal">
+            <div className="trust-shield">
+              <Icon name="shield" sw={2} />
             </div>
+            <h2 className="sec-title">{t("trust_title")}</h2>
+            <p className="sec-sub" style={{ maxWidth: "40rem", marginInline: "auto" }}>
+              {t("trust_sub")}
+            </p>
+            <div className="trust-badges">
+              <span className="tb">
+                <Icon name="check" sw={2.6} />
+                {t("tb1")}
+              </span>
+              <span className="tb">
+                <Icon name="check" sw={2.6} />
+                {t("tb2")}
+              </span>
+              <span className="tb">
+                <Icon name="check" sw={2.6} />
+                {t("tb3")}
+              </span>
+            </div>
+            <Link className="link-more" href="/privacy">
+              {t("trust_link")}
+            </Link>
           </div>
         </div>
       </section>
-
-      <section style={{ paddingBlockStart: 0 }}>
-        <div className="container grid-2" style={{ alignItems: "start" }}>
-          <div>
-            <h2>{t("claim.title")}</h2>
-            <p className="lead mt-2">{t("hero.sub")}</p>
-          </div>
-          <ClaimWidget locale={locale} />
-        </div>
-      </section>
-
-      <RewardsTeaser locale={locale} />
     </>
   );
 }

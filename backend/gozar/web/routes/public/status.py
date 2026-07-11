@@ -39,6 +39,7 @@ class StatusResponse(BaseModel):
     referral_cap: int
     streak_count: int
     streak_days: int
+    trial_hours: int  # rolling window each config lasts / renews on ("renews every Nh")
     location: str | None = None
     link: str | None = None
     ref_code: str  # this device's referral code — the SPA builds "?ref=<ref_code>" invite links

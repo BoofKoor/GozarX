@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
+import { Icon } from "@/components/Icon";
 
+// Contact form — faithful reproduction of the design's `.form-card` (topic + message + optional
+// reply handle → stored server-side, read from the admin panel). No email/social. The whole card
+// flips to `.sent` on success; an empty message shows the `.field.err` inline error.
 export function ContactForm({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const { config } = useSite();
@@ -15,27 +19,25 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const [token, setToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [emptyErr, setEmptyErr] = useState(false);
+  const [sendErr, setSendErr] = useState<string | null>(null);
+  const msgRef = useRef<HTMLTextAreaElement>(null);
 
-  const topics =
-    locale === "fa"
-      ? ["مشکل در اتصال", "سوال دربارهٔ حجم/دعوت", "گزارش باگ", "پیشنهاد یا سایر"]
-      : ["Connection issue", "Question about volume/invites", "Report a bug", "Suggestion or other"];
-
+  const topics = [t("c_t1"), t("c_t2"), t("c_t3"), t("c_t4")];
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
-
-  // Keep the Turnstile token attached to the form; if it's not configured we send without it.
   useEffect(() => {
     if (!needsTurnstile) setToken("");
   }, [needsTurnstile]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
+    setSendErr(null);
     if (!message.trim()) {
-      setError(t("contact.emptyErr"));
+      setEmptyErr(true);
+      msgRef.current?.focus();
       return;
     }
+    setEmptyErr(false);
     setBusy(true);
     try {
       const res = await api.contact({
@@ -46,63 +48,83 @@ export function ContactForm({ locale }: { locale: Locale }) {
         turnstile_token: token || undefined,
       });
       if (res.ok) setSent(true);
-      else setError(t("contact.error"));
+      else setSendErr(t("contact.error"));
     } catch {
-      setError(t("contact.error"));
+      setSendErr(t("contact.error"));
     } finally {
       setBusy(false);
     }
   }
 
-  if (sent) {
-    return (
-      <div className="card card-pad stack center mt-6">
-        <span className="chip chip-success" style={{ fontSize: 15 }}>
-          ✓ {t("contact.sent")}
-        </span>
-        <p className="muted">{t("contact.sentSub")}</p>
-      </div>
-    );
-  }
-
   return (
-    <form className="card card-pad stack mt-6" onSubmit={submit}>
-      <label className="field">
-        <span>{t("contact.topic")}</span>
-        <select className="select" value={subject} onChange={(e) => setSubject(e.target.value)}>
-          <option value="">—</option>
-          {topics.map((tp) => (
-            <option key={tp} value={tp}>
-              {tp}
+    <form className={`form-card${sent ? " sent" : ""}`} onSubmit={submit} noValidate>
+      <div className="form-body">
+        <div className="field">
+          <label htmlFor="c-topic">{t("c_topic")}</label>
+          <select id="c-topic" className="inp" value={subject} onChange={(e) => setSubject(e.target.value)}>
+            <option value="" disabled>
+              {t("c_topic_ph")}
             </option>
-          ))}
-        </select>
-      </label>
-      <label className="field">
-        <span>{t("contact.message")}</span>
-        <textarea
-          className="textarea"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          maxLength={5000}
-          required
-        />
-      </label>
-      <label className="field">
-        <span>{t("contact.reply")}</span>
-        <input
-          className="input"
-          value={reply}
-          onChange={(e) => setReply(e.target.value)}
-          placeholder={t("contact.replyPlaceholder")}
-          maxLength={200}
-        />
-      </label>
-      {needsTurnstile && config && <Turnstile siteKey={config.turnstile_site_key} onToken={setToken} />}
-      {error && <p className="err-text">{error}</p>}
-      <button className="btn btn-primary" disabled={busy || (needsTurnstile && !token)}>
-        {t("contact.send")}
-      </button>
+            {topics.map((tp) => (
+              <option key={tp} value={tp}>
+                {tp}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className={`field${emptyErr ? " err" : ""}`}>
+          <label htmlFor="c-msg">{t("c_msg")}</label>
+          <textarea
+            id="c-msg"
+            ref={msgRef}
+            className="inp"
+            placeholder={t("c_msg_ph")}
+            value={message}
+            aria-invalid={emptyErr}
+            aria-describedby={emptyErr ? "c-msg-err" : undefined}
+            onChange={(e) => {
+              setMessage(e.target.value);
+              if (e.target.value.trim()) setEmptyErr(false);
+            }}
+            maxLength={5000}
+          />
+          <span className="errmsg" id="c-msg-err">{t("c_err")}</span>
+        </div>
+        <div className="field">
+          <label htmlFor="c-handle">
+            {t("c_handle")} <span className="opt">{t("c_handle_opt")}</span>
+          </label>
+          <input
+            id="c-handle"
+            className="inp"
+            placeholder={t("c_handle_ph")}
+            value={reply}
+            onChange={(e) => setReply(e.target.value)}
+            maxLength={200}
+          />
+        </div>
+        {needsTurnstile && config && (
+          <div className="field">
+            <Turnstile siteKey={config.turnstile_site_key} onToken={setToken} />
+          </div>
+        )}
+        {sendErr && <p className="err-text">{sendErr}</p>}
+        <button className="btn cta block" disabled={busy || (needsTurnstile && !token)}>
+          <Icon name="send" sw={2} cls="ic-dir" />
+          {t("c_send")}
+        </button>
+        <div className="resp-note">
+          <Icon name="clock" sw={2} />
+          {t("c_resp")}
+        </div>
+      </div>
+      <div className="form-success">
+        <div className="ok">
+          <Icon name="check" sw={2.6} />
+        </div>
+        <h3>{t("c_sent_t")}</h3>
+        <p>{t("c_sent_p")}</p>
+      </div>
     </form>
   );
 }

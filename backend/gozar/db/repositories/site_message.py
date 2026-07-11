@@ -40,7 +40,10 @@ class SiteMessageRepository(BaseRepository):
         stmt = select(SiteMessage)
         if unread_only:
             stmt = stmt.where(SiteMessage.read.is_(False))
-        stmt = stmt.order_by(SiteMessage.created_at.desc()).limit(limit).offset(offset)
+        # id.desc() is the tiebreak: created_at is server_default now(), IDENTICAL for rows inserted
+        # in one transaction, so ordering by it alone makes LIMIT/OFFSET paging drop/dup rows.
+        stmt = stmt.order_by(SiteMessage.created_at.desc(), SiteMessage.id.desc())
+        stmt = stmt.limit(limit).offset(offset)
         rows = await self.session.scalars(stmt)
         return list(rows.all())
 

@@ -88,6 +88,7 @@ class SiteStatusInfo:
     referral_cap: int
     streak_count: int
     streak_days: int
+    trial_hours: int  # rolling window each config lasts / renews on (the "renews every Nh" copy)
     location: str | None  # current config's location NAME
     link: str | None  # current config's link
 
@@ -399,6 +400,7 @@ class SiteTrialService:
             referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
             streak_count=device.streak_count,
             streak_days=await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+            trial_hours=hours,
             location=location,
             link=link,
         )
