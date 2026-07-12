@@ -36,13 +36,25 @@ function StatNum({ value, locale }: { value: string; locale: Locale }) {
 }
 
 function MiniRing({ pct, locale }: { pct: number; locale: Locale }) {
-  const C = 2 * Math.PI * 20;
+  // r must leave room for the 5px stroke inside the 44×44 viewBox (center 22): 19 + 2.5 = 21.5 < 22.
+  // At r=20 the stroke overflowed to 22.5 and svg overflow:hidden clipped it at the 4 cardinal points.
+  const R = 19;
+  const C = 2 * Math.PI * R;
   const off = C * (1 - Math.min(100, Math.max(0, pct)) / 100);
+  // Only the ARC is toned (warn ≥75, danger ≥90); the centre % keeps its normal colour.
+  const tone = pct >= 90 ? " full" : pct >= 75 ? " warn" : "";
   return (
     <div className="ring-mini">
       <svg viewBox="0 0 44 44">
-        <circle className="tk" cx="22" cy="22" r="20" />
-        <circle className="vl" cx="22" cy="22" r="20" strokeDasharray={C} strokeDashoffset={off} />
+        <circle className="tk" cx="22" cy="22" r={R} />
+        <circle
+          className={`vl${tone}`}
+          cx="22"
+          cy="22"
+          r={R}
+          strokeDasharray={C}
+          strokeDashoffset={off}
+        />
       </svg>
       <span className="pct">{faDigits(String(pct), locale)}{locale === "fa" ? "٪" : "%"}</span>
     </div>
