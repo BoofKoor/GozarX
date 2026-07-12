@@ -62,16 +62,8 @@ export function StatusView({ locale }: { locale: Locale }) {
     <div className="container status-page">
       <div className="page-head">
         <div>
-          <span className="eyebrow">
-            <Icon name="device" sw={2.2} />
-            {t("nav_status")}
-          </span>
           <h1>{t("title")}</h1>
-          <span className="idnote">
-            <Icon name="device" sw={2} />
-            {t("idnote")} <a href="#transfer">{t("idnote_link")}</a>
-          </span>
-          {status?.handle && <IdChip handle={status.handle} locale={locale} />}
+          {status?.handle && <IdentityBar handle={status.handle} locale={locale} />}
         </div>
       </div>
 
@@ -172,9 +164,11 @@ export function StatusView({ locale }: { locale: Locale }) {
   );
 }
 
-// Public account id (GZ-…) — a stable, shareable identity the user actually has, copyable, doubling
-// as the referral code and the device-transfer anchor. LTR (it's an ASCII code).
-function IdChip({ handle, locale }: { handle: string; locale: Locale }) {
+// Identity bar — the account handle (GZ-…) as one tidy, self-contained component: an id badge, the
+// copyable code, an icon copy button, and a device-transfer action, with a single micro-caption.
+// The handle is the user's real, stable, shareable identity (also the referral code + transfer
+// anchor). LTR (it's an ASCII code).
+function IdentityBar({ handle, locale }: { handle: string; locale: Locale }) {
   const t = translator(locale);
   const [copied, setCopied] = useState(false);
   async function copy() {
@@ -187,16 +181,31 @@ function IdChip({ handle, locale }: { handle: string; locale: Locale }) {
     }
   }
   return (
-    <div className="acc-id">
-      <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("acc_id")}</span>
-      <span className="id" dir="ltr">
-        {handle}
-      </span>
-      <button className={`copy${copied ? " done" : ""}`} type="button" onClick={copy}>
-        {copied ? t("copied") : t("copy")}
-      </button>
-      <span className="hint">{t("acc_id_hint")}</span>
-    </div>
+    <>
+      <div className="id-bar">
+        <span className="id-icb">
+          <Icon name="idcard" sw={2} />
+        </span>
+        <span className="id-code" dir="ltr">
+          {handle}
+        </span>
+        <button
+          className={`id-cp${copied ? " done" : ""}`}
+          type="button"
+          onClick={copy}
+          aria-label={t("copy")}
+          title={t("copy")}
+        >
+          <Icon name={copied ? "check" : "copy"} sw={2} />
+        </button>
+        <span className="id-sep" aria-hidden />
+        <a className="id-tr" href="#transfer">
+          <Icon name="swap" sw={2} />
+          {t("acc_transfer")}
+        </a>
+      </div>
+      <div className="id-cap">{t("acc_cap")}</div>
+    </>
   );
 }
 
