@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ClaimResponse } from "@/lib/api";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
@@ -268,19 +268,36 @@ function Picker({
 }) {
   const t = translator(locale);
   const popKey = popular ? locName(popular).toLowerCase() : "";
+  // The grid is height-capped and scrolls internally (so many locations don't balloon the card). A
+  // soft bottom fade hints there's more — shown only while the grid actually overflows AND isn't
+  // scrolled to the end, so short lists (no overflow) never get a spurious fade over the last row.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [moreBelow, setMoreBelow] = useState(false);
+  const updateFade = useCallback(() => {
+    const el = gridRef.current;
+    if (el) setMoreBelow(el.scrollHeight - el.clientHeight - el.scrollTop > 4);
+  }, []);
+  useEffect(() => {
+    updateFade();
+    window.addEventListener("resize", updateFade);
+    return () => window.removeEventListener("resize", updateFade);
+  }, [updateFade, locations.length]);
   return (
     <>
       <div className="pick-label">
         <span className="l">{t("pick")}</span>
         <span className="c tnum">{faDigits(t("pick_count").replace("{n}", String(locations.length)), locale)}</span>
       </div>
-      <div
-        className="loc-grid"
-        role="radiogroup"
-        aria-label={t("pick")}
-        style={disabled ? { opacity: 0.55, pointerEvents: "none" } : undefined}
-      >
-        {locations.map((loc) => {
+      <div className={`loc-scroll${moreBelow ? " more" : ""}`}>
+        <div
+          ref={gridRef}
+          className="loc-grid"
+          role="radiogroup"
+          aria-label={t("pick")}
+          onScroll={updateFade}
+          style={disabled ? { opacity: 0.55, pointerEvents: "none" } : undefined}
+        >
+          {locations.map((loc) => {
           const on = selected === loc;
           // "Popular" is the admin-flagged location, matched by remark NAME (never index).
           const isPopular = !!popular && (loc === popular || locName(loc).toLowerCase() === popKey);
@@ -312,7 +329,8 @@ function Picker({
               <span className="nm">{locName(loc)}</span>
             </button>
           );
-        })}
+          })}
+        </div>
       </div>
     </>
   );

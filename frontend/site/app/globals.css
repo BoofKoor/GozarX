@@ -246,6 +246,16 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-check .ic{ inline-size:12px; block-size:12px; }
 .loc-rec{ position:absolute; inset-block-start:-9px; inset-inline-start:10px; z-index:2; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; line-height:1.5; color:var(--warning-ink); background:var(--surface); border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; box-shadow:var(--shadow-sm); }
 .loc-rec svg{ inline-size:11px; block-size:11px; color:var(--warning); flex:none; }
+/* Cap the picker height so many locations scroll INSIDE the card instead of ballooning it. The grid
+   itself is untouched; a slim scrollbar + a soft bottom fade (shown only while there's more below,
+   toggled by .more) hint the overflow. Top padding keeps the "popular" badge from clipping. */
+.loc-scroll{ position:relative; }
+.loc-scroll > .loc-grid{ max-block-size:236px; overflow-y:auto; overflow-x:hidden; padding-block-start:12px; padding-inline-end:6px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+.loc-scroll > .loc-grid::-webkit-scrollbar{ inline-size:6px; }
+.loc-scroll > .loc-grid::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:9px; }
+.loc-scroll > .loc-grid::-webkit-scrollbar-track{ background:transparent; }
+.loc-scroll::after{ content:""; position:absolute; inset-inline:0; inset-block-end:0; block-size:40px; background:linear-gradient(transparent,var(--surface)); pointer-events:none; opacity:0; transition:opacity .2s; }
+.loc-scroll.more::after{ opacity:1; }
 .loc-card[aria-pressed="true"] .loc-rec{ display:none; }
 .cta-wrap{ margin-block-start:20px; }
 .reassure{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 14px; margin-block-start:14px; }
