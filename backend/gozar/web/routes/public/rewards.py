@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.settings_service import SettingsService
 from gozar.services.site_reward import SiteRewardService
@@ -52,6 +53,7 @@ async def claim_reward(
         SettingsService(session, redis),
         request.app.state.panel,
         redis,
+        PushSubscriptionRepository(session),
     )
     result = await service.claim(device, body.reward_type)
     return RewardResponse(

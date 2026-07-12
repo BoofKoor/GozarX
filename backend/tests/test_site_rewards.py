@@ -17,8 +17,10 @@ from sqlalchemy import func, select
 
 from gozar.cache.redis import SETTINGS_KEY
 from gozar.config.settings import get_settings
+from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.models.site_reward import SiteReward, SiteRewardType
+from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.remnawave.schemas import PanelUser
@@ -71,8 +73,22 @@ async def _device(session, **kw) -> SiteDevice:
 
 def _reward_service(session, panel, redis) -> SiteRewardService:
     return SiteRewardService(
-        SiteRewardRepository(session), SettingsService(session, redis), panel, redis
+        SiteRewardRepository(session),
+        SettingsService(session, redis),
+        panel,
+        redis,
+        PushSubscriptionRepository(session),
     )
+
+
+async def _subscribe(session, device_uuid: str, endpoint: str = "https://push/1") -> None:
+    """Give a device an active push subscription (the push reward now requires one)."""
+    session.add(
+        PushSubscription(
+            device_uuid=device_uuid, endpoint=endpoint, p256dh="p", auth="a", locale="fa"
+        )
+    )
+    await session.flush()
 
 
 # --- one-time rewards ---------------------------------------------------------------------------
@@ -95,10 +111,21 @@ async def test_pwa_reward_grants_once_and_bumps_live(session) -> None:
     assert second.ok is False and second.reason == "already_claimed"
 
 
-async def test_push_reward_available_device_no_bump(session) -> None:
+async def test_push_reward_requires_active_subscription(session) -> None:
+    """The push bonus is earned by actually enabling notifications — refused without a real
+    subscription (closes the 'grant on the client's word' gap)."""
+    svc = _reward_service(session, BumpPanel(), await _redis())
+    device = await _device(session)  # no push subscription yet
+
+    result = await svc.claim(device, SiteRewardType.push)
+    assert result.ok is False and result.reason == "not_subscribed"
+
+
+async def test_push_reward_with_subscription_no_bump(session) -> None:
     redis = await _redis()
     panel = BumpPanel()
     device = await _device(session)  # available — holds no live trial
+    await _subscribe(session, device.uuid)  # opted in to notifications
     svc = _reward_service(session, panel, redis)
 
     result = await svc.claim(device, SiteRewardType.push)
@@ -112,57 +139,12 @@ async def test_unknown_reward_type(session) -> None:
     assert result.ok is False and result.reason == "unknown_reward"
 
 
-# --- streak -------------------------------------------------------------------------------------
-
-
-async def test_streak_first_checkin(session) -> None:
+async def test_streak_is_not_a_claimable_reward(session) -> None:
+    """The streak advances from consecutive config CLAIMS (SiteTrialService), never from the reward
+    endpoint — so a 'streak' reward_type is now rejected like any unknown type."""
     svc = _reward_service(session, BumpPanel(), await _redis())
-    device = await _device(session)
-    result = await svc.claim(device, "streak")
-    assert result.ok is True
-    assert result.streak_count == 1
-    assert result.streak_active is False  # 1 < 7
-
-
-async def test_streak_consecutive_day_increments(session) -> None:
-    svc = _reward_service(session, BumpPanel(), await _redis())
-    device = await _device(
-        session, streak_count=5, last_streak_at=datetime.now(UTC) - timedelta(days=1)
-    )
-    result = await svc.claim(device, "streak")
-    assert result.streak_count == 6
-
-
-async def test_streak_same_day_is_idempotent(session) -> None:
-    svc = _reward_service(session, BumpPanel(), await _redis())
-    device = await _device(session, streak_count=3, last_streak_at=datetime.now(UTC))
-    result = await svc.claim(device, "streak")
-    assert result.streak_count == 3  # already checked in today
-
-
-async def test_streak_broken_resets_to_one(session) -> None:
-    svc = _reward_service(session, BumpPanel(), await _redis())
-    device = await _device(
-        session, streak_count=5, last_streak_at=datetime.now(UTC) - timedelta(days=3)
-    )
-    result = await svc.claim(device, "streak")
-    assert result.streak_count == 1
-
-
-async def test_streak_reaches_threshold_bumps_live(session) -> None:
-    redis = await _redis()
-    panel = BumpPanel(PanelUser(uuid="u1", username="s-x"))
-    device = await _device(
-        session,
-        status=SiteDeviceStatus.active_config,
-        site_panel_username="s-x",
-        streak_count=6,
-        last_streak_at=datetime.now(UTC) - timedelta(days=1),
-    )
-    result = await _reward_service(session, panel, redis).claim(device, "streak")
-    assert result.streak_count == 7
-    assert result.streak_active is True
-    assert panel.bumped and panel.bumped[0][1] == (1024 + 300) * _MB  # streak bonus applied live
+    result = await svc.claim(await _device(session), "streak")
+    assert result.ok is False and result.reason == "unknown_reward"
 
 
 # --- full allowance math ------------------------------------------------------------------------
@@ -267,11 +249,11 @@ async def test_endpoint_pwa_reward_once(env) -> None:
     assert second.json()["ok"] is False and second.json()["reason"] == "already_claimed"
 
 
-async def test_endpoint_streak_checkin(env) -> None:
+async def test_endpoint_streak_type_rejected(env) -> None:
     client, _app = env
     resp = await client.post("/api/public/rewards/claim", json={"reward_type": "streak"})
     body = resp.json()
-    assert body["ok"] is True and body["streak_count"] == 1
+    assert body["ok"] is False and body["reason"] == "unknown_reward"
 
 
 async def test_endpoint_referral_flow_credits_inviter(env, db_sessions) -> None:

@@ -32,7 +32,12 @@ from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.remnawave.schemas import Subscription
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_economy import site_device_allowance_bytes
+from gozar.services.site_economy import (
+    next_streak_count,
+    site_compute_traffic_bytes,
+    site_device_allowance_bytes,
+    streak_is_active,
+)
 from gozar.services.trial import (
     AlreadyClaimedToday,
     NoLocations,
@@ -88,6 +93,7 @@ class SiteStatusInfo:
     referral_cap: int
     streak_count: int
     streak_days: int
+    streak_active: bool  # streak_count has reached streak_days (the bonus is standing)
     trial_hours: int  # rolling window each config lasts / renews on (the "renews every Nh" copy)
     location: str | None  # current config's location NAME
     link: str | None  # current config's link
@@ -323,8 +329,19 @@ class SiteTrialService:
             return NotReady()
 
         # 4. Panel call 1 — create a fresh trial account. Device stays available on failure.
-        traffic = await self._allowance_bytes(device)
         claim_at = datetime.now(UTC)
+        # A fresh claim advances the consecutive-daily-claim streak. Compute the streak this claim
+        # WOULD produce and fold its bonus into the provisioned allowance up front, but only persist
+        # it (step 6) once the claim actually succeeds — a failed claim must never move the streak.
+        new_streak = next_streak_count(device.streak_count, device.last_claim_at, claim_at, hours)
+        streak_days = await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
+        claimed_rewards = await self._rewards.types_for_device(device.uuid)
+        traffic = await site_compute_traffic_bytes(
+            self._settings,
+            device.referral_count,
+            rewards=claimed_rewards,
+            streak_active=streak_days > 0 and new_streak >= streak_days,
+        )
         expire_at = claim_at + timedelta(hours=hours)
         username = self._username(device)
         try:
@@ -348,6 +365,8 @@ class SiteTrialService:
         device.status = SiteDeviceStatus.active_config
         device.site_panel_username = username
         device.last_claim_at = claim_at  # cooldown starts at provision, aligned with panel expiry
+        device.streak_count = new_streak  # consecutive-claim streak advanced on a real provision
+        device.last_streak_at = claim_at
         return await self._deliver(device, filtered, expires, location_name, changed=False)
 
     async def status(self, device: SiteDevice) -> SiteStatusInfo:
@@ -382,6 +401,7 @@ class SiteTrialService:
         daily_bytes = await self._allowance_bytes(device)
         hours = await self._hours()
         cooling = in_cooldown(device.last_claim_at, hours)
+        streak_days = await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
         return SiteStatusInfo(
             status=device.status,
             active=active,
@@ -399,7 +419,8 @@ class SiteTrialService:
             referral_count=device.referral_count,
             referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
             streak_count=device.streak_count,
-            streak_days=await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+            streak_days=streak_days,
+            streak_active=streak_is_active(device, streak_days),
             trial_hours=hours,
             location=location,
             link=link,

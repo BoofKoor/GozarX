@@ -30,6 +30,9 @@ class SiteDevice(Base):
 
     # Opaque device id signed into the httpOnly cookie (UUID4 text). The whole identity.
     uuid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    # Short human-readable public handle (``GZ-7K3F9A``) — the account id shown to the user and used
+    # as the referral code in invite links. Unique; minted at first sight, backfilled for old rows.
+    handle: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
     status: Mapped[str] = mapped_column(
         String(16), default=SiteDeviceStatus.available, server_default=SiteDeviceStatus.available
     )

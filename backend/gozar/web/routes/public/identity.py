@@ -79,17 +79,27 @@ def fingerprint_hash(request: Request) -> str:
     return hashlib.sha256(f"{ua}|{al}".encode()).hexdigest()[:64]
 
 
-def _referrer(request: Request, new_uuid: str) -> str | None:
-    """The inviter's device uuid from a ``?ref=`` link, captured once when a device is minted. Just
-    a format check — a non-existent referrer simply earns no credit later (no DB read here)."""
-    ref = request.query_params.get("ref", "")
+async def _referrer(
+    request: Request, repo: SiteDeviceRepository, new_uuid: str
+) -> str | None:
+    """The inviter's device UUID from a ``?ref=`` link, captured once when a device is minted.
+
+    ``ref`` may be either the inviter's public handle (``GZ-…`` — the form invite links now use) or
+    a raw device uuid (legacy links). A handle is resolved to its device UUID; a well-formed uuid is
+    taken as-is (no existence check — a non-existent referrer simply earns no credit later). We
+    always STORE the uuid so ``referred_by`` stays a stable foreign key into ``site_devices``."""
+    ref = request.query_params.get("ref", "").strip()
     if not ref or ref == new_uuid:
         return None
     try:
         uuid_lib.UUID(ref)
+        return ref  # legacy uuid ref link
     except ValueError:
+        pass
+    inviter = await repo.get_by_handle(ref)  # a handle (GZ-…) → its device uuid
+    if inviter is None or inviter.uuid == new_uuid:
         return None
-    return ref
+    return inviter.uuid
 
 
 def set_device_cookie(response: Response, request: Request, device_uuid: str) -> None:
@@ -136,7 +146,7 @@ async def current_device(request: Request, response: Response, session: DbSessio
         new_uuid,
         fingerprint_hash=fingerprint_hash(request),
         ip_bucket=ip_bucket(request, secret),
-        referred_by=_referrer(request, new_uuid),
+        referred_by=await _referrer(request, repo, new_uuid),
     )
     set_device_cookie(response, request, new_uuid)
     return device

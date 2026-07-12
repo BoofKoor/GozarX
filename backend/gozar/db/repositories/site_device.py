@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from sqlalchemy import func, select
 
+from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.base import BaseRepository
 
@@ -14,6 +15,24 @@ from gozar.db.repositories.base import BaseRepository
 class SiteDeviceRepository(BaseRepository):
     async def get(self, uuid: str) -> SiteDevice | None:
         return await self.session.get(SiteDevice, uuid)
+
+    async def get_by_handle(self, handle: str) -> SiteDevice | None:
+        """Resolve a public handle (e.g. an incoming ``?ref=`` value) back to its device."""
+        return await self.session.scalar(
+            select(SiteDevice).where(SiteDevice.handle == normalize_handle(handle))
+        )
+
+    async def _unique_handle(self) -> str:
+        """A fresh handle not already taken. The DB unique constraint is the real backstop; this
+        just avoids the retry in the overwhelmingly common (collision-free) case."""
+        for _ in range(8):
+            candidate = new_handle()
+            exists = await self.session.scalar(
+                select(SiteDevice.uuid).where(SiteDevice.handle == candidate)
+            )
+            if exists is None:
+                return candidate
+        return new_handle()
 
     async def create(
         self,
@@ -25,6 +44,7 @@ class SiteDeviceRepository(BaseRepository):
     ) -> SiteDevice:
         device = SiteDevice(
             uuid=uuid,
+            handle=await self._unique_handle(),
             fingerprint_hash=fingerprint_hash,
             ip_bucket=ip_bucket,
             referred_by=referred_by,
