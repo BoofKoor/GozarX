@@ -115,7 +115,10 @@ export class ApiError extends Error {
 
 export const api = {
   config: () => get<PublicConfig>("/config"),
-  status: () => get<StatusResponse>("/status"),
+  // `ref` (an inviter's handle/uuid from a ?ref= landing link) is forwarded ONLY on the first,
+  // device-minting call so the backend can record referred_by — it's ignored for existing devices.
+  status: (ref?: string) =>
+    get<StatusResponse>(ref ? `/status?ref=${encodeURIComponent(ref)}` : "/status"),
   locations: () => get<{ locations: string[] }>("/locations"),
   claim: (location: string, turnstileToken?: string) =>
     post<ClaimResponse>("/claim", { location, turnstile_token: turnstileToken }),

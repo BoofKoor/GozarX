@@ -347,18 +347,36 @@ async def test_status_active_reports_live_traffic_and_location(session) -> None:
 
 async def test_status_reports_streak_and_active(session) -> None:
     svc = await _service(session, FakePanel([]), **{SiteSettingKey.SITE_STREAK_DAYS: "3"})
-    device = await _device(session, streak_count=3)
+    # a real streak always has a recent last_claim_at (it advances on claim)
+    device = await _device(session, streak_count=3, last_claim_at=datetime.now(UTC))
     info = await svc.status(device)
     assert info.streak_count == 3
     assert info.streak_days == 3
-    assert info.streak_active is True  # reached the qualifying length
+    assert info.streak_active is True  # reached the qualifying length, still live
 
 
 async def test_status_streak_inactive_below_threshold(session) -> None:
     svc = await _service(session, FakePanel([]), **{SiteSettingKey.SITE_STREAK_DAYS: "7"})
-    device = await _device(session, streak_count=2)
+    device = await _device(session, streak_count=2, last_claim_at=datetime.now(UTC))
     info = await svc.status(device)
     assert info.streak_active is False
+
+
+async def test_status_lapsed_streak_resets_in_quote(session) -> None:
+    # A qualifying streak whose last claim is well past the grace window must show as reset (0,
+    # inactive) and NOT inflate the quoted allowance — matching what the next claim would provision.
+    svc = await _service(
+        session,
+        FakePanel([]),
+        **{SiteSettingKey.SITE_STREAK_DAYS: "3", SiteSettingKey.SITE_REWARD_STREAK_MB: "300"},
+    )
+    device = await _device(
+        session, streak_count=5, last_claim_at=datetime.now(UTC) - timedelta(hours=100)
+    )
+    info = await svc.status(device)
+    assert info.streak_count == 0
+    assert info.streak_active is False
+    assert info.daily_limit_bytes == _GB  # base only — no lingering streak bonus
 
 
 async def test_status_cooldown_blocks_next_claim(session) -> None:

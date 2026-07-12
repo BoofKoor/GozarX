@@ -217,11 +217,14 @@ async def env(db_sessions) -> AsyncIterator[tuple[httpx.AsyncClient, object]]:
 
 
 _FCM = "https://fcm.googleapis.com/fcm/send/z"
+# Well-formed Web Push keys (base64url, realistic lengths) for the endpoint (validated) tests.
+_P256 = "x" * 88
+_AUTH = "y" * 24
 
 
 async def test_endpoint_subscribe_then_unsubscribe(env, db_sessions) -> None:
     client, _app = env
-    sub = {"endpoint": _FCM, "p256dh": "k", "auth": "a", "locale": "en"}
+    sub = {"endpoint": _FCM, "p256dh": _P256, "auth": _AUTH, "locale": "en"}
     assert (await client.post("/api/public/push/subscribe", json=sub)).json()["ok"] is True
     async with db_sessions() as s:
         row = (await s.scalars(select(PushSubscription))).one()
@@ -283,8 +286,9 @@ async def test_subscribe_ip_backstop_throttles_cookieless(env) -> None:
     # per-IP backstop stops the flood after _SUB_IP_LIMIT.
     for i in range(_SUB_IP_LIMIT):
         client.cookies.clear()
-        sub = {"endpoint": f"https://fcm.googleapis.com/fcm/send/{i}", "p256dh": "k", "auth": "a"}
+        ep = f"https://fcm.googleapis.com/fcm/send/{i}"
+        sub = {"endpoint": ep, "p256dh": _P256, "auth": _AUTH}
         assert (await client.post("/api/public/push/subscribe", json=sub)).status_code == 200
     client.cookies.clear()
-    flood = {"endpoint": "https://fcm.googleapis.com/fcm/send/last", "p256dh": "k", "auth": "a"}
+    flood = {"endpoint": "https://fcm.googleapis.com/fcm/send/last", "p256dh": _P256, "auth": _AUTH}
     assert (await client.post("/api/public/push/subscribe", json=flood)).status_code == 429

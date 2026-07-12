@@ -29,9 +29,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   }, []);
 
   // Running as an installed PWA is itself proof of install — grant the one-time reward once
-  // (the backend dedupes, so a repeat is a clean no-op).
+  // (the backend dedupes, so a repeat is a clean no-op). Gate on `status` being loaded so this
+  // rides the already-minted device cookie and can't race a second cookieless mint.
   useEffect(() => {
-    if (pwa === "installed" && !pwaClaimed.current) {
+    if (pwa === "installed" && status && !pwaClaimed.current) {
       pwaClaimed.current = true;
       api
         .claimReward("pwa")
@@ -40,7 +41,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
         })
         .catch(() => {});
     }
-  }, [pwa, reload]);
+  }, [pwa, status, reload]);
 
   if (!status) return null;
 
@@ -129,16 +130,17 @@ export function AccountRewards({ locale }: { locale: Locale }) {
               desc={t("installed_d")}
               trailing={<span className="perm-tag granted">{t("rw_installed")}</span>}
             />
-          ) : (
+          ) : config ? (
+            // Only once /config is loaded, so the reward pill never flashes "+0 MB".
             <Chip
               icon="download"
               title={t("m_pwa")}
               desc={t("m_pwa_d")}
               onClick={installPwa}
               busy={busy === "pwa"}
-              trailing={<span className="rw">{mb(config?.reward_pwa_mb)}</span>}
+              trailing={<span className="rw">{mb(config.reward_pwa_mb)}</span>}
             />
-          ))}
+          ) : null)}
 
         {pushConfigured &&
           (perm === "granted" ? (
@@ -277,12 +279,25 @@ function StreakCard({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
 }
 
 function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.focus(); // move focus into the dialog on open
+  }, []);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
   return (
     <div className="overlay open" onClick={onClose}>
       <div
         className="modal"
         role="dialog"
         aria-modal
+        tabIndex={-1}
+        ref={ref}
         style={{ maxInlineSize: 420 }}
         onClick={(e) => e.stopPropagation()}
       >

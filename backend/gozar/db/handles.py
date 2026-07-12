@@ -8,8 +8,11 @@ Lives in the ``db`` layer (no ORM/session deps) so both the repository (mint) an
 layer (resolve a ``?ref=`` handle) can import it without inverting the service→repo direction.
 
 The alphabet drops every visually ambiguous character (``0/O``, ``1/I/L``, ``U``) so a handle can be
-read aloud or typed without confusion. Uniqueness is enforced by a DB unique constraint; the caller
-retries on the (astronomically rare) collision.
+read aloud or typed without confusion. The repository pre-checks a candidate against existing rows
+before insert, which avoids a collision in the common case; the DB unique index is the authoritative
+backstop. A genuine concurrent collision (two transactions independently picking the same handle in
+the same instant — ~1 in 7e8 per pair) surfaces as an IntegrityError rather than an auto-retry; at
+this alphabet size and traffic it is astronomically unlikely.
 """
 
 from __future__ import annotations

@@ -56,6 +56,21 @@ def streak_is_active(device: SiteDevice, streak_days: int) -> bool:
     return streak_days > 0 and device.streak_count >= streak_days
 
 
+def streak_within_grace(
+    last_claim_at: datetime | None, trial_hours: int, now: datetime
+) -> bool:
+    """Whether a persisted streak is still 'live' — i.e. the last claim is recent enough that the
+    next claim would CONTINUE it (within the same 2×``trial_hours`` grace as ``next_streak_count``).
+
+    ``streak_count`` is only rewritten on a claim, so between claims it can be stale. Status uses
+    this to avoid advertising a streak (and its bonus) that the very next claim would reset —
+    keeping the quote honest and consistent with what provisioning will actually grant."""
+    if last_claim_at is None:
+        return False
+    last = last_claim_at if last_claim_at.tzinfo else last_claim_at.replace(tzinfo=UTC)
+    return now - last <= timedelta(hours=max(trial_hours, 1) * 2)
+
+
 def next_streak_count(
     prev_count: int, last_claim_at: datetime | None, now: datetime, trial_hours: int
 ) -> int:

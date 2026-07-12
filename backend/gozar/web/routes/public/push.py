@@ -8,6 +8,8 @@ guarded by a Redis rate limit only, no Turnstile. The push REWARD is separate (P
 
 from __future__ import annotations
 
+import re
+
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field, field_validator
 
@@ -25,6 +27,7 @@ _SUB_WINDOW = 3600
 # cap never bites it — the IP cap stops a cookieless flood. Generous so a CGNAT-shared IP is fine.
 _SUB_IP_LIMIT = 60
 _LOCALES = ("fa", "en")
+_B64URL = re.compile(r"^[A-Za-z0-9_-]+=*$")
 
 
 def _validate_endpoint(value: str) -> str:
@@ -35,13 +38,25 @@ def _validate_endpoint(value: str) -> str:
     return value
 
 
+def _validate_b64url(value: str) -> str:
+    # The VAPID keys are base64url. Enforcing the encoding rejects obviously-malformed keys (a
+    # fabricated "x"/"x" pair) so a bogus subscription can't be minted just to farm the push reward.
+    if not _B64URL.match(value):
+        raise ValueError("invalid key encoding")
+    return value
+
+
 class SubscribeRequest(BaseModel):
     endpoint: str = Field(min_length=1, max_length=512)
-    p256dh: str = Field(min_length=1, max_length=255)
-    auth: str = Field(min_length=1, max_length=255)
+    # p256dh is a 65-byte P-256 point (~87 base64url chars); auth is 16 bytes (~22). Realistic lower
+    # bounds + the base64url charset keep out placeholder/garbage keys without rejecting real ones.
+    p256dh: str = Field(min_length=64, max_length=255)
+    auth: str = Field(min_length=16, max_length=255)
     locale: str = "fa"
 
     _check_endpoint = field_validator("endpoint")(staticmethod(_validate_endpoint))
+    _check_p256dh = field_validator("p256dh")(staticmethod(_validate_b64url))
+    _check_auth = field_validator("auth")(staticmethod(_validate_b64url))
 
 
 class UnsubscribeRequest(BaseModel):

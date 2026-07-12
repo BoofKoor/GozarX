@@ -80,18 +80,21 @@ export function usePwaState(): PwaState {
 }
 
 // Fire the native install prompt. Resolves true ONLY if the user actually accepted the install —
-// the caller grants the reward only then.
+// the caller grants the reward only then. The deferred event is consumed AFTER the choice resolves
+// (in `finally`), so the chip stays in `installable` (busy) during the OS prompt instead of
+// unmounting mid-prompt; it only clears once the prompt is done.
 export async function promptInstall(): Promise<boolean> {
-  if (!deferred) return false;
   const evt = deferred;
-  deferred = null;
-  emit();
+  if (!evt) return false;
   try {
     await evt.prompt();
     const choice = await evt.userChoice;
     return choice.outcome === "accepted";
   } catch {
     return false;
+  } finally {
+    deferred = null;
+    emit();
   }
 }
 

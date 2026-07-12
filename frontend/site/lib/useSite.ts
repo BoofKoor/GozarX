@@ -63,8 +63,14 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
   const bootstrap = useCallback(async () => {
     try {
       // /status FIRST: it mints the device + sets the cookie. Awaiting it means the device exists
-      // (exactly once) before anything else that also resolves the device runs.
-      setStatus(await api.status());
+      // (exactly once) before anything else that also resolves the device runs. Forward a ?ref=
+      // invite code (inviter's handle/uuid) on THIS mint call so the referral is credited — the
+      // relative /status fetch would otherwise drop the landing URL's query string.
+      const ref =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("ref")
+          : null;
+      setStatus(await api.status(ref ?? undefined));
       setOffline(false);
     } catch {
       setOffline(true);

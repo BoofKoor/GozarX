@@ -36,7 +36,7 @@ from gozar.services.site_economy import (
     next_streak_count,
     site_compute_traffic_bytes,
     site_device_allowance_bytes,
-    streak_is_active,
+    streak_within_grace,
 )
 from gozar.services.trial import (
     AlreadyClaimedToday,
@@ -398,10 +398,25 @@ class SiteTrialService:
                     elif links:
                         location, link = next(iter(links.items()))
 
-        daily_bytes = await self._allowance_bytes(device)
         hours = await self._hours()
         cooling = in_cooldown(device.last_claim_at, hours)
         streak_days = await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
+        # A persisted streak only counts while it's still LIVE (last claim within the grace window).
+        # A lapsed streak resets on the next claim, so status must not advertise a streak — or its
+        # bonus — that the next claim won't provision. Reflect the live streak in the count, the
+        # active flag, AND the quoted allowance so all three agree with provisioning.
+        live_streak = (
+            device.streak_count
+            if streak_within_grace(device.last_claim_at, hours, datetime.now(UTC))
+            else 0
+        )
+        streak_active = streak_days > 0 and live_streak >= streak_days
+        daily_bytes = await site_compute_traffic_bytes(
+            self._settings,
+            device.referral_count,
+            rewards=await self._rewards.types_for_device(device.uuid),
+            streak_active=streak_active,
+        )
         return SiteStatusInfo(
             status=device.status,
             active=active,
@@ -418,9 +433,9 @@ class SiteTrialService:
             configs=await self._claims.count_for_device(device.uuid),
             referral_count=device.referral_count,
             referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
-            streak_count=device.streak_count,
+            streak_count=live_streak,
             streak_days=streak_days,
-            streak_active=streak_is_active(device, streak_days),
+            streak_active=streak_active,
             trial_hours=hours,
             location=location,
             link=link,
