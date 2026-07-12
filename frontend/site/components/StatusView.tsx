@@ -153,7 +153,9 @@ export function StatusView({ locale }: { locale: Locale }) {
           <SettingsCard locale={locale} pushEnabled={!!config?.vapid_public_key} onReload={reload} />
           <div className="card hist">
             <div className="block-title">
-              <h2>{t("hist_title")}</h2>
+              <h2>
+                <Icon name="clock" sw={2} /> {t("hist_title")}
+              </h2>
             </div>
             {status?.history && status.history.length > 0 ? (
               <div className="hist-list">
@@ -294,9 +296,14 @@ function SettingsCard({
   return (
     <div className="card settings">
       <div className="block-title" style={{ paddingBlockStart: 14 }}>
-        <h2>{t("set_title")}</h2>
+        <h2>
+          <Icon name="sliders" sw={2} /> {t("set_title")}
+        </h2>
       </div>
       <div className="srow">
+        <span className="si">
+          <Icon name="globe" sw={2} />
+        </span>
         <div className="sk">{t("set_lang")}</div>
         <div className="mini-seg">
           <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
@@ -308,6 +315,9 @@ function SettingsCard({
         </div>
       </div>
       <div className="srow">
+        <span className="si">
+          <Icon name="contrast" sw={2} />
+        </span>
         <div className="sk">{t("set_theme")}</div>
         <div className="mini-seg">
           <button aria-pressed={themeState === "light"} onClick={() => setTheme("light")}>
@@ -319,6 +329,9 @@ function SettingsCard({
         </div>
       </div>
       <div className="srow">
+        <span className="si">
+          <Icon name="bell" sw={2} />
+        </span>
         <div className="sk">
           {t("set_notif")} {permTag}
           <div className="skd">{t("set_notif_d")}</div>
