@@ -7,6 +7,7 @@ session is ever touched — the fakeredis cache stands in for the settings table
 from __future__ import annotations
 
 import json
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import fakeredis.aioredis
@@ -14,7 +15,7 @@ import fakeredis.aioredis
 from gozar.cache.redis import SETTINGS_KEY
 from gozar.db.models.site_reward import SiteRewardType
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_economy import site_compute_traffic_bytes
+from gozar.services.site_economy import next_streak_count, site_compute_traffic_bytes
 
 _MB = 1024 * 1024
 
@@ -88,3 +89,37 @@ async def test_missing_settings_fall_back_safely() -> None:
 
 async def test_negative_referral_count_is_clamped() -> None:
     assert await site_compute_traffic_bytes(await _settings(), -3) == 1024 * _MB
+
+
+# --- next_streak_count (consecutive-claim streak) -----------------------------------------------
+
+
+def test_next_streak_first_claim_is_one() -> None:
+    now = datetime(2026, 7, 12, tzinfo=UTC)
+    assert next_streak_count(0, None, now, 24) == 1
+
+
+def test_next_streak_consecutive_increments() -> None:
+    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
+    last = now - timedelta(hours=25)  # within the 2×24h grace
+    assert next_streak_count(4, last, now, 24) == 5
+
+
+def test_next_streak_gap_resets_to_one() -> None:
+    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
+    last = now - timedelta(hours=100)  # a skipped day → restart
+    assert next_streak_count(6, last, now, 24) == 1
+
+
+def test_next_streak_grace_boundary_inclusive() -> None:
+    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
+    exactly_grace = now - timedelta(hours=48)  # == 2×24h, still counts as consecutive
+    assert next_streak_count(2, exactly_grace, now, 24) == 3
+    just_past = now - timedelta(hours=48, seconds=1)
+    assert next_streak_count(2, just_past, now, 24) == 1
+
+
+def test_next_streak_handles_naive_last() -> None:
+    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
+    naive_last = datetime(2026, 7, 11, 12)  # tz-naive → treated as UTC
+    assert next_streak_count(1, naive_last, now, 24) == 2

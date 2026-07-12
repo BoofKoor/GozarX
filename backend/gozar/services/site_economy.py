@@ -9,6 +9,7 @@ hardcodes a reward/cap; every number comes from settings.
 from __future__ import annotations
 
 from collections.abc import Collection
+from datetime import UTC, datetime, timedelta
 
 from gozar.db.models.site_device import SiteDevice
 from gozar.db.models.site_reward import SiteRewardType
@@ -51,8 +52,43 @@ async def site_compute_traffic_bytes(
 
 
 def streak_is_active(device: SiteDevice, streak_days: int) -> bool:
-    """Whether the device's daily-visit streak has reached the qualifying length."""
+    """Whether the device's daily-claim streak has reached the qualifying length."""
     return streak_days > 0 and device.streak_count >= streak_days
+
+
+def streak_within_grace(
+    last_claim_at: datetime | None, trial_hours: int, now: datetime
+) -> bool:
+    """Whether a persisted streak is still 'live' — i.e. the last claim is recent enough that the
+    next claim would CONTINUE it (within the same 2×``trial_hours`` grace as ``next_streak_count``).
+
+    ``streak_count`` is only rewritten on a claim, so between claims it can be stale. Status uses
+    this to avoid advertising a streak (and its bonus) that the very next claim would reset —
+    keeping the quote honest and consistent with what provisioning will actually grant."""
+    if last_claim_at is None:
+        return False
+    last = last_claim_at if last_claim_at.tzinfo else last_claim_at.replace(tzinfo=UTC)
+    return now - last <= timedelta(hours=max(trial_hours, 1) * 2)
+
+
+def next_streak_count(
+    prev_count: int, last_claim_at: datetime | None, now: datetime, trial_hours: int
+) -> int:
+    """The streak length AFTER a fresh claim happening ``now``.
+
+    The streak counts CONSECUTIVE daily config claims. A claim is only allowed once per rolling
+    ``trial_hours`` window, so a new claim that lands within one extra window of grace continues the
+    streak (+1); a longer gap means a skipped day and the streak restarts at 1. The first-ever claim
+    (no prior ``last_claim_at``) starts the streak at 1. Because a lapse resets on the very next
+    claim — the only moment the bonus is actually provisioned — a streak can never linger stale.
+    """
+    if last_claim_at is None:
+        return 1
+    last = last_claim_at if last_claim_at.tzinfo else last_claim_at.replace(tzinfo=UTC)
+    grace = timedelta(hours=max(trial_hours, 1) * 2)
+    if now - last <= grace:
+        return max(prev_count, 0) + 1
+    return 1
 
 
 async def site_device_allowance_bytes(

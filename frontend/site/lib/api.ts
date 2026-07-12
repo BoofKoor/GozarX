@@ -22,9 +22,11 @@ export interface StatusResponse {
   referral_cap: number;
   streak_count: number;
   streak_days: number;
+  streak_active: boolean;
   trial_hours: number;
   location: string | null;
   link: string | null;
+  handle: string;
   ref_code: string;
 }
 
@@ -68,6 +70,10 @@ export interface PublicConfig {
   vapid_public_key: string;
   turnstile_enabled: boolean;
   popular_location: string | null;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
 }
 
 async function get<T>(path: string): Promise<T> {
@@ -109,7 +115,10 @@ export class ApiError extends Error {
 
 export const api = {
   config: () => get<PublicConfig>("/config"),
-  status: () => get<StatusResponse>("/status"),
+  // `ref` (an inviter's handle/uuid from a ?ref= landing link) is forwarded ONLY on the first,
+  // device-minting call so the backend can record referred_by — it's ignored for existing devices.
+  status: (ref?: string) =>
+    get<StatusResponse>(ref ? `/status?ref=${encodeURIComponent(ref)}` : "/status"),
   locations: () => get<{ locations: string[] }>("/locations"),
   claim: (location: string, turnstileToken?: string) =>
     post<ClaimResponse>("/claim", { location, turnstile_token: turnstileToken }),

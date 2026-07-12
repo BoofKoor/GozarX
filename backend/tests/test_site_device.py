@@ -123,14 +123,14 @@ async def env(db_sessions) -> AsyncIterator[tuple[httpx.AsyncClient, object]]:
 
 async def test_endpoint_reset_clears_identity(env, db_sessions) -> None:
     client, _app = env
-    first = (await client.get("/api/public/status")).json()["ref_code"]
+    first = (await client.get("/api/public/status")).json()["ref_code"]  # the device's handle
 
     resp = await client.post("/api/public/device/reset")
     assert resp.status_code == 200 and resp.json()["ok"] is True
 
-    # The old device row is gone...
+    # The old device row is gone (looked up by its handle, which ref_code now carries)...
     async with db_sessions() as s:
-        gone = await s.get(SiteDevice, first)
+        gone = await s.scalar(select(SiteDevice).where(SiteDevice.handle == first))
     assert gone is None
     # ...and the browser now mints a brand-new identity (cookie was cleared).
     second = (await client.get("/api/public/status")).json()["ref_code"]

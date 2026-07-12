@@ -39,10 +39,12 @@ class StatusResponse(BaseModel):
     referral_cap: int
     streak_count: int
     streak_days: int
+    streak_active: bool  # streak_count has reached streak_days (the daily-claim bonus is standing)
     trial_hours: int  # rolling window each config lasts / renews on ("renews every Nh")
     location: str | None = None
     link: str | None = None
-    ref_code: str  # this device's referral code — the SPA builds "?ref=<ref_code>" invite links
+    handle: str  # this device's public account id (GZ-…) — shown on the account page
+    ref_code: str  # this device's referral code (its handle) — SPA builds "?ref=<ref_code>" links
 
 
 class PublicConfig(BaseModel):
@@ -50,6 +52,12 @@ class PublicConfig(BaseModel):
     vapid_public_key: str
     turnstile_enabled: bool
     popular_location: str | None = None  # remark NAME the admin flags as "popular" (picker star)
+    # Reward MB amounts + streak length (from site_* settings) so the SPA can show "+N MB" chips and
+    # the streak day-dots without hardcoding any economics.
+    reward_pwa_mb: int = 0
+    reward_push_mb: int = 0
+    reward_streak_mb: int = 0
+    streak_days: int = 0
 
 
 def _service(request: Request, session) -> SiteTrialService:
@@ -66,7 +74,8 @@ def _service(request: Request, session) -> SiteTrialService:
 @router.get("/status", response_model=StatusResponse)
 async def get_status(request: Request, session: DbSession, device: CurrentDevice) -> StatusResponse:
     info = await _service(request, session).status(device)
-    return StatusResponse(**vars(info), ref_code=device.uuid)
+    handle = device.handle or device.uuid  # uuid fallback for any pre-migration row
+    return StatusResponse(**vars(info), handle=handle, ref_code=handle)
 
 
 @router.get("/config", response_model=PublicConfig)
@@ -79,4 +88,8 @@ async def get_config(request: Request, session: DbSession) -> PublicConfig:
         vapid_public_key=settings.vapid_public_key,
         turnstile_enabled=bool(settings.turnstile_secret.get_secret_value()),
         popular_location=popular or None,
+        reward_pwa_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PWA_MB, 0),
+        reward_push_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
+        reward_streak_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),
+        streak_days=await site_settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
     )
