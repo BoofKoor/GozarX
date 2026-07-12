@@ -255,7 +255,16 @@ function SettingsCard({
   const [themeState, setThemeState] = useState<string>("");
   useEffect(() => {
     if (typeof Notification !== "undefined") setPerm(Notification.permission);
-    setThemeState(document.getElementById("app")?.getAttribute("data-theme") ?? "");
+    // Effective theme: an explicit choice sets data-theme; with no cookie the page follows the OS
+    // via prefers-color-scheme (data-theme unset), so read the media query in that case.
+    const attr = document.getElementById("app")?.getAttribute("data-theme");
+    setThemeState(
+      attr === "light" || attr === "dark"
+        ? attr
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light",
+    );
   }, []);
 
   function setCookie(name: string, value: string) {
