@@ -22,7 +22,11 @@ export function SiteInbox() {
 
   const items = data?.items ?? [];
   const selected = items.find((m) => m.id === selectedId) ?? null;
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.page_size)) : 1;
+  // Page by the count that matches the active filter: `total` counts ALL messages, but in
+  // unread-only mode the list is the (smaller) `unread` set — using `total` would show phantom
+  // empty pages past the real end.
+  const totalCount = unreadOnly ? (data?.unread ?? 0) : (data?.total ?? 0);
+  const totalPages = data ? Math.max(1, Math.ceil(totalCount / data.page_size)) : 1;
 
   // Reading in unread-only mode shrinks the list; if the current page falls past the end, step back.
   useEffect(() => {
@@ -93,14 +97,16 @@ export function SiteInbox() {
                       <span className={clsx("block truncate", !m.read && "font-bold")} dir="auto">
                         {m.subject}
                       </span>
-                      <span className="block truncate text-xs text-slate-400">{fmtDate(m.created_at)}</span>
+                      <span className="block truncate text-xs text-slate-400">
+                        {fmtDate(m.created_at)}
+                      </span>
                     </span>
                   </button>
                 </li>
               ))}
             </ul>
           )}
-          {data && data.total > data.page_size && (
+          {data && totalCount > data.page_size && (
             <div className="mt-3 flex items-center justify-between text-sm">
               <Button
                 variant="ghost"
@@ -140,9 +146,7 @@ export function SiteInbox() {
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
                 <span>{fmtDate(selected.created_at)}</span>
                 <span>زبان: {selected.locale}</span>
-                {selected.reply_handle && (
-                  <span dir="auto">راه پاسخ: {selected.reply_handle}</span>
-                )}
+                {selected.reply_handle && <span dir="auto">راه پاسخ: {selected.reply_handle}</span>}
               </div>
               {/* User-submitted text — render as PLAIN text (never HTML). */}
               <div

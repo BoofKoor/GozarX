@@ -2,6 +2,7 @@
 
 /** Group digits for readability (locale-agnostic so tests are stable). */
 export function formatNumber(n: number): string {
+  if (!Number.isFinite(n)) return "0";
   return n.toLocaleString("en-US");
 }
 
@@ -16,6 +17,7 @@ export function formatMb(mb: number): string {
 
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
 export function humanBytes(n: number): string {
+  if (!Number.isFinite(n)) return "0 B";
   let v = Math.max(n, 0);
   for (const unit of ["B", "KB", "MB", "GB", "TB"]) {
     if (v < 1024) return `${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`;

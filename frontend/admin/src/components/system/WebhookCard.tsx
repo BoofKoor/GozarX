@@ -6,8 +6,11 @@ import { formatNumber } from "@/lib/format";
 import type { Probe, WebhookHealth } from "@/types/api";
 
 export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; telegram: Probe }) {
+  // Match the backend's overall-status threshold: health.py marks the service degraded only when
+  // pending EXCEEDS 50 (_PENDING_BACKLOG), so this card must stay "healthy" through 50 too — else at
+  // exactly 50 the banner reads "سالم" while this badge contradicts it with "بررسی شود".
   const healthy =
-    webhook.configured && telegram.ok && !webhook.recent_error && webhook.pending < 50;
+    webhook.configured && telegram.ok && !webhook.recent_error && webhook.pending <= 50;
   return (
     <Card>
       <CardHeader
