@@ -20,6 +20,20 @@ function faDigits(s: string, locale: Locale) {
   return locale === "fa" ? s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : s;
 }
 
+// A stat value like "252.3 MB" — localize its digits, demote the unit to a small muted span, and
+// isolate the whole thing as one LTR run so a Latin number+unit never reorders inside the RTL card
+// (bidi rule L2 was rendering "252.3 MB" as "MB 252.3") and never wraps mid-token.
+function StatNum({ value, locale }: { value: string; locale: Locale }) {
+  const m = /^([\d.,٫٬۰-۹]+)\s+(.+)$/.exec(value);
+  if (!m) return <bdi dir="ltr">{faDigits(value, locale)}</bdi>;
+  return (
+    <bdi dir="ltr">
+      {faDigits(m[1], locale)}
+      <span className="su">{m[2]}</span>
+    </bdi>
+  );
+}
+
 function MiniRing({ pct, locale }: { pct: number; locale: Locale }) {
   const C = 2 * Math.PI * 20;
   const off = C * (1 - Math.min(100, Math.max(0, pct)) / 100);
@@ -74,10 +88,12 @@ export function StatusView({ locale }: { locale: Locale }) {
         <div className="card stat">
           <MiniRing pct={pct} locale={locale} />
           <div>
-            <div className="sv tnum">{loading ? "…" : (status?.usage ?? "—")}</div>
-            <div className="sl">
-              {t("st_usage")} · {t("of")} {status?.daily_limit ?? "—"}
+            <div className="sv tnum">
+              {loading ? "…" : <StatNum value={status?.usage ?? "—"} locale={locale} />}
             </div>
+            {/* The ring already encodes the %, and the "daily volume" card states the limit —
+                so the label stays a single word, matching its siblings. */}
+            <div className="sl">{t("st_usage")}</div>
           </div>
         </div>
         <div className="card stat">
@@ -96,7 +112,9 @@ export function StatusView({ locale }: { locale: Locale }) {
             <Icon name="bolt" sw={2} />
           </div>
           <div>
-            <div className="sv tnum">{status?.daily_limit ?? "—"}</div>
+            <div className="sv tnum">
+              <StatNum value={status?.daily_limit ?? "—"} locale={locale} />
+            </div>
             <div className="sl">{t("st_alw")}</div>
           </div>
         </div>
@@ -106,7 +124,14 @@ export function StatusView({ locale }: { locale: Locale }) {
           </div>
           <div>
             <div className="sv tnum">
-              {status ? `${faDigits(String(status.referral_count), locale)} / ${faDigits(String(status.referral_cap), locale)}` : "—"}
+              {status ? (
+                <bdi dir="ltr">
+                  {faDigits(String(status.referral_count), locale)} /{" "}
+                  {faDigits(String(status.referral_cap), locale)}
+                </bdi>
+              ) : (
+                "—"
+              )}
             </div>
             <div className="sl">{t("st_inv")}</div>
           </div>

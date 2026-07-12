@@ -537,18 +537,30 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .page-head{ padding-block:28px 6px; }
 /* Only the status dashboard uses the flex space-between header (phase-6); content pages (contact/
    faq) are a plain block, so this must not be a bare `.page-head` rule (it bled onto them). */
-.status-page .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; }
-.page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:10px 0 6px; }
-.page-head .idnote{ font-size:13px; color:var(--muted); display:inline-flex; align-items:center; gap:7px; }
-.page-head .idnote .ic{ inline-size:15px; block-size:15px; }
-.page-head .idnote a{ color:var(--link); text-decoration:none; font-weight:600; }
+/* Block column: the single-child flex+space-between was inert and, on desktop, let the meta lines
+   drift toward center and the idnote abut the handle chip. A block keeps every line on one edge. */
+.status-page .page-head{ display:block; }
+.status-page .page-head .eyebrow{ margin-block-end:8px; }
+.page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:4px 0 12px; }
+/* Flow container (was inline-flex, which blockified the <a> and tore the transfer link off the
+   sentence on mobile); the icon flows inline and the sentence + link wrap together. */
+.page-head .idnote{ font-size:13px; color:var(--muted); display:block; }
+.page-head .idnote .ic{ inline-size:15px; block-size:15px; vertical-align:-3px; margin-inline-end:5px; }
+.page-head .idnote a{ color:var(--link); text-decoration:none; font-weight:600; white-space:nowrap; padding-block:6px; }
 .card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); }
-.grid-stats{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-block-end:16px; }
-.card.stat{ padding:18px; display:flex; align-items:center; gap:14px; }
+.grid-stats{ display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); grid-auto-rows:1fr; gap:16px; margin-block:22px 16px; }
+.card.stat{ padding:16px; display:flex; align-items:center; gap:14px; }
+.card.stat > :last-child{ min-inline-size:0; }  /* let the value/label column shrink so it can wrap/ellipsize rather than force the card wider */
 .stat .sic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
 .stat .sic .ic{ inline-size:22px; block-size:22px; }
-.stat .sv{ font-size:19px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; }
+.stat .sv{ font-size:clamp(16px,4.6vw,19px); font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; white-space:nowrap; }
+.stat .sv .su{ font-size:.62em; font-weight:600; color:var(--muted); margin-inline-start:3px; }  /* demote the unit (MB/GB) below the figure */
 .stat .sl{ font-size:12.5px; color:var(--muted); }
+/* Small phones: trim the card chrome so the (now single-line) value has room and cards stay equal. */
+@media (max-width:759px){
+  .grid-stats .card.stat{ padding:14px; gap:10px; }
+  .grid-stats .stat .sic, .grid-stats .ring-mini{ inline-size:40px; block-size:40px; }
+}
 .ring-mini{ position:relative; inline-size:44px; block-size:44px; flex:none; }
 .ring-mini svg{ transform:rotate(-90deg); }
 [dir="rtl"] .ring-mini svg{ transform:rotate(-90deg) scaleY(-1); }
@@ -855,9 +867,11 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 /* Public account-id chip in the page head */
 .acc-id{ display:inline-flex; align-items:center; gap:8px; margin-block-start:10px; flex-wrap:wrap; }
 .acc-id .id{ font-family:ui-monospace,"SF Mono",Consolas,monospace; font-weight:800; letter-spacing:.5px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); padding:4px 11px; font-size:13px; color:var(--text); }
-.acc-id .copy{ font-size:12.5px; color:var(--link); background:none; border:0; cursor:pointer; font-weight:600; padding:2px 4px; }
+/* 44px hit target (WCAG 2.5.5 / HIG 44pt / Material 48dp) without inflating the id row: the negative
+   block margin lets the tap area extend above/below while keeping the row's visual height. */
+.acc-id .copy{ display:inline-flex; align-items:center; min-block-size:44px; padding:6px 12px; margin-block:-11px; font-size:12.5px; color:var(--link); background:none; border:0; cursor:pointer; font-weight:600; }
 .acc-id .copy.done{ color:var(--success-ink); }
-.acc-id .hint{ flex-basis:100%; font-size:12px; color:var(--muted); background:none; border:0; padding:0; margin-block-start:2px; }
+.acc-id .hint{ flex-basis:100%; font-size:12px; color:var(--muted); background:none; border:0; padding:0; margin-block-start:8px; }
 
 /* reward pill (standalone; the scoped .m-chip .rw / .mcard .rw keep their own rules) */
 .rw{ display:inline-flex; align-items:center; gap:4px; font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
