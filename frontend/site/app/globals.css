@@ -582,7 +582,9 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .grid-main{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
 @media (min-width:860px){ .grid-main{ grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); align-items:start; } }
 .block-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:14px; }
-.block-title h2{ font-size:17px; font-weight:800; margin:0; }
+.block-title h2{ font-size:17px; font-weight:800; margin:0; display:inline-flex; align-items:center; gap:8px; }
+/* card-header icons carry a brand accent (matches the streak sub-header .rw-t .ic) */
+.block-title h2 .ic{ inline-size:18px; block-size:18px; color:var(--primary); flex:none; }
 .block-title a{ font-size:13px; font-weight:700; color:var(--link); text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
 .block-title a .ic{ inline-size:14px; block-size:14px; }
 [dir="rtl"] .block-title a .ic-dir{ transform:scaleX(-1); }
@@ -616,6 +618,10 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .settings{ padding:8px 20px; }
 .srow{ display:flex; align-items:center; gap:12px; padding-block:16px; border-block-end:1px solid var(--border); }
 .srow:last-child{ border-block-end:0; }
+/* leading icon column — bare brand-accent icons (no tile), snug to their label */
+.srow{ gap:10px; }
+.srow .si{ inline-size:22px; block-size:22px; display:grid; place-items:center; flex:none; color:var(--primary); }
+.srow .si .ic{ inline-size:20px; block-size:20px; }
 .srow .sk{ font-size:14.5px; font-weight:600; flex:1; }
 .srow .skd{ font-size:12px; color:var(--muted); font-weight:400; }
 .switch{ inline-size:46px; block-size:26px; border-radius:9999px; background:var(--border-strong); position:relative; cursor:pointer; border:0; flex:none; transition:background .2s; }
