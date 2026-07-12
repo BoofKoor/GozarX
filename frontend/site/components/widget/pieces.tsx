@@ -53,19 +53,22 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
 }
 
 // ---- AppButtons: platform-aware v2rayNG / Streisand / Happ ----
-// Each button is a one-tap DEEP LINK that opens the app and imports the config, with a
+// Each button is a one-tap DEEP LINK that opens the app and imports THIS config, with a
 // copy-to-clipboard fallback so the button is never a dead end (app not installed / desktop).
-// `deeplink` builds the app's import URL from the raw config link:
-//   v2rayNG registers the vless:// scheme on Android, so the raw link opens it directly;
-//   Happ imports via happ://add/<link>; Streisand via streisand://import/<link>.
+// The exact import formats were device-tested against each app:
+//   • Happ / Streisand — the config link appended RAW after the verb (it already carries the
+//     panel's own percent-encoding, e.g. the emoji remark); re-encoding it breaks the import.
+//   • v2rayNG — the config URI url-encoded in the ?url= param, WITHOUT the #remark fragment
+//     (install-config chokes on the encoded name), which double-encodes the config's own %-escapes.
+const dropFragment = (l: string) => l.split("#", 1)[0];
 const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) => string }> = {
-  v2rayng: { n: "v2rayNG", icon: "/icons/v2rayng.webp", deeplink: (l) => l },
-  streisand: {
-    n: "Streisand",
-    icon: "/icons/streisand.webp",
-    deeplink: (l) => `streisand://import/${encodeURIComponent(l)}`,
+  v2rayng: {
+    n: "v2rayNG",
+    icon: "/icons/v2rayng.webp",
+    deeplink: (l) => `v2rayng://install-config?url=${encodeURIComponent(dropFragment(l))}`,
   },
-  happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${encodeURIComponent(l)}` },
+  streisand: { n: "Streisand", icon: "/icons/streisand.webp", deeplink: (l) => `streisand://import/${l}` },
+  happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${l}` },
 };
 const PLATFORM_APPS: Record<string, string[]> = {
   ios: ["streisand", "happ"],
