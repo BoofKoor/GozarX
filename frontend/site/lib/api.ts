@@ -26,8 +26,14 @@ export interface StatusResponse {
   trial_hours: number;
   location: string | null;
   link: string | null;
+  history: ClaimHistoryItem[];
   handle: string;
   ref_code: string;
+}
+
+export interface ClaimHistoryItem {
+  location: string; // remark NAME of a past delivery
+  at: string; // ISO-8601 timestamp
 }
 
 export interface ClaimResponse {

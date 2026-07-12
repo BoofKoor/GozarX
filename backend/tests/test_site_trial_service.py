@@ -111,6 +111,19 @@ async def _device(session, **kw) -> SiteDevice:
     return device
 
 
+async def _claim_at(session, device_uuid: str, hours_ago: float, location: str = "Germany") -> None:
+    """Seed a past delivery — the streak/history now derive from the claim log, so tests build the
+    log directly (one row per provision-day; ``hours_ago`` sets ``created_at``)."""
+    session.add(
+        SiteClaim(
+            device_uuid=device_uuid,
+            location=location,
+            created_at=datetime.now(UTC) - timedelta(hours=hours_ago),
+        )
+    )
+    await session.flush()
+
+
 _TWO = {"Germany": "vless://de#Germany", "Ukraine": "vless://ua#Ukraine"}
 
 
@@ -217,23 +230,40 @@ async def test_claim_starts_streak_at_one(session) -> None:
 async def test_claim_consecutive_increments_streak(session) -> None:
     panel = FakePanel([(_sub(), _TWO)])
     svc = await _service(session, panel)
-    # last claim 25h ago: cooldown (24h) elapsed AND within the 2×24h grace → consecutive
-    device = await _device(
-        session, streak_count=4, last_claim_at=datetime.now(UTC) - timedelta(hours=25)
-    )
+    # a 4-day run in the log (each within the 2×24h grace) + last provision 25h ago (cooldown done)
+    device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=25))
+    for h in (25, 50, 75, 100):
+        await _claim_at(session, device.uuid, h)
     await svc.claim(device, "Germany")
-    assert device.streak_count == 5
+    assert device.streak_count == 5  # this claim continues the run to 5
 
 
 async def test_claim_after_gap_resets_streak(session) -> None:
     panel = FakePanel([(_sub(), _TWO)])
     svc = await _service(session, panel)
-    # last claim 100h ago: well beyond the grace window → a skipped day restarts the streak
-    device = await _device(
-        session, streak_count=6, last_claim_at=datetime.now(UTC) - timedelta(hours=100)
-    )
+    # the last delivery was 100h ago — well beyond the grace, so this claim restarts the streak
+    device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=100))
+    await _claim_at(session, device.uuid, 100)
     await svc.claim(device, "Germany")
     assert device.streak_count == 1
+
+
+async def test_claim_change_location_same_window_keeps_streak(session) -> None:
+    # A change-location logs a row inside the current window but must NOT advance the streak: it's
+    # the same provision-day. (The active device re-reads its live sub and re-delivers.)
+    panel = FakePanel([(_sub(), _TWO)])
+    svc = await _service(session, panel)
+    device = await _device(
+        session,
+        status=SiteDeviceStatus.active_config,
+        site_panel_username="s-live",
+        streak_count=3,
+    )
+    await _claim_at(session, device.uuid, 1)  # today's fresh provision, 1h ago
+    result = await svc.claim(device, "Ukraine")  # change location
+    assert isinstance(result, Delivered) and result.changed is True
+    info = await svc.status(device)
+    assert info.streak_count == 1  # one provision-day so far — the change-loc row didn't inflate it
 
 
 async def test_claim_streak_threshold_folds_bonus_into_this_provision(session) -> None:
@@ -243,11 +273,11 @@ async def test_claim_streak_threshold_folds_bonus_into_this_provision(session) -
         panel,
         **{SiteSettingKey.SITE_STREAK_DAYS: "3", SiteSettingKey.SITE_REWARD_STREAK_MB: "300"},
     )
-    # streak 2 → this consecutive claim makes it 3 == streak_days, so the bonus applies to THIS
-    # freshly-provisioned trial (no one-claim lag).
-    device = await _device(
-        session, streak_count=2, last_claim_at=datetime.now(UTC) - timedelta(hours=25)
-    )
+    # a 2-day run so far → this consecutive claim makes it 3 == streak_days, so the bonus applies to
+    # THIS freshly-provisioned trial (no one-claim lag).
+    device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=25))
+    for h in (25, 50):
+        await _claim_at(session, device.uuid, h)
     await svc.claim(device, "Germany")
     assert device.streak_count == 3
     assert panel.created[0][1] == (1024 + 300) * _MB  # base + streak bonus, provisioned up front
@@ -256,12 +286,12 @@ async def test_claim_streak_threshold_folds_bonus_into_this_provision(session) -
 async def test_claim_failure_does_not_advance_streak(session) -> None:
     panel = FakePanel([(_sub(), _TWO)], create_error=RemnawaveError("boom"))
     svc = await _service(session, panel)
-    device = await _device(
-        session, streak_count=4, last_claim_at=datetime.now(UTC) - timedelta(hours=25)
-    )
+    device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=25))
+    await _claim_at(session, device.uuid, 25)  # one prior provision-day
     result = await svc.claim(device, "Germany")
     assert isinstance(result, PanelError)
-    assert device.streak_count == 4  # unchanged — a failed claim never moves the streak
+    # no new claim row was logged, so the derived streak stays put
+    assert await SiteClaimRepository(session).count_for_device(device.uuid) == 1
 
 
 async def test_already_active_is_change_location_no_reprovision(session) -> None:
@@ -347,8 +377,9 @@ async def test_status_active_reports_live_traffic_and_location(session) -> None:
 
 async def test_status_reports_streak_and_active(session) -> None:
     svc = await _service(session, FakePanel([]), **{SiteSettingKey.SITE_STREAK_DAYS: "3"})
-    # a real streak always has a recent last_claim_at (it advances on claim)
-    device = await _device(session, streak_count=3, last_claim_at=datetime.now(UTC))
+    device = await _device(session)
+    for h in (0, 25, 50):  # a live 3-day run in the log
+        await _claim_at(session, device.uuid, h)
     info = await svc.status(device)
     assert info.streak_count == 3
     assert info.streak_days == 3
@@ -357,14 +388,18 @@ async def test_status_reports_streak_and_active(session) -> None:
 
 async def test_status_streak_inactive_below_threshold(session) -> None:
     svc = await _service(session, FakePanel([]), **{SiteSettingKey.SITE_STREAK_DAYS: "7"})
-    device = await _device(session, streak_count=2, last_claim_at=datetime.now(UTC))
+    device = await _device(session)
+    for h in (0, 25):  # a 2-day run — below the 7-day threshold
+        await _claim_at(session, device.uuid, h)
     info = await svc.status(device)
+    assert info.streak_count == 2
     assert info.streak_active is False
 
 
-async def test_status_lapsed_streak_resets_in_quote(session) -> None:
-    # A qualifying streak whose last claim is well past the grace window must show as reset (0,
-    # inactive) and NOT inflate the quoted allowance — matching what the next claim would provision.
+async def test_status_lapsed_streak_shows_zero_and_self_heals_stale_counter(session) -> None:
+    # The most recent delivery is well past the grace window: the streak has lapsed, so status must
+    # show 0/inactive and NOT inflate the quote — even though the stored counter is a stale 5. The
+    # streak derives from the claim log, so a never-reset counter can't linger.
     svc = await _service(
         session,
         FakePanel([]),
@@ -373,10 +408,22 @@ async def test_status_lapsed_streak_resets_in_quote(session) -> None:
     device = await _device(
         session, streak_count=5, last_claim_at=datetime.now(UTC) - timedelta(hours=100)
     )
+    await _claim_at(session, device.uuid, 100)
     info = await svc.status(device)
     assert info.streak_count == 0
     assert info.streak_active is False
     assert info.daily_limit_bytes == _GB  # base only — no lingering streak bonus
+
+
+async def test_status_history_lists_recent_claims_newest_first(session) -> None:
+    svc = await _service(session, FakePanel([]))
+    device = await _device(session)
+    await _claim_at(session, device.uuid, 50, location="Germany")
+    await _claim_at(session, device.uuid, 2, location="Ukraine")  # most recent
+    info = await svc.status(device)
+    assert [h.location for h in info.history] == ["Ukraine", "Germany"]  # newest first
+    assert all(h.at for h in info.history)  # every row carries an ISO timestamp
+    assert info.configs == 2
 
 
 async def test_status_cooldown_blocks_next_claim(session) -> None:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime
 
 from sqlalchemy import func, select
@@ -16,6 +17,25 @@ class SiteClaimRepository(BaseRepository):
         self.session.add(claim)
         await self.session.flush()
         return claim
+
+    async def recent_for_device(self, device_uuid: str, limit: int = 8) -> Sequence[SiteClaim]:
+        """The device's most recent deliveries (newest first) — the account 'claim history' list.
+        id.desc() tiebreaks the server-default ``created_at`` so same-instant rows order stably."""
+        result = await self.session.scalars(
+            select(SiteClaim)
+            .where(SiteClaim.device_uuid == device_uuid)
+            .order_by(SiteClaim.created_at.desc(), SiteClaim.id.desc())
+            .limit(limit)
+        )
+        return result.all()
+
+    async def claim_times_for_device(self, device_uuid: str) -> list[datetime]:
+        """Every claim timestamp for the device — the raw input to the derived daily-claim streak
+        (``streak_from_claim_times`` collapses same-window change-location rows into days)."""
+        result = await self.session.scalars(
+            select(SiteClaim.created_at).where(SiteClaim.device_uuid == device_uuid)
+        )
+        return list(result.all())
 
     async def count_for_device(self, device_uuid: str) -> int:
         return int(

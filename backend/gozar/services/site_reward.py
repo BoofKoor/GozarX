@@ -5,8 +5,8 @@ the panel limit (the shared ``bump_live_trial`` — also the LIMITED->ACTIVE rev
 are guarded by the ``unique(device, reward_type)`` constraint (a repeat is a clean no-op). The push
 reward additionally requires a real, active push subscription so the bonus can't be farmed without
 actually opting in. The daily-streak bonus is NOT claimed here — it advances automatically from
-consecutive config claims (see ``SiteTrialService.claim`` / ``site_economy.next_streak_count``). All
-amounts come from the ``site_*`` settings.
+consecutive config claims (derived from the claim log by ``site_economy.streak_from_claim_times``).
+All amounts come from the ``site_*`` settings.
 """
 
 from __future__ import annotations

@@ -22,6 +22,24 @@ export function faDigits(s: string | number, locale: Locale): string {
   return locale === "fa" ? str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : str;
 }
 
+// Relative time ("2h ago" / "۲ ساعت پیش") for the claim history. Locale-native via Intl (fa already
+// renders Persian digits), client-only, from an ISO timestamp. Returns "" for an unparseable input.
+export function timeAgo(iso: string, locale: Locale): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "";
+  const sec = Math.round((then - Date.now()) / 1000); // negative = in the past
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: "auto" });
+  const abs = Math.abs(sec);
+  const [div, unit]: [number, Intl.RelativeTimeFormatUnit] =
+    abs < 60 ? [1, "second"]
+    : abs < 3600 ? [60, "minute"]
+    : abs < 86400 ? [3600, "hour"]
+    : abs < 2592000 ? [86400, "day"]
+    : abs < 31536000 ? [2592000, "month"]
+    : [31536000, "year"];
+  return rtf.format(Math.round(sec / div), unit);
+}
+
 type Dict = Record<string, string>;
 
 const fa: Dict = {
