@@ -128,7 +128,7 @@ a{ color:inherit; }
 .lang-banner a{ font-weight:700; text-decoration:underline; cursor:pointer; }
 .lang-banner .x{ border:0; background:transparent; color:inherit; cursor:pointer; font-size:16px; line-height:1; inline-size:32px; block-size:32px; display:inline-grid; place-items:center; border-radius:8px; flex:none; }
 .lang-banner.hide{ display:none; }
-header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
+header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(18px) saturate(1.4); border-block-end:1px solid var(--border); }
 .hd-row{ display:flex; align-items:center; gap:16px; padding-block:12px; }
 @media (max-width:360px){ .hd-row{ gap:6px; } .hd-ctrls{ gap:6px; } .icon-only{ inline-size:36px; block-size:36px; } }
 .brandmark{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:17px; text-decoration:none; color:var(--text); }
@@ -426,7 +426,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
      descenders (ن ی ج) never clip under overflow:hidden. */
   #app[data-locale="fa"] .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.75; }
 /* ---------- toolbar ---------- */
-  .toolbar{ position:sticky; inset-block-start:0; z-index:50; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
+  .toolbar{ position:sticky; inset-block-start:0; z-index:50; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(18px) saturate(1.4); border-block-end:1px solid var(--border); }
 .toolbar-row{ display:flex; align-items:center; gap:12px; padding-block:12px; flex-wrap:wrap; }
 .toolbar-spacer{ flex:1; }
 /* ---------- type ---------- */
@@ -540,6 +540,11 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 /* Block column so every line shares one inline-start edge. The account dashboard drops the marketing
    .sec top padding (56px) to a standard header→title gap; the page-head no longer adds its own top. */
 .sec.status-sec{ padding-block-start:32px; }
+/* The claim widget reuses `.widget`, whose dramatic `--shadow-hero` is meant for the landing hero
+   floating over open space. On the stacked dashboard it's just one card among calm `.card` siblings,
+   and — being position:relative — it paints ABOVE the static rewards card 16px below it, so that big
+   shadow lands on the neighbor's surface. Wear the same calm elevation as the sibling cards here. */
+.status-page .grid-main .widget{ box-shadow:var(--shadow-sm); }
 .status-page .page-head{ display:block; padding-block:0; }
 .status-page .page-head .eyebrow{ margin-block-end:8px; }
 .page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:4px 0 12px; }
@@ -674,7 +679,7 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 #app[data-theme="dark"] .btn.grad{ color:#EAF2FF; }
 .btn.grad:hover{ filter:brightness(1.06); }
 /* header (same as homepage) */
-  header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border-block-end:1px solid var(--border); }
+  header.hd{ position:sticky; inset-block-start:0; z-index:60; background:color-mix(in srgb,var(--bg) 82%,transparent); backdrop-filter:blur(18px) saturate(1.4); border-block-end:1px solid var(--border); }
 /* page (rewards page — scoped so it doesn't center/constrain the content-page headers) */
   .mgrid-page .page-head{ text-align:center; max-width:44rem; margin:0 auto; padding-block:36px 8px; }
 .page-head .eyebrow{ margin-block-end:14px; }
