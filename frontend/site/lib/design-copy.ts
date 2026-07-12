@@ -144,6 +144,10 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     ft_privacy: "حریم خصوصی",
     ft_contact: "تماس با ما",
     ft_copy: "© ۱۴۰۴ GozarX — همهٔ حقوق محفوظ است.",
+    ft_rights: "همهٔ حقوق محفوظ است.", // copyright year is prepended dynamically
+    ft_cta_h: "هنوز کانفیگ امروزت را نگرفته‌ای؟",
+    ft_cta_d: "رایگان، روزانه و بدون ثبت‌نام — کمتر از یک دقیقه تا اتصال.",
+    ft_cta_btn: "دریافت کانفیگ رایگان",
     units_gb: "{n} گیگابایت",
     units_mb: "{n} مگابایت",
     toast_demo: "این فقط پیش‌نمایش است.",
@@ -600,6 +604,10 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     ft_privacy: "Privacy",
     ft_contact: "Contact",
     ft_copy: "© 2025 GozarX — All rights reserved.",
+    ft_rights: "All rights reserved.", // copyright year is prepended dynamically
+    ft_cta_h: "Haven't grabbed today's config yet?",
+    ft_cta_d: "Free, daily and no signup — under a minute to connect.",
+    ft_cta_btn: "Get a free config",
     units_gb: "{n} GB",
     units_mb: "{n} MB",
     toast_demo: "This is just a preview.",
