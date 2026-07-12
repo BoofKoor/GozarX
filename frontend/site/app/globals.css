@@ -537,9 +537,10 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .page-head{ padding-block:28px 6px; }
 /* Only the status dashboard uses the flex space-between header (phase-6); content pages (contact/
    faq) are a plain block, so this must not be a bare `.page-head` rule (it bled onto them). */
-/* Block column: the single-child flex+space-between was inert and, on desktop, let the meta lines
-   drift toward center and the idnote abut the handle chip. A block keeps every line on one edge. */
-.status-page .page-head{ display:block; }
+/* Block column so every line shares one inline-start edge. The account dashboard drops the marketing
+   .sec top padding (56px) to a standard header→title gap; the page-head no longer adds its own top. */
+.sec.status-sec{ padding-block-start:32px; }
+.status-page .page-head{ display:block; padding-block:0; }
 .status-page .page-head .eyebrow{ margin-block-end:8px; }
 .page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:4px 0 12px; }
 /* Flow container (was inline-flex, which blockified the <a> and tore the transfer link off the
@@ -872,6 +873,20 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .acc-id .copy{ display:inline-flex; align-items:center; min-block-size:44px; padding:6px 12px; margin-block:-11px; font-size:12.5px; color:var(--link); background:none; border:0; cursor:pointer; font-weight:600; }
 .acc-id .copy.done{ color:var(--success-ink); }
 .acc-id .hint{ flex-basis:100%; font-size:12px; color:var(--muted); background:none; border:0; padding:0; margin-block-start:8px; }
+
+/* Identity bar — the handle as one tidy component (id badge + code + icon copy + transfer). */
+.id-bar{ display:inline-flex; align-items:center; gap:10px; margin-block-start:14px; max-inline-size:100%; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 10px 8px 14px; box-shadow:var(--shadow-sm); }
+.id-bar .id-icb{ inline-size:34px; block-size:34px; border-radius:10px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; flex:none; }
+.id-bar .id-icb .ic{ inline-size:18px; block-size:18px; }
+.id-bar .id-code{ font-family:ui-monospace,"SF Mono",Consolas,monospace; font-weight:800; letter-spacing:.6px; font-size:15px; color:var(--text); min-inline-size:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.id-bar .id-cp{ inline-size:32px; block-size:32px; border-radius:9px; border:1px solid var(--border); background:var(--sunken); display:grid; place-items:center; cursor:pointer; color:var(--muted); flex:none; transition:color .15s,border-color .15s; }
+.id-bar .id-cp:hover{ color:var(--primary); border-color:var(--primary); }
+.id-bar .id-cp.done{ color:var(--success-ink); border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+.id-bar .id-cp .ic{ inline-size:15px; block-size:15px; }
+.id-bar .id-sep{ inline-size:1px; align-self:stretch; background:var(--border); margin-inline:2px; flex:none; }
+.id-bar .id-tr{ display:inline-flex; align-items:center; gap:5px; color:var(--link); font-weight:700; font-size:13px; text-decoration:none; flex:none; white-space:nowrap; }
+.id-bar .id-tr .ic{ inline-size:15px; block-size:15px; }
+.id-cap{ margin-block-start:11px; font-size:12px; color:var(--muted); }
 
 /* reward pill (standalone; the scoped .m-chip .rw / .mcard .rw keep their own rules) */
 .rw{ display:inline-flex; align-items:center; gap:4px; font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
