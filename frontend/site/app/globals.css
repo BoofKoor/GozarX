@@ -165,6 +165,21 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .sheet .navlink .ic{ inline-size:19px; block-size:19px; color:var(--muted); }
 .sheet-sep{ block-size:1px; background:var(--border); margin-block:12px; }
 .sheet-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+/* Theme toggle — an icon-only sliding sun⇄moon switch (no text). Geometry is exact: the padding box
+   is 64×32 (66×34 outer − 1px border each side, border-box); two 32px halves centred at x=16 and
+   x=48; the 28px thumb is inset 2px in each half so its centre lands on 16 / 48 — the same as each
+   slot's centre — so the active glyph sits dead-centre on the thumb. `direction:ltr` keeps sun-left
+   / moon-right regardless of the RTL sheet. */
+.theme-switch{ position:relative; inline-size:66px; block-size:34px; flex:none; border-radius:99px; background:var(--sunken); border:1px solid var(--border); padding:0; cursor:pointer; direction:ltr; -webkit-tap-highlight-color:transparent; }
+.theme-switch:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.theme-switch .thumb{ position:absolute; inset-block-start:2px; inset-inline-start:2px; inline-size:28px; block-size:28px; border-radius:50%; background:var(--primary); box-shadow:0 3px 8px -1px color-mix(in srgb,var(--primary) 55%,transparent); transition:transform .28s cubic-bezier(.34,1.4,.5,1); z-index:1; }
+.theme-switch.is-dark .thumb{ transform:translateX(32px); }
+.theme-switch .slot{ position:absolute; inset-block-start:0; block-size:100%; inline-size:32px; display:grid; place-items:center; z-index:2; pointer-events:none; color:var(--muted); transition:color .2s; }
+.theme-switch .slot.sun{ inset-inline-start:0; }
+.theme-switch .slot.moon{ inset-inline-start:32px; }
+.theme-switch .slot .ic{ inline-size:15px; block-size:15px; }
+.theme-switch:not(.is-dark) .slot.sun{ color:var(--on-primary); }
+.theme-switch.is-dark .slot.moon{ color:var(--on-primary); }
 /* ============ sections ============ */
   section{ position:relative; }
 .sec{ padding-block:56px; }
@@ -231,6 +246,16 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-check .ic{ inline-size:12px; block-size:12px; }
 .loc-rec{ position:absolute; inset-block-start:-9px; inset-inline-start:10px; z-index:2; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; line-height:1.5; color:var(--warning-ink); background:var(--surface); border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; box-shadow:var(--shadow-sm); }
 .loc-rec svg{ inline-size:11px; block-size:11px; color:var(--warning); flex:none; }
+/* Cap the picker height so many locations scroll INSIDE the card instead of ballooning it. The grid
+   itself is untouched; a slim scrollbar + a soft bottom fade (shown only while there's more below,
+   toggled by .more) hint the overflow. Top padding keeps the "popular" badge from clipping. */
+.loc-scroll{ position:relative; }
+.loc-scroll > .loc-grid{ max-block-size:236px; overflow-y:auto; overflow-x:hidden; padding-block-start:12px; padding-inline-end:6px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+.loc-scroll > .loc-grid::-webkit-scrollbar{ inline-size:6px; }
+.loc-scroll > .loc-grid::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:9px; }
+.loc-scroll > .loc-grid::-webkit-scrollbar-track{ background:transparent; }
+.loc-scroll::after{ content:""; position:absolute; inset-inline:0; inset-block-end:0; block-size:40px; background:linear-gradient(transparent,var(--surface)); pointer-events:none; opacity:0; transition:opacity .2s; }
+.loc-scroll.more::after{ opacity:1; }
 .loc-card[aria-pressed="true"] .loc-rec{ display:none; }
 .cta-wrap{ margin-block-start:20px; }
 .reassure{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 14px; margin-block-start:14px; }
@@ -390,17 +415,26 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .post .meta .dot{ inline-size:3px; block-size:3px; border-radius:50%; background:var(--faint); }
 /* FOOTER */
   footer.ft{ border-block-start:1px solid var(--border); background:var(--surface); margin-block-start:24px; }
-.ft-grid{ display:grid; gap:32px; grid-template-columns:1fr 1fr; padding-block:48px 32px; }
-@media (min-width:820px){ .ft-grid{ grid-template-columns:1.6fr 1fr 1fr 1fr; } }
+/* CTA-led band — a final "grab today's config" nudge above the link columns */
+.ft-cta{ margin-block:40px 36px; padding:26px 30px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 15%,var(--surface)) 0%,var(--surface) 60%); display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap; }
+.ft-cta-t h3{ font-size:20px; font-weight:800; margin:0 0 6px; }
+.ft-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
+.ft-cta-btn{ display:inline-flex; align-items:center; gap:8px; background:var(--primary); color:var(--on-primary); font-weight:800; font-size:14.5px; padding:12px 20px; border-radius:var(--r-btn); text-decoration:none; white-space:nowrap; box-shadow:0 8px 22px -10px color-mix(in srgb,var(--primary) 60%,transparent); transition:transform .1s,filter .18s; }
+.ft-cta-btn:hover{ filter:brightness(1.05); }
+.ft-cta-btn:active{ transform:scale(.985); }
+.ft-cta-btn .ic{ inline-size:17px; block-size:17px; flex:none; }
+[dir="rtl"] .ft-cta-btn .ic-dir{ transform:scaleX(-1); }
+.ft-grid{ display:grid; gap:32px; grid-template-columns:1fr 1fr; padding-block:0 30px; }
+@media (min-width:820px){ .ft-grid{ grid-template-columns:1.7fr 1fr 1fr 1fr; } }
 .ft-brand .brandmark{ margin-block-end:12px; }
-.ft-brand p{ font-size:13.5px; color:var(--muted); max-width:30ch; line-height:1.8; margin:0; }
-.ft-col h4{ font-size:13px; font-weight:700; margin:0 0 14px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
-.ft-col a{ display:block; font-size:14px; color:var(--text); text-decoration:none; padding-block:6px; }
+.ft-brand p{ font-size:13.5px; color:var(--muted); max-width:34ch; line-height:1.85; margin:0; }
+.ft-col h4{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
+.ft-col a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding-block:6.5px; transition:color .15s; }
 .ft-col a:hover{ color:var(--link); }
 .ft-bottom{ border-block-start:1px solid var(--border); padding-block:20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); }
-.ft-langs{ display:flex; gap:8px; }
-.ft-langs button{ border:1px solid var(--border); background:var(--surface); color:var(--muted); border-radius:var(--r-pill); padding:4px 12px; font:inherit; font-size:12.5px; cursor:pointer; }
-.ft-langs button[aria-pressed="true"]{ color:var(--link); border-color:var(--primary); font-weight:700; }
+.ft-langs{ display:inline-flex; padding:3px; gap:2px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
+.ft-langs button{ border:0; background:transparent; color:var(--muted); border-radius:var(--r-pill); padding:6px 15px; font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
+.ft-langs button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); font-weight:700; }
 /* review-only floating platform preview */
   .devbar{ position:fixed; inset-block-end:14px; inset-inline-start:14px; z-index:70; display:flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-pill); padding:5px 6px 5px 12px; box-shadow:var(--shadow-md); font-size:12px; }
 .devbar .lbl{ color:var(--muted); font-weight:600; }

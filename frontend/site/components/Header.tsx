@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
+import { Icon } from "@/components/Icon";
 
 function setCookie(name: string, value: string) {
   document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
@@ -23,6 +24,13 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
   const [themeState, setThemeState] = useState<string>(theme ?? "");
+
+  // Reflect the real applied theme on mount (the prop can be empty when no cookie is set and the
+  // theme is coming from the system preference), so the toggle starts in the right position.
+  useEffect(() => {
+    const cur = document.getElementById("app")?.getAttribute("data-theme");
+    if (cur === "light" || cur === "dark") setThemeState(cur);
+  }, []);
 
   // Let Escape close the mobile nav sheet (it's a modal surface).
   useEffect(() => {
@@ -111,14 +119,22 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               English
             </button>
           </div>
-          <div className="seg" role="group" aria-label={t("set_theme")}>
-            <button aria-pressed={themeState === "light"} onClick={() => setTheme("light")}>
-              {t("set_theme_l")}
-            </button>
-            <button aria-pressed={themeState === "dark"} onClick={() => setTheme("dark")}>
-              {t("set_theme_d")}
-            </button>
-          </div>
+          <button
+            className={`theme-switch${themeState === "dark" ? " is-dark" : ""}`}
+            type="button"
+            role="switch"
+            aria-checked={themeState === "dark"}
+            aria-label={t("set_theme")}
+            onClick={() => setTheme(themeState === "dark" ? "light" : "dark")}
+          >
+            <span className="thumb" aria-hidden />
+            <span className="slot sun" aria-hidden>
+              <Icon name="sun" sw={2} />
+            </span>
+            <span className="slot moon" aria-hidden>
+              <Icon name="moon" sw={2} />
+            </span>
+          </button>
         </div>
       </div>
     </>
