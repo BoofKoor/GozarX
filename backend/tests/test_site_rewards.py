@@ -275,3 +275,19 @@ async def test_endpoint_referral_flow_credits_inviter(env, db_sessions) -> None:
         inviter = await s.get(SiteDevice, inviter_uuid)
     assert count == 1  # invitee carries the referrer
     assert inviter.referral_count == 1  # credited on the invitee's first claim
+
+
+async def test_endpoint_referral_by_handle_credits_inviter(env, db_sessions) -> None:
+    """The invite link now uses the inviter's public HANDLE (?ref=GZ-…). The invitee minting via
+    that link must resolve the handle to the inviter and credit them on the first claim."""
+    client, _app = env
+    async with db_sessions() as s:
+        inviter = await SiteDeviceRepository(s).create("33333333-3333-3333-3333-333333333333")
+        handle = inviter.handle
+        await s.commit()
+    await client.get(f"/api/public/status?ref={handle}")  # invitee mints via the handle link
+    claim = await client.post("/api/public/claim", json={"location": "Germany"})
+    assert claim.json()["ok"] is True
+    async with db_sessions() as s:
+        credited = await s.scalar(select(SiteDevice).where(SiteDevice.handle == handle))
+    assert credited.referral_count == 1  # inviter credited via the handle ref

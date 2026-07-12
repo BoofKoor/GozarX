@@ -263,8 +263,8 @@ async def test_subscribe_rejects_ssrf_endpoint(env) -> None:
     client, _app = env
     ssrf = {
         "endpoint": "https://169.254.169.254/latest/meta-data/",
-        "p256dh": "k",
-        "auth": "a",
+        "p256dh": _P256,  # well-formed keys, so the 422 can only come from the SSRF endpoint reject
+        "auth": _AUTH,
     }
     # Rejected at the API boundary (pydantic 422) before it can ever be stored + POSTed server-side.
     assert (await client.post("/api/public/push/subscribe", json=ssrf)).status_code == 422
