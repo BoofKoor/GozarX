@@ -372,9 +372,10 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .appcard{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px; box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
 .appcard:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 40%,var(--border)); }
 .appcard .big-ico{ inline-size:52px; block-size:52px; border-radius:14px; flex:none; object-fit:cover; box-shadow:inset 0 0 0 1px var(--flag-ring),var(--shadow-sm); }
-.appcard .at{ flex:1; min-inline-size:0; }
-.appcard .an{ font-size:16px; font-weight:700; }
+.appcard .at{ flex:1; min-inline-size:0; display:flex; flex-direction:column; align-items:flex-start; gap:3px; }
+.appcard .an{ display:inline-flex; align-items:center; gap:8px; font-size:16px; font-weight:700; }
 .appcard .ap{ font-size:12.5px; color:var(--muted); }
+.appcard .app-rec{ font-size:11px; font-weight:700; line-height:1.5; color:var(--success-ink); background:var(--success-surface); border:1px solid color-mix(in srgb,var(--success) 30%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; }
 .appcard .ag{ color:var(--faint); }
 .appcard .ag .ic{ inline-size:18px; block-size:18px; }
 [dir="rtl"] .appcard .ag .ic-dir{ transform:scaleX(-1); }
