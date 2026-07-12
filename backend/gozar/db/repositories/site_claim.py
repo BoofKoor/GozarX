@@ -65,6 +65,10 @@ class SiteClaimRepository(BaseRepository):
         )
 
     # --- admin site funnel stats (grouped aggregates; mirror ConfigLogRepository) ----------------
+    async def count_all(self) -> int:
+        """Total site claims ever delivered — the public 'configs delivered' figure."""
+        return int(await self.session.scalar(select(func.count()).select_from(SiteClaim)) or 0)
+
     async def count_since(self, since: datetime) -> int:
         """Total site claims at or after ``since`` (admin stats: 'configs today')."""
         return int(

@@ -9,6 +9,7 @@ instead of raising, so one flaky dependency never blanks the whole page. Reused 
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import shutil
@@ -21,6 +22,7 @@ from redis.asyncio import Redis
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.remnawave import RemnawaveClient
 from gozar.remnawave.schemas import SystemStats
 
@@ -252,3 +254,22 @@ class HistoryRow(BaseModel):
     load1: float = 0.0
     mem_pct: float = 0.0
     disk_pct: float = 0.0
+
+
+async def uptime_pct(redis: Redis) -> float | None:
+    """Rolling availability % from the per-minute health samples (~24h window): the share that
+    weren't 'down' (core infra reachable). Returns None until a sample exists, so the SPA can show
+    a dash rather than a fabricated figure on a just-booted service."""
+    raw = await redis.lrange(HEALTH_HISTORY_KEY, 0, HEALTH_HISTORY_MAX - 1)
+    total = up = 0
+    for item in raw:
+        try:
+            row = HistoryRow.model_validate(json.loads(item))
+        except (ValueError, TypeError):
+            continue
+        total += 1
+        if row.status != "down":
+            up += 1
+    if total == 0:
+        return None
+    return round(up / total * 100, 1)
