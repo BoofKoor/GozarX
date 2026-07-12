@@ -912,6 +912,51 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw-t{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:700; }
 .rw-t .ic{ inline-size:16px; block-size:16px; color:var(--primary); }
 
+/* rewards ledger — the three ways to grow the daily allowance, as a right-aligned ledger.
+   Each row: icon medallion (with a state badge) · title + subtitle/progress · "+N MB" amount.
+   The amount shares ONE solid treatment on every row; a row's state is carried by the medallion
+   badge (green check = earned · red ✕ = blocked · none = available) and, for invite, its
+   progress bar + bare share button — never by the amount's colour. */
+.ledger{ display:flex; flex-direction:column; }
+.ledger .lrow{ display:flex; align-items:center; gap:13px; inline-size:100%; padding:15px 2px; text-align:start;
+  background:none; border:0; font:inherit; color:inherit; }
+button.lrow{ cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:10px; transition:background .14s; }
+button.lrow:hover{ background:color-mix(in srgb,var(--primary) 5%,transparent); }
+button.lrow:disabled{ cursor:default; background:none; }
+.ledger .lrow + .lrow{ border-block-start:1px solid var(--border); }
+
+.ledger .lmed{ position:relative; inline-size:42px; block-size:42px; border-radius:13px; display:grid; place-items:center;
+  flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.ledger .lmed > .ic{ inline-size:20px; block-size:20px; }
+.ledger .ldone{ position:absolute; inset-block-end:-3px; inset-inline-end:-3px; inline-size:18px; block-size:18px;
+  border-radius:50%; background:var(--success); color:#fff; display:grid; place-items:center; border:2.5px solid var(--surface); }
+.ledger .ldone.bad{ background:var(--danger); }
+.ledger .ldone .ic{ inline-size:11px; block-size:11px; }
+
+.ledger .lbd{ flex:1; min-inline-size:0; }
+.ledger .ltt{ display:block; color:var(--text); font-weight:800; font-size:14px; line-height:1.35; }
+.ledger .lsb{ display:block; font-size:12px; color:var(--muted); margin-block-start:1px; }
+
+/* amount — MB inline beside the figure; one solid treatment for every row */
+.ledger .lamt{ flex:none; font-variant-numeric:tabular-nums; }
+.ledger .lval{ display:inline-flex; align-items:baseline; gap:3px; direction:ltr; }
+.ledger .lp{ font-size:16px; font-weight:900; color:var(--text); }
+.ledger .ln{ font-size:22px; font-weight:900; letter-spacing:-.02em; color:var(--text); }
+.ledger .lu{ font-size:11px; font-weight:700; color:var(--muted); }
+.ledger .lamt.muted .lp,.ledger .lamt.muted .ln{ color:var(--muted); }
+.ledger .lamt.busy{ font-size:18px; color:var(--muted); }
+
+/* invite row: progress bar + bare share button (its distinguisher — not a number colour) */
+.ledger .lprog{ display:flex; align-items:center; gap:9px; margin-block-start:9px; }
+.ledger .ltrack{ flex:1; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
+.ledger .ltrack > i{ display:block; block-size:100%; border-radius:99px;
+  background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
+.ledger .lplbl{ font-size:11px; font-weight:700; color:var(--text); white-space:nowrap; }
+.ledger .lplbl b{ color:var(--success-ink); }
+.ledger .lshare{ inline-size:28px; block-size:28px; display:grid; place-items:center; flex:none;
+  background:none; border:0; padding:0; cursor:pointer; color:var(--primary); }
+.ledger .lshare .ic{ inline-size:14px; block-size:14px; }
+
 /* reward chips: trailing slot + non-interactive state */
 .m-chip .chip-end{ flex:none; display:inline-flex; align-items:center; color:var(--muted); }
 .m-chip .chip-end .ic{ inline-size:18px; block-size:18px; }
