@@ -424,7 +424,7 @@ class SiteTrialService:
         claim_times = await self._claims.claim_times_for_device(device.uuid)
         live_streak = streak_from_claim_times(claim_times, hours, datetime.now(UTC))
         streak_active = streak_is_active(live_streak, streak_days)
-        recent = await self._claims.recent_for_device(device.uuid)
+        recent = await self._claims.recent_for_device(device.uuid, limit=3)
         history = tuple(
             ClaimHistoryItem(location=c.location, at=_iso(c.created_at)) for c in recent
         )

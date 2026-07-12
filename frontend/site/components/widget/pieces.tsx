@@ -52,11 +52,20 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
   );
 }
 
-// ---- AppButtons: platform-aware v2rayNG / Streisand / Happ (copy the link for that app) ----
-const APPS: Record<string, { n: string; icon: string }> = {
-  v2rayng: { n: "v2rayNG", icon: "/icons/v2rayng.png" },
-  streisand: { n: "Streisand", icon: "/icons/streisand.webp" },
-  happ: { n: "Happ", icon: "/icons/happ.webp" },
+// ---- AppButtons: platform-aware v2rayNG / Streisand / Happ ----
+// Each button is a one-tap DEEP LINK that opens the app and imports the config, with a
+// copy-to-clipboard fallback so the button is never a dead end (app not installed / desktop).
+// `deeplink` builds the app's import URL from the raw config link:
+//   v2rayNG registers the vless:// scheme on Android, so the raw link opens it directly;
+//   Happ imports via happ://add/<link>; Streisand via streisand://import/<link>.
+const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) => string }> = {
+  v2rayng: { n: "v2rayNG", icon: "/icons/v2rayng.webp", deeplink: (l) => l },
+  streisand: {
+    n: "Streisand",
+    icon: "/icons/streisand.webp",
+    deeplink: (l) => `streisand://import/${encodeURIComponent(l)}`,
+  },
+  happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${encodeURIComponent(l)}` },
 };
 const PLATFORM_APPS: Record<string, string[]> = {
   ios: ["streisand", "happ"],
@@ -77,25 +86,27 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => setPlatform(detectPlatform()), []);
-  const label = platform === "ios" ? t("open_ios") : platform === "android" ? t("open_android") : t("open_in");
-  async function openIn(name: string) {
-    try {
-      await navigator.clipboard.writeText(link);
-      setFlash(name);
-      setTimeout(() => setFlash(null), 1400);
-    } catch {
-      /* ignore */
-    }
+  // The <a href> opens the app; this copies the link too so the config is never lost if no app
+  // handles the scheme, and flashes a "copied" confirmation on the tapped button.
+  function copyFallback(name: string) {
+    navigator.clipboard?.writeText(link).catch(() => {});
+    setFlash(name);
+    setTimeout(() => setFlash(null), 1400);
   }
   return (
     <div className="apps">
-      <span className="lbl">{label}</span>
+      <span className="lbl">{t("app_hint")}</span>
       <div className="apps-row">
         {(PLATFORM_APPS[platform] ?? PLATFORM_APPS.desktop).map((key) => (
-          <button key={key} className="app-btn" type="button" onClick={() => openIn(key)}>
+          <a
+            key={key}
+            className="app-btn"
+            href={APPS[key].deeplink(link)}
+            onClick={() => copyFallback(key)}
+          >
             <img className="app-ico" src={APPS[key].icon} alt="" width={26} height={26} />
             {flash === key ? t("copied") : APPS[key].n}
-          </button>
+          </a>
         ))}
       </div>
     </div>

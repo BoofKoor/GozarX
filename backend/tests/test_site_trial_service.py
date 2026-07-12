@@ -426,6 +426,16 @@ async def test_status_history_lists_recent_claims_newest_first(session) -> None:
     assert info.configs == 2
 
 
+async def test_status_history_caps_at_three(session) -> None:
+    svc = await _service(session, FakePanel([]))
+    device = await _device(session)
+    for h, loc in [(96, "A"), (72, "B"), (48, "C"), (24, "D"), (2, "E")]:
+        await _claim_at(session, device.uuid, h, location=loc)
+    info = await svc.status(device)
+    assert [h.location for h in info.history] == ["E", "D", "C"]  # only the 3 most recent
+    assert info.configs == 5  # ...but the total count still reflects every claim
+
+
 async def test_status_cooldown_blocks_next_claim(session) -> None:
     svc = await _service(session, FakePanel([]))
     device = await _device(session, last_claim_at=datetime.now(UTC) - timedelta(hours=2))
