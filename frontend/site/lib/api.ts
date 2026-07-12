@@ -67,6 +67,7 @@ export interface PublicConfig {
   turnstile_site_key: string;
   vapid_public_key: string;
   turnstile_enabled: boolean;
+  popular_location: string | null;
 }
 
 async function get<T>(path: string): Promise<T> {

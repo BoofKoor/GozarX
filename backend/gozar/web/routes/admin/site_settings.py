@@ -26,6 +26,7 @@ def _settings(request: Request, session: object) -> SettingsService:
 class SiteSettingsOut(BaseModel):
     trial_squad: str | None
     locations: list[str]
+    popular_location: str | None
     trial_hours: int
     daily_limit_mb: int
     referral_reward_mb: int
@@ -38,6 +39,7 @@ class SiteSettingsOut(BaseModel):
 
 class SiteSettingsPatch(BaseModel):
     locations: list[str] | None = None
+    popular_location: str | None = None  # "" clears it; None leaves it unchanged
     trial_hours: int | None = None
     daily_limit_mb: int | None = None
     referral_reward_mb: int | None = None
@@ -52,6 +54,7 @@ async def _read(settings: SettingsService) -> SiteSettingsOut:
     return SiteSettingsOut(
         trial_squad=await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD),
         locations=await settings.get_list(SiteSettingKey.SITE_LOCATIONS),
+        popular_location=await settings.get(SiteSettingKey.SITE_POPULAR_LOCATION),
         trial_hours=await settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, 24),
         daily_limit_mb=await settings.get_int(SiteSettingKey.SITE_DAILY_LIMIT_MB, 1024),
         referral_reward_mb=await settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_MB, 0),
@@ -92,6 +95,9 @@ async def update_site_settings(
     settings = _settings(request, session)
     if body.locations is not None:
         await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(body.locations))
+    if body.popular_location is not None:
+        # empty string clears the flag (no popular location)
+        await settings.set(SiteSettingKey.SITE_POPULAR_LOCATION, body.popular_location.strip())
     for field, key, floor in _NUM_FIELDS:
         value = getattr(body, field)
         if value is not None:

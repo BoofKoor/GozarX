@@ -42,7 +42,10 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
 
   const loadLocations = useCallback(async () => {
     try {
-      setLocations((await api.locations()).locations);
+      const raw = (await api.locations()).locations;
+      // Drop configs whose remark still carries an unsubstituted template placeholder or stray
+      // braces (e.g. "{{STATUS}}") — they're broken and must never be offered to a user.
+      setLocations(raw.filter((n) => !/[{}]/.test(n)));
     } catch {
       setLocations([]);
     }

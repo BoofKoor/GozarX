@@ -27,6 +27,7 @@ interface FormState {
   reward_streak_mb: number;
   streak_days: number;
   locations: string;
+  popular_location: string;
 }
 
 type NumKey = keyof Omit<FormState, "locations">;
@@ -41,6 +42,7 @@ const EMPTY: FormState = {
   reward_streak_mb: 200,
   streak_days: 3,
   locations: "",
+  popular_location: "",
 };
 
 export function SiteSettings() {
@@ -65,6 +67,7 @@ export function SiteSettings() {
         reward_streak_mb: data.reward_streak_mb,
         streak_days: data.streak_days,
         locations: data.locations.join("، "),
+        popular_location: data.popular_location ?? "",
       });
     }
   }, [data]);
@@ -126,6 +129,7 @@ export function SiteSettings() {
         reward_streak_mb: form.reward_streak_mb,
         streak_days: form.streak_days,
         locations: splitLocations(form.locations),
+        popular_location: form.popular_location,
       },
       {
         onSuccess: () => toast.success("تنظیمات وب‌سایت ذخیره شد."),
@@ -211,6 +215,22 @@ export function SiteSettings() {
                 از اسکواد
               </Button>
             </div>
+          </Labeled>
+          <Labeled label="لوکیشن محبوب (نشان ⭐ روی پیکر سایت)">
+            <select
+              value={form.popular_location}
+              onChange={(e) => setForm((f) => ({ ...f, popular_location: e.target.value }))}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30 dark:border-slate-700 dark:bg-slate-900"
+            >
+              <option value="">— بدون —</option>
+              {Array.from(
+                new Set([...splitLocations(form.locations), form.popular_location].filter(Boolean)),
+              ).map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </select>
           </Labeled>
           <Button type="submit" loading={update.isPending}>
             ذخیره
