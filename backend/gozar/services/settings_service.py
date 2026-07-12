@@ -38,6 +38,7 @@ class SiteSettingKey:
 
     SITE_TRIAL_SQUAD = "site_trial_squad"
     SITE_LOCATIONS = "site_locations"
+    SITE_POPULAR_LOCATION = "site_popular_location"
     SITE_TRIAL_HOURS = "site_trial_hours"
     SITE_DAILY_LIMIT_MB = "site_daily_limit_mb"
     SITE_REFERRAL_REWARD_MB = "site_referral_reward_mb"

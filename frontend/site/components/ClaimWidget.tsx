@@ -154,7 +154,13 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
           ) : null}
           {changeLoc ? (
             <>
-              <Picker locale={locale} locations={locs} selected={selected} onPick={setPicked} />
+              <Picker
+                locale={locale}
+                locations={locs}
+                selected={selected}
+                onPick={setPicked}
+                popular={config?.popular_location}
+              />
               {cta}
             </>
           ) : (
@@ -208,6 +214,7 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
         selected={selected}
         onPick={setPicked}
         disabled={mode === "provisioning"}
+        popular={config?.popular_location}
       />
       {cta}
     </div>
@@ -250,14 +257,17 @@ function Picker({
   selected,
   onPick,
   disabled,
+  popular,
 }: {
   locale: Locale;
   locations: string[];
   selected: string | null;
   onPick: (v: string) => void;
   disabled?: boolean;
+  popular?: string | null;
 }) {
   const t = translator(locale);
+  const popKey = popular ? locName(popular).toLowerCase() : "";
   return (
     <>
       <div className="pick-label">
@@ -270,8 +280,10 @@ function Picker({
         aria-label={t("pick")}
         style={disabled ? { opacity: 0.55, pointerEvents: "none" } : undefined}
       >
-        {locations.map((loc, i) => {
+        {locations.map((loc) => {
           const on = selected === loc;
+          // "Popular" is the admin-flagged location, matched by remark NAME (never index).
+          const isPopular = !!popular && (loc === popular || locName(loc).toLowerCase() === popKey);
           return (
             <button
               key={loc}
@@ -282,9 +294,11 @@ function Picker({
               disabled={disabled}
               onClick={() => onPick(loc)}
             >
-              {i === 0 && (
+              {isPopular && (
                 <span className="loc-rec">
-                  <Icon name="spark" sw={2.2} />
+                  <svg className="ic" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+                    <path d="M12 2.6l2.7 5.5 6 .9-4.35 4.24 1.03 6L12 16.9l-5.38 2.84 1.03-6L3.3 9l6-.9z" />
+                  </svg>
                   {t("rec")}
                 </span>
               )}

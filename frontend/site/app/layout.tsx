@@ -1,7 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
-import { DEFAULT_LOCALE, dir, isLocale, type Locale } from "@/lib/i18n";
+import { dir, type Locale } from "@/lib/i18n";
+import { getLocale } from "@/lib/server";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -12,12 +13,11 @@ import { SiteProvider } from "@/lib/useSite";
 type Theme = "light" | "dark";
 
 async function resolve(): Promise<{ locale: Locale; theme: Theme | undefined }> {
-  const store = await cookies();
-  const rawLocale = store.get("locale")?.value ?? "";
-  const locale: Locale = isLocale(rawLocale) ? rawLocale : DEFAULT_LOCALE;
-  const rawTheme = store.get("theme")?.value;
+  // Locale: cookie → Accept-Language → fa (auto-detected; changed from settings, not the header).
+  const locale = await getLocale();
+  const rawTheme = (await cookies()).get("theme")?.value;
   // Only an EXPLICIT choice sets data-theme. With no cookie we leave it unset so the CSS
-  // `@media (prefers-color-scheme)` fallback follows the OS (no flash, no client JS needed).
+  // `@media (prefers-color-scheme)` fallback follows the device OS (no flash, no client JS needed).
   const theme: Theme | undefined = rawTheme === "dark" ? "dark" : rawTheme === "light" ? "light" : undefined;
   return { locale, theme };
 }

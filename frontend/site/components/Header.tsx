@@ -15,10 +15,14 @@ const NAV: { href: string; key: string }[] = [
   { href: "/contact", key: "nav_contact" },
 ];
 
-export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" }) {
+// Clean header — brand + nav + "My status" + burger. Language is auto-detected and theme follows
+// the device by default; both are changed from the mobile sheet, the footer, or the status-page
+// settings — deliberately NOT in the header bar (an fa searcher already implies the fa locale).
+export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "dark" }) {
   const router = useRouter();
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
+  const [themeState, setThemeState] = useState<string>(theme ?? "");
 
   // Let Escape close the mobile nav sheet (it's a modal surface).
   useEffect(() => {
@@ -41,15 +45,11 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
     router.refresh();
   }
 
-  function toggleTheme() {
-    const app = document.getElementById("app");
-    const current =
-      app?.getAttribute("data-theme") ??
-      (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-    const next = current === "dark" ? "light" : "dark";
+  function setTheme(next: "light" | "dark") {
     setCookie("theme", next);
     document.documentElement.setAttribute("data-theme", next);
-    app?.setAttribute("data-theme", next);
+    document.getElementById("app")?.setAttribute("data-theme", next);
+    setThemeState(next);
   }
 
   return (
@@ -71,18 +71,6 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
           </nav>
           <div className="hd-spacer" />
           <div className="hd-ctrls">
-            <div className="seg" role="group" aria-label="language">
-              <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
-                فا
-              </button>
-              <button aria-pressed={locale === "en"} onClick={() => switchLocale("en")}>
-                EN
-              </button>
-            </div>
-            <button className="icon-only th-btn" onClick={toggleTheme} aria-label={t("theme.toggle")}>
-              <MoonIcon />
-              <SunIcon />
-            </button>
             <Link className="btn secondary status-btn" href="/status">
               {t("nav_status")}
             </Link>
@@ -100,7 +88,7 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
         </div>
       </header>
 
-      {/* mobile sheet */}
+      {/* mobile sheet — nav + the language/theme controls (kept out of the header bar) */}
       <div className={`sheet-ov${sheet ? " open" : ""}`} onClick={() => setSheet(false)} />
       <div className={`sheet${sheet ? " open" : ""}`} role="dialog" aria-modal="true" aria-label={t("nav.home")}>
         <div className="sheet-handle" />
@@ -115,7 +103,7 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
         </nav>
         <div className="sheet-sep" />
         <div className="sheet-controls">
-          <div className="seg" role="group">
+          <div className="seg" role="group" aria-label={t("set_lang")}>
             <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
               فارسی
             </button>
@@ -123,24 +111,16 @@ export function Header({ locale }: { locale: Locale; theme?: "light" | "dark" })
               English
             </button>
           </div>
+          <div className="seg" role="group" aria-label={t("set_theme")}>
+            <button aria-pressed={themeState === "light"} onClick={() => setTheme("light")}>
+              {t("set_theme_l")}
+            </button>
+            <button aria-pressed={themeState === "dark"} onClick={() => setTheme("dark")}>
+              {t("set_theme_d")}
+            </button>
+          </div>
         </div>
       </div>
     </>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <svg className="ic moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
-    </svg>
-  );
-}
-function SunIcon() {
-  return (
-    <svg className="ic sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="4.5" />
-      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19" />
-    </svg>
   );
 }

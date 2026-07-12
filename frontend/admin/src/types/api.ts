@@ -253,6 +253,7 @@ export interface HealthSample {
 export interface SiteSettings {
   trial_squad: string | null;
   locations: string[];
+  popular_location: string | null;
   trial_hours: number;
   daily_limit_mb: number;
   referral_reward_mb: number;

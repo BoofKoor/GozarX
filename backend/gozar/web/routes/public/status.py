@@ -13,7 +13,7 @@ from pydantic import BaseModel
 from gozar.config.settings import get_settings
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
-from gozar.services.settings_service import SettingsService
+from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_trial import SiteTrialService
 from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice
@@ -49,6 +49,7 @@ class PublicConfig(BaseModel):
     turnstile_site_key: str
     vapid_public_key: str
     turnstile_enabled: bool
+    popular_location: str | None = None  # remark NAME the admin flags as "popular" (picker star)
 
 
 def _service(request: Request, session) -> SiteTrialService:
@@ -69,10 +70,13 @@ async def get_status(request: Request, session: DbSession, device: CurrentDevice
 
 
 @router.get("/config", response_model=PublicConfig)
-async def get_config() -> PublicConfig:
+async def get_config(request: Request, session: DbSession) -> PublicConfig:
     settings = get_settings()
+    site_settings = SettingsService(session, request.app.state.redis)
+    popular = await site_settings.get(SiteSettingKey.SITE_POPULAR_LOCATION)
     return PublicConfig(
         turnstile_site_key=settings.turnstile_site_key,
         vapid_public_key=settings.vapid_public_key,
         turnstile_enabled=bool(settings.turnstile_secret.get_secret_value()),
+        popular_location=popular or None,
     )
