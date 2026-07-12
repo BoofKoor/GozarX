@@ -21,6 +21,11 @@ from gozar.web.routes.public.identity import CurrentDevice
 router = APIRouter(tags=["public"])
 
 
+class HistoryItem(BaseModel):
+    location: str  # remark NAME of a past delivery
+    at: str  # ISO-8601 timestamp (SPA renders it relative to now)
+
+
 class StatusResponse(BaseModel):
     status: str
     active: bool
@@ -43,6 +48,7 @@ class StatusResponse(BaseModel):
     trial_hours: int  # rolling window each config lasts / renews on ("renews every Nh")
     location: str | None = None
     link: str | None = None
+    history: list[HistoryItem] = []  # recent deliveries (newest first) — the claim-history list
     handle: str  # this device's public account id (GZ-…) — shown on the account page
     ref_code: str  # this device's referral code (its handle) — SPA builds "?ref=<ref_code>" links
 
@@ -75,7 +81,9 @@ def _service(request: Request, session) -> SiteTrialService:
 async def get_status(request: Request, session: DbSession, device: CurrentDevice) -> StatusResponse:
     info = await _service(request, session).status(device)
     handle = device.handle or device.uuid  # uuid fallback for any pre-migration row
-    return StatusResponse(**vars(info), handle=handle, ref_code=handle)
+    data = vars(info)
+    history = [HistoryItem(location=h.location, at=h.at) for h in data.pop("history")]
+    return StatusResponse(**data, history=history, handle=handle, ref_code=handle)
 
 
 @router.get("/config", response_model=PublicConfig)

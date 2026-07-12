@@ -590,7 +590,8 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .hrow{ display:flex; align-items:center; gap:12px; padding-block:12px; border-block-end:1px solid var(--border); }
 .hrow:last-child{ border-block-end:0; }
 .hrow .flag{ inline-size:30px; block-size:30px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; flex:none; }
-.hrow .hn{ font-size:14px; font-weight:700; }
+.hrow .ht{ min-inline-size:0; }
+.hrow .hn{ font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .hrow .hd2{ font-size:12px; color:var(--muted); }
 .hrow .hs{ margin-inline-start:auto; font-size:11.5px; font-weight:700; border-radius:var(--r-pill); padding:4px 10px; }
 .hs.ok{ color:var(--success-ink); background:var(--success-surface); }

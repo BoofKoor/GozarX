@@ -2,14 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, timeAgo, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
-import { InlineCountdown } from "@/components/widget/pieces";
+import { Flag, InlineCountdown } from "@/components/widget/pieces";
+import { locName } from "@/components/widget/flags";
 import { subscribeToPush } from "@/lib/push";
 
 // My status — faithful reproduction of docs/website/design/phase-6-status.html (dashboard view):
@@ -142,13 +143,27 @@ export function StatusView({ locale }: { locale: Locale }) {
             <div className="block-title">
               <h2>{t("hist_title")}</h2>
             </div>
-            <div className="empty">
-              <div className="ei">
-                <Icon name="clock" sw={1.8} />
+            {status?.history && status.history.length > 0 ? (
+              <div className="hist-list">
+                {status.history.map((h, i) => (
+                  <div className="hrow" key={`${h.at}-${i}`}>
+                    <Flag name={h.location} size={30} />
+                    <div className="ht">
+                      <div className="hn">{locName(h.location)}</div>
+                      <div className="hd2">{timeAgo(h.at, locale)}</div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <p className="et">{t("status.noHistory")}</p>
-              <p className="ed">{t("status.noHistorySub")}</p>
-            </div>
+            ) : (
+              <div className="empty">
+                <div className="ei">
+                  <Icon name="clock" sw={1.8} />
+                </div>
+                <p className="et">{t("status.noHistory")}</p>
+                <p className="ed">{t("status.noHistorySub")}</p>
+              </div>
+            )}
           </div>
         </div>
       </div>

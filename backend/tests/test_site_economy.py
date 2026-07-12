@@ -15,7 +15,10 @@ import fakeredis.aioredis
 from gozar.cache.redis import SETTINGS_KEY
 from gozar.db.models.site_reward import SiteRewardType
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_economy import next_streak_count, site_compute_traffic_bytes
+from gozar.services.site_economy import (
+    site_compute_traffic_bytes,
+    streak_from_claim_times,
+)
 
 _MB = 1024 * 1024
 
@@ -91,35 +94,50 @@ async def test_negative_referral_count_is_clamped() -> None:
     assert await site_compute_traffic_bytes(await _settings(), -3) == 1024 * _MB
 
 
-# --- next_streak_count (consecutive-claim streak) -----------------------------------------------
+# --- streak_from_claim_times (streak derived from the claim log) --------------------------------
+
+_NOW = datetime(2026, 7, 12, 12, tzinfo=UTC)
 
 
-def test_next_streak_first_claim_is_one() -> None:
-    now = datetime(2026, 7, 12, tzinfo=UTC)
-    assert next_streak_count(0, None, now, 24) == 1
+def _ago(**kw: float) -> datetime:
+    return _NOW - timedelta(**kw)
 
 
-def test_next_streak_consecutive_increments() -> None:
-    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
-    last = now - timedelta(hours=25)  # within the 2×24h grace
-    assert next_streak_count(4, last, now, 24) == 5
+def test_streak_empty_log_is_zero() -> None:
+    assert streak_from_claim_times([], 24, _NOW) == 0
 
 
-def test_next_streak_gap_resets_to_one() -> None:
-    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
-    last = now - timedelta(hours=100)  # a skipped day → restart
-    assert next_streak_count(6, last, now, 24) == 1
+def test_streak_single_recent_claim_is_one() -> None:
+    assert streak_from_claim_times([_NOW], 24, _NOW) == 1
 
 
-def test_next_streak_grace_boundary_inclusive() -> None:
-    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
-    exactly_grace = now - timedelta(hours=48)  # == 2×24h, still counts as consecutive
-    assert next_streak_count(2, exactly_grace, now, 24) == 3
-    just_past = now - timedelta(hours=48, seconds=1)
-    assert next_streak_count(2, just_past, now, 24) == 1
+def test_streak_consecutive_days_increment() -> None:
+    times = [_NOW, _ago(hours=25), _ago(hours=50)]  # each within the 2×24h grace
+    assert streak_from_claim_times(times, 24, _NOW) == 3
 
 
-def test_next_streak_handles_naive_last() -> None:
-    now = datetime(2026, 7, 12, 12, tzinfo=UTC)
-    naive_last = datetime(2026, 7, 11, 12)  # tz-naive → treated as UTC
-    assert next_streak_count(1, naive_last, now, 24) == 2
+def test_streak_change_location_same_window_does_not_inflate() -> None:
+    # A change-location logs another row within the cooldown window — the SAME provision-day.
+    times = [_NOW, _ago(hours=2), _ago(hours=25), _ago(hours=27)]
+    assert streak_from_claim_times(times, 24, _NOW) == 2  # two days, not four claims
+
+
+def test_streak_run_ends_at_a_gap() -> None:
+    times = [_NOW, _ago(hours=25), _ago(hours=150)]  # gap before the oldest breaks the run
+    assert streak_from_claim_times(times, 24, _NOW) == 2
+
+
+def test_streak_lapsed_last_claim_is_zero() -> None:
+    # The most recent claim is older than the grace window → the streak has lapsed.
+    assert streak_from_claim_times([_ago(hours=100)], 24, _NOW) == 0
+
+
+def test_streak_grace_boundary_inclusive() -> None:
+    assert streak_from_claim_times([_NOW, _ago(hours=48)], 24, _NOW) == 2  # == 2×24h, still counts
+    assert streak_from_claim_times([_NOW, _ago(hours=48, seconds=1)], 24, _NOW) == 1
+
+
+def test_streak_handles_naive_times() -> None:
+    naive_now = datetime(2026, 7, 12, 12)  # tz-naive → treated as UTC
+    naive_prev = datetime(2026, 7, 11, 11)  # 25h earlier
+    assert streak_from_claim_times([naive_now, naive_prev], 24, _NOW) == 2

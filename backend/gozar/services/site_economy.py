@@ -8,7 +8,7 @@ hardcodes a reward/cap; every number comes from settings.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Collection, Sequence
 from datetime import UTC, datetime, timedelta
 
 from gozar.db.models.site_device import SiteDevice
@@ -51,58 +51,72 @@ async def site_compute_traffic_bytes(
     return total_mb * _MB
 
 
-def streak_is_active(device: SiteDevice, streak_days: int) -> bool:
-    """Whether the device's daily-claim streak has reached the qualifying length."""
-    return streak_days > 0 and device.streak_count >= streak_days
+def streak_is_active(streak_count: int, streak_days: int) -> bool:
+    """Whether a daily-claim streak has reached the qualifying length."""
+    return streak_days > 0 and streak_count >= streak_days
 
 
-def streak_within_grace(
-    last_claim_at: datetime | None, trial_hours: int, now: datetime
-) -> bool:
-    """Whether a persisted streak is still 'live' — i.e. the last claim is recent enough that the
-    next claim would CONTINUE it (within the same 2×``trial_hours`` grace as ``next_streak_count``).
-
-    ``streak_count`` is only rewritten on a claim, so between claims it can be stale. Status uses
-    this to avoid advertising a streak (and its bonus) that the very next claim would reset —
-    keeping the quote honest and consistent with what provisioning will actually grant."""
-    if last_claim_at is None:
-        return False
-    last = last_claim_at if last_claim_at.tzinfo else last_claim_at.replace(tzinfo=UTC)
-    return now - last <= timedelta(hours=max(trial_hours, 1) * 2)
+def _aware(dt: datetime) -> datetime:
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
 
 
-def next_streak_count(
-    prev_count: int, last_claim_at: datetime | None, now: datetime, trial_hours: int
+def streak_from_claim_times(
+    claim_times: Sequence[datetime], trial_hours: int, now: datetime
 ) -> int:
-    """The streak length AFTER a fresh claim happening ``now``.
+    """The consecutive-daily-claim streak DERIVED from the claim log — the single source of truth.
 
-    The streak counts CONSECUTIVE daily config claims. A claim is only allowed once per rolling
-    ``trial_hours`` window, so a new claim that lands within one extra window of grace continues the
-    streak (+1); a longer gap means a skipped day and the streak restarts at 1. The first-ever claim
-    (no prior ``last_claim_at``) starts the streak at 1. Because a lapse resets on the very next
-    claim — the only moment the bonus is actually provisioned — a streak can never linger stale.
+    ``claim_times`` are all of a device's ``site_claims`` timestamps (any order). Because a claim is
+    only *provisioned* once per rolling ``trial_hours`` window — a change-location within that
+    window logs another row but is the SAME day's config — we first collapse claims into
+    provision-days (the first claim of each window), then count the trailing run of consecutive
+    days, where "next day" means within one extra window of grace (2×``trial_hours``). A longer gap
+    ends the run.
+
+    The streak only counts while it is still LIVE: if the last provision-day is itself older than
+    the grace window relative to ``now``, the streak has lapsed (the next claim would restart it at
+    1), so we report 0 — keeping the shown streak and its bonus honest about what a claim grants.
+
+    Deriving from the log (not a stored counter) keeps the value self-consistent with the history
+    the user sees and self-healing for any row whose counter was never written (e.g. a config
+    provisioned before streaks existed): the claims themselves are the record.
     """
-    if last_claim_at is None:
-        return 1
-    last = last_claim_at if last_claim_at.tzinfo else last_claim_at.replace(tzinfo=UTC)
-    grace = timedelta(hours=max(trial_hours, 1) * 2)
-    if now - last <= grace:
-        return max(prev_count, 0) + 1
-    return 1
+    if not claim_times:
+        return 0
+    hours = max(trial_hours, 1)
+    window = timedelta(hours=hours)  # one claim per this window — within it is the same day
+    grace = timedelta(hours=hours * 2)  # a claim within one extra window continues the streak
+    ordered = sorted(_aware(t) for t in claim_times)
+    # Collapse to provision-days: keep only the first claim of each cooldown window.
+    days = [ordered[0]]
+    for t in ordered[1:]:
+        if t - days[-1] > window:
+            days.append(t)
+    if now - days[-1] > grace:
+        return 0  # lapsed — the next claim would restart the streak
+    streak = 1
+    newest_first = list(reversed(days))
+    for newer, older in zip(newest_first, newest_first[1:], strict=False):
+        if newer - older <= grace:
+            streak += 1
+        else:
+            break
+    return streak
 
 
 async def site_device_allowance_bytes(
     settings: SettingsService, device: SiteDevice, reward_repo: SiteRewardRepository
 ) -> int:
-    """A device's FULL current daily allowance: base + capped referral bonus + its claimed one-time
-    rewards (PWA / notifications) + the streak bonus while its streak qualifies. The single source
-    reused by claim provisioning, the status quote, and the referral/reward live-bump — so all four
-    always agree."""
+    """A device's FULL current daily allowance for a LIVE-BUMP (referral credit / reward claim):
+    base + capped referral bonus + its claimed one-time rewards + the standing streak bonus.
+
+    Uses the device's stored ``streak_count`` — kept in sync on every provision by ``claim`` — since
+    the bump paths don't carry the claim log. The visible streak (status) and the provisioned streak
+    (claim) are derived straight from that log via ``streak_from_claim_times``."""
     rewards = await reward_repo.types_for_device(device.uuid)
     streak_days = await settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
     return await site_compute_traffic_bytes(
         settings,
         device.referral_count,
         rewards=rewards,
-        streak_active=streak_is_active(device, streak_days),
+        streak_active=streak_is_active(device.streak_count, streak_days),
     )

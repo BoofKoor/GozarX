@@ -33,10 +33,10 @@ from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.remnawave.schemas import Subscription
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_economy import (
-    next_streak_count,
     site_compute_traffic_bytes,
     site_device_allowance_bytes,
-    streak_within_grace,
+    streak_from_claim_times,
+    streak_is_active,
 )
 from gozar.services.trial import (
     AlreadyClaimedToday,
@@ -55,6 +55,11 @@ logger = logging.getLogger("gozar.services.site_trial")
 _DEFAULT_SITE_TRIAL_HOURS = 24
 
 
+def _iso(dt: datetime) -> str:
+    """A stored (server-default now()) timestamp as UTC ISO-8601 the SPA can parse."""
+    return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
+
+
 @dataclass(frozen=True)
 class Delivered:
     """A config for a chosen location was delivered. ``changed`` is True when an already-active
@@ -69,6 +74,14 @@ class Delivered:
 
 # Reuses the bot's storage-agnostic result variants for the shared states.
 SiteClaimResult = Delivered | AlreadyClaimedToday | NotReady | NoLocations | PanelError
+
+
+@dataclass(frozen=True)
+class ClaimHistoryItem:
+    """One past delivery, for the account 'claim history' list."""
+
+    location: str  # remark NAME of the delivered config
+    at: str  # ISO-8601 timestamp of the delivery (the SPA renders it relative to now)
 
 
 @dataclass(frozen=True)
@@ -97,6 +110,7 @@ class SiteStatusInfo:
     trial_hours: int  # rolling window each config lasts / renews on (the "renews every Nh" copy)
     location: str | None  # current config's location NAME
     link: str | None  # current config's link
+    history: tuple[ClaimHistoryItem, ...]  # recent deliveries (newest first), from the claim log
 
 
 @dataclass(frozen=True)
@@ -330,17 +344,19 @@ class SiteTrialService:
 
         # 4. Panel call 1 — create a fresh trial account. Device stays available on failure.
         claim_at = datetime.now(UTC)
-        # A fresh claim advances the consecutive-daily-claim streak. Compute the streak this claim
-        # WOULD produce and fold its bonus into the provisioned allowance up front, but only persist
-        # it (step 6) once the claim actually succeeds — a failed claim must never move the streak.
-        new_streak = next_streak_count(device.streak_count, device.last_claim_at, claim_at, hours)
+        # A fresh claim advances the consecutive-daily-claim streak. Derive the streak this claim
+        # WOULD produce straight from the claim log (the single source of truth) — the prior claims
+        # plus this one — and fold its bonus into the provisioned allowance up front, but only
+        # persist it (step 6) once the claim succeeds — a failed claim must never move the streak.
+        prior_times = await self._claims.claim_times_for_device(device.uuid)
+        new_streak = streak_from_claim_times([*prior_times, claim_at], hours, claim_at)
         streak_days = await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
         claimed_rewards = await self._rewards.types_for_device(device.uuid)
         traffic = await site_compute_traffic_bytes(
             self._settings,
             device.referral_count,
             rewards=claimed_rewards,
-            streak_active=streak_days > 0 and new_streak >= streak_days,
+            streak_active=streak_is_active(new_streak, streak_days),
         )
         expire_at = claim_at + timedelta(hours=hours)
         username = self._username(device)
@@ -401,16 +417,17 @@ class SiteTrialService:
         hours = await self._hours()
         cooling = in_cooldown(device.last_claim_at, hours)
         streak_days = await self._settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
-        # A persisted streak only counts while it's still LIVE (last claim within the grace window).
-        # A lapsed streak resets on the next claim, so status must not advertise a streak — or its
-        # bonus — that the next claim won't provision. Reflect the live streak in the count, the
-        # active flag, AND the quoted allowance so all three agree with provisioning.
-        live_streak = (
-            device.streak_count
-            if streak_within_grace(device.last_claim_at, hours, datetime.now(UTC))
-            else 0
+        # Derive the streak straight from the claim log — the single source of truth, always in sync
+        # with the history below and self-healing for any device whose stored counter was never
+        # written. It already applies the liveness grace (a lapsed streak reads 0), so status never
+        # advertises a streak — or its bonus — that the next claim wouldn't actually provision.
+        claim_times = await self._claims.claim_times_for_device(device.uuid)
+        live_streak = streak_from_claim_times(claim_times, hours, datetime.now(UTC))
+        streak_active = streak_is_active(live_streak, streak_days)
+        recent = await self._claims.recent_for_device(device.uuid)
+        history = tuple(
+            ClaimHistoryItem(location=c.location, at=_iso(c.created_at)) for c in recent
         )
-        streak_active = streak_days > 0 and live_streak >= streak_days
         daily_bytes = await site_compute_traffic_bytes(
             self._settings,
             device.referral_count,
@@ -439,4 +456,5 @@ class SiteTrialService:
             trial_hours=hours,
             location=location,
             link=link,
+            history=history,
         )
