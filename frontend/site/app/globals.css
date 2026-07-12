@@ -732,8 +732,8 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .why .tip{ position:absolute; inset-block-end:calc(100% + 8px); inset-inline-end:-6px; inline-size:200px; background:var(--band); color:var(--band-ink); font-size:11.5px; font-weight:500; line-height:1.6; padding:9px 11px; border-radius:10px; box-shadow:var(--shadow-md); opacity:0; pointer-events:none; transition:opacity .15s; z-index:5; }
 .why:hover .tip, .why:focus-within .tip{ opacity:1; }
 /* streak dots */
-  .streak{ display:flex; gap:6px; margin-block-start:6px; }
-.streak .d{ flex:1; aspect-ratio:1; border-radius:8px; background:var(--sunken-2); display:grid; place-items:center; font-size:11px; font-weight:700; color:var(--faint); }
+  .streak{ display:flex; justify-content:center; gap:8px; margin-block-start:10px; }
+.streak .d{ flex:1 1 0; max-inline-size:44px; aspect-ratio:1; border-radius:11px; background:var(--sunken-2); display:grid; place-items:center; font-size:12.5px; font-weight:700; color:var(--muted); }
 .streak .d.on{ background:linear-gradient(135deg,var(--primary),color-mix(in srgb,var(--primary) 55%,var(--hero-2))); color:#fff; }
 .streak .d.today{ outline:2px solid var(--primary); outline-offset:1px; }
 #app[data-theme="dark"] .streak .d.on{ color:#EAF2FF; }
@@ -863,9 +863,12 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw{ display:inline-flex; align-items:center; gap:4px; font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .rw .ic{ inline-size:13px; block-size:13px; flex:none; }
 
+/* the rewards card had no inner padding — content ran edge-to-edge; inset it like the sibling cards */
+.rewards-card{ padding:8px 20px 18px; }
+.rewards-card .block-title{ margin-block-end:12px; }
 /* streak block inside the rewards card */
-.rewards-card .streak-block{ padding-block:6px 14px; border-block-end:1px solid var(--border); margin-block-end:12px; }
-.rw-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:6px; }
+.rewards-card .streak-block{ padding-block:2px 14px; border-block-end:1px solid var(--border); margin-block-end:14px; }
+.rw-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:2px; }
 .rw-t{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:700; }
 .rw-t .ic{ inline-size:16px; block-size:16px; color:var(--primary); }
 
