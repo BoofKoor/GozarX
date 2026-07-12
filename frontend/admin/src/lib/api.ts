@@ -7,7 +7,7 @@
 
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 
-import { clearAuth, getAccessToken, getRefreshToken, setAccessToken } from "./auth";
+import { clearAuth, getAccessToken, getRefreshToken, setTokens } from "./auth";
 
 export const api = axios.create({
   baseURL: "/api",
@@ -44,10 +44,14 @@ async function refreshAccessToken(): Promise<string | null> {
   if (!refreshToken) return null;
   try {
     // Bare axios (not `api`) so this request skips the interceptors below.
-    const resp = await axios.post<{ access_token: string }>("/api/admin/auth/refresh", {
-      refresh_token: refreshToken,
-    });
-    setAccessToken(resp.data.access_token);
+    // The backend ROTATES the pair on every refresh (fresh access + fresh 7-day refresh); persist
+    // both, or the refresh token stays frozen at login and the session dies 7 days later even while
+    // the admin is active.
+    const resp = await axios.post<{ access_token: string; refresh_token: string }>(
+      "/api/admin/auth/refresh",
+      { refresh_token: refreshToken },
+    );
+    setTokens(resp.data.access_token, resp.data.refresh_token);
     return resp.data.access_token;
   } catch {
     return null;

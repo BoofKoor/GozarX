@@ -19,5 +19,7 @@ export function useLogin() {
 
 export function logout(): void {
   clearAuth();
-  window.location.replace("/login");
+  // The panel is mounted under /admin/ (Vite base + router basename), so the login route is
+  // /admin/login — same path bounceToLogin() uses. A bare "/login" lands outside the SPA.
+  window.location.replace("/admin/login");
 }

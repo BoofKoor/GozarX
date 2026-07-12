@@ -35,7 +35,9 @@ export function HistoryChart({
   minutes: number;
   onMinutesChange: (m: number) => void;
 }) {
-  const points = samples.map((s) => ({ t: hhmm(s.ts), api: s.api_ms ?? 0, pending: s.pending }));
+  // Keep a failed Telegram latency probe (api_ms === null) as a GAP, not 0 — a 0 ms reading on a
+  // latency axis reads as "excellent" and would hide an outage at the chart floor.
+  const points = samples.map((s) => ({ t: hhmm(s.ts), api: s.api_ms, pending: s.pending }));
   return (
     <Card>
       <CardHeader
@@ -116,6 +118,7 @@ export function HistoryChart({
                 stroke="#7CB000"
                 strokeWidth={2}
                 fill="url(#g-api)"
+                connectNulls={false}
               />
               <Line
                 yAxisId="pending"
