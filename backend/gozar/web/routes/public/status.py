@@ -60,6 +60,7 @@ class PublicConfig(BaseModel):
     popular_location: str | None = None  # remark NAME the admin flags as "popular" (picker star)
     # Reward MB amounts + streak length (from site_* settings) so the SPA can show "+N MB" chips and
     # the streak day-dots without hardcoding any economics.
+    reward_referral_mb: int = 0  # per successful invite (the rewards-card invite row's "+N MB")
     reward_pwa_mb: int = 0
     reward_push_mb: int = 0
     reward_streak_mb: int = 0
@@ -96,6 +97,7 @@ async def get_config(request: Request, session: DbSession) -> PublicConfig:
         vapid_public_key=settings.vapid_public_key,
         turnstile_enabled=bool(settings.turnstile_secret.get_secret_value()),
         popular_location=popular or None,
+        reward_referral_mb=await site_settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_MB, 0),
         reward_pwa_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PWA_MB, 0),
         reward_push_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
         reward_streak_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),

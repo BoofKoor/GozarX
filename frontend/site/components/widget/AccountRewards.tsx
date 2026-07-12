@@ -45,7 +45,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
 
   if (!status) return null;
 
-  const mb = (n: number | undefined) => `+${faDigits(String(n ?? 0), locale)} ${t("mb_unit")}`;
+  const inviteCount = Math.max(0, status.referral_count);
+  const inviteCap = Math.max(0, status.referral_cap);
+  const invitePct = inviteCap > 0 ? Math.min(100, Math.round((inviteCount / inviteCap) * 100)) : 0;
   const link =
     typeof window !== "undefined" ? `${window.location.origin}/?ref=${status.ref_code}` : "";
 
@@ -113,59 +115,85 @@ export function AccountRewards({ locale }: { locale: Locale }) {
 
       <StreakCard locale={locale} rewardMb={config?.reward_streak_mb} />
 
-      <div className="m-chips">
-        <Chip
-          icon="users"
-          title={t("m_invite")}
-          desc={`${t("m_invite_d")} · ${faDigits(String(status.referral_count), locale)} / ${faDigits(String(status.referral_cap), locale)}`}
-          onClick={invite}
-          trailing={<Icon name="share" sw={2} />}
-        />
+      <div className="ledger">
+        {/* Invite — always available; distinguished by its progress bar + bare share button,
+            not by a coloured amount (the amount matches every other row). */}
+        <div className="lrow lead">
+          <span className="lmed">
+            <Icon name="users" sw={2} />
+          </span>
+          <div className="lbd">
+            <div className="ltt">{t("m_invite")}</div>
+            <div className="lprog">
+              <div className="ltrack">
+                <i style={{ inlineSize: `${invitePct}%` }} />
+              </div>
+              <span className="lplbl">
+                <b>{faDigits(String(inviteCount), locale)}</b> {t("m_of")}{" "}
+                {faDigits(String(inviteCap), locale)} {t("m_invites")}
+              </span>
+              <button className="lshare" type="button" onClick={invite} aria-label={t("referral.share")}>
+                <Icon name="share" sw={2} />
+              </button>
+            </div>
+          </div>
+          <LAmt mb={config?.reward_referral_mb} locale={locale} />
+        </div>
 
         {pwa !== "unsupported" &&
           (pwa === "installed" ? (
-            <Chip
+            <LedgerRow
               icon="download"
               title={t("m_pwa")}
-              desc={t("installed_d")}
-              trailing={<span className="perm-tag granted">{t("rw_installed")}</span>}
+              sub={t("m_pwa_done")}
+              state="done"
+              amountMb={config?.reward_pwa_mb}
+              locale={locale}
             />
           ) : config ? (
-            // Only once /config is loaded, so the reward pill never flashes "+0 MB".
-            <Chip
+            // Only once /config is loaded, so the amount never flashes "+0 MB".
+            <LedgerRow
               icon="download"
               title={t("m_pwa")}
-              desc={t("m_pwa_d")}
+              sub={t("m_pwa_d")}
+              state="earn"
+              amountMb={config.reward_pwa_mb}
+              locale={locale}
               onClick={installPwa}
               busy={busy === "pwa"}
-              trailing={<span className="rw">{mb(config.reward_pwa_mb)}</span>}
             />
           ) : null)}
 
         {pushConfigured &&
           (perm === "granted" ? (
-            <Chip
+            <LedgerRow
               icon="bell"
               title={t("m_push")}
-              desc={t("ps_ok_d")}
-              trailing={<span className="perm-tag granted">{t("perm_granted")}</span>}
+              sub={t("m_push_done")}
+              state="done"
+              amountMb={config?.reward_push_mb}
+              locale={locale}
             />
           ) : perm === "denied" ? (
-            <Chip
+            <LedgerRow
               icon="bell"
               title={t("m_push")}
-              desc={t("ps_bl_d")}
+              sub={t("ps_bl_d")}
+              state="blocked"
+              amountMb={config?.reward_push_mb}
+              locale={locale}
               onClick={() => setModal("blocked")}
-              trailing={<span className="perm-tag denied">{t("perm_denied")}</span>}
             />
           ) : (
-            <Chip
+            <LedgerRow
               icon="bell"
               title={t("m_push")}
-              desc={t("m_push_d")}
+              sub={t("m_push_d")}
+              state="earn"
+              amountMb={config?.reward_push_mb}
+              locale={locale}
               onClick={() => setModal("push")}
               busy={busy === "push"}
-              trailing={<span className="rw">{mb(config?.reward_push_mb)}</span>}
             />
           ))}
       </div>
@@ -190,40 +218,83 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   );
 }
 
-function Chip({
+// One "+N MB" amount slot — MB inline beside the figure, one solid treatment for every row.
+// `muted` dims it for a blocked reward (still shown, since it's recoverable); `busy` shows a spinner.
+function LAmt({
+  mb,
+  locale,
+  muted,
+  busy,
+}: {
+  mb?: number;
+  locale: Locale;
+  muted?: boolean;
+  busy?: boolean;
+}) {
+  if (busy) return <span className="lamt busy">…</span>;
+  return (
+    <span className={`lamt${muted ? " muted" : ""}`}>
+      <span className="lval">
+        <span className="lp">+</span>
+        <span className="ln">{faDigits(String(mb ?? 0), locale)}</span>
+        <span className="lu">MB</span>
+      </span>
+    </span>
+  );
+}
+
+// A ledger row for the install / notifications actions. State is carried by the medallion badge —
+// green check = earned (done), red ✕ = blocked, no badge = available — while the amount stays
+// consistent. Interactive rows (earn / blocked) render as a full-width button for a big tap target.
+function LedgerRow({
   icon,
   title,
-  desc,
-  trailing,
+  sub,
+  state,
+  amountMb,
+  locale,
   onClick,
   busy,
 }: {
   icon: string;
   title: string;
-  desc: string;
-  trailing: ReactNode;
+  sub: string;
+  state: "earn" | "done" | "blocked";
+  amountMb?: number;
+  locale: Locale;
   onClick?: () => void;
   busy?: boolean;
 }) {
-  const interactive = !!onClick;
-  return (
-    <button
-      className="m-chip"
-      type="button"
-      onClick={onClick}
-      disabled={!interactive || busy}
-      style={interactive ? undefined : { cursor: "default" }}
-    >
-      <span className="mi">
+  const inner = (
+    <>
+      <span className="lmed">
         <Icon name={icon} sw={2} />
+        {state === "done" && (
+          <span className="ldone">
+            <Icon name="check" sw={3} />
+          </span>
+        )}
+        {state === "blocked" && (
+          <span className="ldone bad">
+            <Icon name="x" sw={2.6} />
+          </span>
+        )}
       </span>
-      <span className="mt">
-        <span className="mn">{title}</span>
-        <span className="md">{desc}</span>
+      <span className="lbd">
+        <span className="ltt">{title}</span>
+        <span className="lsb">{sub}</span>
       </span>
-      <span className="chip-end">{busy ? "…" : trailing}</span>
-    </button>
+      <LAmt mb={amountMb} locale={locale} muted={state === "blocked"} busy={busy} />
+    </>
   );
+  if (onClick) {
+    return (
+      <button className="lrow" type="button" onClick={onClick} disabled={busy}>
+        {inner}
+      </button>
+    );
+  }
+  return <div className="lrow">{inner}</div>;
 }
 
 // Daily-claim streak: `streak_days` dots, filled up to the current run; the "today" dot is the one

@@ -76,6 +76,7 @@ export interface PublicConfig {
   vapid_public_key: string;
   turnstile_enabled: boolean;
   popular_location: string | null;
+  reward_referral_mb: number;
   reward_pwa_mb: number;
   reward_push_mb: number;
   reward_streak_mb: number;
