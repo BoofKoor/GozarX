@@ -134,7 +134,7 @@ export function UsageMeter({
   locale: Locale;
 }) {
   const t = translator(locale);
-  const cls = pct >= 100 ? "bar full" : pct >= 80 ? "bar warn" : "bar";
+  const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
   return (
     <div className="meter">
       <div className="row">
@@ -142,8 +142,11 @@ export function UsageMeter({
           <Icon name="gauge" sw={2} />
           {t("usage")}
         </span>
+        {/* Each "<number> MB" is bidi-isolated so the Latin unit stays glued to its figure under
+            RTL (else it renders reversed, e.g. "MB ۷۰۰.۰ از MB ۶۶۶.۵"). */}
         <span className="v tnum">
-          {faDigits(used, locale)} {t("of")} {faDigits(total, locale)}
+          <bdi dir="ltr">{faDigits(used, locale)}</bdi> {t("of")}{" "}
+          <bdi dir="ltr">{faDigits(total, locale)}</bdi>
         </span>
       </div>
       <div className={cls}>

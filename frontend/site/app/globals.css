@@ -574,7 +574,9 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .ring-mini svg{ transform:rotate(-90deg); }
 [dir="rtl"] .ring-mini svg{ transform:rotate(-90deg) scaleY(-1); }
 .ring-mini .tk{ fill:none; stroke:var(--sunken-2); stroke-width:5; }
-.ring-mini .vl{ fill:none; stroke:var(--primary); stroke-width:5; stroke-linecap:round; }
+.ring-mini .vl{ fill:none; stroke:var(--primary); stroke-width:5; stroke-linecap:round; transition:stroke .2s; }
+.ring-mini .vl.warn{ stroke:var(--warning); }
+.ring-mini .vl.full{ stroke:var(--danger); }
 .ring-mini .pct{ position:absolute; inset:0; display:grid; place-items:center; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
 .cd-inline{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; display:inline-block; }
 .grid-main{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
