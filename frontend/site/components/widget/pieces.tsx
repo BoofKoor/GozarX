@@ -53,19 +53,33 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
 }
 
 // ---- AppButtons: platform-aware v2rayNG / Streisand / Happ ----
-// Each button is a one-tap DEEP LINK that opens the app and imports THIS config, with a
-// copy-to-clipboard fallback so the button is never a dead end (app not installed / desktop).
-// The exact import formats were device-tested against each app:
+// Each button is a one-tap DEEP LINK that opens the app and imports THIS config. The exact import
+// formats were device-tested against each app:
 //   • Happ / Streisand — the config link appended RAW after the verb (it already carries the
 //     panel's own percent-encoding, e.g. the emoji remark); re-encoding it breaks the import.
 //   • v2rayNG — the config URI url-encoded in the ?url= param, WITHOUT the #remark fragment
 //     (install-config chokes on the encoded name), which double-encodes the config's own %-escapes.
+//     The remark is carried instead in a separate ?name= param so the config isn't imported as
+//     "none" — mirroring Remnawave's own subscription-page deep links.
 const dropFragment = (l: string) => l.split("#", 1)[0];
+function remark(l: string): string {
+  const hash = l.indexOf("#");
+  if (hash < 0) return "";
+  try {
+    return decodeURIComponent(l.slice(hash + 1));
+  } catch {
+    return l.slice(hash + 1);
+  }
+}
 const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) => string }> = {
   v2rayng: {
     n: "v2rayNG",
     icon: "/icons/v2rayng.webp",
-    deeplink: (l) => `v2rayng://install-config?url=${encodeURIComponent(dropFragment(l))}`,
+    deeplink: (l) => {
+      const name = remark(l);
+      const namePart = name ? `name=${encodeURIComponent(name)}&` : "";
+      return `v2rayng://install-config?${namePart}url=${encodeURIComponent(dropFragment(l))}`;
+    },
   },
   streisand: { n: "Streisand", icon: "/icons/streisand.webp", deeplink: (l) => `streisand://import/${l}` },
   happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${l}` },
@@ -87,28 +101,17 @@ function detectPlatform(): "ios" | "android" | "desktop" {
 export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   const t = translator(locale);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
-  const [flash, setFlash] = useState<string | null>(null);
   useEffect(() => setPlatform(detectPlatform()), []);
-  // The <a href> opens the app; this copies the link too so the config is never lost if no app
-  // handles the scheme, and flashes a "copied" confirmation on the tapped button.
-  function copyFallback(name: string) {
-    navigator.clipboard?.writeText(link).catch(() => {});
-    setFlash(name);
-    setTimeout(() => setFlash(null), 1400);
-  }
+  // Each button is purely the deep link — tapping opens the app and imports the config. It does NOT
+  // copy anything to the clipboard (the separate "copy" field is there for manual paste).
   return (
     <div className="apps">
       <span className="lbl">{t("app_hint")}</span>
       <div className="apps-row">
         {(PLATFORM_APPS[platform] ?? PLATFORM_APPS.desktop).map((key) => (
-          <a
-            key={key}
-            className="app-btn"
-            href={APPS[key].deeplink(link)}
-            onClick={() => copyFallback(key)}
-          >
+          <a key={key} className="app-btn" href={APPS[key].deeplink(link)}>
             <img className="app-ico" src={APPS[key].icon} alt="" width={26} height={26} />
-            {flash === key ? t("copied") : APPS[key].n}
+            {APPS[key].n}
           </a>
         ))}
       </div>
