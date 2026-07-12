@@ -356,17 +356,19 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .locbig .go .ic{ inline-size:14px; block-size:14px; }
 [dir="rtl"] .locbig .go .ic-dir{ transform:scaleX(-1); }
 .center-more{ text-align:center; margin-block-start:32px; }
-/* MORE VOLUME strip */
-  .missiongrid{ display:grid; gap:14px; grid-template-columns:1fr; }
-@media (min-width:640px){ .missiongrid{ grid-template-columns:repeat(2,1fr); } }
-@media (min-width:980px){ .missiongrid{ grid-template-columns:repeat(4,1fr); } }
-.mcard{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:20px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
-.mcard .mi{ inline-size:44px; block-size:44px; border-radius:13px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; margin-block-end:14px; }
-.mcard .mi .ic{ inline-size:22px; block-size:22px; }
-.mcard h3{ font-size:16px; font-weight:700; margin:0 0 6px; }
-.mcard p{ font-size:13px; color:var(--muted); margin:0 0 14px; line-height:1.6; }
-.mcard .rw{ display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:13px; line-height:1.5; color:var(--success-ink); background:var(--success-surface); border:1px solid color-mix(in srgb,var(--success) 22%,transparent); border-radius:var(--r-pill); padding:6px 13px; font-variant-numeric:tabular-nums; }
-.mcard .rw .ic{ inline-size:14px; block-size:14px; flex:none; }
+/* MORE VOLUME — missions as a horizontal list: icon · title/desc · a bold "+N MB" reward tile */
+  .mvlist{ display:grid; gap:11px; grid-template-columns:1fr; }
+@media (min-width:760px){ .mvlist{ grid-template-columns:repeat(2,1fr); } }
+.mvrow{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-sm); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.mvrow:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); }
+.mvrow .mi{ inline-size:44px; block-size:44px; border-radius:13px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; flex:none; }
+.mvrow .mi .ic{ inline-size:22px; block-size:22px; }
+.mvbd{ flex:1; min-inline-size:0; }
+.mvbd h3{ font-size:15px; font-weight:800; margin:0 0 3px; }
+.mvbd p{ font-size:12.5px; color:var(--muted); line-height:1.6; margin:0; }
+.mvamt{ flex:none; display:inline-flex; flex-direction:column; align-items:center; justify-content:center; min-inline-size:66px; padding:10px 8px; border-radius:14px; background:var(--success-surface); border:1px solid color-mix(in srgb,var(--success) 26%,transparent); color:var(--success-ink); }
+.mvamt b{ font-size:19px; font-weight:900; font-variant-numeric:tabular-nums; line-height:1; }
+.mvamt i{ font-size:10px; font-weight:700; font-style:normal; color:var(--muted); margin-block-start:3px; }
 /* APPS row */
   .approw{ display:grid; gap:14px; grid-template-columns:1fr; }
 .appcard{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px; box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
