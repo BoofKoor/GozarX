@@ -8,9 +8,19 @@ import { Icon } from "@/components/Icon";
 // ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
 export function Flag({ name, size = 40 }: { name: string; size?: number }) {
   const cc = flagCC(name);
+  const [errored, setErrored] = useState(false);
   const style = { inlineSize: size, blockSize: size } as const;
-  if (cc) {
-    return <img className="flag" src={`/flags/${cc}.svg`} alt="" style={style} loading="lazy" />;
+  if (cc && !errored) {
+    return (
+      <img
+        className="flag"
+        src={`/flags/${cc}.svg`}
+        alt=""
+        style={style}
+        loading="lazy"
+        onError={() => setErrored(true)}
+      />
+    );
   }
   return (
     <span className="flag flag-fallback" style={style} aria-hidden>
