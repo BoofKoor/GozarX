@@ -56,11 +56,13 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
 // Each button is a one-tap DEEP LINK that opens the app and imports THIS config. The exact import
 // formats were device-tested against each app:
 //   • Happ / Streisand — the config link appended RAW after the verb (it already carries the
-//     panel's own percent-encoding, e.g. the emoji remark); re-encoding it breaks the import.
-//   • v2rayNG — the config URI url-encoded in the ?url= param, WITHOUT the #remark fragment
-//     (install-config chokes on the encoded name), which double-encodes the config's own %-escapes.
-//     The remark is carried instead in a separate ?name= param so the config isn't imported as
-//     "none" — mirroring Remnawave's own subscription-page deep links.
+//     panel's own percent-encoding, incl. the #remark that becomes the config name); re-encoding
+//     it breaks the import.
+//   • v2rayNG — its UrlSchemeActivity reads the config from ?url= (url-decoded twice, so the
+//     panel's own %-escapes are double-encoded) and takes the config NAME from the DEEP LINK's own
+//     trailing #fragment (`parseUri(getQueryParameter("url"), uri.fragment)` → appends `#fragment`
+//     when the url lacks one). So the remark goes AFTER the whole link as its fragment — not inside
+//     ?url= (which install-config rejects) and not as a ?name= param (which v2rayNG never reads).
 const dropFragment = (l: string) => l.split("#", 1)[0];
 function remark(l: string): string {
   const hash = l.indexOf("#");
@@ -76,9 +78,9 @@ const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) =
     n: "v2rayNG",
     icon: "/icons/v2rayng.webp",
     deeplink: (l) => {
+      const base = `v2rayng://install-config?url=${encodeURIComponent(dropFragment(l))}`;
       const name = remark(l);
-      const namePart = name ? `name=${encodeURIComponent(name)}&` : "";
-      return `v2rayng://install-config?${namePart}url=${encodeURIComponent(dropFragment(l))}`;
+      return name ? `${base}#${encodeURIComponent(name)}` : base;
     },
   },
   streisand: { n: "Streisand", icon: "/icons/streisand.webp", deeplink: (l) => `streisand://import/${l}` },
