@@ -33,10 +33,6 @@ export default async function HomePage() {
       <section className="hero" id="hero">
         <div className="container hero-inner">
           <div className="hero-copy">
-            <span className="eyebrow">
-              <Icon name="spark" sw={2.2} />
-              <span>{t("hero_eyebrow")}</span>
-            </span>
             <h1>
               {t("hero_h1_a")} <span className="grad">{t("hero_h1_b")}</span>
             </h1>

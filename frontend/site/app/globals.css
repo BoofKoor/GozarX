@@ -198,10 +198,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 [dir="rtl"] .hero::before{ transform:scaleX(-1); }
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr); gap:32px; align-items:center; }
 .hero-copy{ text-align:center; }
-.hero-copy h1{ font-size:clamp(30px,6vw,50px); font-weight:800; line-height:var(--lh-head); letter-spacing:var(--ls-head); margin:16px 0 16px; text-wrap:balance; }
+.hero-copy h1{ font-size:clamp(30px,6vw,50px); font-weight:800; line-height:var(--lh-head); letter-spacing:var(--ls-head); margin:4px 0 16px; text-wrap:balance; }
 .hero-copy h1 .grad{ background:linear-gradient(120deg,var(--hero-1),var(--hero-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .hero-copy .sub{ font-size:17px; color:var(--muted); max-width:34rem; margin:0 auto 22px; }
-.trust-row{ display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
+/* trust chips ride a single horizontal rail on mobile (swipe) — no messy 2×2 wrap; edges fade to
+   hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. */
+.trust-row{ display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; padding-block-end:2px; scrollbar-width:none; -webkit-mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); }
+.trust-row::-webkit-scrollbar{ display:none; }
+.trust-row .pill{ flex:none; }
 .pill{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); background:color-mix(in srgb,var(--surface) 72%,transparent); border:1px solid var(--border); border-radius:var(--r-pill); padding:7px 13px; backdrop-filter:blur(4px); }
 .pill .ic{ inline-size:15px; block-size:15px; color:var(--success); flex:none; }
 /* desktop hero: two columns (copy + widget), copy left-aligned (from Phase 2, restored post-merge) */
@@ -209,7 +213,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
   .hero-inner{ grid-template-columns:minmax(0,1fr) minmax(400px,432px); gap:52px; }
   .hero-copy{ text-align:start; }
   .hero-copy .sub{ margin-inline:0; }
-  .trust-row{ justify-content:flex-start; }
+  .trust-row{ flex-wrap:wrap; overflow:visible; -webkit-mask:none; mask:none; justify-content:flex-start; }
 }
 /* ===== claim widget (from Phase 1) ===== */
   .widget{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); box-shadow:var(--shadow-hero); padding:20px; isolation:isolate; }
