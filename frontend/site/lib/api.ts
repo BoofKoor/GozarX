@@ -22,9 +22,11 @@ export interface StatusResponse {
   referral_cap: number;
   streak_count: number;
   streak_days: number;
+  streak_active: boolean;
   trial_hours: number;
   location: string | null;
   link: string | null;
+  handle: string;
   ref_code: string;
 }
 
@@ -68,6 +70,10 @@ export interface PublicConfig {
   vapid_public_key: string;
   turnstile_enabled: boolean;
   popular_location: string | null;
+  reward_pwa_mb: number;
+  reward_push_mb: number;
+  reward_streak_mb: number;
+  streak_days: number;
 }
 
 async function get<T>(path: string): Promise<T> {

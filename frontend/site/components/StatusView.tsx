@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
@@ -8,6 +7,7 @@ import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
+import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
 import { InlineCountdown } from "@/components/widget/pieces";
 import { subscribeToPush } from "@/lib/push";
@@ -57,6 +57,7 @@ export function StatusView({ locale }: { locale: Locale }) {
             <Icon name="device" sw={2} />
             {t("idnote")} <a href="#transfer">{t("idnote_link")}</a>
           </span>
+          {status?.handle && <IdChip handle={status.handle} locale={locale} />}
         </div>
       </div>
 
@@ -114,22 +115,9 @@ export function StatusView({ locale }: { locale: Locale }) {
 
       {/* MAIN GRID */}
       <div className="grid-main">
-        <div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <ClaimWidget locale={locale} />
-          <Link
-            className="card msum"
-            href="/#rewards"
-            style={{ textDecoration: "none", color: "inherit", marginBlockStart: 16 }}
-          >
-            <div className="mi">
-              <Icon name="gift" sw={2} />
-            </div>
-            <div className="mt">
-              <div className="mn">{t("msum_t")}</div>
-              <div className="md">{t("msum_d")}</div>
-            </div>
-            <Icon name="arrow" sw={2.2} cls="ic-dir" />
-          </Link>
+          <AccountRewards locale={locale} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <SettingsCard locale={locale} pushEnabled={!!config?.vapid_public_key} onReload={reload} />
@@ -155,6 +143,34 @@ export function StatusView({ locale }: { locale: Locale }) {
 
       {/* DANGER ROW */}
       <DangerRow locale={locale} onReset={reload} />
+    </div>
+  );
+}
+
+// Public account id (GZ-…) — a stable, shareable identity the user actually has, copyable, doubling
+// as the referral code and the device-transfer anchor. LTR (it's an ASCII code).
+function IdChip({ handle, locale }: { handle: string; locale: Locale }) {
+  const t = translator(locale);
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(handle);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1600);
+    } catch {
+      /* clipboard blocked */
+    }
+  }
+  return (
+    <div className="acc-id">
+      <span style={{ fontSize: 12, color: "var(--muted)" }}>{t("acc_id")}</span>
+      <span className="id" dir="ltr">
+        {handle}
+      </span>
+      <button className={`copy${copied ? " done" : ""}`} type="button" onClick={copy}>
+        {copied ? t("copied") : t("copy")}
+      </button>
+      <span className="hint">{t("acc_id_hint")}</span>
     </div>
   );
 }

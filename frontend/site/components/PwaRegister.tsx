@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
+import { initPwa } from "@/lib/pwa";
 
-// Registers the service worker (offline shell + Web Push handling). Best-effort and silent — a failed
-// registration (e.g. unsupported browser, http dev without SW) never breaks the page.
+// Registers the service worker (offline shell + Web Push handling) and wires the install store
+// (beforeinstallprompt / appinstalled). Best-effort and silent — a failed registration (e.g.
+// unsupported browser, http dev without SW) never breaks the page.
 export function PwaRegister() {
   useEffect(() => {
+    initPwa(); // idempotent — also runs at module load, so the one-shot install event isn't missed
     if (!("serviceWorker" in navigator)) return;
     const onLoad = () => {
       navigator.serviceWorker.register("/sw.js").catch(() => {});

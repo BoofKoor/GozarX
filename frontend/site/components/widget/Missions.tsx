@@ -1,18 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
+import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
 
 // "Want more daily volume?" strip (design `.missions`) — invite (Web Share), install PWA, enable
-// notifications. Reward MB comes from site_* settings (not exposed to the client), so each chip
-// shows the action affordance, not a hardcoded figure. Dismissible.
+// notifications. Actions are REAL: install fires the native prompt, notifications actually
+// subscribe. The install chip only appears when the browser can actually install (the full iOS
+// flow lives on the account page). Reward MB comes from site_* settings. Dismissible.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
   const { config, reload } = useSite();
+  const pwa = usePwaState();
   const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
@@ -36,12 +39,15 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
       /* cancelled */
     }
   }
-  async function claimPwa() {
+  async function installPwa() {
     setBusy("pwa");
     try {
-      await api.claimReward("pwa");
-      await reload();
-      toast("✓");
+      const ok = await promptInstall();
+      if (ok) {
+        await api.claimReward("pwa");
+        await reload();
+        toast("✓");
+      }
     } finally {
       setBusy(null);
     }
@@ -58,11 +64,23 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
     }
   }
 
-  const chips = [
+  const chips: {
+    key: string;
+    ic: string;
+    title: string;
+    desc: string;
+    action: () => void;
+    rw: ReactNode;
+  }[] = [
     { key: "invite", ic: "users", title: t("m_invite"), desc: t("m_invite_d"), action: invite, rw: <Icon name="share" sw={2} /> },
-    { key: "pwa", ic: "download", title: t("m_pwa"), desc: t("m_pwa_d"), action: claimPwa, rw: "＋" },
-    { key: "push", ic: "bell", title: t("m_push"), desc: t("m_push_d"), action: enablePush, rw: "＋" },
   ];
+  // Only offer the install chip when the browser can actually install (Chromium prompt captured).
+  if (pwa === "installable") {
+    chips.push({ key: "pwa", ic: "download", title: t("m_pwa"), desc: t("m_pwa_d"), action: installPwa, rw: "＋" });
+  }
+  if (config?.vapid_public_key) {
+    chips.push({ key: "push", ic: "bell", title: t("m_push"), desc: t("m_push_d"), action: enablePush, rw: "＋" });
+  }
 
   return (
     <div className="missions">
