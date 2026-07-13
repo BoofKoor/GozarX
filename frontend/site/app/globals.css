@@ -1123,3 +1123,46 @@ button.lrow:disabled{ cursor:default; background:none; }
 .dlbtn .dlt small{ font-size:10.5px; font-weight:600; opacity:.75; }
 .dlbtn .dlt b{ font-size:14.5px; font-weight:800; letter-spacing:.1px; }
 [dir="ltr"] .dlbtn .dlt{ direction:ltr; text-align:left; }
+
+/* ── Homepage locations card (world map + live count + flag strip) ─────────────
+   Replaces the tall 8-card grid. The map is a decorative "global presence" backdrop; the live pill
+   count and the flag strip are REAL (from the trial-squad locations). Framed viewport + brand wash
+   so the map sits cleanly in both themes; the "+N" circle matches the flag family (variant الف). */
+.loccard{ position:relative; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-hero); box-shadow:var(--shadow-md); overflow:hidden; max-width:520px; margin-inline:auto; }
+.loccard::before{ content:""; position:absolute; inset-inline:0; inset-block-start:0; block-size:140px; pointer-events:none;
+  background:radial-gradient(130% 100% at 50% 0, color-mix(in srgb,var(--primary) 9%,transparent), transparent 70%); }
+.locframe{ position:relative; margin:18px 18px 0; border-radius:20px; overflow:hidden; padding:18px 16px;
+  border:1px solid var(--border);
+  background:radial-gradient(88% 130% at 50% 34%, color-mix(in srgb,var(--primary) 12%,var(--surface)), var(--surface) 72%); }
+.worldmap{ display:block; inline-size:100%; block-size:auto; position:relative; z-index:1; }
+.livepill{ position:absolute; z-index:2; inset-block-start:14px; inset-inline-start:14px;
+  display:inline-flex; align-items:center; gap:8px; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-pill); padding:6px 13px 6px 11px; box-shadow:var(--shadow-md);
+  font-size:12.5px; font-weight:600; color:var(--muted); }
+.livepill b{ color:var(--text); font-weight:800; }
+.livedot{ position:relative; inline-size:9px; block-size:9px; border-radius:50%; background:var(--success); flex:none; }
+.livedot::after{ content:""; position:absolute; inset:0; border-radius:50%; background:var(--success);
+  animation:loc-pulse 2.2s ease-out infinite; }
+@keyframes loc-pulse{ 0%{ transform:scale(1); opacity:.55; } 70%{ transform:scale(2.6); opacity:0; } 100%{ opacity:0; } }
+@media (prefers-reduced-motion: reduce){ .livedot::after{ animation:none; } }
+.locdiv{ block-size:1px; margin:18px 24px 0; background:linear-gradient(90deg, transparent, var(--border) 20%, var(--border) 80%, transparent); }
+/* 5 flags + a "+N" circle = 6 items on one row down to ~360px; flex:0 0 auto so a circle never
+   shrinks into an oval, wrap only as a last resort on very narrow screens. */
+.flagstrip{ display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:12px; padding:18px 14px 4px; }
+.flagstrip .fbig, .flagmore{ flex:0 0 auto; inline-size:44px; block-size:44px; border-radius:50%; }
+.flagstrip .fbig{ object-fit:cover; box-shadow:0 3px 10px -2px color-mix(in srgb,var(--text) 20%,transparent), 0 0 0 3px var(--surface); }
+.fbig.fb-fallback{ display:grid; place-items:center; background:var(--sunken); color:var(--muted); font-weight:800; font-size:13px; }
+.flagmore{ display:grid; place-items:center; direction:ltr; font-weight:800; font-size:13.5px;
+  background:var(--brand-tint); color:var(--brand-tint-ink);
+  box-shadow:0 3px 10px -2px color-mix(in srgb,var(--text) 20%,transparent), 0 0 0 3px var(--surface); }
+@media(min-width:600px){
+  .flagstrip{ gap:18px; }
+  .flagstrip .fbig, .flagmore{ inline-size:48px; block-size:48px; }
+  .flagmore{ font-size:14.5px; }
+}
+.loccap{ text-align:center; color:var(--muted); font-size:14px; line-height:1.9; padding:16px 26px 4px; }
+.loccap b{ color:var(--text); font-weight:800; }
+.loccta{ display:flex; align-items:center; justify-content:center; gap:7px; color:var(--link); font-weight:700;
+  font-size:14px; text-decoration:none; padding:14px; margin-block-start:6px; border-block-start:1px solid var(--border); }
+.loccta .ic{ inline-size:16px; block-size:16px; }

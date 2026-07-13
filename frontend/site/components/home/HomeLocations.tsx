@@ -1,19 +1,26 @@
 "use client";
 
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { Flag } from "@/components/widget/pieces";
-import { locName } from "@/components/widget/flags";
+import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
 
-// LOCATIONS teaser — the design's `.locrow` of `.locbig` cards, but fed by the LIVE trial-squad
-// locations (never a hardcoded country list). Cards deep-link to the hero widget's picker. Hidden
-// entirely when the panel exposes no locations; skeletons while the first load is in flight.
+// LOCATIONS teaser — a single compact card: a dotted world map (decorative "global presence"), a
+// LIVE pill with the REAL active-location count, and a flag strip of the live trial-squad locations.
+// Replaces the old tall 8-card grid. Data (count + flags) is live; the map is illustrative. Hidden
+// when the panel exposes no locations.
+const SHOWN = 5;
+
 export function HomeLocations({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const { locations, loading } = useSite();
-  const list = (locations ?? []).slice(0, 8);
-  if (!loading && list.length === 0) return null;
+  const list = locations ?? [];
+  const total = list.length;
+  if (!loading && total === 0) return null;
+
+  const skeleton = total === 0; // first load in flight
+  const shown = list.slice(0, SHOWN);
+  const more = Math.max(0, total - SHOWN);
 
   return (
     <section className="sec" id="locations" style={{ background: "var(--sunken)" }}>
@@ -23,27 +30,42 @@ export function HomeLocations({ locale }: { locale: Locale }) {
           <h2 className="sec-title">{t("loc_title")}</h2>
           <p className="sec-sub">{t("loc_sub")}</p>
         </div>
-        <div className="locrow reveal">
-          {list.length === 0
-            ? Array.from({ length: 8 }).map((_, i) => (
-                <div key={i} className="locbig skeleton" style={{ blockSize: 128 }} aria-hidden />
-              ))
-            : list.map((name) => (
-                <a key={name} className="locbig" href="#hero">
-                  <span className="flag-wrap" style={{ position: "relative" }}>
-                    <Flag name={name} size={52} />
-                  </span>
-                  <span className="nm">{locName(name)}</span>
-                  <span className="go">
-                    {t("loc_go")}
-                    <Icon name="arrow" sw={2.4} cls="ic-dir" />
-                  </span>
-                </a>
-              ))}
-        </div>
-        <div className="center-more reveal">
-          <a className="link-more" href="#hero">
+
+        <div className="loccard reveal">
+          <div className="locframe">
+            {!skeleton && (
+              <span className="livepill">
+                <span className="livedot" aria-hidden />
+                <b>{faDigits(String(total), locale)}</b> {t("loc_active")}
+              </span>
+            )}
+            <img className="worldmap" src="/map-world.webp" alt="" width={640} height={382} />
+          </div>
+
+          <div className="locdiv" />
+
+          <div className="flagstrip">
+            {skeleton
+              ? Array.from({ length: SHOWN }).map((_, i) => (
+                  <span key={i} className="fbig skeleton" aria-hidden />
+                ))
+              : shown.map((name) => {
+                  const cc = flagCC(name);
+                  return cc ? (
+                    <img key={name} className="fbig" src={`/flags/${cc}.svg`} alt={locName(name)} loading="lazy" />
+                  ) : (
+                    <span key={name} className="fbig fb-fallback" aria-hidden>
+                      {locName(name).slice(0, 2).toUpperCase()}
+                    </span>
+                  );
+                })}
+            {more > 0 && <span className="flagmore">+{faDigits(String(more), locale)}</span>}
+          </div>
+
+          <p className="loccap">{t("loc_worldwide")}</p>
+          <a className="loccta" href="#hero">
             {t("loc_all")}
+            <Icon name="arrow" sw={2.2} cls="ic-dir" />
           </a>
         </div>
       </div>

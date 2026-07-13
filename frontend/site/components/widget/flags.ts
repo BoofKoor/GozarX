@@ -21,7 +21,7 @@ const KEYWORD: Record<string, string> = {
   usa: "us", "united states": "us", america: "us", آمریکا: "us",
   turkey: "tr", türkiye: "tr", turkiye: "tr", ترکیه: "tr",
   france: "fr", فرانسه: "fr",
-  uk: "gb", "united kingdom": "gb", "u-kingdom": "gb", "u kingdom": "gb", britain: "gb", england: "gb", انگلیس: "gb", انگلستان: "gb",
+  uk: "gb", "united kingdom": "gb", "u-kingdom": "gb", "u kingdom": "gb", britain: "gb", "great britain": "gb", england: "gb", انگلیس: "gb", انگلستان: "gb", بریتانیا: "gb", "بریتانیا کبیر": "gb",
   netherlands: "nl", holland: "nl", هلند: "nl",
   canada: "ca", کانادا: "ca",
   spain: "es", españa: "es", espana: "es", اسپانیا: "es",
