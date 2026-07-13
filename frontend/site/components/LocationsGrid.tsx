@@ -41,11 +41,12 @@ export function LocationsGrid({
           ))
         : list.map((loc) => {
             const href = landingFor(loc) ?? "/#hero";
+            // No inline "get" label: the whole cell is the link, and long Persian names
+            // (آذربایجان، کره جنوبی…) need the full width to render untruncated.
             return (
-              <Link key={loc} className="loccell" href={href}>
+              <Link key={loc} className="loccell" href={href} title={t("loc_go")}>
                 <Flag name={loc} size={34} />
                 <span className="ln">{locName(loc)}</span>
-                <span className="lg">{t("loc_go")}</span>
               </Link>
             );
           })}

@@ -60,10 +60,15 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
         <nav className="crumbs" aria-label="breadcrumb">
           <Link href="/">{t("land_home")}</Link>
           <span aria-hidden>‹</span>
-          <span>{row.heading ?? row.title}</span>
+          {/* bdi: the crumb label is row-locale text inside chrome that may run the other way */}
+          <bdi>{row.heading ?? row.title}</bdi>
         </nav>
 
-        <h1>{row.heading ?? row.title}</h1>
+        {/* h1 carries the row's own lang/dir like the body: in the en-chrome + fa-fallback case a
+            Persian heading inside an LTR page would otherwise render visually scrambled. */}
+        <h1 lang={row.locale} dir={rtl ? "rtl" : "ltr"}>
+          {row.heading ?? row.title}
+        </h1>
 
         {/* Body is TRUSTED admin-authored HTML: rows come only from the JWT-gated admin CRUD
             (backend admin/landing.py documents the contract) — no user input ever reaches it. */}
@@ -84,7 +89,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
             <div className="chips">
               {related.map((s) => (
                 <Link key={s.slug} className="chip" href={`/l/${s.slug}`}>
-                  {s.title.split("—")[0].split("|")[0].trim()}
+                  <bdi>{s.title.split("—")[0].split("|")[0].trim()}</bdi>
                 </Link>
               ))}
             </div>

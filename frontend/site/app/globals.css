@@ -1222,5 +1222,4 @@ button.lrow:disabled{ cursor:default; background:none; }
 .loccell{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:10px 12px; min-block-size:56px; transition:border-color .15s ease; }
 .loccell:hover{ border-color:var(--border-strong); }
 .loccell .ln{ font-size:13.5px; font-weight:700; flex:1; min-inline-size:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.loccell .lg{ font-size:11.5px; font-weight:700; color:var(--primary); flex:none; }
 .loccell.skeleton{ border-style:dashed; }
