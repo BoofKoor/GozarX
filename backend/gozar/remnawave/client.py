@@ -200,26 +200,40 @@ class RemnawaveClient:
         return sub, links
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:
-        """Location remark names available to a squad.
+        """Location remark names available to a squad — and ONLY that squad.
 
-        VERIFY: there's no direct squad->hosts endpoint, so we match the squad's inbound UUIDs to
-        ``host.inbound.configProfileInboundUuid`` and drop hosts that exclude the squad. If nothing
-        matches (panel drift), fall back to every enabled host's remark so the wizard has options.
+        VERIFY (live contract): there's no direct squad->hosts endpoint, so we match by inbound
+        UUID. A squad's ``inbounds[]`` are config-profile inbounds whose OWN id is ``uuid``; a host
+        points at an inbound via ``host.inbound.configProfileInboundUuid``. So the join is
+        ``squad.inbounds[].uuid`` == ``host.inbound.configProfileInboundUuid`` (dropping hosts that
+        exclude the squad) — NOT the squad's non-existent ``configProfileInboundUuid`` (matching on
+        that gave an empty set every time, which then leaked EVERY host into one squad).
+
+        Returns strictly the matched squad's locations. An unknown squad, or a squad no enabled host
+        serves, yields ``[]`` (logged) — never every host. Silently falling back to all hosts is the
+        exact "brings every squad's locations" bug this scoping is meant to prevent.
         """
         squads = await self.list_internal_squads()
         hosts = await self.list_hosts()
         enabled = [h for h in hosts if not h.is_disabled]
         squad = next((s for s in squads if s.uuid == squad_uuid), None)
         if squad is None:
-            return _unique([h.remark for h in enabled])
+            logger.warning(
+                "squad_location_names: squad %s not found (%d squads)", squad_uuid, len(squads)
+            )
+            return []
 
-        inbound_uuids = {
-            i.config_profile_inbound_uuid for i in squad.inbounds if i.config_profile_inbound_uuid
-        }
+        inbound_uuids = {i.uuid for i in squad.inbounds if i.uuid}
         matched = [
             h.remark
             for h in enabled
             if h.inbound.config_profile_inbound_uuid in inbound_uuids
             and squad_uuid not in h.excluded_internal_squads
         ]
-        return _unique(matched) or _unique([h.remark for h in enabled])
+        if not matched:
+            logger.warning(
+                "squad_location_names: squad %s (%d inbounds) matched no enabled host",
+                squad_uuid,
+                len(inbound_uuids),
+            )
+        return _unique(matched)

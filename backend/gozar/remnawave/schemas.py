@@ -29,8 +29,14 @@ class PanelUser(_Base):
 
 
 class SquadInbound(_Base):
+    """One Config-Profile-Inbound enabled for a squad (``GET /internal-squads`` ->
+    ``internalSquads[].inbounds[]``). VERIFY (live contract): each element is a config-profile
+    inbound whose OWN id is ``uuid`` — squad inbounds do NOT carry a ``configProfileInboundUuid``;
+    that field lives on the HOST side (``host.inbound.configProfileInboundUuid``), pointing back at
+    this ``uuid``. So a squad's inbound UUIDs are matched to hosts by ``uuid``, never by a field
+    the squad inbound doesn't have."""
+
     uuid: str = ""
-    config_profile_inbound_uuid: str | None = Field(default=None, alias="configProfileInboundUuid")
 
 
 class InternalSquad(_Base):

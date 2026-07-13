@@ -80,18 +80,34 @@ async def test_get_subscription_parses_ssconflinks() -> None:
     assert sub.user.traffic_used_bytes == 5
 
 
-async def test_squad_location_names_matches_by_inbound() -> None:
-    squads = {
-        "response": {
-            "internalSquads": [
-                {
-                    "uuid": "sq1",
-                    "name": "Trial",
-                    "inbounds": [{"uuid": "i1", "configProfileInboundUuid": "p1"}],
-                }
-            ]
-        }
+def _squads_hosts_handler(squads: dict, hosts: dict) -> Handler:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/api/internal-squads":
+            return httpx.Response(200, json=squads)
+        if request.url.path == "/api/hosts":
+            return httpx.Response(200, json=hosts)
+        return httpx.Response(404)
+
+    return handler
+
+
+# Live-contract shape: a squad's `inbounds[]` are config-profile inbounds keyed by their OWN `uuid`
+# (they carry NO `configProfileInboundUuid`); a host points at an inbound via its
+# `inbound.configProfileInboundUuid`. So the join is squad `uuid` == host inbound uuid.
+_SQUADS = {
+    "response": {
+        "internalSquads": [
+            {
+                "uuid": "sq1",
+                "name": "Trial",
+                "inbounds": [{"uuid": "p1", "tag": "steal", "type": "vless", "profileUuid": "pr1"}],
+            }
+        ]
     }
+}
+
+
+async def test_squad_location_names_matches_by_inbound() -> None:
     hosts = {
         "response": [
             {"remark": "Germany", "inbound": {"configProfileInboundUuid": "p1"}},
@@ -103,16 +119,29 @@ async def test_squad_location_names_matches_by_inbound() -> None:
             },
         ]
     }
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        if request.url.path == "/api/internal-squads":
-            return httpx.Response(200, json=squads)
-        if request.url.path == "/api/hosts":
-            return httpx.Response(200, json=hosts)
-        return httpx.Response(404)
-
-    names = await _client(handler).squad_location_names("sq1")
+    names = await _client(_squads_hosts_handler(_SQUADS, hosts)).squad_location_names("sq1")
     assert names == ["Germany"]  # Finland: wrong inbound; Excluded: squad excluded
+
+
+async def test_squad_location_names_scopes_to_squad_never_all_hosts() -> None:
+    # Regression: when a squad's inbounds match NO host, we must return [] — never leak every host
+    # into this one squad (the "brings every squad's locations" bug). Here the squad serves inbound
+    # p1, but both hosts belong to a different inbound (pX).
+    hosts = {
+        "response": [
+            {"remark": "Germany", "inbound": {"configProfileInboundUuid": "pX"}},
+            {"remark": "Finland", "inbound": {"configProfileInboundUuid": "pX"}},
+        ]
+    }
+    names = await _client(_squads_hosts_handler(_SQUADS, hosts)).squad_location_names("sq1")
+    assert names == []
+
+
+async def test_squad_location_names_unknown_squad_returns_empty() -> None:
+    # An unknown squad UUID can't be scoped — return [] (never all hosts).
+    hosts = {"response": [{"remark": "Germany", "inbound": {"configProfileInboundUuid": "p1"}}]}
+    names = await _client(_squads_hosts_handler(_SQUADS, hosts)).squad_location_names("ghost")
+    assert names == []
 
 
 async def test_non_2xx_raises_remnawave_error() -> None:
