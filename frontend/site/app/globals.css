@@ -1166,3 +1166,22 @@ button.lrow:disabled{ cursor:default; background:none; }
 .loccta{ display:flex; align-items:center; justify-content:center; gap:7px; color:var(--link); font-weight:700;
   font-size:14px; text-decoration:none; padding:14px; margin-block-start:6px; border-block-start:1px solid var(--border); }
 .loccta .ic{ inline-size:16px; block-size:16px; }
+
+/* ── config card refresh: metrics usage box + polished countdown + "+" app hint ────────────────
+   The S3/S4 delivered-config view. <UsageMeter remainingBytes> renders `.meter.metric`; the plain
+   meter (exhausted state) is unaffected. Countdown polish is scoped to `.cfg` so the cooldown
+   countdown keeps the base style. */
+.meter.metric{ background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:14px; }
+.pct-chip{ display:inline-flex; align-items:center; margin-inline-start:7px; font-size:11px; font-weight:800;
+  color:var(--brand-tint-ink); background:var(--brand-tint); border-radius:var(--r-pill); padding:2px 8px; }
+.meter-foot{ margin-block-start:9px; font-size:12px; color:var(--muted); }
+.meter-foot b{ color:var(--text); font-weight:800; }
+/* the track sits on the sunken box → in light --sunken-2 ≈ --sunken so the empty bar vanished; a
+   --border-strong fill keeps the neutral track clearly visible in both themes. */
+.meter.metric .bar{ block-size:10px; background:var(--border-strong); }
+.cfg .cd .seg{ min-inline-size:56px; padding:10px 6px; border-color:var(--border-strong);
+  background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
+.cfg .cd .seg b{ font-size:27px; }
+/* a standard-size "+" before the quick-add hint sentence */
+.apps .lbl{ display:flex; align-items:center; gap:6px; }
+.apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }

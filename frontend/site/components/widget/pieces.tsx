@@ -108,7 +108,10 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   // copy anything to the clipboard (the separate "copy" field is there for manual paste).
   return (
     <div className="apps">
-      <span className="lbl">{t("app_hint")}</span>
+      <span className="lbl">
+        <Icon name="plus" sw={2.4} />
+        {t("app_hint")}
+      </span>
       <div className="apps-row">
         {(PLATFORM_APPS[platform] ?? PLATFORM_APPS.desktop).map((key) => (
           <a key={key} className="app-btn" href={APPS[key].deeplink(link)}>
@@ -121,26 +124,48 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   );
 }
 
+// Mirror the backend's `human_bytes` (1024-based, 1 decimal) so a client-derived "remaining volume"
+// formats identically to the server-formatted `usage`/`daily_limit` strings.
+function humanBytes(n: number): string {
+  let v = Math.max(0, n);
+  for (const u of ["B", "KB", "MB", "GB"]) {
+    if (v < 1024) return u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1)} ${u}`;
+    v /= 1024;
+  }
+  return `${v.toFixed(1)} TB`;
+}
+
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
+// Passing `remainingBytes` switches on the boxed "metric" layout: a % chip beside the label and a
+// "remaining volume" footer (the config card). Without it, the plain meter is used (exhausted state).
 export function UsageMeter({
   used,
   total,
   pct,
   locale,
+  remainingBytes,
 }: {
   used: string;
   total: string;
   pct: number;
   locale: Locale;
+  remainingBytes?: number;
 }) {
   const t = translator(locale);
   const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
+  const metric = remainingBytes != null;
+  const pctTxt = `${faDigits(String(pct), locale)}${locale === "fa" ? "٪" : "%"}`;
   return (
-    <div className="meter">
+    <div className={`meter${metric ? " metric" : ""}`}>
       <div className="row">
         <span className="k">
           <Icon name="gauge" sw={2} />
           {t("usage")}
+          {metric && (
+            <span className="pct-chip" dir="ltr">
+              {pctTxt}
+            </span>
+          )}
         </span>
         {/* Each "<number> MB" is bidi-isolated so the Latin unit stays glued to its figure under
             RTL (else it renders reversed, e.g. "MB ۷۰۰.۰ از MB ۶۶۶.۵"). */}
@@ -152,6 +177,14 @@ export function UsageMeter({
       <div className={cls}>
         <i style={{ inlineSize: `${Math.min(100, Math.max(0, pct))}%` }} />
       </div>
+      {metric && (
+        <div className="meter-foot">
+          {t("remaining_vol")}{" "}
+          <b>
+            <bdi dir="ltr">{faDigits(humanBytes(remainingBytes), locale)}</bdi>
+          </b>
+        </div>
+      )}
     </div>
   );
 }
