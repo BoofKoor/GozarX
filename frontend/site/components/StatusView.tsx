@@ -9,7 +9,7 @@ import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
-import { Flag, InlineCountdown } from "@/components/widget/pieces";
+import { Flag } from "@/components/widget/pieces";
 import { locName } from "@/components/widget/flags";
 import { subscribeToPush } from "@/lib/push";
 
@@ -17,59 +17,9 @@ import { subscribeToPush } from "@/lib/push";
 // page head + identity note, live stat row (usage ring / time left / daily volume / invites),
 // main grid (config+claim via the shared ClaimWidget • settings), device-transfer card, and a
 // destructive "reset this device" row with a confirm dialog. Device-identity based — no login.
-function faDigits(s: string, locale: Locale) {
-  return locale === "fa" ? s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : s;
-}
-
-// A stat value like "252.3 MB" — localize its digits, demote the unit to a small muted span, and
-// isolate the whole thing as one LTR run so a Latin number+unit never reorders inside the RTL card
-// (bidi rule L2 was rendering "252.3 MB" as "MB 252.3") and never wraps mid-token.
-function StatNum({ value, locale }: { value: string; locale: Locale }) {
-  const m = /^([\d.,٫٬۰-۹]+)\s+(.+)$/.exec(value);
-  if (!m) return <bdi dir="ltr">{faDigits(value, locale)}</bdi>;
-  return (
-    <bdi dir="ltr">
-      {faDigits(m[1], locale)}
-      <span className="su">{m[2]}</span>
-    </bdi>
-  );
-}
-
-function MiniRing({ pct, locale }: { pct: number; locale: Locale }) {
-  // r must leave room for the 5px stroke inside the 44×44 viewBox (center 22): 19 + 2.5 = 21.5 < 22.
-  // At r=20 the stroke overflowed to 22.5 and svg overflow:hidden clipped it at the 4 cardinal points.
-  const R = 19;
-  const C = 2 * Math.PI * R;
-  const off = C * (1 - Math.min(100, Math.max(0, pct)) / 100);
-  // Only the ARC is toned (warn ≥75, danger ≥90); the centre % keeps its normal colour.
-  const tone = pct >= 90 ? " full" : pct >= 75 ? " warn" : "";
-  return (
-    <div className="ring-mini">
-      <svg viewBox="0 0 44 44">
-        <circle className="tk" cx="22" cy="22" r={R} />
-        <circle
-          className={`vl${tone}`}
-          cx="22"
-          cy="22"
-          r={R}
-          strokeDasharray={C}
-          strokeDashoffset={off}
-        />
-      </svg>
-      <span className="pct">{faDigits(String(pct), locale)}{locale === "fa" ? "٪" : "%"}</span>
-    </div>
-  );
-}
-
 export function StatusView({ locale }: { locale: Locale }) {
   const t = translator(locale);
-  const { status, config, loading, offline, reload } = useSite();
-
-  const pct =
-    status && status.daily_limit_bytes > 0
-      ? Math.min(100, Math.round((status.usage_bytes / status.daily_limit_bytes) * 100))
-      : 0;
-  const timeLeft = status?.has_config ? status.remaining : (status?.cooldown ?? "");
+  const { status, config, offline, reload } = useSite();
 
   return (
     <div className="container status-page">
@@ -87,61 +37,6 @@ export function StatusView({ locale }: { locale: Locale }) {
           </div>
         </div>
       )}
-
-      {/* STAT ROW (live) */}
-      <div className="grid-stats">
-        <div className="card stat">
-          <MiniRing pct={pct} locale={locale} />
-          <div>
-            <div className="sv tnum">
-              {loading ? "…" : <StatNum value={status?.usage ?? "—"} locale={locale} />}
-            </div>
-            {/* The ring already encodes the %, and the "daily volume" card states the limit —
-                so the label stays a single word, matching its siblings. */}
-            <div className="sl">{t("st_usage")}</div>
-          </div>
-        </div>
-        <div className="card stat">
-          <div className="sic">
-            <Icon name="clock" sw={2} />
-          </div>
-          <div>
-            <div className="sv cd-inline tnum">
-              {timeLeft ? <InlineCountdown from={timeLeft} locale={locale} /> : "—"}
-            </div>
-            <div className="sl">{t("st_left")}</div>
-          </div>
-        </div>
-        <div className="card stat">
-          <div className="sic">
-            <Icon name="bolt" sw={2} />
-          </div>
-          <div>
-            <div className="sv tnum">
-              <StatNum value={status?.daily_limit ?? "—"} locale={locale} />
-            </div>
-            <div className="sl">{t("st_alw")}</div>
-          </div>
-        </div>
-        <div className="card stat">
-          <div className="sic">
-            <Icon name="users" sw={2} />
-          </div>
-          <div>
-            <div className="sv tnum">
-              {status ? (
-                <bdi dir="ltr">
-                  {faDigits(String(status.referral_count), locale)} /{" "}
-                  {faDigits(String(status.referral_cap), locale)}
-                </bdi>
-              ) : (
-                "—"
-              )}
-            </div>
-            <div className="sl">{t("st_inv")}</div>
-          </div>
-        </div>
-      </div>
 
       {/* MAIN GRID */}
       <div className="grid-main">
