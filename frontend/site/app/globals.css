@@ -1045,3 +1045,81 @@ button.lrow:disabled{ cursor:default; background:none; }
 .pio .ic{ inline-size:16px; block-size:16px; }
 .pt{ display:block; font-size:13.5px; font-weight:600; }
 .pd{ display:block; font-size:12px; color:var(--muted); }
+
+/* ── Setup guides (list + detail) ─────────────────────────────────────────────
+   Each card/hero tile is tinted by a per-platform accent set inline as --acc. Brand marks come
+   from <BrandIcon> (filled, currentColor). The list is icon-led rows; the detail is a connected
+   timeline with a store-badge download button. */
+.guides-sec{ padding-block-start:28px; }
+.gwrap{ display:grid; gap:14px; }
+@media(min-width:720px){ .gwrap{ grid-template-columns:1fr 1fr; } }
+.gcard{ display:flex; align-items:center; gap:15px; text-decoration:none; color:var(--text);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:15px 16px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+  transition:transform .16s, box-shadow .16s, border-color .16s; }
+.gcard::before{ content:""; position:absolute; inset-block:0; inset-inline-start:0; inline-size:3px;
+  background:var(--acc); opacity:0; transition:opacity .16s; }
+.gcard:hover{ transform:translateY(-3px);
+  border-color:color-mix(in srgb,var(--acc) 42%,var(--border));
+  box-shadow:0 14px 28px -16px color-mix(in srgb,var(--acc) 55%,transparent), var(--shadow-md); }
+.gcard:hover::before{ opacity:1; }
+.gos{ flex:0 0 auto; inline-size:50px; block-size:50px; border-radius:15px; display:grid; place-items:center;
+  position:relative; color:var(--acc);
+  background:color-mix(in srgb,var(--acc) 14%,var(--surface));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 22%,transparent); }
+.gos svg{ inline-size:27px; block-size:27px; position:relative; z-index:1; }
+.gos .glow{ position:absolute; inset:0; border-radius:inherit; opacity:.55;
+  background:radial-gradient(120% 120% at 30% 20%, color-mix(in srgb,var(--acc) 30%,transparent), transparent 70%); }
+.gcard-id{ flex:1; min-inline-size:0; }
+.gtop{ display:flex; align-items:baseline; gap:10px; }
+.gtop b{ font-size:17px; font-weight:800; }
+.gtag{ font-size:12.5px; font-weight:700; color:var(--success-ink); }
+.gsub{ margin-block-start:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.gpill{ direction:ltr; display:inline-flex; align-items:center; gap:6px; background:var(--sunken);
+  border:1px solid var(--border); border-radius:var(--r-pill); padding:3px 10px 3px 6px;
+  font-size:12.5px; font-weight:700; color:var(--text); }
+.gpill img{ inline-size:17px; block-size:17px; border-radius:5px; }
+.gtime{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--muted); }
+.gtime .ic{ inline-size:14px; block-size:14px; }
+.gchevw{ flex:0 0 auto; inline-size:34px; block-size:34px; border-radius:50%; display:grid; place-items:center;
+  background:var(--sunken); color:var(--muted); transition:background .16s, color .16s; }
+.gcard:hover .gchevw{ background:color-mix(in srgb,var(--acc) 14%,var(--surface)); color:var(--acc); }
+[dir="ltr"] .gchev{ transform:scaleX(-1); }  /* drill-in points to the reading-forward edge */
+
+.guide-page{ padding-block:28px 56px; }
+.gback{ color:var(--link); text-decoration:none; font-weight:600; }
+.ghero{ display:flex; align-items:center; gap:16px; margin-block:8px 4px; }
+.gos.gbig{ inline-size:60px; block-size:60px; border-radius:18px; }
+.gos.gbig svg{ inline-size:32px; block-size:32px; }
+.ghero-txt{ min-inline-size:0; }
+.ghero h1{ font-size:clamp(24px,4.4vw,32px); font-weight:800; line-height:var(--lh-head); margin:0 0 8px; }
+.grow{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip.happ{ direction:ltr; }
+.chip-app{ border-radius:4px; }
+.chip.chip-muted .ic{ inline-size:13px; block-size:13px; }
+.gsteps-h{ font-size:20px; font-weight:800; margin-block:34px 20px; }
+.tl{ display:flex; flex-direction:column; }
+.tstep{ display:flex; gap:16px; position:relative; padding-block-end:22px; }
+.tstep.last{ padding-block-end:0; }
+.tstep:not(.last)::before{ content:""; position:absolute; inset-inline-start:20px; top:44px; bottom:-2px;
+  inline-size:2px; background:linear-gradient(color-mix(in srgb,var(--primary) 45%,var(--border)), var(--border) 70%, transparent); }
+.tbadge{ flex:0 0 auto; inline-size:42px; block-size:42px; border-radius:50%;
+  background:linear-gradient(140deg,var(--hero-1),var(--hero-2)); color:#fff;
+  display:grid; place-items:center; font-weight:800; font-size:17px; position:relative; z-index:1;
+  box-shadow:0 8px 18px -8px color-mix(in srgb,var(--hero-2) 70%,transparent); }
+.tcard{ flex:1; min-inline-size:0; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:16px 18px; box-shadow:var(--shadow-sm); }
+.tcard strong{ font-size:16px; }
+.tcard p{ color:var(--muted); }
+.dlbtn{ direction:ltr; display:inline-flex; align-items:center; gap:11px; text-decoration:none;
+  background:var(--text); color:var(--surface); border-radius:var(--r-btn); padding:9px 16px 9px 13px;
+  margin-block-start:15px; box-shadow:0 10px 22px -12px color-mix(in srgb,var(--text) 55%,transparent);
+  transition:transform .12s, filter .15s, box-shadow .15s; }
+.dlbtn:hover{ transform:translateY(-2px); filter:brightness(1.06);
+  box-shadow:0 14px 26px -12px color-mix(in srgb,var(--acc) 60%,transparent); }
+.dlbtn .store{ flex:0 0 auto; display:grid; place-items:center; }
+.dlbtn .store svg{ inline-size:24px; block-size:24px; }
+.dlbtn .dlt{ direction:rtl; display:flex; flex-direction:column; text-align:right; line-height:1.18; }
+.dlbtn .dlt small{ font-size:10.5px; font-weight:600; opacity:.75; }
+.dlbtn .dlt b{ font-size:14.5px; font-weight:800; letter-spacing:.1px; }
+[dir="ltr"] .dlbtn .dlt{ direction:ltr; text-align:left; }

@@ -156,207 +156,142 @@ export const FAQ_ITEMS: Record<Locale, FaqItem[]> = {
 };
 
 // ── Guides ────────────────────────────────────────────────────────────────────
+// Every guide now targets Happ (one cross-platform app). Copy is extracted from the approved
+// design; the per-platform difference is only the install source + the download button. Steps and
+// troubleshooting are shared (the Happ flow is identical everywhere). Keep both `fa` and `en` in sync.
 export const PLATFORMS = ["android", "ios", "windows", "macos", "linux"] as const;
 export type Platform = (typeof PLATFORMS)[number];
+
+export const APP_NAME = "Happ";
 
 export interface GuideStep {
   t: string;
   d: string;
-  copy?: boolean; // step shows the copy-the-config field
 }
-export interface Guide {
+
+// Locale-invariant platform metadata: the BrandIcon glyph key, the accent colour that tints the
+// card/hero tile, the store glyph for the download button, and the OFFICIAL Happ download URL.
+export interface PlatformMeta {
+  os: "android" | "apple" | "windows" | "linux";
+  acc: string;
+  store: "googleplay" | "appstore" | "windows" | "linux";
+  url: string;
+}
+export const PLATFORM_META: Record<Platform, PlatformMeta> = {
+  android: { os: "android", acc: "#22B364", store: "googleplay", url: "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share" },
+  ios: { os: "apple", acc: "#5B6B82", store: "appstore", url: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215" },
+  windows: { os: "windows", acc: "#2A7BE4", store: "windows", url: "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe" },
+  macos: { os: "apple", acc: "#5B6B82", store: "appstore", url: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215" },
+  linux: { os: "linux", acc: "#E0872A", store: "linux", url: "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.linux.x64.deb" },
+};
+
+export interface Guide extends PlatformMeta {
   platform: Platform;
   name: string;
   app: string;
+  dl: { top: string; bottom: string };
   steps: GuideStep[];
   trouble: { q: string; a: string }[];
 }
 
-export const SAMPLE_CONFIG = "vless://a1b2c3d4-e5f6-7890@de1.gozarx.net:443?type=ws&security=tls#GozarX";
-
 export const GUIDE_LABELS: Record<
   Locale,
-  {
-    title: string;
-    sub: string;
-    apps: string;
-    time: string;
-    easy: string;
-    view: string;
-    steps: string;
-    trouble: string;
-    copy: string;
-    copied: string;
-    backToGuides: string;
-  }
+  { title: string; sub: string; eyebrow: string; time: string; easy: string; view: string; steps: string; trouble: string; backToGuides: string; connect: string }
 > = {
   fa: {
     title: "راهنمای اتصال",
-    sub: "سیستم‌عاملت را انتخاب کن و قدم‌به‌قدم وصل شو. همه راهنماها کوتاه و ساده‌اند.",
-    apps: "اپ:",
+    sub: "سیستم‌عاملت را انتخاب کن و قدم‌به‌قدم با Happ وصل شو. همهٔ راهنماها کوتاه و ساده‌اند.",
+    eyebrow: "راهنماها",
     time: "~۳ دقیقه",
     easy: "آسان",
     view: "مشاهدهٔ راهنما",
     steps: "مراحل",
     trouble: "عیب‌یابی",
-    copy: "کپی",
-    copied: "کپی شد ✓",
     backToGuides: "همهٔ راهنماها",
+    connect: "اتصال {name} با Happ",
   },
   en: {
     title: "Setup guides",
-    sub: "Pick your OS and connect step by step. Every guide is short and simple.",
-    apps: "App:",
+    sub: "Pick your OS and connect step by step with Happ. Every guide is short and simple.",
+    eyebrow: "Guides",
     time: "~3 min",
     easy: "Easy",
     view: "View guide",
     steps: "Steps",
     trouble: "Troubleshooting",
-    copy: "Copy",
-    copied: "Copied ✓",
     backToGuides: "All guides",
+    connect: "{name} with Happ",
   },
 };
 
-// Shared troubleshooting (the Phase-5 Android guide's two items, applicable to every app).
+// Shared Happ flow — identical on every platform (the install source differs only via the button).
+const HAPP_STEPS: Record<Locale, GuideStep[]> = {
+  fa: [
+    { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا Happ را دریافت و نصب کنی، سپس اپ را باز کن." },
+    { t: "لینک کانفیگ را کپی کن", d: "به صفحهٔ دریافت برو، لوکیشن دلخواهت را بگیر و روی دکمهٔ «کپی» بزن تا لینک کانفیگ در کلیپ‌بورد قرار گیرد." },
+    { t: "کانفیگ را از کلیپ‌بورد اضافه کن", d: "در Happ روی دکمهٔ + (افزودن) بزن و «Add from clipboard» را انتخاب کن؛ کانفیگ از کلیپ‌بورد شناسایی و اضافه می‌شود." },
+    { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ بزرگ اتصال بزن؛ اگر اجازهٔ VPN خواسته شد آن را تأیید کن. چند لحظه بعد وصل می‌شوی." },
+  ],
+  en: [
+    { t: "Install Happ", d: "Tap the button below to download and install Happ, then open the app." },
+    { t: "Copy the config link", d: "Go to the get page, claim a location and press the “Copy” button so the config link is on your clipboard." },
+    { t: "Add the config from clipboard", d: "In Happ tap the + (Add) button and choose “Add from clipboard”; the config is detected and added." },
+    { t: "Connect", d: "Pick a location and tap the big connect button; approve the VPN permission if asked. You’ll be connected in a moment." },
+  ],
+};
+
+// Shared troubleshooting (applies to every Happ guide).
 const TROUBLE: Record<Locale, { q: string; a: string }[]> = {
   fa: [
-    { q: "وصل نمی‌شود، چه کنم؟", a: "کانفیگ را دوباره کپی و import کن و مطمئن شو زمان دستگاهت درست تنظیم شده است." },
+    { q: "وصل نمی‌شود، چه کنم؟", a: "کانفیگ را دوباره از صفحهٔ دریافت کپی و در Happ import کن و مطمئن شو زمان دستگاهت درست تنظیم شده است." },
     { q: "سرعت پایین است", a: "لوکیشن دیگری را از صفحهٔ دریافت امتحان کن؛ لوکیشن نزدیک‌تر معمولاً سریع‌تر است." },
   ],
   en: [
-    { q: "It won't connect, what do I do?", a: "Re-copy and re-import the config and make sure your device time is set correctly." },
+    { q: "It won't connect, what do I do?", a: "Re-copy the config from the get page, re-import it in Happ and make sure your device time is set correctly." },
     { q: "It's slow", a: "Try another location from the get page; a closer location is usually faster." },
   ],
 };
 
-export const GUIDES: Record<Locale, Guide[]> = {
-  fa: [
-    {
-      platform: "android",
-      name: "اندروید",
-      app: "v2rayNG",
-      steps: [
-        { t: "اپ v2rayNG را نصب کن", d: "اپ v2rayNG را از گوگل‌پلی یا فایل APK رسمی نصب و باز کن." },
-        { t: "لینک کانفیگ را کپی کن", d: "از صفحهٔ دریافت، کانفیگ امروزت را بگیر و روی دکمهٔ «کپی» بزن.", copy: true },
-        { t: "از منوی + گزینهٔ Import from clipboard", d: "در v2rayNG روی دکمهٔ + بالا بزن و «Import config from clipboard» را انتخاب کن." },
-        { t: "وصل شو", d: "روی دکمهٔ اتصال (پایین‌گوشه) بزن؛ چند لحظه بعد وصل می‌شوی." },
-      ],
-      trouble: TROUBLE.fa,
-    },
-    {
-      platform: "ios",
-      name: "آیفون (iOS)",
-      app: "Streisand",
-      steps: [
-        { t: "اپ Streisand را نصب کن", d: "اپ Streisand را از App Store نصب و باز کن." },
-        { t: "لینک کانفیگ را کپی کن", d: "از صفحهٔ دریافت، کانفیگ امروزت را بگیر و روی دکمهٔ «کپی» بزن.", copy: true },
-        { t: "از + کانفیگ را وارد کن", d: "در Streisand روی + بزن و «Import from clipboard» را انتخاب کن؛ کانفیگ از کلیپ‌بورد اضافه می‌شود." },
-        { t: "وصل شو", d: "کلید اتصال را بزن و در صورت درخواست، اجازهٔ VPN را تأیید کن." },
-      ],
-      trouble: TROUBLE.fa,
-    },
-    {
-      platform: "windows",
-      name: "ویندوز",
-      app: "Happ",
-      steps: [
-        { t: "کلاینت Happ را نصب کن", d: "نسخهٔ ویندوز Happ را از سایت رسمی نصب و باز کن." },
-        { t: "لینک کانفیگ را کپی کن", d: "از صفحهٔ دریافت، کانفیگ امروزت را بگیر و روی دکمهٔ «کپی» بزن.", copy: true },
-        { t: "کانفیگ را از کلیپ‌بورد اضافه کن", d: "در Happ گزینهٔ افزودن از کلیپ‌بورد را بزن تا کانفیگ وارد شود." },
-        { t: "وصل شو", d: "روی دکمهٔ اتصال بزن؛ چند لحظه بعد وصل می‌شوی." },
-      ],
-      trouble: TROUBLE.fa,
-    },
-    {
-      platform: "macos",
-      name: "مک (macOS)",
-      app: "Streisand",
-      steps: [
-        { t: "اپ Streisand را نصب کن", d: "اپ Streisand را از App Store روی مک نصب و باز کن." },
-        { t: "لینک کانفیگ را کپی کن", d: "از صفحهٔ دریافت، کانفیگ امروزت را بگیر و روی دکمهٔ «کپی» بزن.", copy: true },
-        { t: "از + کانفیگ را وارد کن", d: "در Streisand روی + بزن و «Import from clipboard» را انتخاب کن." },
-        { t: "وصل شو", d: "کلید اتصال را بزن و اجازهٔ VPN را تأیید کن." },
-      ],
-      trouble: TROUBLE.fa,
-    },
-    {
-      platform: "linux",
-      name: "لینوکس",
-      app: "Happ",
-      steps: [
-        { t: "کلاینت Happ را نصب کن", d: "نسخهٔ لینوکس Happ را از سایت رسمی نصب و باز کن." },
-        { t: "لینک کانفیگ را کپی کن", d: "از صفحهٔ دریافت، کانفیگ امروزت را بگیر و روی دکمهٔ «کپی» بزن.", copy: true },
-        { t: "کانفیگ را از کلیپ‌بورد اضافه کن", d: "در Happ گزینهٔ افزودن از کلیپ‌بورد را بزن تا کانفیگ وارد شود." },
-        { t: "وصل شو", d: "روی دکمهٔ اتصال بزن؛ چند لحظه بعد وصل می‌شوی." },
-      ],
-      trouble: TROUBLE.fa,
-    },
-  ],
-  en: [
-    {
-      platform: "android",
-      name: "Android",
-      app: "v2rayNG",
-      steps: [
-        { t: "Install v2rayNG", d: "Install v2rayNG from Google Play or the official APK, then open it." },
-        { t: "Copy the config link", d: "From the get page, claim today's config and press the “Copy” button.", copy: true },
-        { t: "Import from clipboard via +", d: "In v2rayNG tap the + button and choose “Import config from clipboard”." },
-        { t: "Connect", d: "Tap the connect button in the corner; you'll be connected in a moment." },
-      ],
-      trouble: TROUBLE.en,
-    },
-    {
-      platform: "ios",
-      name: "iPhone (iOS)",
-      app: "Streisand",
-      steps: [
-        { t: "Install Streisand", d: "Install Streisand from the App Store, then open it." },
-        { t: "Copy the config link", d: "From the get page, claim today's config and press the “Copy” button.", copy: true },
-        { t: "Import the config via +", d: "In Streisand tap + and choose “Import from clipboard”; the config is added from your clipboard." },
-        { t: "Connect", d: "Flip the connect switch and approve the VPN permission if asked." },
-      ],
-      trouble: TROUBLE.en,
-    },
-    {
-      platform: "windows",
-      name: "Windows",
-      app: "Happ",
-      steps: [
-        { t: "Install the Happ client", d: "Install the Windows build of Happ from the official site, then open it." },
-        { t: "Copy the config link", d: "From the get page, claim today's config and press the “Copy” button.", copy: true },
-        { t: "Add the config from clipboard", d: "In Happ choose add-from-clipboard to import the config." },
-        { t: "Connect", d: "Press the connect button; you'll be connected in a moment." },
-      ],
-      trouble: TROUBLE.en,
-    },
-    {
-      platform: "macos",
-      name: "macOS",
-      app: "Streisand",
-      steps: [
-        { t: "Install Streisand", d: "Install Streisand from the App Store on your Mac, then open it." },
-        { t: "Copy the config link", d: "From the get page, claim today's config and press the “Copy” button.", copy: true },
-        { t: "Import the config via +", d: "In Streisand tap + and choose “Import from clipboard”." },
-        { t: "Connect", d: "Flip the connect switch and approve the VPN permission." },
-      ],
-      trouble: TROUBLE.en,
-    },
-    {
-      platform: "linux",
-      name: "Linux",
-      app: "Happ",
-      steps: [
-        { t: "Install the Happ client", d: "Install the Linux build of Happ from the official site, then open it." },
-        { t: "Copy the config link", d: "From the get page, claim today's config and press the “Copy” button.", copy: true },
-        { t: "Add the config from clipboard", d: "In Happ choose add-from-clipboard to import the config." },
-        { t: "Connect", d: "Press the connect button; you'll be connected in a moment." },
-      ],
-      trouble: TROUBLE.en,
-    },
-  ],
+const NAMES: Record<Locale, Record<Platform, string>> = {
+  fa: { android: "اندروید", ios: "آیفون (iOS)", windows: "ویندوز", macos: "مک (macOS)", linux: "لینوکس" },
+  en: { android: "Android", ios: "iPhone (iOS)", windows: "Windows", macos: "macOS", linux: "Linux" },
 };
 
+// Download-button label lines (small top line + bold bottom line), per platform + locale.
+const DL: Record<Locale, Record<Platform, { top: string; bottom: string }>> = {
+  fa: {
+    android: { top: "دریافت از", bottom: "Google Play" },
+    ios: { top: "دریافت از", bottom: "App Store" },
+    windows: { top: "دانلود مستقیم", bottom: "نصب‌کنندهٔ ویندوز (.exe)" },
+    macos: { top: "دریافت از", bottom: "App Store" },
+    linux: { top: "دانلود مستقیم", bottom: "بستهٔ لینوکس (.deb)" },
+  },
+  en: {
+    android: { top: "Get it on", bottom: "Google Play" },
+    ios: { top: "Download on the", bottom: "App Store" },
+    windows: { top: "Direct download", bottom: "Windows installer (.exe)" },
+    macos: { top: "Download on the", bottom: "App Store" },
+    linux: { top: "Direct download", bottom: "Linux package (.deb)" },
+  },
+};
+
+function isPlatform(p: string): p is Platform {
+  return (PLATFORMS as readonly string[]).includes(p);
+}
+
 export function guideFor(locale: Locale, platform: string): Guide | undefined {
-  return GUIDES[locale].find((g) => g.platform === platform);
+  if (!isPlatform(platform)) return undefined;
+  return {
+    platform,
+    name: NAMES[locale][platform],
+    app: APP_NAME,
+    dl: DL[locale][platform],
+    steps: HAPP_STEPS[locale],
+    trouble: TROUBLE[locale],
+    ...PLATFORM_META[platform],
+  };
+}
+
+export function guideList(locale: Locale): Guide[] {
+  return PLATFORMS.map((p) => guideFor(locale, p)!);
 }
