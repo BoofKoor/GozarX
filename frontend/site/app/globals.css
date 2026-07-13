@@ -605,7 +605,9 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
    and — being position:relative — it paints ABOVE the static rewards card 16px below it, so that big
    shadow lands on the neighbor's surface. Wear the same calm elevation as the sibling cards here. */
 .status-page .grid-main .widget{ box-shadow:var(--shadow-sm); }
-.status-page .page-head{ display:block; padding-block:0; }
+/* margin-block-end restores the section gap the removed stat row used to provide (its margin-top),
+   so the config card / offline banner isn't jammed against the identity note. */
+.status-page .page-head{ display:block; padding-block:0; margin-block-end:24px; }
 .status-page .page-head .eyebrow{ margin-block-end:8px; }
 .page-head h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:4px 0 12px; }
 /* Flow container (was inline-flex, which blockified the <a> and tore the transfer link off the
