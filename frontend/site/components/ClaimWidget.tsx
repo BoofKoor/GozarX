@@ -14,7 +14,17 @@ type Mode = "idle" | "provisioning";
 
 // Faithful reproduction of docs/website/design/phase-1-claim-widget.html — the 8-state claim widget.
 // State is derived from the live /status; class names match the ported design CSS exactly.
-export function ClaimWidget({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
+// `preselect` (a location remark NAME, e.g. from an SEO landing's location_remark) pre-picks that
+// location once the live list arrives — landing on «کانفیگ آلمان» starts with آلمان selected.
+export function ClaimWidget({
+  locale,
+  compact = false,
+  preselect,
+}: {
+  locale: Locale;
+  compact?: boolean;
+  preselect?: string;
+}) {
   const t = translator(locale);
   const { status, config, locations, loading, offline, reload } = useSite();
   const [picked, setPicked] = useState<string | null>(null);
@@ -32,6 +42,17 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
   useEffect(() => {
     if (status && !status.has_config) setResult(null);
   }, [status]);
+
+  // Apply `preselect` once the live location list is in — but only while the user hasn't picked
+  // anything themselves (picked===null), so a manual choice always wins. Matches by exact remark
+  // or normalized display name (the same tolerance as the "popular" star in the Picker).
+  useEffect(() => {
+    if (!preselect || picked !== null || !locs.length) return;
+    const want = locName(preselect).toLowerCase();
+    const hit = locs.find((l) => l === preselect || locName(l).toLowerCase() === want);
+    if (hit) setPicked(hit);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locations, preselect]);
 
   const selected = picked ?? (compact && locs.length ? locs[0] : null);
 

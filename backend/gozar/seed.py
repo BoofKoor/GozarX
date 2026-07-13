@@ -17,7 +17,9 @@ from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 from gozar.db.repositories.settings import SettingsRepository
+from gozar.db.repositories.site_landing_page import SiteLandingPageRepository
 from gozar.db.session import create_engine, create_sessionmaker
+from gozar.seed_landings import DEFAULT_SITE_LANDINGS
 from gozar.services.settings_service import SettingKey, SiteSettingKey
 
 logger = logging.getLogger("gozar.seed")
@@ -354,20 +356,24 @@ async def _run() -> None:
         async with sessionmaker() as session:
             settings_repo = SettingsRepository(session)
             content_repo = ContentRepository(session)
+            landing_repo = SiteLandingPageRepository(session)
             for key, value in {**DEFAULT_SETTINGS, **DEFAULT_SITE_SETTINGS}.items():
                 await settings_repo.add_default(key, value)
             for bodies_by_key in (DEFAULT_CONTENT, DEFAULT_SITE_CONTENT):
                 for key, bodies in bodies_by_key.items():
                     for lang, body in bodies.items():
                         await content_repo.add_default(key, lang, body)
+            for landing in DEFAULT_SITE_LANDINGS:
+                await landing_repo.add_default(**landing)  # type: ignore[arg-type]
             await session.commit()
         logger.info(
-            "seed: ensured %d settings (%d bot + %d site) + %d content keys "
+            "seed: ensured %d settings (%d bot + %d site) + %d content keys + %d landings "
             "(defaults only, existing rows untouched)",
             len(DEFAULT_SETTINGS) + len(DEFAULT_SITE_SETTINGS),
             len(DEFAULT_SETTINGS),
             len(DEFAULT_SITE_SETTINGS),
             len(DEFAULT_CONTENT) + len(DEFAULT_SITE_CONTENT),
+            len(DEFAULT_SITE_LANDINGS),
         )
     finally:
         await engine.dispose()

@@ -11,6 +11,7 @@ function setCookie(name: string, value: string) {
 }
 
 const NAV: { href: string; key: string }[] = [
+  { href: "/locations", key: "nav_loc" },
   { href: "/guides", key: "nav_guides" },
   { href: "/faq", key: "nav_faq" },
   { href: "/contact", key: "nav_contact" },

@@ -7,6 +7,7 @@ One row per (slug, locale). The admin section manages these; the public site lat
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.repositories.base import BaseRepository
@@ -98,3 +99,35 @@ class SiteLandingPageRepository(BaseRepository):
     async def delete(self, page: SiteLandingPage) -> None:
         await self.session.delete(page)
         await self.session.flush()
+
+    async def add_default(
+        self,
+        *,
+        slug: str,
+        locale: str,
+        title: str,
+        meta_description: str = "",
+        heading: str | None = None,
+        body: str = "",
+        location_remark: str | None = None,
+        published: bool = True,
+    ) -> None:
+        """Insert a seed landing only if (slug, locale) is absent — never clobbers admin edits.
+
+        Same per-row idempotency as ``SettingsRepository.add_default`` / ``ContentRepository
+        .add_default``: the boot-time seeder can run on every start, and a row the admin edited
+        (or deleted and rewrote) is left untouched."""
+        stmt = pg_insert(SiteLandingPage).values(
+            slug=slug,
+            locale=locale,
+            title=title,
+            meta_description=meta_description,
+            heading=heading,
+            body=body,
+            location_remark=location_remark,
+            published=published,
+        )
+        stmt = stmt.on_conflict_do_nothing(
+            index_elements=[SiteLandingPage.slug, SiteLandingPage.locale]
+        )
+        await self.session.execute(stmt)

@@ -39,6 +39,9 @@ ARG SITE_URL=https://gozarx.gozarxservices.com
 ENV SITE_URL=$SITE_URL
 ARG GOOGLE_SITE_VERIFICATION=
 ENV GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
+# The SEO landings (/l/{slug}), /locations and the sitemap fetch the backend SERVER-side at
+# request/revalidate time — without this runtime origin every landing would 404 in production.
+ENV BACKEND_ORIGIN=http://app:8000
 
 # The standalone bundle (server.js + minimal node_modules), then the static assets + public/ it
 # serves. Order matters: standalone first (it lays down .next/), then static into .next/static.

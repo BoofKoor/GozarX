@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "@/lib/server";
+import type { Locale } from "@/lib/i18n";
 import { GUIDE_LABELS, guideFor } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 import { BrandIcon } from "@/components/BrandIcon";
@@ -11,12 +12,24 @@ function heading(labels: { connect: string }, name: string): string {
   return labels.connect.replace("{name}", name.replace(/\s*\(.*\)/, ""));
 }
 
+// Meta-description template ({name} = platform display name), kept under ~160 chars for SERPs.
+const META_DESC: Record<Locale, string> = {
+  fa: "آموزش قدم‌به‌قدم اتصال با اپ Happ در {name}: دانلود، افزودن کانفیگ رایگان GozarX و رفع اشکال.",
+  en: "Step-by-step guide to connecting with the Happ app on {name}: download, add your free GozarX config and troubleshoot.",
+};
+
 export async function generateMetadata({ params }: { params: Promise<{ platform: string }> }): Promise<Metadata> {
   const { platform } = await params;
   const locale = await getLocale();
   const g = guideFor(locale, platform);
   if (!g) return { title: `GozarX — ${GUIDE_LABELS[locale].title}` };
-  return { title: `${heading(GUIDE_LABELS[locale], g.name)} — GozarX` };
+  // Self-referencing canonical (relative — metadataBase is set in the root layout); valid platforms
+  // only — the unknown-platform fallback above 404s in the page body and needs no canonical.
+  return {
+    title: `${heading(GUIDE_LABELS[locale], g.name)} — GozarX`,
+    description: META_DESC[locale].replace("{name}", g.name),
+    alternates: { canonical: `/guides/${platform}` },
+  };
 }
 
 export default async function GuidePage({ params }: { params: Promise<{ platform: string }> }) {
