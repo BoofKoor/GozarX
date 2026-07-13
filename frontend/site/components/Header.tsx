@@ -25,11 +25,19 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
   const [sheet, setSheet] = useState(false);
   const [themeState, setThemeState] = useState<string>(theme ?? "");
 
-  // Reflect the real applied theme on mount (the prop can be empty when no cookie is set and the
-  // theme is coming from the system preference), so the toggle starts in the right position.
+  // Reflect the EFFECTIVE theme in the toggle. An explicit choice sets `data-theme`; with no cookie
+  // the page follows the OS via `prefers-color-scheme` and `data-theme` is unset — so read the media
+  // query in that case (otherwise the switch wrongly shows light while a dark OS renders dark). Stay
+  // in sync if the OS theme changes while no explicit choice is active.
   useEffect(() => {
-    const cur = document.getElementById("app")?.getAttribute("data-theme");
-    if (cur === "light" || cur === "dark") setThemeState(cur);
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const sync = () => {
+      const attr = document.getElementById("app")?.getAttribute("data-theme");
+      setThemeState(attr === "light" || attr === "dark" ? attr : mq.matches ? "dark" : "light");
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
   }, []);
 
   // Let Escape close the mobile nav sheet (it's a modal surface).
@@ -79,6 +87,21 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
           </nav>
           <div className="hd-spacer" />
           <div className="hd-ctrls">
+            {/* desktop-only theme + language controls (mobile has them in the burger sheet) */}
+            <div className="hd-lang" role="group" aria-label={t("set_lang")}>
+              <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
+                فا
+              </button>
+              <button aria-pressed={locale === "en"} onClick={() => switchLocale("en")}>
+                EN
+              </button>
+            </div>
+            <ThemeSwitch
+              className="hd-theme"
+              state={themeState}
+              label={t("set_theme")}
+              onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
+            />
             <Link className="btn secondary status-btn" href="/status">
               {t("nav_status")}
             </Link>
@@ -119,24 +142,45 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               English
             </button>
           </div>
-          <button
-            className={`theme-switch${themeState === "dark" ? " is-dark" : ""}`}
-            type="button"
-            role="switch"
-            aria-checked={themeState === "dark"}
-            aria-label={t("set_theme")}
-            onClick={() => setTheme(themeState === "dark" ? "light" : "dark")}
-          >
-            <span className="thumb" aria-hidden />
-            <span className="slot sun" aria-hidden>
-              <Icon name="sun" sw={2} />
-            </span>
-            <span className="slot moon" aria-hidden>
-              <Icon name="moon" sw={2} />
-            </span>
-          </button>
+          <ThemeSwitch
+            state={themeState}
+            label={t("set_theme")}
+            onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
+          />
         </div>
       </div>
     </>
+  );
+}
+
+// The icon-only sliding sun⇄moon theme switch — shared by the header (desktop) and the mobile sheet.
+function ThemeSwitch({
+  state,
+  label,
+  onToggle,
+  className,
+}: {
+  state: string;
+  label: string;
+  onToggle: () => void;
+  className?: string;
+}) {
+  return (
+    <button
+      className={`theme-switch${className ? ` ${className}` : ""}${state === "dark" ? " is-dark" : ""}`}
+      type="button"
+      role="switch"
+      aria-checked={state === "dark"}
+      aria-label={label}
+      onClick={onToggle}
+    >
+      <span className="thumb" aria-hidden />
+      <span className="slot sun" aria-hidden>
+        <Icon name="sun" sw={2} />
+      </span>
+      <span className="slot moon" aria-hidden>
+        <Icon name="moon" sw={2} />
+      </span>
+    </button>
   );
 }

@@ -4,6 +4,7 @@ import { translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { HomeLocations } from "@/components/home/HomeLocations";
+import { HomeMissions } from "@/components/home/HomeMissions";
 import { HomeApps } from "@/components/home/HomeApps";
 import { HomeStats } from "@/components/home/HomeStats";
 import { HomeFaq } from "@/components/home/HomeFaq";
@@ -21,22 +22,12 @@ export default async function HomePage() {
     { t: "how2_t", d: "how2_d", ic: "bolt" },
     { t: "how3_t", d: "how3_d", ic: "download" },
   ] as const;
-  const missions = [
-    { t: "mv1_t", d: "mv1_d", ic: "users", rw: "mv_reward" },
-    { t: "mv2_t", d: "mv2_d", ic: "download", rw: "mv_reward" },
-    { t: "mv3_t", d: "mv3_d", ic: "bell", rw: "mv_reward" },
-    { t: "mv4_t", d: "mv4_d", ic: "cal", rw: "mv_streak" },
-  ] as const;
   return (
     <>
       {/* HERO */}
       <section className="hero" id="hero">
         <div className="container hero-inner">
           <div className="hero-copy">
-            <span className="eyebrow">
-              <Icon name="spark" sw={2.2} />
-              <span>{t("hero_eyebrow")}</span>
-            </span>
             <h1>
               {t("hero_h1_a")} <span className="grad">{t("hero_h1_b")}</span>
             </h1>
@@ -92,36 +83,8 @@ export default async function HomePage() {
       {/* LOCATIONS (live) */}
       <HomeLocations locale={locale} />
 
-      {/* MORE VOLUME */}
-      <section className="sec" id="rewards">
-        <div className="container">
-          <div className="sec-head reveal">
-            <span className="eyebrow">{t("mv_eyebrow")}</span>
-            <h2 className="sec-title">{t("mv_title")}</h2>
-            <p className="sec-sub">{t("mv_sub")}</p>
-          </div>
-          <div className="missiongrid reveal">
-            {missions.map((m) => (
-              <div className="mcard" key={m.t}>
-                <div className="mi">
-                  <Icon name={m.ic} sw={2} />
-                </div>
-                <h3>{t(m.t)}</h3>
-                <p>{t(m.d)}</p>
-                <span className="rw">
-                  <Icon name="bolt" sw={2.2} />
-                  {t(m.rw)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <div className="center-more reveal">
-            <Link className="link-more" href="/status">
-              {t("mv_all")}
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* MORE VOLUME (live reward amounts) */}
+      <HomeMissions locale={locale} />
 
       {/* APPS (platform-ordered) */}
       <HomeApps locale={locale} />

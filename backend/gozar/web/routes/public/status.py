@@ -13,6 +13,7 @@ from pydantic import BaseModel
 from gozar.config.settings import get_settings
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
+from gozar.services.health import uptime_pct
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_trial import SiteTrialService
 from gozar.web.dependencies import DbSession
@@ -102,4 +103,20 @@ async def get_config(request: Request, session: DbSession) -> PublicConfig:
         reward_push_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
         reward_streak_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),
         streak_days=await site_settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+    )
+
+
+class PublicStats(BaseModel):
+    """Live homepage stats — both REAL, never marketing placeholders."""
+
+    configs_delivered: int = 0  # total site configs ever delivered (count of claim rows)
+    uptime_pct: float | None = None  # rolling availability %; None until the first health sample
+
+
+@router.get("/stats", response_model=PublicStats)
+async def get_stats(request: Request, session: DbSession) -> PublicStats:
+    delivered = await SiteClaimRepository(session).count_all()
+    return PublicStats(
+        configs_delivered=delivered,
+        uptime_pct=await uptime_pct(request.app.state.redis),
     )

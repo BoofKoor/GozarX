@@ -9,14 +9,16 @@ import { Icon } from "@/components/Icon";
 // set: v2rayNG · Streisand · Happ (never Hiddify). Platform labels are app facts, not economic
 // numbers. Each card links to the connection guides.
 const APPS: Record<string, { n: string; icon: string; pf: string }> = {
-  v2rayng: { n: "v2rayNG", icon: "/icons/v2rayng.png", pf: "Android" },
+  v2rayng: { n: "v2rayNG", icon: "/icons/v2rayng.webp", pf: "Android" },
   streisand: { n: "Streisand", icon: "/icons/streisand.webp", pf: "iOS · macOS" },
   happ: { n: "Happ", icon: "/icons/happ.webp", pf: "iOS · Android · Desktop" },
 };
-const ORDER: Record<string, string[]> = {
-  ios: ["streisand", "happ", "v2rayng"],
-  android: ["v2rayng", "happ", "streisand"],
-  desktop: ["happ", "v2rayng", "streisand"],
+// Happ is the cross-platform pick — always first + flagged recommended. The remaining two follow the
+// detected platform's native-first order.
+const REST_ORDER: Record<string, string[]> = {
+  ios: ["streisand", "v2rayng"],
+  android: ["v2rayng", "streisand"],
+  desktop: ["v2rayng", "streisand"],
 };
 function detectPlatform(): "ios" | "android" | "desktop" {
   if (typeof navigator === "undefined") return "desktop";
@@ -31,7 +33,7 @@ export function HomeApps({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   useEffect(() => setPlatform(detectPlatform()), []);
-  const order = ORDER[platform] ?? ORDER.desktop;
+  const order = ["happ", ...(REST_ORDER[platform] ?? REST_ORDER.desktop)];
 
   return (
     <section className="sec" id="apps-sec" style={{ background: "var(--sunken)" }}>
@@ -46,7 +48,10 @@ export function HomeApps({ locale }: { locale: Locale }) {
             <Link key={id} className="appcard" href="/guides">
               <img className="big-ico" src={APPS[id].icon} alt="" width={52} height={52} />
               <span className="at">
-                <span className="an">{APPS[id].n}</span>
+                <span className="an">
+                  {APPS[id].n}
+                  {id === "happ" && <span className="app-rec">{t("app_rec")}</span>}
+                </span>
                 <span className="ap">{APPS[id].pf}</span>
               </span>
               <span className="ag">

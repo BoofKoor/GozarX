@@ -83,6 +83,11 @@ export interface PublicConfig {
   streak_days: number;
 }
 
+export interface PublicStats {
+  configs_delivered: number; // total configs ever delivered (real count)
+  uptime_pct: number | null; // rolling availability %; null until the first health sample
+}
+
 async function get<T>(path: string): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { credentials: "include", cache: "no-store" });
   if (!res.ok) throw new ApiError(res.status, path);
@@ -127,6 +132,7 @@ export const api = {
   status: (ref?: string) =>
     get<StatusResponse>(ref ? `/status?ref=${encodeURIComponent(ref)}` : "/status"),
   locations: () => get<{ locations: string[] }>("/locations"),
+  stats: () => get<PublicStats>("/stats"),
   claim: (location: string, turnstileToken?: string) =>
     post<ClaimResponse>("/claim", { location, turnstile_token: turnstileToken }),
   claimReward: (reward_type: "pwa" | "push" | "streak") =>
