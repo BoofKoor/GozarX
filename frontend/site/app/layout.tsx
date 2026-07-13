@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import { dir, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/server";
+import { GOOGLE_SITE_VERIFICATION, SITE_URL } from "@/lib/site";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { PwaRegister } from "@/components/PwaRegister";
@@ -31,12 +32,51 @@ export const viewport: Viewport = {
 export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await resolve();
   const fa = locale === "fa";
+  const title = fa
+    ? "گذرایکس — کانفیگ آزمایشی رایگان روزانه"
+    : "GozarX — Free daily trial config";
+  const description = fa
+    ? "هر روز یک کانفیگ آزمایشی رایگان بگیر — بدون ثبت‌نام. حجم روزانه‌ات را با دعوت دوستان بیشتر کن."
+    : "Get a free daily trial config — no signup. Grow your daily volume by inviting friends.";
   return {
-    title: fa ? "گذرایکس — کانفیگ آزمایشی رایگان روزانه" : "GozarX — Free daily trial config",
-    description: fa
-      ? "هر روز یک کانفیگ آزمایشی رایگان بگیر — بدون ثبت‌نام. حجم روزانه‌ات را با دعوت دوستان بیشتر کن."
-      : "Get a free daily trial config — no signup. Grow your daily volume by inviting friends.",
+    // Base for all relative URLs below (canonical, OG, Twitter) so Google receives absolute links.
+    metadataBase: new URL(SITE_URL),
+    applicationName: "GozarX",
+    title,
+    description,
     manifest: "/manifest.webmanifest",
+    keywords: fa
+      ? ["کانفیگ رایگان", "وی پی ان آزمایشی", "کانفیگ روزانه", "گذرایکس", "GozarX"]
+      : ["free config", "trial vpn", "daily config", "GozarX"],
+    // Public pages should index + be followed; give Google's bot the roomiest snippet/preview.
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
+    openGraph: {
+      type: "website",
+      siteName: "GozarX",
+      locale: fa ? "fa_IR" : "en_US",
+      title,
+      description,
+      images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "GozarX" }],
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+      images: ["/icons/icon-512.png"],
+    },
+    // Search Console "HTML tag" verification — only emitted when the token env var is set (else
+    // verify via DNS/Cloudflare, no tag needed).
+    verification: GOOGLE_SITE_VERIFICATION ? { google: GOOGLE_SITE_VERIFICATION } : undefined,
     // Favicon + apple-touch-icon come from the app/icon.svg + app/apple-icon.png file conventions.
   };
 }

@@ -19,6 +19,13 @@ COPY frontend/site/ ./
 # Behind nginx this rewrite never fires (nginx routes /api to the app first); baking the real value
 # just keeps any future server-side /api call correct.
 ENV BACKEND_ORIGIN=http://app:8000
+# SEO: the canonical origin (robots.txt + sitemap.xml are statically generated at build, so SITE_URL
+# must be present HERE) and the optional Google Search Console verification token. Both default
+# sensibly (prod domain / no tag); the compose `build.args` override them from .env.
+ARG SITE_URL=https://gozarx.gozarxservices.com
+ENV SITE_URL=$SITE_URL
+ARG GOOGLE_SITE_VERIFICATION=
+ENV GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
 RUN npm run build
 
 FROM node:22-alpine AS runtime
@@ -26,6 +33,12 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3100
 ENV HOSTNAME=0.0.0.0
+# The root layout is rendered per-request (it reads cookies), so its canonical/OG/verification tags
+# read these at RUNTIME — carry the same values into the runtime image.
+ARG SITE_URL=https://gozarx.gozarxservices.com
+ENV SITE_URL=$SITE_URL
+ARG GOOGLE_SITE_VERIFICATION=
+ENV GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
 
 # The standalone bundle (server.js + minimal node_modules), then the static assets + public/ it
 # serves. Order matters: standalone first (it lays down .next/), then static into .next/static.

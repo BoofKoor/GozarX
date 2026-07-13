@@ -62,11 +62,17 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile.site
+      args:
+        # SEO: canonical origin for robots.txt/sitemap.xml/OG tags (derived from DOMAIN) and the
+        # optional Google Search Console "HTML tag" token. Both default sensibly when unset.
+        SITE_URL: https://${DOMAIN:-gozarx.gozarxservices.com}
+        GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
     image: gozar-site:local
     restart: unless-stopped
-    # No backend secrets and no runtime env: the site only serves pages. Browser /api requests are
-    # routed to the app by nginx; the next.config /api rewrite target is baked at build time in
-    # Dockerfile.site (Next evaluates rewrites during `next build`, not at runtime).
+    # No backend secrets: the site only serves pages. Browser /api requests are routed to the app by
+    # nginx; the next.config /api rewrite target and the SEO origin/verification token are baked at
+    # build time in Dockerfile.site (Next evaluates rewrites + statically builds robots/sitemap
+    # during `next build`, not at runtime).
     depends_on:
       app:
         condition: service_started
