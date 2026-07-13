@@ -1,6 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
+
+// Self-referencing canonical for the homepage. Set here (not in the root layout) so it applies only
+// to `/` — a layout-level canonical would be inherited by every sub-page and wrongly mark them all
+// as duplicates of the home page.
+export const metadata: Metadata = { alternates: { canonical: "/" } };
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { HomeLocations } from "@/components/home/HomeLocations";
