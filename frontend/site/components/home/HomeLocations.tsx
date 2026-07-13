@@ -63,7 +63,7 @@ export function HomeLocations({ locale }: { locale: Locale }) {
           </div>
 
           <p className="loccap">{t("loc_worldwide")}</p>
-          <a className="loccta" href="#hero">
+          <a className="loccta" href="/locations">
             {t("loc_all")}
             <Icon name="arrow" sw={2.2} cls="ic-dir" />
           </a>

@@ -44,7 +44,7 @@ export function Footer({ locale }: { locale: Locale }) {
       h: "ftc_product",
       links: [
         { k: "ft_get", href: "/#hero" },
-        { k: "ft_loc", href: "/#locations" },
+        { k: "ft_loc", href: "/locations" },
         { k: "ft_rewards", href: "/#rewards" },
         { k: "ft_status", href: "/status" },
       ],

@@ -7,7 +7,12 @@ import { BrandIcon } from "@/components/BrandIcon";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  return { title: `${GUIDE_LABELS[locale].title} — GozarX`, description: GUIDE_LABELS[locale].sub };
+  // Self-referencing canonical (relative — metadataBase is set in the root layout).
+  return {
+    title: `${GUIDE_LABELS[locale].title} — GozarX`,
+    description: GUIDE_LABELS[locale].sub,
+    alternates: { canonical: "/guides" },
+  };
 }
 
 // Guides index — pick your OS. Each card carries the platform's official brand mark in an accent

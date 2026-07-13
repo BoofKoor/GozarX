@@ -81,6 +81,17 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     loc_go: "دریافت",
     loc_active: "لوکیشن فعال",
     loc_worldwide: "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز.",
+    // /locations index page + /l/{slug} SEO landings
+    loc_page_title: "لوکیشن‌های کانفیگ رایگان",
+    loc_page_sub: "سرور کشور دلخواهت را انتخاب کن — کانفیگ اختصاصی، روزانه و بدون ثبت‌نام.",
+    loc_page_p1:
+      "گذرایکس در ده‌ها کشور دنیا سرور فعال دارد؛ از آلمان و آمریکا تا ترکیه و امارات. برای هر کانفیگ، خودت لوکیشن را انتخاب می‌کنی و هر روز می‌توانی کشور را عوض کنی — بدون هزینه و بدون ثبت‌نام.",
+    loc_page_p2:
+      "انتخاب کشور به نیازت بستگی دارد: برای پینگ پایین سراغ کشورهای نزدیک برو و برای دسترسی به سرویس‌های خاص، کشور همان سرویس را انتخاب کن. راهنمای بعضی از پرطرفدارترین لوکیشن‌ها را در ادامه ببین.",
+    loc_page_grid: "همهٔ لوکیشن‌های فعال",
+    loc_page_guides: "راهنمای لوکیشن‌های پرطرفدار",
+    land_home: "خانه",
+    land_related: "صفحات مرتبط",
     mv_eyebrow: "حجم بیشتر، رایگان",
     mv_title: "حجم روزانه‌ات را بیشتر کن",
     mv_sub: "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.",
@@ -545,6 +556,17 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     loc_go: "Get",
     loc_active: "active locations",
     loc_worldwide: "Active servers around the world for free, borderless internet.",
+    // /locations index page + /l/{slug} SEO landings
+    loc_page_title: "Free config locations",
+    loc_page_sub: "Pick the country you want — a personal config, daily and with no signup.",
+    loc_page_p1:
+      "GozarX runs active servers in dozens of countries, from Germany and the USA to Turkey and the UAE. You choose the location for every config and can switch countries every day — free, no signup.",
+    loc_page_p2:
+      "The right country depends on what you need: pick nearby countries for low ping, or the service's own country for region-locked apps. Guides for the most popular locations are below.",
+    loc_page_grid: "All active locations",
+    loc_page_guides: "Popular location guides",
+    land_home: "Home",
+    land_related: "Related pages",
     mv_eyebrow: "More volume, free",
     mv_title: "Grow your daily volume",
     mv_sub: "Do a few simple things and multiply your daily allowance — all with no payment.",

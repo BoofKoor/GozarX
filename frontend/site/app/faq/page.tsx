@@ -7,7 +7,12 @@ import { FAQ_LABELS } from "@/lib/content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  return { title: `${FAQ_LABELS[locale].title} — GozarX`, description: FAQ_LABELS[locale].sub };
+  // Self-referencing canonical (relative — metadataBase is set in the root layout).
+  return {
+    title: `${FAQ_LABELS[locale].title} — GozarX`,
+    description: FAQ_LABELS[locale].sub,
+    alternates: { canonical: "/faq" },
+  };
 }
 
 export default async function FaqPage() {

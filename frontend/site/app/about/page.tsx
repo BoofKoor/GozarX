@@ -6,7 +6,12 @@ import { ABOUT } from "@/lib/content";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
-  return { title: `${ABOUT[locale].title} — GozarX`, description: ABOUT[locale].lead };
+  // Self-referencing canonical (relative — metadataBase is set in the root layout).
+  return {
+    title: `${ABOUT[locale].title} — GozarX`,
+    description: ABOUT[locale].lead,
+    alternates: { canonical: "/about" },
+  };
 }
 
 export default async function AboutPage() {

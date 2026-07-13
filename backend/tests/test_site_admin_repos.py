@@ -62,6 +62,19 @@ async def test_landing_update_published_and_delete(session):
     assert await repo.get(page.id) is None
 
 
+async def test_landing_add_default_is_idempotent(session):
+    repo = SiteLandingPageRepository(session)
+    await repo.add_default(slug="seeded", locale="fa", title="v1", body="<p>b</p>")
+    page = await repo.get_by_slug("seeded", "fa")
+    assert page is not None and page.title == "v1"
+
+    # a second seed run with different content must NOT clobber the existing row
+    await repo.add_default(slug="seeded", locale="fa", title="v2", body="<p>changed</p>")
+    page = await repo.get_by_slug("seeded", "fa")
+    assert page.title == "v1"
+    assert len(await repo.list()) == 1
+
+
 async def test_inbox_list_count_and_mark_read(session):
     repo = SiteMessageRepository(session)
     for i in range(3):
