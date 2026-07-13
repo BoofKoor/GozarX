@@ -145,7 +145,13 @@ export function ClaimWidget({ locale, compact = false }: { locale: Locale; compa
           <span className="field-label">{t("link_label")}</span>
           <CopyField value={link} locale={locale} />
           <AppButtons link={link} locale={locale} />
-          <UsageMeter used={status?.usage ?? "0"} total={status?.daily_limit ?? "—"} pct={pct} locale={locale} />
+          <UsageMeter
+            used={status?.usage ?? "0"}
+            total={status?.daily_limit ?? "—"}
+            pct={pct}
+            locale={locale}
+            remainingBytes={status ? Math.max(0, status.daily_limit_bytes - status.usage_bytes) : 0}
+          />
           {status?.remaining && status.remaining !== "—" ? (
             <>
               <hr className="divider" />
