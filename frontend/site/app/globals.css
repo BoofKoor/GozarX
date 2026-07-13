@@ -1223,3 +1223,9 @@ button.lrow:disabled{ cursor:default; background:none; }
 .loccell:hover{ border-color:var(--border-strong); }
 .loccell .ln{ font-size:13.5px; font-weight:700; flex:1; min-inline-size:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .loccell.skeleton{ border-style:dashed; }
+
+/* courtesy auto-scroll anchors: clear the sticky header on snap-back, keep a breath at the edges */
+.widget{ scroll-margin-block-start:84px; }
+.widget:focus{ outline:none; }
+.cta-anchor{ scroll-margin-block-end:16px; }
+.pick-anchor{ scroll-margin-block-start:84px; scroll-margin-block-end:16px; }

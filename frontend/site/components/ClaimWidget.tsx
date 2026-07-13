@@ -12,6 +12,19 @@ import { Missions } from "@/components/widget/Missions";
 
 type Mode = "idle" | "provisioning";
 
+// ---- courtesy auto-scroll helpers -------------------------------------------------------------
+// The widget's height changes a lot across its states (a 22-location picker vs. a compact config
+// card), and the browser keeps the old scroll offset across those re-renders — stranding the user
+// below the new content. These helpers nudge the viewport the MINIMAL standard way, always
+// honouring the user's reduced-motion preference.
+const scrollBehavior = (): ScrollBehavior =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+
+/** Reveal `el` only if needed — `block:"nearest"` is a no-op when it's already fully visible. */
+function revealNearest(el: HTMLElement | null) {
+  el?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
+}
+
 // Faithful reproduction of docs/website/design/phase-1-claim-widget.html — the 8-state claim widget.
 // State is derived from the live /status; class names match the ported design CSS exactly.
 // `preselect` (a location remark NAME, e.g. from an SEO landing's location_remark) pre-picks that
@@ -36,6 +49,49 @@ export function ClaimWidget({
 
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
   const locs = locations ?? [];
+
+  // Scroll anchors: the outcome card's root (snap-back target after a claim), the claim CTA
+  // (revealed after a user pick), and the change-location picker (revealed when it expands).
+  const rootRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+  const changePickRef = useRef<HTMLDivElement>(null);
+  // Bumped when a claim attempt RESOLVES (success / cooldown / error) — the snap-back trigger.
+  const [outcomeSeq, setOutcomeSeq] = useState(0);
+
+  // USER-initiated pick: reveal the claim button if it sits below the fold (no-op when visible).
+  // The landing pages' programmatic preselect calls setPicked directly, so a page load never
+  // moves the viewport — only a real tap/click does.
+  const pickAndReveal = useCallback((loc: string) => {
+    setPicked(loc);
+    requestAnimationFrame(() => revealNearest(ctaRef.current));
+  }, []);
+
+  // After a claim resolves, the widget re-renders into a (usually shorter) outcome card while the
+  // browser keeps the old scroll offset — leaving the user staring below it. Once the new view has
+  // PAINTED (double rAF), bring the card's top back under the sticky header — but only when it
+  // isn't already in view, so desktop layouts never jump. Focus moves too (without a second
+  // scroll) so assistive tech announces the outcome.
+  useEffect(() => {
+    if (!outcomeSeq) return;
+    let raf2 = 0;
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        const el = rootRef.current;
+        if (!el) return;
+        const top = el.getBoundingClientRect().top;
+        const headerEdge =
+          (document.querySelector("header.hd")?.getBoundingClientRect().height ?? 64) + 8;
+        if (top < headerEdge - 4 || top > window.innerHeight * 0.6) {
+          el.scrollIntoView({ block: "start", behavior: scrollBehavior() });
+        }
+        el.focus({ preventScroll: true });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+    };
+  }, [outcomeSeq]);
 
   // The server is authoritative once loaded: if it reports no config (e.g. after a device reset),
   // drop any stale optimistic claim result so we don't keep showing a revoked config.
@@ -76,6 +132,7 @@ export function ClaimWidget({
       setErrState(true);
     } finally {
       setMode("idle");
+      setOutcomeSeq((s) => s + 1); // every resolution re-renders the widget — snap back to its top
     }
   }, [selected, token, mode, reload]);
 
@@ -94,17 +151,19 @@ export function ClaimWidget({
       : 0;
 
   const cta = (
-    <CtaBlock
-      locale={locale}
-      disabled={!selected}
-      busy={mode === "provisioning"}
-      onClaim={doClaim}
-      needsTurnstile={needsTurnstile}
-      token={token}
-      siteKey={config?.turnstile_site_key ?? ""}
-      onToken={setToken}
-      trialHours={status?.trial_hours}
-    />
+    <div ref={ctaRef} className="cta-anchor">
+      <CtaBlock
+        locale={locale}
+        disabled={!selected}
+        busy={mode === "provisioning"}
+        onClaim={doClaim}
+        needsTurnstile={needsTurnstile}
+        token={token}
+        siteKey={config?.turnstile_site_key ?? ""}
+        onToken={setToken}
+        trialHours={status?.trial_hours}
+      />
+    </div>
   );
 
   // ---------- loading ----------
@@ -121,7 +180,7 @@ export function ClaimWidget({
   // ---------- S8 panel error ----------
   if (offline || errState) {
     return (
-      <div className="widget">
+      <div className="widget" ref={rootRef} tabIndex={-1}>
         <CenterState kind="err" title={t("err_title")} sub={t("err_sub")}>
           <button className="btn" onClick={() => { setErrState(false); void reload(); }}>
             {t("err_retry")}
@@ -147,7 +206,7 @@ export function ClaimWidget({
   if (hasConfig && link) {
     const loc = (fresh ? result?.location : status?.location) ?? status?.location ?? "";
     return (
-      <div className="widget">
+      <div className="widget" ref={rootRef} tabIndex={-1}>
         <div className="cfg">
           <StatusHead
             kind="ok"
@@ -180,21 +239,26 @@ export function ClaimWidget({
             </>
           ) : null}
           {changeLoc ? (
-            <>
+            <div ref={changePickRef} className="pick-anchor">
               <Picker
                 locale={locale}
                 locations={locs}
                 selected={selected}
-                onPick={setPicked}
+                onPick={pickAndReveal}
                 popular={config?.popular_location}
               />
               {cta}
-            </>
+            </div>
           ) : (
             <button
               className="btn secondary block"
               style={{ marginBlockStart: 16 }}
-              onClick={() => { setChangeLoc(true); setToken(""); }}
+              onClick={() => {
+                setChangeLoc(true);
+                setToken("");
+                // reveal the picker that just expanded below the card (no-op if it fits on screen)
+                requestAnimationFrame(() => revealNearest(changePickRef.current));
+              }}
             >
               <Icon name="swap" sw={2} /> {t("change_loc")}
             </button>
@@ -208,7 +272,7 @@ export function ClaimWidget({
   // ---------- S5 cooldown ----------
   if (!canClaim) {
     return (
-      <div className="widget">
+      <div className="widget" ref={rootRef} tabIndex={-1}>
         <StatusHead kind="wait" title={t("cd_title")} sub={t("cd_sub")} />
         {status?.cooldown ? (
           <div style={{ paddingBlock: 6 }}>
@@ -239,7 +303,7 @@ export function ClaimWidget({
         locale={locale}
         locations={locs}
         selected={selected}
-        onPick={setPicked}
+        onPick={pickAndReveal}
         disabled={mode === "provisioning"}
         popular={config?.popular_location}
       />
