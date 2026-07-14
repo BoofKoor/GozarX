@@ -351,11 +351,18 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
     i === 0 ? [n] : [<i key={`l${i}`} className={`rw2-line${i < count ? " on" : ""}`} />, n],
   );
 
-  const banner = full
-    ? { cls: "ok", icon: "bolt", text: t("rw_full"), amt: true }
+  // one clean caption line under the rail (the old tinted banner box shouted with the rest)
+  const cap = full
+    ? { cls: "ok", icon: "bolt", text: t("rw_full"), day: null, amt: true }
     : claimedToday
-      ? { cls: "ok", icon: "check", text: t("rw_claimed").replace("{n}", faDigits(String(nextDay), locale)), amt: false }
-      : { cls: "", icon: "bolt", text: t("rw_claim_now"), amt: false };
+      ? {
+          cls: "ok",
+          icon: "check",
+          text: t("rw_claimed"),
+          day: t("rw_day_n").replace("{n}", faDigits(String(nextDay), locale)),
+          amt: false,
+        }
+      : { cls: "", icon: "bolt", text: t("rw_claim_now"), day: null, amt: false };
 
   return (
     <div className="rw2-streak">
@@ -386,10 +393,18 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
           {rail}
         </div>
       </div>
-      <div className={`rw2-banner ${banner.cls}`}>
-        <Icon name={banner.icon} sw={2.4} />
-        <span>{banner.text}</span>
-        {banner.amt && (
+      <div className="rw2-cap">
+        <Icon name={cap.icon} sw={2.6} cls={cap.cls} />
+        <span>
+          {cap.text}
+          {cap.day && (
+            <>
+              {" "}
+              <b>{cap.day}</b>
+            </>
+          )}
+        </span>
+        {cap.amt && (
           <b className="amt">{`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}</b>
         )}
       </div>
