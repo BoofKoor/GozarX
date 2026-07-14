@@ -1320,3 +1320,12 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .acct-btn:hover{ background:var(--brand-tint-2); }
 .acct-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .acct-btn .ic{ inline-size:16px; block-size:16px; flex:none; }
+
+/* mobile: the account chip collapses to an icon-only square with the burger's EXACT footprint
+   (38x38 r11; 36x36 on <=360px like .icon-only) — the person icon alone, no label, tint kept */
+@media (max-width:999.98px){
+  .acct-btn{ inline-size:38px; block-size:38px; padding:0; border-radius:11px; justify-content:center; }
+  .acct-btn .acct-lbl{ display:none; }
+  .acct-btn .ic{ inline-size:19px; block-size:19px; }
+}
+@media (max-width:360px){ .acct-btn{ inline-size:36px; block-size:36px; } }

@@ -103,11 +103,11 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               label={t("set_theme")}
               onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
             />
-            {/* brand-tint chip + idcard icon — the account cards' tile language, and a nod to the
-                GZ-… identity bar this button leads to */}
-            <Link className="acct-btn status-btn" href="/status">
-              <Icon name="idcard" sw={2} />
-              {t("nav_status")}
+            {/* brand-tint chip + person icon — the account cards' tile language. On mobile the
+                label hides and the chip collapses to the burger's exact footprint (CSS). */}
+            <Link className="acct-btn status-btn" href="/status" aria-label={t("nav_status")}>
+              <Icon name="user" sw={2} />
+              <span className="acct-lbl">{t("nav_status")}</span>
             </Link>
             <button
               className="icon-only burger"
