@@ -661,6 +661,11 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .block-title h2{ font-size:17px; font-weight:800; margin:0; display:inline-flex; align-items:center; gap:8px; }
 /* card-header icons carry a brand accent (matches the streak sub-header .rw-t .ic) */
 .block-title h2 .ic{ inline-size:18px; block-size:18px; color:var(--primary); flex:none; }
+/* header icon tile — the rewards gift-tile treatment (semi-transparent brand tint, no border),
+   reusable on sibling card headers so the account column keeps one rhythm */
+.block-title .htile{ inline-size:40px; block-size:40px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.block-title .htile .ic{ inline-size:20px; block-size:20px; color:inherit; }
+.block-title h2:has(.htile){ gap:12px; }
 .block-title a{ font-size:13px; font-weight:700; color:var(--link); text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
 .block-title a .ic{ inline-size:14px; block-size:14px; }
 [dir="rtl"] .block-title a .ic-dir{ transform:scaleX(-1); }
@@ -1012,7 +1017,8 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw2-ring circle{ fill:none; stroke-width:3.5; }
 .rw2-ring .tr{ stroke:var(--border-strong); }
 .rw2-ring .pr{ stroke:var(--success); stroke-linecap:round; }
-.rw2-ring > .ic{ inline-size:24px; block-size:24px; color:var(--success); position:relative; }
+/* flame stays neutral — the ring's arc alone carries the progress colour */
+.rw2-ring > .ic{ inline-size:24px; block-size:24px; color:var(--muted); position:relative; }
 .rw2-stxt{ min-inline-size:0; }
 .rw2-stxt b{ display:block; font-size:15.5px; font-weight:800; }
 .rw2-stxt b i{ font-style:normal; color:var(--success-ink); }
@@ -1021,16 +1027,18 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw2-rail{ display:flex; align-items:center; flex:1 1 100%; margin-block-start:12px; min-inline-size:0; }
 .rw2-node{ inline-size:27px; block-size:27px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11.5px; font-weight:700; color:var(--muted); background:var(--surface); border:1.5px solid var(--border-strong); }
 .rw2-node .ic{ inline-size:12px; block-size:12px; }
-.rw2-node.on{ background:var(--success); border-color:var(--success); color:#fff; }
-.rw2-node.today{ border-color:var(--success); color:var(--success-ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 18%,transparent); }
+/* earned days: SOFT green (tinted surface + ink check) — solid fills piled too much saturation */
+.rw2-node.on{ background:var(--success-surface); border-color:color-mix(in srgb,var(--success) 45%,transparent); color:var(--success-ink); }
+.rw2-node.today{ border-color:color-mix(in srgb,var(--success) 45%,transparent); color:var(--success-ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 12%,transparent); }
 .rw2-node.last:not(.on){ border-color:color-mix(in srgb,var(--primary) 55%,var(--border-strong)); color:var(--primary); }
 .rw2-line{ flex:1; block-size:2px; min-inline-size:6px; background:var(--border-strong); }
-.rw2-line.on{ background:var(--success); }
-/* status banner */
-.rw2-banner{ display:flex; align-items:center; gap:9px; margin-block-start:12px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:600; background:var(--brand-tint); color:var(--brand-tint-ink); }
-.rw2-banner.ok{ background:var(--success-surface); color:var(--success-ink); }
-.rw2-banner .ic{ inline-size:15px; block-size:15px; flex:none; }
-.rw2-banner .amt{ margin-inline-start:auto; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.rw2-line.on{ background:color-mix(in srgb,var(--success) 35%,transparent); }
+/* one clean status caption under the rail (replaces the old tinted banner box) */
+.rw2-cap{ display:flex; align-items:center; gap:7px; margin-block-start:12px; font-size:12.5px; color:var(--muted); }
+.rw2-cap > .ic{ inline-size:14px; block-size:14px; flex:none; color:var(--brand-tint-ink); }
+.rw2-cap > .ic.ok{ color:var(--success); }
+.rw2-cap b{ color:var(--text); font-weight:700; }
+.rw2-cap .amt{ margin-inline-start:auto; color:var(--success-ink); font-variant-numeric:tabular-nums; white-space:nowrap; }
 
 /* mission rows */
 .rw2-list{ display:flex; flex-direction:column; }
