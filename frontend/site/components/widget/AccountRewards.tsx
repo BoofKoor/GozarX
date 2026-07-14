@@ -106,58 +106,64 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   const pushConfigured = !!config?.vapid_public_key;
 
   return (
-    <div className="card rewards-card">
-      <div className="block-title" style={{ paddingBlockStart: 14 }}>
-        <h2>
-          <Icon name="gift" sw={2} /> {t("m_title")}
-        </h2>
+    <div className="card rewards-card rw2">
+      <div className="rw2-head">
+        <span className="rw2-gift" aria-hidden>
+          <Icon name="gift" sw={2} />
+        </span>
+        <div>
+          <h2>{t("m_title")}</h2>
+          <p>{t("rw_sub")}</p>
+        </div>
       </div>
 
-      <StreakCard locale={locale} rewardMb={config?.reward_streak_mb} />
+      <StreakHero locale={locale} rewardMb={config?.reward_streak_mb} />
 
-      <div className="ledger">
-        {/* Invite — always available; distinguished by its progress bar + bare share button,
-            not by a coloured amount (the amount matches every other row). */}
-        <div className="lrow lead">
-          <span className="lmed">
+      <div className="rw2-list">
+        {/* Invite — the whole row shares the invite link; live progress toward the cap. */}
+        <button className="rw2-row" type="button" onClick={invite}>
+          <span className="rw2-tile brand" aria-hidden>
             <Icon name="users" sw={2} />
           </span>
-          <div className="lbd">
-            <div className="ltt">{t("m_invite")}</div>
-            <div className="lprog">
-              <div className="ltrack">
-                <i style={{ inlineSize: `${invitePct}%` }} />
-              </div>
-              <span className="lplbl">
-                <b>{faDigits(String(inviteCount), locale)}</b> {t("m_of")}{" "}
-                {faDigits(String(inviteCap), locale)} {t("m_invites")}
-              </span>
-              <button className="lshare" type="button" onClick={invite} aria-label={t("referral.share")}>
-                <Icon name="share" sw={2} />
-              </button>
-            </div>
-          </div>
-          <LAmt mb={config?.reward_referral_mb} locale={locale} />
-        </div>
+          <span className="rw2-bd">
+            <b>{t("m_invite")}</b>
+            <span className="rw2-track" aria-hidden>
+              <i style={{ inlineSize: `${invitePct}%` }} />
+            </span>
+            <small className="rw2-cnt">
+              <b>{faDigits(String(inviteCount), locale)}</b> {t("m_of")}{" "}
+              {faDigits(String(inviteCap), locale)} {t("m_invites")}
+            </small>
+          </span>
+          <span className="rw2-side">
+            <span className="rw2-amt brand">
+              +{faDigits(String(config?.reward_referral_mb ?? 0), locale)} <u>MB</u>
+            </span>
+            <Icon name="share" sw={2} cls="rw2-end" />
+          </span>
+        </button>
 
         {pwa !== "unsupported" &&
           (pwa === "installed" ? (
-            <LedgerRow
+            <MissionRow
+              tone="success"
               icon="download"
+              badge="check"
               title={t("m_pwa")}
-              sub={t("m_pwa_done")}
-              state="done"
+              pill={{ text: t("rw_completed"), tone: "success" }}
               amountMb={config?.reward_pwa_mb}
+              end="check"
               locale={locale}
             />
           ) : config ? (
             // Only once /config is loaded, so the amount never flashes "+0 MB".
-            <LedgerRow
+            <MissionRow
+              tone="success"
               icon="download"
               title={t("m_pwa")}
-              sub={t("m_pwa_d")}
-              state="earn"
+              sub={t("rw_pwa_d")}
               amountMb={config.reward_pwa_mb}
+              end="chev"
               locale={locale}
               onClick={installPwa}
               busy={busy === "pwa"}
@@ -166,36 +172,47 @@ export function AccountRewards({ locale }: { locale: Locale }) {
 
         {pushConfigured &&
           (perm === "granted" ? (
-            <LedgerRow
+            <MissionRow
+              tone="violet"
               icon="bell"
+              badge="check"
               title={t("m_push")}
-              sub={t("m_push_done")}
-              state="done"
+              pill={{ text: t("rw_completed"), tone: "success" }}
               amountMb={config?.reward_push_mb}
+              end="check"
               locale={locale}
             />
           ) : perm === "denied" ? (
-            <LedgerRow
+            <MissionRow
+              tone="violet"
               icon="bell"
+              badge="lock"
               title={t("m_push")}
-              sub={t("ps_bl_d")}
-              state="blocked"
+              pill={{ text: t("rw_blocked"), tone: "danger" }}
               amountMb={config?.reward_push_mb}
+              end="chev"
               locale={locale}
               onClick={() => setModal("blocked")}
             />
           ) : (
-            <LedgerRow
+            <MissionRow
+              tone="violet"
               icon="bell"
               title={t("m_push")}
-              sub={t("m_push_d")}
-              state="earn"
+              sub={t("rw_push_d")}
+              pill={{ text: t("rw_available"), tone: "violet" }}
               amountMb={config?.reward_push_mb}
+              end="chev"
               locale={locale}
               onClick={() => setModal("push")}
               busy={busy === "push"}
             />
           ))}
+      </div>
+
+      <div className="rw2-foot">
+        <Icon name="info" sw={2} />
+        {t("rw_foot")}
       </div>
 
       {flash && (
@@ -218,89 +235,75 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   );
 }
 
-// One "+N MB" amount slot — MB inline beside the figure, one solid treatment for every row.
-// `muted` dims it for a blocked reward (still shown, since it's recoverable); `busy` shows a spinner.
-function LAmt({
-  mb,
-  locale,
-  muted,
-  busy,
-}: {
-  mb?: number;
-  locale: Locale;
-  muted?: boolean;
-  busy?: boolean;
-}) {
-  if (busy) return <span className="lamt busy">…</span>;
-  return (
-    <span className={`lamt${muted ? " muted" : ""}`}>
-      <span className="lval">
-        <span className="lp">+</span>
-        <span className="ln">{faDigits(String(mb ?? 0), locale)}</span>
-        <span className="lu">MB</span>
-      </span>
-    </span>
-  );
-}
-
-// A ledger row for the install / notifications actions. State is carried by the medallion badge —
-// green check = earned (done), red ✕ = blocked, no badge = available — while the amount stays
-// consistent. Interactive rows (earn / blocked) render as a full-width button for a big tap target.
-function LedgerRow({
+// One mission row: tinted icon tile (with an optional check/lock mini-badge), title + state pill
+// or sub-line, the "+N MB" amount pill in the row's tone, and a trailing chevron (actionable) or
+// check (earned). Interactive rows render as a full-width button for a big tap target.
+function MissionRow({
+  tone,
   icon,
+  badge,
   title,
   sub,
-  state,
+  pill,
   amountMb,
+  end,
   locale,
   onClick,
   busy,
 }: {
+  tone: "brand" | "success" | "violet";
   icon: string;
+  badge?: "check" | "lock";
   title: string;
-  sub: string;
-  state: "earn" | "done" | "blocked";
+  sub?: string;
+  pill?: { text: string; tone: "success" | "violet" | "danger" };
   amountMb?: number;
+  end: "chev" | "check";
   locale: Locale;
   onClick?: () => void;
   busy?: boolean;
 }) {
   const inner = (
     <>
-      <span className="lmed">
+      <span className={`rw2-tile ${tone}`} aria-hidden>
         <Icon name={icon} sw={2} />
-        {state === "done" && (
-          <span className="ldone">
-            <Icon name="check" sw={3} />
-          </span>
-        )}
-        {state === "blocked" && (
-          <span className="ldone bad">
-            <Icon name="x" sw={2.6} />
+        {badge && (
+          <span className={`rw2-mini${badge === "lock" ? " bad" : ""}`}>
+            <Icon name={badge} sw={3} />
           </span>
         )}
       </span>
-      <span className="lbd">
-        <span className="ltt">{title}</span>
-        <span className="lsb">{sub}</span>
+      <span className="rw2-bd">
+        <b>{title}</b>
+        {sub && <small>{sub}</small>}
+        {pill && <span className={`rw2-pill ${pill.tone}`}>{pill.text}</span>}
       </span>
-      <LAmt mb={amountMb} locale={locale} muted={state === "blocked"} busy={busy} />
+      <span className="rw2-side">
+        <span className={`rw2-amt ${tone}`}>
+          {busy ? "…" : <>+{faDigits(String(amountMb ?? 0), locale)} <u>MB</u></>}
+        </span>
+        {end === "check" ? (
+          <Icon name="check" sw={2.6} cls="rw2-end ok" />
+        ) : (
+          <Icon name="chevr" sw={2.4} cls="ic-dir rw2-end" />
+        )}
+      </span>
     </>
   );
   if (onClick) {
     return (
-      <button className="lrow" type="button" onClick={onClick} disabled={busy}>
+      <button className="rw2-row" type="button" onClick={onClick} disabled={busy}>
         {inner}
       </button>
     );
   }
-  return <div className="lrow">{inner}</div>;
+  return <div className="rw2-row">{inner}</div>;
 }
 
-// Daily-claim streak: `streak_days` dots, filled up to the current run; the "today" dot is the one
-// just earned (if today's config is claimed) or the next one to earn. Read-only — the streak
-// advances server-side when a config is claimed.
-function StreakCard({ locale, rewardMb }: { locale: Locale; rewardMb?: number }) {
+// Streak hero — progress ring around a flame + "Day N of M", a day rail (check = earned, number =
+// ahead, star = the final bonus day) and a live status banner. Read-only: the streak advances
+// server-side when a config is claimed.
+function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number }) {
   const t = translator(locale);
   const { status } = useSite();
   if (!status || status.streak_days <= 0) return null;
@@ -308,42 +311,75 @@ function StreakCard({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
   const days = status.streak_days;
   const count = Math.min(Math.max(status.streak_count, 0), days);
   const claimedToday = !status.can_claim; // holds today's config / within the cooldown window
-  const activeIdx = claimedToday ? count - 1 : count; // the highlighted "today" dot
+  const full = status.streak_active;
+  const nextDay = Math.min(count + 1, days);
 
-  const dots = Array.from({ length: days }, (_, i) => {
-    const cls = `d${i < count ? " on" : ""}${i === activeIdx && i < days ? " today" : ""}`;
+  // ring: r=19 → C≈119.4; progress arc = count/days
+  const C = 2 * Math.PI * 19;
+  const arc = (count / days) * C;
+
+  const nodes = Array.from({ length: days }, (_, i) => {
+    const done = i < count;
+    const isLast = i === days - 1;
+    const today = !done && i === count; // the next day to earn
     return (
-      <span key={i} className={cls}>
-        {faDigits(String(i + 1), locale)}
+      <span key={i} className={`rw2-node${done ? " on" : ""}${today ? " today" : ""}${isLast ? " last" : ""}`}>
+        {done ? (
+          <Icon name="check" sw={3} />
+        ) : isLast ? (
+          <Icon name="star" sw={2} />
+        ) : (
+          faDigits(String(i + 1), locale)
+        )}
       </span>
     );
   });
+  // interleave connector lines between nodes (filled while both ends are earned)
+  const rail = nodes.flatMap((n, i) =>
+    i === 0 ? [n] : [<i key={`l${i}`} className={`rw2-line${i < count ? " on" : ""}`} />, n],
+  );
 
-  const progress = `${faDigits(String(count), locale)} / ${faDigits(String(days), locale)}`;
-  const cap = status.streak_active
-    ? t("streak_active_note")
-    : `${progress} — ${t("streak_sub")}`;
+  const banner = full
+    ? { cls: "ok", icon: "bolt", text: t("rw_full"), amt: true }
+    : claimedToday
+      ? { cls: "ok", icon: "check", text: t("rw_claimed").replace("{n}", faDigits(String(nextDay), locale)), amt: false }
+      : { cls: "", icon: "bolt", text: t("rw_claim_now"), amt: false };
 
   return (
-    <div className="streak-block">
-      <div className="rw-head">
-        <span className="rw-t">
-          <Icon name="cal" sw={2} /> {t("streak_title")}
+    <div className="rw2-streak">
+      <div className="rw2-srow">
+        <span className="rw2-ring" aria-hidden>
+          <svg viewBox="0 0 44 44">
+            <circle className="tr" cx="22" cy="22" r="19" />
+            <circle
+              className="pr"
+              cx="22"
+              cy="22"
+              r="19"
+              strokeDasharray={`${arc} ${C - arc}`}
+              strokeDashoffset={C / 4}
+            />
+          </svg>
+          <Icon name="flame" sw={2} />
         </span>
-        {status.streak_active ? (
-          <span className="rw">
-            <Icon name="bolt" sw={2.2} /> {`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}
-          </span>
-        ) : null}
+        <div className="rw2-stxt">
+          <b>
+            {t("rw_day")
+              .replace("{a}", faDigits(String(count), locale))
+              .replace("{b}", faDigits(String(days), locale))}
+          </b>
+          <small>{t("rw_keep")}</small>
+        </div>
+        <div className="rw2-rail" dir="ltr">
+          {rail}
+        </div>
       </div>
-      <div className="streak">{dots}</div>
-      <div className="streak-cap">
-        {claimedToday ? (
-          <>
-            <b style={{ color: "var(--success-ink)" }}>{t("streak_today")} ✓</b> ·{" "}
-          </>
-        ) : null}
-        {cap}
+      <div className={`rw2-banner ${banner.cls}`}>
+        <Icon name={banner.icon} sw={2.4} />
+        <span>{banner.text}</span>
+        {banner.amt && (
+          <b className="amt">{`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}</b>
+        )}
       </div>
     </div>
   );
