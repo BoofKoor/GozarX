@@ -1313,7 +1313,9 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 [dir="rtl"] .chg-btn .chg-chev{ transform:scaleX(-1); }
 
 /* header account button — brand-tint chip + idcard icon (the account cards' tile language).
-   NOTE: no `display` here — .status-btn owns visibility (hidden on mobile, flex >=1000px). */
+   Shown on MOBILE too (the old .btn class made the previous button visible there; dropping it let
+   the stale .status-btn{display:none} win and the chip vanished from phones). */
+.acct-btn.status-btn{ display:inline-flex; }
 .acct-btn{ align-items:center; gap:8px; font-size:13.5px; font-weight:700; padding:9px 15px; border-radius:12px; background:var(--brand-tint); color:var(--brand-tint-ink); text-decoration:none; border:1px solid transparent; transition:background .15s; }
 .acct-btn:hover{ background:var(--brand-tint-2); }
 .acct-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
