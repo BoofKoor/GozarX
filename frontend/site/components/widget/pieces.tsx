@@ -44,7 +44,10 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
   }
   return (
     <div className="copyfield">
-      <code dir="ltr">{value}</code>
+      {/* the shell owns the box (border stays crisp); its ::after fades the CONTENT's end only */}
+      <span className="code-shell">
+        <code dir="ltr">{value}</code>
+      </span>
       <button className={`btn${copied ? " copied" : ""}`} onClick={copy} type="button">
         {copied ? t("copied") : t("copy")}
       </button>
@@ -117,6 +120,9 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
           <a key={key} className="app-btn" href={APPS[key].deeplink(link)}>
             <img className="app-ico" src={APPS[key].icon} alt="" width={26} height={26} />
             {APPS[key].n}
+            {/* trailing chevron: the "this opens something" affordance (the row IS the deep link);
+                always → because the button content is an LTR island (Latin app names). */}
+            <Icon name="chevr" sw={2.4} cls="app-chev" />
           </a>
         ))}
       </div>
@@ -124,15 +130,17 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   );
 }
 
-// Mirror the backend's `human_bytes` (1024-based, 1 decimal) so a client-derived "remaining volume"
-// formats identically to the server-formatted `usage`/`daily_limit` strings.
+// Mirror the backend's `human_bytes` (1024-based, 1 decimal, round values drop the ".0") so a
+// client-derived "remaining volume" formats identically to the server strings ("800 MB", "1.5 GB").
 function humanBytes(n: number): string {
+  const fmt = (v: number, u: string) =>
+    u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1).replace(/\.0$/, "")} ${u}`;
   let v = Math.max(0, n);
   for (const u of ["B", "KB", "MB", "GB"]) {
-    if (v < 1024) return u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1)} ${u}`;
+    if (v < 1024) return fmt(v, u);
     v /= 1024;
   }
-  return `${v.toFixed(1)} TB`;
+  return fmt(v, "TB");
 }
 
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----

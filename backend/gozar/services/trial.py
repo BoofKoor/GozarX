@@ -192,12 +192,19 @@ def _parse_dt(value: str | None) -> datetime | None:
 
 
 def human_bytes(num: int) -> str:
+    """1024-based, one decimal — but round values drop the noisy ".0" ("800 MB", "1.5 GB")."""
+
+    def fmt(value: float, unit: str) -> str:
+        if unit == "B":
+            return f"{value:.0f} {unit}"
+        return f"{f'{value:.1f}'.removesuffix('.0')} {unit}"
+
     value = float(max(num, 0))
     for unit in ("B", "KB", "MB", "GB"):
         if value < 1024:
-            return f"{value:.0f} {unit}" if unit == "B" else f"{value:.1f} {unit}"
+            return fmt(value, unit)
         value /= 1024
-    return f"{value:.1f} TB"
+    return fmt(value, "TB")
 
 
 def _human_duration(delta: timedelta) -> str:

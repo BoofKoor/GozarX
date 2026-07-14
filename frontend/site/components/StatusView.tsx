@@ -11,7 +11,7 @@ import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
 import { Flag } from "@/components/widget/pieces";
 import { locName } from "@/components/widget/flags";
-import { subscribeToPush } from "@/lib/push";
+import { hasPushSubscription, subscribeToPush } from "@/lib/push";
 
 // My status — faithful reproduction of docs/website/design/phase-6-status.html (dashboard view):
 // page head + identity note, live stat row (usage ring / time left / daily volume / invites),
@@ -147,9 +147,13 @@ function SettingsCard({
   const { config } = useSite();
   // Init to the SSR-safe defaults, then read the real values on mount to avoid hydration mismatch.
   const [perm, setPerm] = useState<NotificationPermission>("default");
+  // "On" = permission granted AND a live push subscription — granted alone (e.g. allowed from the
+  // browser's own settings) delivers nothing, so the switch must still read as off and stay tappable.
+  const [pushSub, setPushSub] = useState(false);
   const [themeState, setThemeState] = useState<string>("");
   useEffect(() => {
     if (typeof Notification !== "undefined") setPerm(Notification.permission);
+    void hasPushSubscription().then(setPushSub);
     // Effective theme: an explicit choice sets data-theme; with no cookie the page follows the OS
     // via prefers-color-scheme (data-theme unset), so read the media query in that case.
     const attr = document.getElementById("app")?.getAttribute("data-theme");
@@ -185,6 +189,7 @@ function SettingsCard({
     const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
     setPerm(typeof Notification !== "undefined" ? Notification.permission : "default");
     if (ok) {
+      setPushSub(true);
       await api.claimReward("push");
       await onReload();
     }
@@ -243,7 +248,7 @@ function SettingsCard({
         <button
           className="switch"
           role="switch"
-          aria-checked={perm === "granted"}
+          aria-checked={perm === "granted" && pushSub}
           aria-label={t("set_notif")}
           disabled={perm === "denied" || !pushEnabled}
           onClick={toggleNotif}

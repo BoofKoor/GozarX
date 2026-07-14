@@ -232,7 +232,8 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .widget::before{ content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:radial-gradient(120% 78% at 100% 0%,var(--card-sheen),transparent 58%); }
 [dir="rtl"] .widget::before{ background:radial-gradient(120% 78% at 0% 0%,var(--card-sheen),transparent 58%); }
 .w-head{ display:flex; align-items:center; gap:12px; margin-block-end:20px; }
-@media (max-width:460px){ .w-head{ flex-direction:column; align-items:flex-start; gap:10px; } }
+/* (the mobile w-head layout lives in the #app-scoped rule further down — it must outrank the
+   duplicated base .w-head declarations, so keep exactly ONE mobile rule there) */
 .w-badge{ inline-size:42px; block-size:42px; border-radius:13px; flex:none; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 50%,var(--hero-2))); box-shadow:var(--glow-sm); }
 [dir="rtl"] .w-badge{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 50%,var(--hero-2))); }
 .w-badge .ic{ inline-size:22px; block-size:22px; }
@@ -265,7 +266,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
    itself is untouched; a slim scrollbar + a soft bottom fade (shown only while there's more below,
    toggled by .more) hint the overflow. Top padding keeps the "popular" badge from clipping. */
 .loc-scroll{ position:relative; }
-.loc-scroll > .loc-grid{ max-block-size:236px; overflow-y:auto; overflow-x:hidden; padding-block-start:12px; padding-inline-end:6px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+/* 268px lands the crop at ~half of row 3 — an unambiguous "more below" peek (236px sliced only a
+   ~20px sliver that read as a layout glitch). */
+.loc-scroll > .loc-grid{ max-block-size:268px; overflow-y:auto; overflow-x:hidden; padding-block-start:12px; padding-inline-end:6px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
+/* Touch devices: the fade + half-row peek carry the scroll affordance — hide the desktop scrollbar. */
+@media (pointer:coarse){
+  .loc-scroll > .loc-grid{ scrollbar-width:none; padding-inline-end:0; }
+  .loc-scroll > .loc-grid::-webkit-scrollbar{ display:none; }
+}
 .loc-scroll > .loc-grid::-webkit-scrollbar{ inline-size:6px; }
 .loc-scroll > .loc-grid::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:9px; }
 .loc-scroll > .loc-grid::-webkit-scrollbar-track{ background:transparent; }
@@ -294,18 +302,27 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .field-label{ font-size:12.5px; font-weight:600; color:var(--muted); margin-block-end:8px; display:block; }
 /* LTR layout for the technical config field so the copyable code sits at the reading start (left)
    and the copy button lands on the RIGHT in both locales — easier thumb reach, esp. in RTL. */
-.copyfield{ display:flex; align-items:stretch; gap:8px; direction:ltr; }
-.copyfield code{ flex:1; min-inline-size:0; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); padding:12px 13px; white-space:nowrap; overflow-x:auto; color:var(--text); }
+/* one standard 44px control height for BOTH the link box and the copy button */
+.copyfield{ display:flex; align-items:center; gap:8px; direction:ltr; --ctl-h:44px; }
+.copyfield .code-shell{ position:relative; flex:1; min-inline-size:0; block-size:var(--ctl-h); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); overflow:hidden; }
+.copyfield code{ display:block; block-size:100%; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; line-height:calc(var(--ctl-h) - 2px); padding-inline:13px 34px; white-space:nowrap; overflow-x:auto; color:var(--text); }
 .copyfield code::-webkit-scrollbar{ height:0; }
-.copyfield .btn{ flex:none; padding-inline:16px; }
+/* fade the CONTENT's tail INSIDE the box — the border/frame itself never fades */
+.copyfield .code-shell::after{ content:""; position:absolute; inset-block:1px; inset-inline-end:1px; inline-size:32px; background:linear-gradient(90deg,transparent,var(--sunken)); border-start-end-radius:calc(var(--r-ctl) - 2px); border-end-end-radius:calc(var(--r-ctl) - 2px); pointer-events:none; }
+.copyfield .btn{ flex:none; padding-inline:16px; block-size:var(--ctl-h); }
 .copyfield .btn.copied{ background:var(--success); color:#fff; }
 #app[data-theme="dark"] .copyfield .btn.copied{ color:#04231a; }
 .apps{ margin-block-start:12px; }
 .apps .lbl{ font-size:12px; color:var(--muted); margin-block-end:8px; display:block; }
 .apps-row{ display:flex; gap:8px; }
+/* 3+ apps (desktop detection) don't fit side-by-side with the chevron rows — stack them as a list */
+.apps-row:has(> :nth-child(3)){ flex-direction:column; }
 /* direction:ltr keeps the app icon on the LEFT of its (Latin) name in both locales. */
-.app-btn{ display:inline-flex; align-items:center; gap:8px; flex:1; justify-content:center; direction:ltr; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:9px 8px; cursor:pointer; transition:border-color .15s; }
+/* list-row style: icon → name → trailing chevron (the whole row is the deep link) */
+.app-btn{ display:inline-flex; align-items:center; gap:9px; flex:1; justify-content:flex-start; direction:ltr; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; transition:border-color .15s; }
+.app-btn .app-chev{ margin-inline-start:auto; inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s, transform .15s; }
 .app-btn:hover{ border-color:var(--primary); }
+.app-btn:hover .app-chev{ color:var(--primary); opacity:1; transform:translateX(2px); }
 .app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .app-ico{ inline-size:26px; block-size:26px; border-radius:7px; flex:none; object-fit:cover; box-shadow:inset 0 0 0 1px var(--flag-ring),0 1px 2px rgba(2,6,23,.18); }
 .cfg-actions{ display:flex; gap:8px; margin-block-start:12px; }
@@ -915,7 +932,13 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 @media (min-width:760px){ #app .approw{ grid-template-columns:repeat(3,1fr); } }
 @media (min-width:760px){ #app .grid-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (min-width:520px){ #app .loc-grid{ grid-template-columns:repeat(4,1fr); } }
-@media (max-width:460px){ #app .w-head{ flex-direction:column; align-items:flex-start; gap:10px; } }
+/* Mobile: badge + title share ONE row (the old column stack burned ~60px of card height before any
+   content); the allowance pill drops to its own compact line underneath. #app prefix so this
+   outranks the duplicated base .w-head{display:flex} declarations. */
+@media (max-width:460px){
+  #app .w-head{ display:grid; grid-template-columns:auto 1fr; align-items:center; gap:10px 12px; }
+  #app .w-head .allowance{ grid-column:1 / -1; margin-inline-start:0; justify-self:start; }
+}
 /* ============ Phase 5 FAQ page tools (restored post-merge) ============ */
 .narrow{ max-width:820px; }
 .page-head.c{ text-align:center; max-width:44rem; margin-inline:auto; }
@@ -971,56 +994,86 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 /* the rewards card had no inner padding — content ran edge-to-edge; inset it like the sibling cards */
 .rewards-card{ padding:8px 20px 18px; }
 .rewards-card .block-title{ margin-block-end:12px; }
-/* streak block inside the rewards card */
-.rewards-card .streak-block{ padding-block:2px 14px; border-block-end:1px solid var(--border); margin-block-end:14px; }
-.rw-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:2px; }
-.rw-t{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:700; }
-.rw-t .ic{ inline-size:16px; block-size:16px; color:var(--primary); }
+/* ===== rewards card v2 — "daily rewards": streak hero + tinted mission rows + footer note ===== */
+.rw2{ --violet:#7C6CF0; --violet-tint:color-mix(in srgb,var(--violet) 14%,var(--surface)); --violet-ink:color-mix(in srgb,var(--violet) 72%,var(--text)); }
+#app[data-theme="dark"] .rw2{ --violet-tint:color-mix(in srgb,var(--violet) 20%,var(--surface)); --violet-ink:color-mix(in srgb,var(--violet) 60%,#fff); }
 
-/* rewards ledger — the three ways to grow the daily allowance, as a right-aligned ledger.
-   Each row: icon medallion (with a state badge) · title + subtitle/progress · "+N MB" amount.
-   The amount shares ONE solid treatment on every row; a row's state is carried by the medallion
-   badge (green check = earned · red ✕ = blocked · none = available) and, for invite, its
-   progress bar + bare share button — never by the amount's colour. */
-.ledger{ display:flex; flex-direction:column; }
-.ledger .lrow{ display:flex; align-items:center; gap:13px; inline-size:100%; padding:15px 2px; text-align:start;
-  background:none; border:0; font:inherit; color:inherit; }
-button.lrow{ cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:10px; transition:background .14s; }
-button.lrow:hover{ background:color-mix(in srgb,var(--primary) 5%,transparent); }
-button.lrow:disabled{ cursor:default; background:none; }
-.ledger .lrow + .lrow{ border-block-start:1px solid var(--border); }
+.rw2-head{ display:flex; align-items:flex-start; gap:12px; padding-block:8px 14px; }
+.rw2-gift{ inline-size:40px; block-size:40px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-gift .ic{ inline-size:20px; block-size:20px; }
+.rw2-head h2{ font-size:17px; font-weight:800; margin:0; line-height:1.3; }
+.rw2-head p{ font-size:12.5px; color:var(--muted); margin:3px 0 0; }
 
-.ledger .lmed{ position:relative; inline-size:42px; block-size:42px; border-radius:13px; display:grid; place-items:center;
-  flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
-.ledger .lmed > .ic{ inline-size:20px; block-size:20px; }
-.ledger .ldone{ position:absolute; inset-block-end:-3px; inset-inline-end:-3px; inline-size:18px; block-size:18px;
-  border-radius:50%; background:var(--success); color:#fff; display:grid; place-items:center; border:2.5px solid var(--surface); }
-.ledger .ldone.bad{ background:var(--danger); }
-.ledger .ldone .ic{ inline-size:11px; block-size:11px; }
+/* streak hero */
+.rw2-streak{ background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:14px; margin-block-end:14px; }
+.rw2-srow{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.rw2-ring{ position:relative; inline-size:52px; block-size:52px; flex:none; display:grid; place-items:center; }
+.rw2-ring svg{ position:absolute; inset:0; inline-size:100%; block-size:100%; transform:rotate(-90deg); }
+.rw2-ring circle{ fill:none; stroke-width:3.5; }
+.rw2-ring .tr{ stroke:var(--border-strong); }
+.rw2-ring .pr{ stroke:var(--success); stroke-linecap:round; }
+.rw2-ring > .ic{ inline-size:24px; block-size:24px; color:var(--success); position:relative; }
+.rw2-stxt{ min-inline-size:0; }
+.rw2-stxt b{ display:block; font-size:15.5px; font-weight:800; }
+.rw2-stxt b i{ font-style:normal; color:var(--success-ink); }
+.rw2-stxt small{ font-size:12px; color:var(--muted); }
+/* day rail: check = earned · number = ahead · star = the final bonus day */
+.rw2-rail{ display:flex; align-items:center; flex:1 1 100%; margin-block-start:12px; min-inline-size:0; }
+.rw2-node{ inline-size:27px; block-size:27px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11.5px; font-weight:700; color:var(--muted); background:var(--surface); border:1.5px solid var(--border-strong); }
+.rw2-node .ic{ inline-size:12px; block-size:12px; }
+.rw2-node.on{ background:var(--success); border-color:var(--success); color:#fff; }
+.rw2-node.today{ border-color:var(--success); color:var(--success-ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 18%,transparent); }
+.rw2-node.last:not(.on){ border-color:color-mix(in srgb,var(--primary) 55%,var(--border-strong)); color:var(--primary); }
+.rw2-line{ flex:1; block-size:2px; min-inline-size:6px; background:var(--border-strong); }
+.rw2-line.on{ background:var(--success); }
+/* status banner */
+.rw2-banner{ display:flex; align-items:center; gap:9px; margin-block-start:12px; padding:9px 12px; border-radius:12px; font-size:12.5px; font-weight:600; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-banner.ok{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-banner .ic{ inline-size:15px; block-size:15px; flex:none; }
+.rw2-banner .amt{ margin-inline-start:auto; font-variant-numeric:tabular-nums; white-space:nowrap; }
 
-.ledger .lbd{ flex:1; min-inline-size:0; }
-.ledger .ltt{ display:block; color:var(--text); font-weight:800; font-size:14px; line-height:1.35; }
-.ledger .lsb{ display:block; font-size:12px; color:var(--muted); margin-block-start:1px; }
+/* mission rows */
+.rw2-list{ display:flex; flex-direction:column; }
+.rw2-row{ display:flex; align-items:center; gap:13px; inline-size:100%; padding:14px 2px; text-align:start; background:none; border:0; font:inherit; color:inherit; }
+button.rw2-row{ cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:12px; transition:background .14s; }
+button.rw2-row:hover{ background:color-mix(in srgb,var(--primary) 5%,transparent); }
+button.rw2-row:disabled{ cursor:default; background:none; }
+.rw2-row + .rw2-row{ border-block-start:1px solid var(--border); }
 
-/* amount — MB inline beside the figure; one solid treatment for every row */
-.ledger .lamt{ flex:none; font-variant-numeric:tabular-nums; }
-.ledger .lval{ display:inline-flex; align-items:baseline; gap:3px; direction:ltr; }
-.ledger .lp{ font-size:16px; font-weight:900; color:var(--text); }
-.ledger .ln{ font-size:22px; font-weight:900; letter-spacing:-.02em; color:var(--text); }
-.ledger .lu{ font-size:11px; font-weight:700; color:var(--muted); }
-.ledger .lamt.muted .lp,.ledger .lamt.muted .ln{ color:var(--muted); }
-.ledger .lamt.busy{ font-size:18px; color:var(--muted); }
+.rw2-tile{ position:relative; inline-size:46px; block-size:46px; border-radius:14px; flex:none; display:grid; place-items:center; }
+.rw2-tile > .ic{ inline-size:21px; block-size:21px; }
+.rw2-tile.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-tile.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-tile.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-mini{ position:absolute; inset-block-end:-4px; inset-inline-end:-4px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--success); color:#fff; display:grid; place-items:center; border:2.5px solid var(--surface); }
+.rw2-mini.bad{ background:var(--violet); }
+.rw2-mini .ic{ inline-size:10px; block-size:10px; }
 
-/* invite row: progress bar + bare share button (its distinguisher — not a number colour) */
-.ledger .lprog{ display:flex; align-items:center; gap:9px; margin-block-start:9px; }
-.ledger .ltrack{ flex:1; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
-.ledger .ltrack > i{ display:block; block-size:100%; border-radius:99px;
-  background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
-.ledger .lplbl{ font-size:11px; font-weight:700; color:var(--text); white-space:nowrap; }
-.ledger .lplbl b{ color:var(--success-ink); }
-.ledger .lshare{ inline-size:28px; block-size:28px; display:grid; place-items:center; flex:none;
-  background:none; border:0; padding:0; cursor:pointer; color:var(--primary); }
-.ledger .lshare .ic{ inline-size:14px; block-size:14px; }
+.rw2-bd{ flex:1; min-inline-size:0; display:grid; justify-items:start; gap:3px; }
+.rw2-bd > b{ font-size:14px; font-weight:800; line-height:1.35; }
+.rw2-bd > small{ font-size:12px; color:var(--muted); }
+.rw2-pill{ display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; padding:2.5px 9px; border-radius:var(--r-pill); }
+.rw2-pill.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-pill.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-pill.danger{ background:var(--danger-surface); color:var(--danger-ink); }
+.rw2-track{ inline-size:100%; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
+.rw2-track > i{ display:block; block-size:100%; border-radius:99px; background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
+[dir="rtl"] .rw2-track > i{ margin-inline-start:auto; }
+.rw2-cnt{ font-size:11px; font-weight:700; color:var(--muted); }
+.rw2-cnt b{ color:var(--success-ink); }
+
+.rw2-side{ flex:none; display:flex; align-items:center; gap:8px; }
+.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; direction:ltr; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; }
+.rw2-amt u{ text-decoration:none; font-size:10px; font-weight:700; opacity:.8; }
+.rw2-amt.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-amt.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-amt.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-end{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; }
+.rw2-end.ok{ color:var(--success-ink); opacity:1; }
+[dir="rtl"] .rw2-row .ic-dir{ transform:scaleX(-1); }
+
+.rw2-foot{ display:flex; align-items:center; gap:8px; margin-block-start:10px; padding:10px 12px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); font-size:12px; color:var(--muted); }
+.rw2-foot .ic{ inline-size:14px; block-size:14px; flex:none; }
 
 /* reward chips: trailing slot + non-interactive state */
 .m-chip .chip-end{ flex:none; display:inline-flex; align-items:center; color:var(--muted); }
@@ -1181,9 +1234,12 @@ button.lrow:disabled{ cursor:default; background:none; }
 /* the track sits on the sunken box → in light --sunken-2 ≈ --sunken so the empty bar vanished; a
    --border-strong fill keeps the neutral track clearly visible in both themes. */
 .meter.metric .bar{ block-size:10px; background:var(--border-strong); }
-.cfg .cd .seg{ min-inline-size:56px; padding:10px 6px; border-color:var(--border-strong);
+/* countdown scaled to the card's own type scale (title 17-18px) — 27px digits shouted over the
+   whole page; 20px keeps the timer prominent without dominating */
+.cfg .cd .seg{ min-inline-size:46px; padding:7px 6px; border-color:var(--border-strong);
   background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
-.cfg .cd .seg b{ font-size:27px; }
+.cfg .cd .seg b{ font-size:20px; }
+.cfg .cd .colon{ font-size:16px; }
 /* a standard-size "+" before the quick-add hint sentence */
 .apps .lbl{ display:flex; align-items:center; gap:6px; }
 .apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
@@ -1229,3 +1285,21 @@ button.lrow:disabled{ cursor:default; background:none; }
 .widget:focus{ outline:none; }
 .cta-anchor{ scroll-margin-block-end:16px; }
 .pick-anchor{ scroll-margin-block-start:84px; scroll-margin-block-end:16px; }
+
+/* Turnstile slot — interaction-only keeps it invisible until Cloudflare needs the user; when the
+   challenge does materialise, give it breathing room above the CTA. */
+.ts-slot:not(:empty){ margin-block-end:12px; }
+
+/* change-location: an inviting list row — rotating swap chip + label + real alternatives count */
+.chg-btn{ display:flex; align-items:center; gap:12px; inline-size:100%; margin-block-start:16px; padding:9px 12px; background:transparent; border:1px solid var(--border); border-radius:var(--r-ctl); cursor:pointer; font:inherit; color:var(--text); text-align:start; transition:border-color .15s, background .15s; }
+.chg-btn:hover{ border-color:var(--primary); background:var(--brand-tint); }
+.chg-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.chg-btn .ci{ inline-size:36px; block-size:36px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); transition:transform .35s ease; }
+.chg-btn .ci .ic{ inline-size:18px; block-size:18px; }
+.chg-btn:hover .ci{ transform:rotate(180deg); }
+.chg-btn .ct{ flex:1; min-inline-size:0; display:grid; gap:1px; }
+.chg-btn .ct b{ font-size:13.5px; font-weight:700; }
+.chg-btn .ct small{ font-size:11.5px; color:var(--muted); }
+.chg-btn .chg-chev{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s; }
+.chg-btn:hover .chg-chev{ color:var(--primary); opacity:1; }
+[dir="rtl"] .chg-btn .chg-chev{ transform:scaleX(-1); }

@@ -54,8 +54,8 @@ def test_reminder_tokens_from_webhook_data() -> None:
         }
     )
     tokens = _reminder_tokens(data)
-    assert tokens["total_traffic"] == "2.0 GB"
-    assert tokens["used_traffic"] == "512.0 MB"
+    assert tokens["total_traffic"] == "2 GB"
+    assert tokens["used_traffic"] == "512 MB"
     assert tokens["expire"] == tokens["remaining"]  # both fed from the same expiry
     assert tokens["expire"].startswith("2h")  # ~3h out minus test runtime -> "2h 59m"
 
