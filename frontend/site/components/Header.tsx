@@ -103,7 +103,10 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               label={t("set_theme")}
               onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
             />
-            <Link className="btn secondary status-btn" href="/status">
+            {/* brand-tint chip + idcard icon — the account cards' tile language, and a nod to the
+                GZ-… identity bar this button leads to */}
+            <Link className="acct-btn status-btn" href="/status">
+              <Icon name="idcard" sw={2} />
               {t("nav_status")}
             </Link>
             <button
