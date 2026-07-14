@@ -261,9 +261,10 @@ export function ClaimWidget({
               {cta}
             </div>
           ) : (
+            /* change-location as an inviting list row: rotating swap chip, label + the REAL count
+               of alternative locations, trailing chevron — not just a flat outline button */
             <button
-              className="btn secondary block"
-              style={{ marginBlockStart: 16 }}
+              className="chg-btn"
               onClick={() => {
                 setChangeLoc(true);
                 setToken("");
@@ -271,7 +272,18 @@ export function ClaimWidget({
                 requestAnimationFrame(() => revealNearest(changePickRef.current));
               }}
             >
-              <Icon name="swap" sw={2} /> {t("change_loc")}
+              <span className="ci" aria-hidden>
+                <Icon name="swap" sw={2.2} />
+              </span>
+              <span className="ct">
+                <b>{t("change_loc")}</b>
+                {locs.length > 1 && (
+                  <small>
+                    {faDigits(t("chg_more").replace("{n}", String(locs.length - 1)), locale)}
+                  </small>
+                )}
+              </span>
+              <Icon name="chevr" sw={2.4} cls="ic-dir chg-chev" />
             </button>
           )}
           {fresh && !changeLoc && <Missions locale={locale} refCode={status?.ref_code ?? ""} />}

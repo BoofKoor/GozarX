@@ -302,12 +302,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .field-label{ font-size:12.5px; font-weight:600; color:var(--muted); margin-block-end:8px; display:block; }
 /* LTR layout for the technical config field so the copyable code sits at the reading start (left)
    and the copy button lands on the RIGHT in both locales — easier thumb reach, esp. in RTL. */
-.copyfield{ display:flex; align-items:stretch; gap:8px; direction:ltr; }
-.copyfield code{ flex:1; min-inline-size:0; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); padding:12px 13px; white-space:nowrap; overflow-x:auto; color:var(--text);
-  /* soft end-fade instead of a hard mid-character clip — signals "scroll for more" */
-  mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent); }
+/* one standard 44px control height for BOTH the link box and the copy button */
+.copyfield{ display:flex; align-items:center; gap:8px; direction:ltr; --ctl-h:44px; }
+.copyfield .code-shell{ position:relative; flex:1; min-inline-size:0; block-size:var(--ctl-h); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); overflow:hidden; }
+.copyfield code{ display:block; block-size:100%; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; line-height:calc(var(--ctl-h) - 2px); padding-inline:13px 34px; white-space:nowrap; overflow-x:auto; color:var(--text); }
 .copyfield code::-webkit-scrollbar{ height:0; }
-.copyfield .btn{ flex:none; padding-inline:16px; }
+/* fade the CONTENT's tail INSIDE the box — the border/frame itself never fades */
+.copyfield .code-shell::after{ content:""; position:absolute; inset-block:1px; inset-inline-end:1px; inline-size:32px; background:linear-gradient(90deg,transparent,var(--sunken)); border-start-end-radius:calc(var(--r-ctl) - 2px); border-end-end-radius:calc(var(--r-ctl) - 2px); pointer-events:none; }
+.copyfield .btn{ flex:none; padding-inline:16px; block-size:var(--ctl-h); }
 .copyfield .btn.copied{ background:var(--success); color:#fff; }
 #app[data-theme="dark"] .copyfield .btn.copied{ color:#04231a; }
 .apps{ margin-block-start:12px; }
@@ -1202,9 +1204,12 @@ button.lrow:disabled{ cursor:default; background:none; }
 /* the track sits on the sunken box → in light --sunken-2 ≈ --sunken so the empty bar vanished; a
    --border-strong fill keeps the neutral track clearly visible in both themes. */
 .meter.metric .bar{ block-size:10px; background:var(--border-strong); }
-.cfg .cd .seg{ min-inline-size:56px; padding:10px 6px; border-color:var(--border-strong);
+/* countdown scaled to the card's own type scale (title 17-18px) — 27px digits shouted over the
+   whole page; 20px keeps the timer prominent without dominating */
+.cfg .cd .seg{ min-inline-size:46px; padding:7px 6px; border-color:var(--border-strong);
   background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
-.cfg .cd .seg b{ font-size:27px; }
+.cfg .cd .seg b{ font-size:20px; }
+.cfg .cd .colon{ font-size:16px; }
 /* a standard-size "+" before the quick-add hint sentence */
 .apps .lbl{ display:flex; align-items:center; gap:6px; }
 .apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
@@ -1254,3 +1259,17 @@ button.lrow:disabled{ cursor:default; background:none; }
 /* Turnstile slot — interaction-only keeps it invisible until Cloudflare needs the user; when the
    challenge does materialise, give it breathing room above the CTA. */
 .ts-slot:not(:empty){ margin-block-end:12px; }
+
+/* change-location: an inviting list row — rotating swap chip + label + real alternatives count */
+.chg-btn{ display:flex; align-items:center; gap:12px; inline-size:100%; margin-block-start:16px; padding:9px 12px; background:transparent; border:1px solid var(--border); border-radius:var(--r-ctl); cursor:pointer; font:inherit; color:var(--text); text-align:start; transition:border-color .15s, background .15s; }
+.chg-btn:hover{ border-color:var(--primary); background:var(--brand-tint); }
+.chg-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.chg-btn .ci{ inline-size:36px; block-size:36px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); transition:transform .35s ease; }
+.chg-btn .ci .ic{ inline-size:18px; block-size:18px; }
+.chg-btn:hover .ci{ transform:rotate(180deg); }
+.chg-btn .ct{ flex:1; min-inline-size:0; display:grid; gap:1px; }
+.chg-btn .ct b{ font-size:13.5px; font-weight:700; }
+.chg-btn .ct small{ font-size:11.5px; color:var(--muted); }
+.chg-btn .chg-chev{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s; }
+.chg-btn:hover .chg-chev{ color:var(--primary); opacity:1; }
+[dir="rtl"] .chg-btn .chg-chev{ transform:scaleX(-1); }

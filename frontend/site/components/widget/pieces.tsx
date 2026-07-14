@@ -44,7 +44,10 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
   }
   return (
     <div className="copyfield">
-      <code dir="ltr">{value}</code>
+      {/* the shell owns the box (border stays crisp); its ::after fades the CONTENT's end only */}
+      <span className="code-shell">
+        <code dir="ltr">{value}</code>
+      </span>
       <button className={`btn${copied ? " copied" : ""}`} onClick={copy} type="button">
         {copied ? t("copied") : t("copy")}
       </button>
