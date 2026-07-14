@@ -48,7 +48,18 @@ export function ClaimWidget({
   const [errState, setErrState] = useState(false);
 
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
-  const locs = locations ?? [];
+  // The admin-starred "popular" location leads the grid (stable sort — the rest keep their panel
+  // order) and doubles as the DEFAULT selection, so the CTA is never dead-on-arrival: a visitor
+  // can claim with zero taps, and any real pick — or a landing's preselect — overrides it.
+  const rawLocs = locations ?? [];
+  const popular = config?.popular_location ?? null;
+  const popKey = popular ? locName(popular).toLowerCase() : "";
+  const isPopular = (l: string) =>
+    !!popular && (l === popular || locName(l).toLowerCase() === popKey);
+  const locs = popular
+    ? [...rawLocs].sort((a, b) => Number(isPopular(b)) - Number(isPopular(a)))
+    : rawLocs;
+  const defaultPick = locs.find(isPopular) ?? null;
 
   // Scroll anchors: the outcome card's root (snap-back target after a claim), the claim CTA
   // (revealed after a user pick), and the change-location picker (revealed when it expands).
@@ -110,7 +121,7 @@ export function ClaimWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, preselect]);
 
-  const selected = picked ?? (compact && locs.length ? locs[0] : null);
+  const selected = picked ?? defaultPick ?? (compact && locs.length ? locs[0] : null);
 
   const doClaim = useCallback(async () => {
     if (!selected || mode === "provisioning") return;
@@ -451,7 +462,7 @@ function CtaBlock({
   const t = translator(locale);
   return (
     <div className="cta-wrap">
-      {needsTurnstile && siteKey && <Turnstile siteKey={siteKey} onToken={onToken} />}
+      {needsTurnstile && siteKey && <Turnstile siteKey={siteKey} locale={locale} onToken={onToken} />}
       <button
         className="btn cta"
         disabled={disabled || busy || (needsTurnstile && !token)}

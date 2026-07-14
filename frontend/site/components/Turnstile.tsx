@@ -1,9 +1,13 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import type { Locale } from "@/lib/i18n";
 
 // Cloudflare Turnstile — rendered ONLY when the backend reports it configured (config.turnstile_
 // enabled). In dev the site key is empty and this never mounts, so the claim flow works without it.
+// The widget follows the SITE's theme + locale (not the browser's) and runs `interaction-only`, so
+// it stays invisible unless Cloudflare actually needs the user — matching the card's "protected by
+// an invisible check" caption instead of parking a white box in the dark card.
 declare global {
   interface Window {
     turnstile?: {
@@ -30,7 +34,22 @@ function ensureScript(): Promise<void> {
   });
 }
 
-export function Turnstile({ siteKey, onToken }: { siteKey: string; onToken: (t: string) => void }) {
+/** The page's EFFECTIVE theme: an explicit data-theme choice wins, else the OS preference. */
+function effectiveTheme(): "light" | "dark" {
+  const attr = document.getElementById("app")?.getAttribute("data-theme");
+  if (attr === "light" || attr === "dark") return attr;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+export function Turnstile({
+  siteKey,
+  locale,
+  onToken,
+}: {
+  siteKey: string;
+  locale: Locale;
+  onToken: (t: string) => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
 
@@ -43,13 +62,16 @@ export function Turnstile({ siteKey, onToken }: { siteKey: string; onToken: (t: 
         callback: (token: string) => onToken(token),
         "error-callback": () => onToken(""),
         "expired-callback": () => onToken(""),
+        theme: effectiveTheme(),
+        language: locale,
+        appearance: "interaction-only", // visible only when CF actually needs an interaction
       });
     });
     return () => {
       cancelled = true;
       if (widgetId.current && window.turnstile) window.turnstile.remove(widgetId.current);
     };
-  }, [siteKey, onToken]);
+  }, [siteKey, locale, onToken]);
 
-  return <div ref={ref} className="mt-4" />;
+  return <div ref={ref} className="ts-slot" />;
 }

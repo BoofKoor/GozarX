@@ -127,7 +127,7 @@ async def test_claim_provisions_and_caches(session) -> None:
 
     assert isinstance(result, Provisioned)
     assert result.remarks == ["Germany", "Finland"]
-    assert result.size == "1.0 GB"
+    assert result.size == "1 GB"
     assert user.status is UserStatus.active_config
     assert user.panel_username == panel.created[0][0]  # the freshly created username
     assert panel.created[0][1] == 1024 * 1024 * 1024  # daily allowance, no referrals
@@ -338,8 +338,8 @@ async def test_status_active_reports_usage_and_change(session) -> None:
 
     assert not isinstance(info, PanelError)
     assert info.active is True
-    assert info.usage == "500.0 MB"
-    assert info.daily_limit == "1.0 GB"
+    assert info.usage == "500 MB"
+    assert info.daily_limit == "1 GB"
     assert "h" in info.remaining  # time left, not data
 
 
@@ -354,7 +354,7 @@ async def test_status_inactive_user(session) -> None:
     assert info.active is False
     assert info.usage == "—"
     assert info.remaining == "—"
-    assert info.daily_limit == "1.0 GB"
+    assert info.daily_limit == "1 GB"
 
 
 async def test_status_self_heals_expired_active(session) -> None:

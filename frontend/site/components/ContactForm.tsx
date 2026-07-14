@@ -105,7 +105,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
         </div>
         {needsTurnstile && config && (
           <div className="field">
-            <Turnstile siteKey={config.turnstile_site_key} onToken={setToken} />
+            <Turnstile siteKey={config.turnstile_site_key} locale={locale} onToken={setToken} />
           </div>
         )}
         {sendErr && <p className="err-text">{sendErr}</p>}

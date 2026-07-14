@@ -124,15 +124,17 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   );
 }
 
-// Mirror the backend's `human_bytes` (1024-based, 1 decimal) so a client-derived "remaining volume"
-// formats identically to the server-formatted `usage`/`daily_limit` strings.
+// Mirror the backend's `human_bytes` (1024-based, 1 decimal, round values drop the ".0") so a
+// client-derived "remaining volume" formats identically to the server strings ("800 MB", "1.5 GB").
 function humanBytes(n: number): string {
+  const fmt = (v: number, u: string) =>
+    u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1).replace(/\.0$/, "")} ${u}`;
   let v = Math.max(0, n);
   for (const u of ["B", "KB", "MB", "GB"]) {
-    if (v < 1024) return u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1)} ${u}`;
+    if (v < 1024) return fmt(v, u);
     v /= 1024;
   }
-  return `${v.toFixed(1)} TB`;
+  return fmt(v, "TB");
 }
 
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
