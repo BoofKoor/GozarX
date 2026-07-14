@@ -661,6 +661,11 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .block-title h2{ font-size:17px; font-weight:800; margin:0; display:inline-flex; align-items:center; gap:8px; }
 /* card-header icons carry a brand accent (matches the streak sub-header .rw-t .ic) */
 .block-title h2 .ic{ inline-size:18px; block-size:18px; color:var(--primary); flex:none; }
+/* header icon tile — the rewards gift-tile treatment (semi-transparent brand tint, no border),
+   reusable on sibling card headers so the account column keeps one rhythm */
+.block-title .htile{ inline-size:40px; block-size:40px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.block-title .htile .ic{ inline-size:20px; block-size:20px; color:inherit; }
+.block-title h2:has(.htile){ gap:12px; }
 .block-title a{ font-size:13px; font-weight:700; color:var(--link); text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
 .block-title a .ic{ inline-size:14px; block-size:14px; }
 [dir="rtl"] .block-title a .ic-dir{ transform:scaleX(-1); }

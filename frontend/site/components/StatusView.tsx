@@ -206,7 +206,12 @@ function SettingsCard({
     <div className="card settings">
       <div className="block-title" style={{ paddingBlockStart: 14 }}>
         <h2>
-          <Icon name="sliders" sw={2} /> {t("set_title")}
+          {/* header icon in the rewards gift-tile treatment, so the two side-by-side account
+              cards (rewards / settings) share one header rhythm */}
+          <span className="htile" aria-hidden>
+            <Icon name="sliders" sw={2} />
+          </span>
+          {t("set_title")}
         </h2>
       </div>
       <div className="srow">
