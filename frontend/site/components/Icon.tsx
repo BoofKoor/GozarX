@@ -14,6 +14,7 @@ export const ICONS: Record<string, string> = {
     '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18 15 15 0 0 1 0-18Z"/>',
   arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
+  chevr: '<path d="m9 6 6 6-6 6"/>',
   users:
     '<circle cx="9" cy="8" r="3.2"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 6a3.2 3.2 0 0 1 0 6M18.5 20a5.5 5.5 0 0 0-3-4.9"/>',
   download: '<path d="M12 3v12m0 0 4-4m-4 4-4-4M5 21h14"/>',

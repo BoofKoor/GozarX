@@ -303,7 +303,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* LTR layout for the technical config field so the copyable code sits at the reading start (left)
    and the copy button lands on the RIGHT in both locales — easier thumb reach, esp. in RTL. */
 .copyfield{ display:flex; align-items:stretch; gap:8px; direction:ltr; }
-.copyfield code{ flex:1; min-inline-size:0; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); padding:12px 13px; white-space:nowrap; overflow-x:auto; color:var(--text); }
+.copyfield code{ flex:1; min-inline-size:0; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); padding:12px 13px; white-space:nowrap; overflow-x:auto; color:var(--text);
+  /* soft end-fade instead of a hard mid-character clip — signals "scroll for more" */
+  mask-image:linear-gradient(90deg,#000 calc(100% - 30px),transparent); }
 .copyfield code::-webkit-scrollbar{ height:0; }
 .copyfield .btn{ flex:none; padding-inline:16px; }
 .copyfield .btn.copied{ background:var(--success); color:#fff; }
@@ -311,9 +313,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .apps{ margin-block-start:12px; }
 .apps .lbl{ font-size:12px; color:var(--muted); margin-block-end:8px; display:block; }
 .apps-row{ display:flex; gap:8px; }
+/* 3+ apps (desktop detection) don't fit side-by-side with the chevron rows — stack them as a list */
+.apps-row:has(> :nth-child(3)){ flex-direction:column; }
 /* direction:ltr keeps the app icon on the LEFT of its (Latin) name in both locales. */
-.app-btn{ display:inline-flex; align-items:center; gap:8px; flex:1; justify-content:center; direction:ltr; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:9px 8px; cursor:pointer; transition:border-color .15s; }
+/* list-row style: icon → name → trailing chevron (the whole row is the deep link) */
+.app-btn{ display:inline-flex; align-items:center; gap:9px; flex:1; justify-content:flex-start; direction:ltr; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; transition:border-color .15s; }
+.app-btn .app-chev{ margin-inline-start:auto; inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s, transform .15s; }
 .app-btn:hover{ border-color:var(--primary); }
+.app-btn:hover .app-chev{ color:var(--primary); opacity:1; transform:translateX(2px); }
 .app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .app-ico{ inline-size:26px; block-size:26px; border-radius:7px; flex:none; object-fit:cover; box-shadow:inset 0 0 0 1px var(--flag-ring),0 1px 2px rgba(2,6,23,.18); }
 .cfg-actions{ display:flex; gap:8px; margin-block-start:12px; }

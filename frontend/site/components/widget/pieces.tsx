@@ -117,6 +117,9 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
           <a key={key} className="app-btn" href={APPS[key].deeplink(link)}>
             <img className="app-ico" src={APPS[key].icon} alt="" width={26} height={26} />
             {APPS[key].n}
+            {/* trailing chevron: the "this opens something" affordance (the row IS the deep link);
+                always → because the button content is an LTR island (Latin app names). */}
+            <Icon name="chevr" sw={2.4} cls="app-chev" />
           </a>
         ))}
       </div>
