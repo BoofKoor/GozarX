@@ -12,9 +12,32 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return arr;
 }
 
+// Whether THIS browser currently holds a PushManager subscription. Granted permission alone is NOT
+// "notifications on" — a user who allowed the site from browser settings has permission but no
+// subscription, so nothing would ever be delivered. UI state must key off this, not permission.
+export async function hasPushSubscription(): Promise<boolean> {
+  try {
+    if (
+      typeof navigator === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      !("PushManager" in window)
+    ) {
+      return false;
+    }
+    // getRegistration (not .ready) — .ready never resolves when no SW is registered yet.
+    const reg = await navigator.serviceWorker.getRegistration();
+    if (!reg) return false;
+    return !!(await reg.pushManager.getSubscription());
+  } catch {
+    return false;
+  }
+}
+
 // Request permission → subscribe via the service worker's PushManager (VAPID public key) → POST the
 // subscription to the backend. Returns true only if a subscription was actually stored. Fully
 // best-effort: unsupported browser / denied permission / missing key all resolve to false.
+// When permission is ALREADY granted, requestPermission resolves instantly with no browser prompt
+// and the subscribe still proceeds — the recovery path for a manually-allowed site.
 export async function subscribeToPush(vapidPublicKey: string, locale: Locale): Promise<boolean> {
   try {
     if (

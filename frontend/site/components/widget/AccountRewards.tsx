@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { subscribeToPush } from "@/lib/push";
+import { hasPushSubscription, subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
 
@@ -19,6 +19,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   const pwa = usePwaState();
 
   const [perm, setPerm] = useState<NotificationPermission>("default");
+  // The REAL "notifications on" signal: an actual PushManager subscription. Permission granted from
+  // the browser's own settings (no subscription) must still render as claimable — otherwise the
+  // mission shows "completed", nothing is clickable, and no prompt can ever appear.
+  const [pushSub, setPushSub] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [modal, setModal] = useState<null | "ios" | "push" | "blocked">(null);
@@ -26,6 +30,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     if (typeof Notification !== "undefined") setPerm(Notification.permission);
+    void hasPushSubscription().then(setPushSub);
   }, []);
 
   // Running as an installed PWA is itself proof of install — grant the one-time reward once
@@ -94,9 +99,16 @@ export function AccountRewards({ locale }: { locale: Locale }) {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
       setPerm(typeof Notification !== "undefined" ? Notification.permission : "default");
       if (ok) {
+        setPushSub(true);
         await api.claimReward("push");
         await reload();
         toast("✓");
+      } else if (
+        typeof Notification !== "undefined" &&
+        Notification.permission !== "denied"
+      ) {
+        // permission wasn't the blocker → the subscribe/store failed; never fail silently
+        toast(t("rw_push_err"));
       }
     } finally {
       setBusy(null);
@@ -171,7 +183,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
           ) : null)}
 
         {pushConfigured &&
-          (perm === "granted" ? (
+          (perm === "granted" && pushSub ? (
             <MissionRow
               tone="violet"
               icon="bell"
