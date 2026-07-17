@@ -7,7 +7,7 @@ streak) are NOT rows here — they live on ``site_devices`` and are read straigh
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from gozar.db.models.site_reward import SiteReward
@@ -39,3 +39,16 @@ class SiteRewardRepository(BaseRepository):
             select(SiteReward.reward_type).where(SiteReward.device_uuid == device_uuid)
         )
         return set(rows.all())
+
+    async def totals_by_type(self) -> list[tuple[str, int, int]]:
+        """Per one-time reward type → ``[(type, grants, total_mb), …]`` — the recorded reward
+        economy (PWA install / push opt-in). Repeatable invite & streak MB are modeled from the
+        device counters, not stored here, so this is only the one-time grants."""
+        rows = await self.session.execute(
+            select(
+                SiteReward.reward_type,
+                func.count(),
+                func.coalesce(func.sum(SiteReward.amount_mb), 0),
+            ).group_by(SiteReward.reward_type)
+        )
+        return [(str(t), int(c), int(mb)) for t, c, mb in rows.all()]

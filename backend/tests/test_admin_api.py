@@ -189,6 +189,54 @@ async def test_dashboard_range_clamped(admin_client: httpx.AsyncClient) -> None:
     assert r.json()["range_days"] == 14
 
 
+async def test_dashboard_analytics_empty(admin_client: httpx.AsyncClient) -> None:
+    body = (await admin_client.get("/api/admin/dashboard/analytics")).json()
+    for key in ("dau", "wau", "mau", "claimers"):
+        assert body[key] == 0
+    assert body["stickiness_pct"] == 0.0
+    assert body["median_hours_to_claim"] is None
+    assert body["heatmap"] == [] and body["claims_distribution"] == {}
+    assert body["referral"]["k_factor"] == 0.0
+
+
+async def test_dashboard_analytics_aggregations(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=11, language=Language.fa, referral_count=1),
+                User(telegram_id=12, language=Language.fa),
+                User(telegram_id=13, language=Language.en, referred_by=11),  # invited, claims
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                ConfigLog(user_id=11, location="DE"),
+                ConfigLog(user_id=11, location="DE"),  # power user (2 claims)
+                ConfigLog(user_id=13, location="NL"),  # invited user activates
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/analytics")).json()
+    assert body["dau"] == 2 and body["wau"] == 2 and body["mau"] == 2  # users 11 & 13 claimed today
+    assert body["stickiness_pct"] == 100.0
+    assert body["claimers"] == 2
+    assert body["activation_24h_pct"] == 100.0  # both first-claimed within 24h of signup
+    assert body["claims_distribution"] == {"1": 1, "2-3": 1}  # u13 once, u11 twice
+    assert body["referral"] == {
+        "joined": 1,
+        "joined_claimed": 1,
+        "invitee_conversion_pct": 100.0,
+        "k_factor": round(1 / 3, 2),
+    }
+    assert sum(cell["count"] for cell in body["heatmap"]) == 3
+    fa = next(r for r in body["reminder_by_language"] if r["label"] == "fa")
+    assert fa["on"] == 2  # users 11 & 12 default reminders on
+
+
 async def test_dashboard_surfaces_panel_system_stats(db_sessions, monkeypatch) -> None:
     monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
     monkeypatch.setenv("ADMIN_USERNAME", "root")

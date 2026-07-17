@@ -5,9 +5,12 @@ The site analogue of ``UserRepository``, keyed by the opaque device ``uuid`` (ne
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+from datetime import datetime
+
+from sqlalchemy import case, func, select
 
 from gozar.db.handles import new_handle, normalize_handle
+from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.base import BaseRepository
 
@@ -108,3 +111,66 @@ class SiteDeviceRepository(BaseRepository):
         # getattr(...,"value",...) survives a future migration of `status` to a native enum
         # (str(EnumMember) → "SiteDeviceStatus.active_config" would silently zero the counts).
         return {getattr(status, "value", status): int(n) for status, n in rows.all()}
+
+    # --- analytics (Phase B) ---------------------------------------------------------------------
+    async def active_since(self, since: datetime) -> int:
+        """Distinct devices that PROVISIONED at/after ``since`` — site DAU/WAU/MAU (excludes
+        change-location re-picks so it measures returning devices, not link switches)."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteClaim.device_uuid))).where(
+                    SiteClaim.created_at >= since, SiteClaim.is_change.is_(False)
+                )
+            )
+            or 0
+        )
+
+    async def streak_distribution(self) -> dict[str, int]:
+        """Histogram of the current daily-claim streak → ``{"0","1-2","3-6","7+"}`` → devices.
+        Shows how far the streak incentive actually reaches."""
+        bucket = case(
+            (SiteDevice.streak_count == 0, "0"),
+            (SiteDevice.streak_count <= 2, "1-2"),
+            (SiteDevice.streak_count <= 6, "3-6"),
+            else_="7+",
+        ).label("bucket")
+        rows = await self.session.execute(select(bucket, func.count()).group_by(bucket))
+        return {str(b): int(n) for b, n in rows.all()}
+
+    async def active_streak_count(self, min_days: int) -> int:
+        """Devices currently on a qualifying streak (``streak_count >= min_days``) — how many are
+        earning the streak reward right now."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteDevice)
+                .where(SiteDevice.streak_count >= max(min_days, 1))
+            )
+            or 0
+        )
+
+    async def top_ip_buckets(self, limit: int = 8, min_devices: int = 2) -> list[tuple[str, int]]:
+        """IP buckets shared by ``>= min_devices`` devices → ``[(bucket, device_count), …]`` desc.
+        A soft farming signal (many identities behind one IP) — never a hard block by itself."""
+        rows = await self.session.execute(
+            select(SiteDevice.ip_bucket, func.count().label("n"))
+            .where(SiteDevice.ip_bucket.is_not(None))
+            .group_by(SiteDevice.ip_bucket)
+            .having(func.count() >= min_devices)
+            .order_by(func.count().desc())
+            .limit(limit)
+        )
+        return [(str(b), int(n)) for b, n in rows.all()]
+
+    async def shared_fingerprint_device_count(self) -> int:
+        """Devices sharing a ``fingerprint_hash`` with at least one other device (soft multi-account
+        signal) — the total size of all fingerprint groups larger than one."""
+        groups = (
+            select(func.count().label("n"))
+            .select_from(SiteDevice)
+            .where(SiteDevice.fingerprint_hash.is_not(None))
+            .group_by(SiteDevice.fingerprint_hash)
+            .having(func.count() >= 2)
+            .subquery()
+        )
+        return int(await self.session.scalar(select(func.coalesce(func.sum(groups.c.n), 0))) or 0)
