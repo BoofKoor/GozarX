@@ -98,6 +98,33 @@ async def test_settings_put_partial_update(admin_client: httpx.AsyncClient) -> N
     assert body["trial_hours"] == 48
 
 
+async def test_settings_ad_button_round_trip(admin_client: httpx.AsyncClient) -> None:
+    # Fresh schema -> the ad button is off with blank text/url/emoji until the admin sets it.
+    before = (await admin_client.get("/api/admin/settings/")).json()
+    assert before["ad_button_enabled"] is False
+    assert before["ad_button_text"] == ""
+    assert before["ad_button_url"] == ""
+    assert before["ad_button_emoji_id"] == ""
+
+    r = await admin_client.put(
+        "/api/admin/settings/",
+        json={
+            "ad_button_enabled": True,
+            "ad_button_text": "  کانال ما  ",  # trimmed on save
+            "ad_button_url": "https://t.me/example",
+            "ad_button_emoji_id": "5368324170671202286",
+        },
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["ad_button_enabled"] is True
+    assert body["ad_button_text"] == "کانال ما"
+    assert body["ad_button_url"] == "https://t.me/example"
+    assert body["ad_button_emoji_id"] == "5368324170671202286"
+    # and it persists across a fresh read
+    assert (await admin_client.get("/api/admin/settings/")).json()["ad_button_enabled"] is True
+
+
 async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200

@@ -4,7 +4,27 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.methods import GetMe
+
 from gozar.bot.notifications import PendingNotifications
+
+
+def _bad_request(message: str) -> TelegramBadRequest:
+    return TelegramBadRequest(method=GetMe(), message=message)
+
+
+class _EditMsg:
+    """A message whose first edit_text raises (as if Telegram rejected a custom-emoji button)."""
+
+    def __init__(self, error: Exception | None = None) -> None:
+        self.markups: list = []
+        self._error = error
+
+    async def edit_text(self, text: str, reply_markup=None, link_preview_options=None) -> None:
+        self.markups.append(reply_markup)
+        if len(self.markups) == 1 and self._error is not None:
+            raise self._error
 
 
 class _Bot:
@@ -57,3 +77,31 @@ async def test_edit_uses_message_bound_bot() -> None:
     notify.edit(SimpleNamespace(edit_text=edit_text), "hello")
     await notify.flush(None)  # edit doesn't need the bot arg
     assert edited["text"] == "hello"
+
+
+async def test_edit_retries_without_emoji_when_rejected() -> None:
+    # A custom-emoji BadRequest on the delivered-config edit retries once with the icon-less markup,
+    # so a bad premium emoji never costs the user their config.
+    msg = _EditMsg(_bad_request("Bad Request: MESSAGE_CUSTOM_EMOJI_INVALID"))
+    notify = PendingNotifications()
+    notify.edit(msg, "cfg", reply_markup="EMOJI_KB", fallback_reply_markup="PLAIN_KB")
+    await notify.flush(None)
+    assert msg.markups == ["EMOJI_KB", "PLAIN_KB"]
+
+
+async def test_edit_does_not_fall_back_on_unrelated_error() -> None:
+    # An unrelated BadRequest must NOT swap in the fallback; it propagates and flush isolates it.
+    msg = _EditMsg(_bad_request("Bad Request: message is not modified"))
+    notify = PendingNotifications()
+    notify.edit(msg, "cfg", reply_markup="EMOJI_KB", fallback_reply_markup="PLAIN_KB")
+    await notify.flush(None)
+    assert msg.markups == ["EMOJI_KB"]  # no retry
+
+
+async def test_edit_emoji_error_without_fallback_just_propagates() -> None:
+    # No fallback staged (ad had no emoji) -> emoji error simply propagates and is swallowed.
+    msg = _EditMsg(_bad_request("Bad Request: CUSTOM_EMOJI_INVALID"))
+    notify = PendingNotifications()
+    notify.edit(msg, "cfg", reply_markup="EMOJI_KB")
+    await notify.flush(None)
+    assert msg.markups == ["EMOJI_KB"]

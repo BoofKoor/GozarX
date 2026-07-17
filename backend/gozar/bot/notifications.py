@@ -13,11 +13,18 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from aiogram import Bot
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import InlineKeyboardMarkup, Message
 
 from gozar.bot.replies import preview_options
 
 logger = logging.getLogger("gozar.bot.notifications")
+
+
+def _is_custom_emoji_error(exc: TelegramBadRequest) -> bool:
+    """A premium/custom-emoji icon Telegram won't accept (stale id, or the bot owner lacks Premium
+    and hasn't bought Fragment usernames) makes it reject the WHOLE sendMessage/editMessageText."""
+    return "emoji" in str(exc).lower()
 
 
 class PendingNotifications:
@@ -52,13 +59,27 @@ class PendingNotifications:
         reply_markup: InlineKeyboardMarkup | None = None,
         *,
         link_preview: bool = True,
+        fallback_reply_markup: InlineKeyboardMarkup | None = None,
     ) -> None:
-        """Queue an edit of the triggering message (uses the message's bound bot)."""
+        """Queue an edit of the triggering message (uses the message's bound bot).
+
+        ``fallback_reply_markup`` is a safety net for the premium-emoji ad button: if Telegram
+        rejects the markup because of a custom-emoji icon, retry once with the fallback (same
+        keyboard, no icon) so a bad emoji never costs the user their delivered config."""
 
         async def action(_bot: Bot | None) -> None:
-            await message.edit_text(
-                text, reply_markup=reply_markup, link_preview_options=preview_options(link_preview)
-            )
+            options = preview_options(link_preview)
+            try:
+                await message.edit_text(
+                    text, reply_markup=reply_markup, link_preview_options=options
+                )
+            except TelegramBadRequest as exc:
+                if fallback_reply_markup is None or not _is_custom_emoji_error(exc):
+                    raise
+                logger.warning("custom-emoji button rejected; retrying without the emoji icon")
+                await message.edit_text(
+                    text, reply_markup=fallback_reply_markup, link_preview_options=options
+                )
 
         self._actions.append(action)
 

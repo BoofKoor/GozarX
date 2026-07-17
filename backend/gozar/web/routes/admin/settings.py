@@ -30,6 +30,10 @@ class SettingsOut(BaseModel):
     trial_hours: int
     ads_enabled: bool
     configs_per_page: int
+    ad_button_enabled: bool
+    ad_button_text: str
+    ad_button_url: str
+    ad_button_emoji_id: str
 
 
 class SettingsPatch(BaseModel):
@@ -40,6 +44,10 @@ class SettingsPatch(BaseModel):
     trial_hours: int | None = None
     ads_enabled: bool | None = None
     configs_per_page: int | None = None
+    ad_button_enabled: bool | None = None
+    ad_button_text: str | None = None
+    ad_button_url: str | None = None
+    ad_button_emoji_id: str | None = None
 
 
 async def _read(settings: SettingsService) -> SettingsOut:
@@ -52,6 +60,10 @@ async def _read(settings: SettingsService) -> SettingsOut:
         trial_hours=await settings.get_int(SettingKey.TRIAL_HOURS, 24),
         ads_enabled=await settings.get_bool(SettingKey.ADS_ENABLED),
         configs_per_page=await settings.get_int(SettingKey.CONFIGS_PER_PAGE, 8),
+        ad_button_enabled=await settings.get_bool(SettingKey.AD_BUTTON_ENABLED),
+        ad_button_text=await settings.get(SettingKey.AD_BUTTON_TEXT) or "",
+        ad_button_url=await settings.get(SettingKey.AD_BUTTON_URL) or "",
+        ad_button_emoji_id=await settings.get(SettingKey.AD_BUTTON_EMOJI_ID) or "",
     )
 
 
@@ -81,4 +93,14 @@ async def update_settings(
         await settings.set(SettingKey.ADS_ENABLED, "true" if body.ads_enabled else "false")
     if body.configs_per_page is not None:
         await settings.set(SettingKey.CONFIGS_PER_PAGE, str(max(1, body.configs_per_page)))
+    if body.ad_button_enabled is not None:
+        await settings.set(
+            SettingKey.AD_BUTTON_ENABLED, "true" if body.ad_button_enabled else "false"
+        )
+    if body.ad_button_text is not None:
+        await settings.set(SettingKey.AD_BUTTON_TEXT, body.ad_button_text.strip())
+    if body.ad_button_url is not None:
+        await settings.set(SettingKey.AD_BUTTON_URL, body.ad_button_url.strip())
+    if body.ad_button_emoji_id is not None:
+        await settings.set(SettingKey.AD_BUTTON_EMOJI_ID, body.ad_button_emoji_id.strip())
     return await _read(settings)

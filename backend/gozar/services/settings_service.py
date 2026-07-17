@@ -26,6 +26,12 @@ class SettingKey:
     TRIAL_HOURS = "trial_hours"
     ADS_ENABLED = "ads_enabled"
     CONFIGS_PER_PAGE = "configs_per_page"
+    # Persian-only promo button on the delivered-config screen (separate from ADS_ENABLED, which is
+    # the post-delivery promo *message*). Text/url/emoji are blank until the admin sets them.
+    AD_BUTTON_ENABLED = "ad_button_enabled"
+    AD_BUTTON_TEXT = "ad_button_text"
+    AD_BUTTON_URL = "ad_button_url"
+    AD_BUTTON_EMOJI_ID = "ad_button_emoji_id"  # optional premium/custom-emoji icon (Bot API 9.4)
 
 
 class SiteSettingKey:

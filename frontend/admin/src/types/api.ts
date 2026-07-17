@@ -28,6 +28,11 @@ export interface EconomicsSettings {
   trial_hours: number;
   configs_per_page: number;
   ads_enabled: boolean;
+  // Persian-only promo button on the delivered-config screen (beside "change location").
+  ad_button_enabled: boolean;
+  ad_button_text: string;
+  ad_button_url: string;
+  ad_button_emoji_id: string;
 }
 
 export type SettingsPatch = Partial<Omit<EconomicsSettings, "trial_squad">>;
