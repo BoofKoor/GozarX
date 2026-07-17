@@ -6,6 +6,7 @@ from aiogram.types import InlineKeyboardMarkup
 
 from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import (
+    AdButton,
     back_keyboard,
     config_delivered_keyboard,
     help_keyboard,
@@ -79,6 +80,35 @@ def test_config_delivered_keyboard_uses_new_message_home() -> None:
         cb.CONFIG_CHANGE,
         cb.MENU_HOME_NEW,
     ]
+
+
+def test_config_delivered_keyboard_without_ad_is_unchanged() -> None:
+    # Back-compat: no ad -> the exact 2-row layout the delivered-config screen always had.
+    kb = config_delivered_keyboard(Language.fa)
+    assert [len(r) for r in kb.inline_keyboard] == [1, 1]
+    assert _callbacks(kb) == [cb.CONFIG_CHANGE, cb.MENU_HOME_NEW]
+
+
+def test_config_delivered_keyboard_ad_sits_beside_change() -> None:
+    ad = AdButton(text="کانال ما", url="https://t.me/example", emoji_id="5368324170671202286")
+    kb = config_delivered_keyboard(Language.fa, ad=ad)
+    row0 = kb.inline_keyboard[0]
+    # change-location keeps its callback; the ad is a raw URL cell in the SAME row, right after it.
+    assert row0[0].callback_data == cb.CONFIG_CHANGE
+    assert [b.callback_data for b in row0] == [cb.CONFIG_CHANGE, None]
+    assert row0[1].text == "کانال ما"
+    assert row0[1].url == "https://t.me/example"
+    assert row0[1].icon_custom_emoji_id == "5368324170671202286"
+    assert kb.inline_keyboard[-1][0].callback_data == cb.MENU_HOME_NEW  # menu row untouched
+
+
+def test_config_delivered_keyboard_ad_without_emoji() -> None:
+    # No emoji id -> a plain text+url button (the delivery fallback builds exactly this).
+    kb = config_delivered_keyboard(
+        Language.fa, ad=AdButton(text="تبلیغ", url="https://e.example", emoji_id=None)
+    )
+    ad = kb.inline_keyboard[0][1]
+    assert ad.url == "https://e.example" and ad.icon_custom_emoji_id is None
 
 
 def test_location_keyboard_short_locations_then_back_to_landing() -> None:

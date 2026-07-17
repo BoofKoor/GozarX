@@ -16,12 +16,14 @@ from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from gozar.bot import callbacks as cb
 from gozar.bot.keyboards import (
+    AdButton,
     back_keyboard,
     config_delivered_keyboard,
     landing_keyboard,
     location_keyboard,
 )
 from gozar.bot.notifications import PendingNotifications
+from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.services.content import ContentService
@@ -58,6 +60,28 @@ def _parse_index(raw: str) -> int | None:
 
 async def _per_page(settings: SettingsService) -> int:
     return await settings.get_int(SettingKey.CONFIGS_PER_PAGE, 8)
+
+
+def _is_button_url(url: str) -> bool:
+    # Telegram URL buttons accept http(s) and tg:// links; anything else would be rejected on send.
+    return url.startswith(("http://", "https://", "tg://"))
+
+
+async def _ad_button(settings: SettingsService, lang: Language) -> AdButton | None:
+    """The Persian-only promo button beside 'change location' on the delivered-config screen.
+
+    Shown only when enabled with a valid text + link; the premium-emoji icon is optional. Returns
+    None (no button) for any other language or when not fully configured — cheap DB-cached reads."""
+    if lang is not Language.fa:
+        return None
+    if not await settings.get_bool(SettingKey.AD_BUTTON_ENABLED):
+        return None
+    text = (await settings.get(SettingKey.AD_BUTTON_TEXT) or "").strip()
+    url = (await settings.get(SettingKey.AD_BUTTON_URL) or "").strip()
+    if not text or not _is_button_url(url):
+        return None
+    emoji_id = (await settings.get(SettingKey.AD_BUTTON_EMOJI_ID) or "").strip() or None
+    return AdButton(text=text, url=url, emoji_id=emoji_id)
 
 
 async def _render_claim(
@@ -227,11 +251,20 @@ async def _deliver(
         used_traffic="—",
         usage="—",
     )
+    ad = await _ad_button(settings, user.language)
+    # If the promo carries a premium-emoji icon, stage a plain (icon-less) fallback keyboard: a
+    # rejected emoji must not block config delivery; notifications.py retries with it.
+    fallback = None
+    if ad is not None and ad.emoji_id is not None:
+        fallback = config_delivered_keyboard(
+            user.language, buttons, ad=AdButton(text=ad.text, url=ad.url, emoji_id=None)
+        )
     notify.edit(
         message,
         msg.text,
-        config_delivered_keyboard(user.language, buttons),
+        config_delivered_keyboard(user.language, buttons, ad=ad),
         link_preview=msg.link_preview,
+        fallback_reply_markup=fallback,
     )
     await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 

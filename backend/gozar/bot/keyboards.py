@@ -9,6 +9,7 @@ remarks, language names) are passed as raw (keyless) specs — rendered verbatim
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from urllib.parse import quote
 
 from aiogram.types import InlineKeyboardMarkup
@@ -23,6 +24,18 @@ from gozar.ui.labels import LANGUAGE_NAMES
 # squads paginate with Next/Prev. Location cells render two-per-row.
 _PAGE_SIZE = 8
 _PER_ROW = 2
+
+
+@dataclass(frozen=True, slots=True)
+class AdButton:
+    """Admin-configured promo button (Persian-only) placed beside 'change location' on the delivered
+    config. It's a raw URL cell — label/url come from the ``settings`` table, not the label
+    catalogue. ``emoji_id`` is an optional premium/custom-emoji icon (Bot API 9.4); it degrades to a
+    plain button if Telegram rejects it (see ``bot/handlers/config.py``)."""
+
+    text: str
+    url: str
+    emoji_id: str | None = None
 
 
 def language_keyboard() -> InlineKeyboardMarkup:
@@ -124,11 +137,15 @@ def location_keyboard(
 
 
 def config_delivered_keyboard(
-    lang: Language, buttons: ButtonOverrides | None = None
+    lang: Language, buttons: ButtonOverrides | None = None, *, ad: AdButton | None = None
 ) -> InlineKeyboardMarkup:
     # "show main menu" sends a NEW message (MENU_HOME_NEW) so the delivered config stays in chat.
+    # An optional admin promo button rides in the same row, right beside "change location".
+    change_row = [ButtonSpec(key="change_location", callback_data=cb.CONFIG_CHANGE)]
+    if ad is not None:
+        change_row.append(ButtonSpec(label=ad.text, url=ad.url, icon_custom_emoji_id=ad.emoji_id))
     structure = [
-        [ButtonSpec(key="change_location", callback_data=cb.CONFIG_CHANGE)],
+        change_row,
         [ButtonSpec(key="show_menu", callback_data=cb.MENU_HOME_NEW)],
     ]
     return render_rows(lang, structure, buttons)

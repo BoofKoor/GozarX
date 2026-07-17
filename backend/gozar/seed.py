@@ -32,6 +32,10 @@ DEFAULT_SETTINGS: dict[str, str] = {
     SettingKey.TRIAL_HOURS: "24",
     SettingKey.ADS_ENABLED: "false",
     SettingKey.CONFIGS_PER_PAGE: "8",
+    SettingKey.AD_BUTTON_ENABLED: "false",
+    SettingKey.AD_BUTTON_TEXT: "",
+    SettingKey.AD_BUTTON_URL: "",
+    SettingKey.AD_BUTTON_EMOJI_ID: "",
 }
 
 # Website economics — a SEPARATE economy, editable from the panel's 'website' section.

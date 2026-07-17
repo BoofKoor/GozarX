@@ -73,8 +73,10 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 - `config_logs`: id · user_id FK · location · created_at tz (one row per claim).
 - `content`: unique (key, language) → body text. Editable bot copy.
 - `settings`: key → value string. Runtime values (trial squad, locations, daily_limit_mb,
-  referral_reward_mb, referral_reward_limit, trial_hours, ads_enabled) — set via the first-run wizard,
-  editable from the panel. NOT env vars.
+  referral_reward_mb, referral_reward_limit, trial_hours, ads_enabled, configs_per_page,
+  ad_button_enabled/ad_button_text/ad_button_url/ad_button_emoji_id — the Persian-only promo button
+  beside "change location" on the delivered config) — set via the first-run wizard, editable from
+  the panel. NOT env vars.
 
 ## Dev workflow
 - Deps via **uv** (`uv sync`, `uv add <pkg>`). Lint/format with **ruff**; gate every change with
