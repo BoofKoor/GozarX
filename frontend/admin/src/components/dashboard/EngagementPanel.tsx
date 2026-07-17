@@ -5,6 +5,18 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { formatNumber } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
 
+/** Week-over-week growth chip. `null` pct = no prior-week baseline (launch): show "new" only when
+ *  this week actually had signups, never a misleading "0%". */
+function GrowthBadge({ pct, newThisWeek }: { pct: number | null; newThisWeek: number }) {
+  if (pct === null) return newThisWeek > 0 ? <Badge tone="success">✦ جدید</Badge> : null;
+  if (pct === 0) return null;
+  return (
+    <Badge tone={pct > 0 ? "success" : "danger"}>
+      {pct > 0 ? "▲" : "▼"} {Math.abs(pct)}% هفتگی
+    </Badge>
+  );
+}
+
 /** Live engagement from the panel: online now / last 24h / last 7d / never online (bar list). */
 export function EngagementPanel({ data }: { data: DashboardStats }) {
   const rows = [
@@ -20,13 +32,7 @@ export function EngagementPanel({ data }: { data: DashboardStats }) {
       <CardHeader
         title="تعامل کاربران"
         icon={Radio}
-        action={
-          data.growth_pct !== 0 ? (
-            <Badge tone={data.growth_pct >= 0 ? "success" : "danger"}>
-              {data.growth_pct >= 0 ? "▲" : "▼"} {Math.abs(data.growth_pct)}% هفتگی
-            </Badge>
-          ) : undefined
-        }
+        action={<GrowthBadge pct={data.growth_pct} newThisWeek={data.new_this_week} />}
       />
       {!data.panel_online && (
         <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">

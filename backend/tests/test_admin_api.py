@@ -131,7 +131,13 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
     body = r.json()
     for key in ("total_users", "available", "active", "banned", "configs_today", "referrals"):
         assert body[key] == 0
-    assert body["claims_series"] == []
+    # Daily series are zero-filled to exactly range_days ascending points (no collapsed time axis),
+    # so an empty DB yields 14 all-zero days rather than [].
+    for key in ("claims_series", "signups_series"):
+        series = body[key]
+        assert len(series) == 14
+        assert all(pt["count"] == 0 for pt in series)
+        assert [pt["day"] for pt in series] == sorted(pt["day"] for pt in series)
     # richer payload defaults: online -> active fallback (0), panel unreachable, default range
     assert body["online_now"] == 0
     assert body["range_days"] == 14
@@ -139,7 +145,7 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
     for key in ("new_today", "new_this_week", "conversion_pct", "avg_referrals", "nodes_online"):
         assert body[key] == 0
     assert body["panel_status_counts"] == {}
-    for key in ("signups_series", "languages", "top_locations", "top_referrers"):
+    for key in ("languages", "top_locations", "top_referrers"):
         assert body[key] == []
 
 

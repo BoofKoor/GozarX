@@ -5,6 +5,8 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
+import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
 import { useUser, useUserAction, useUsers } from "@/hooks/useUsers";
 import type { UserAction } from "@/types/api";
@@ -44,7 +46,7 @@ export function Users() {
 
   useEffect(() => setPage(1), [status, deferredSearch]);
 
-  const { data, isLoading } = useUsers({
+  const { data, isLoading, isError, refetch } = useUsers({
     page,
     page_size: PAGE_SIZE,
     status: status || undefined,
@@ -64,6 +66,7 @@ export function Users() {
         <div className="relative">
           <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
+            aria-label="جستجوی کاربران"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
             placeholder="جستجو با آیدی تلگرام یا یوزرنیم پنل…"
             value={search}
@@ -89,7 +92,9 @@ export function Users() {
       </Card>
 
       <Card>
-        {isLoading ? (
+        {isError && !data ? (
+          <ErrorState compact onRetry={() => refetch()} />
+        ) : isLoading ? (
           <div className="flex justify-center py-12">
             <Spinner className="h-7 w-7 text-brand" />
           </div>
@@ -140,6 +145,7 @@ export function Users() {
           </span>
           <div className="flex gap-1">
             <button
+              aria-label="صفحهٔ قبل"
               disabled={page <= 1}
               onClick={() => setPage((p) => p - 1)}
               className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
@@ -147,6 +153,7 @@ export function Users() {
               <ChevronRight className="h-5 w-5" />
             </button>
             <button
+              aria-label="صفحهٔ بعد"
               disabled={page >= pages}
               onClick={() => setPage((p) => p + 1)}
               className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
@@ -182,63 +189,57 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-3 text-lg font-bold">کارت کاربر</h2>
-        {isLoading || !user ? (
-          <div className="flex justify-center py-8">
-            <Spinner className="h-6 w-6 text-brand" />
-          </div>
-        ) : (
-          <>
-            <div className="space-y-0 text-sm">
-              <Field
-                label="آیدی تلگرام"
-                value={<span className="font-mono">{user.telegram_id}</span>}
-              />
-              <Field label="وضعیت" value={<StatusBadge status={user.status} />} />
-              <Field label="زبان" value={user.language} />
-              <Field label="دعوت‌ها" value={user.referral_count} />
-              <Field label="کانفیگ‌های گرفته‌شده" value={user.configs ?? 0} />
-              <Field label="یوزرنیم پنل" value={user.panel_username ?? "—"} />
-              <Field label="معرف" value={user.referred_by ?? "—"} />
-              <Field label="عضویت" value={user.created_at ? user.created_at.slice(0, 10) : "—"} />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {user.status === "banned" ? (
-                <Button onClick={() => run("unban")} loading={action.isPending}>
-                  رفع مسدودی
-                </Button>
-              ) : (
-                <Button onClick={() => run("ban", true)} loading={action.isPending}>
-                  مسدودسازی
-                </Button>
-              )}
-              <Button variant="ghost" onClick={() => run("reclaim")} loading={action.isPending}>
-                اجازهٔ دریافت مجدد
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => run("zero_referrals", true)}
-                loading={action.isPending}
-              >
-                صفر کردن دعوت‌ها
-              </Button>
-            </div>
-          </>
-        )}
-        <div className="mt-4 flex justify-end">
-          <Button variant="ghost" onClick={onClose}>
-            بستن
-          </Button>
+    <Modal onClose={onClose} className="max-w-md p-5" labelledBy="user-card-title">
+      <h2 id="user-card-title" className="mb-3 text-lg font-bold">
+        کارت کاربر
+      </h2>
+      {isLoading || !user ? (
+        <div className="flex justify-center py-8">
+          <Spinner className="h-6 w-6 text-brand" />
         </div>
+      ) : (
+        <>
+          <div className="space-y-0 text-sm">
+            <Field
+              label="آیدی تلگرام"
+              value={<span className="font-mono">{user.telegram_id}</span>}
+            />
+            <Field label="وضعیت" value={<StatusBadge status={user.status} />} />
+            <Field label="زبان" value={user.language} />
+            <Field label="دعوت‌ها" value={user.referral_count} />
+            <Field label="کانفیگ‌های گرفته‌شده" value={user.configs ?? 0} />
+            <Field label="یوزرنیم پنل" value={user.panel_username ?? "—"} />
+            <Field label="معرف" value={user.referred_by ?? "—"} />
+            <Field label="عضویت" value={user.created_at ? user.created_at.slice(0, 10) : "—"} />
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {user.status === "banned" ? (
+              <Button onClick={() => run("unban")} loading={action.isPending}>
+                رفع مسدودی
+              </Button>
+            ) : (
+              <Button onClick={() => run("ban", true)} loading={action.isPending}>
+                مسدودسازی
+              </Button>
+            )}
+            <Button variant="ghost" onClick={() => run("reclaim")} loading={action.isPending}>
+              اجازهٔ دریافت مجدد
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => run("zero_referrals", true)}
+              loading={action.isPending}
+            >
+              صفر کردن دعوت‌ها
+            </Button>
+          </div>
+        </>
+      )}
+      <div className="mt-4 flex justify-end">
+        <Button variant="ghost" onClick={onClose}>
+          بستن
+        </Button>
       </div>
-    </div>
+    </Modal>
   );
 }

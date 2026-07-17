@@ -118,7 +118,30 @@ export function useMarkMessageRead() {
   return useMutation({
     mutationFn: async (id: number) =>
       (await api.post<SiteMessage>(`/admin/site/inbox/${id}/read`)).data,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-messages"] }),
+    // Optimistically flip the message to read IN PLACE rather than invalidating. A refetch in
+    // unread-only mode would drop the just-opened message from the list before it could be read
+    // (M1). This keeps it visible (now shown as read) and decrements the unread badge; on error we
+    // roll every touched cache back. No onSettled refetch — that would re-introduce the vanish.
+    onMutate: async (id: number) => {
+      await qc.cancelQueries({ queryKey: ["site-messages"] });
+      const prev = qc.getQueriesData<SiteMessagePage>({ queryKey: ["site-messages"] });
+      const wasUnread = prev.some(([, d]) => d?.items.some((m) => m.id === id && !m.read));
+      if (wasUnread) {
+        qc.setQueriesData<SiteMessagePage>({ queryKey: ["site-messages"] }, (old) =>
+          old
+            ? {
+                ...old,
+                items: old.items.map((m) => (m.id === id ? { ...m, read: true } : m)),
+                unread: Math.max(0, old.unread - 1),
+              }
+            : old,
+        );
+      }
+      return { prev };
+    },
+    onError: (_e, _id, ctx) => {
+      ctx?.prev?.forEach(([key, data]) => qc.setQueryData(key, data));
+    },
   });
 }
 

@@ -27,6 +27,8 @@ export function useUserAction() {
     onSuccess: (updated) => {
       qc.setQueryData(["user", updated.telegram_id], updated);
       qc.invalidateQueries({ queryKey: ["users"] });
+      // A ban/unban/reclaim shifts the status counts the dashboard shows, so refresh it too.
+      qc.invalidateQueries({ queryKey: ["dashboard"] });
     },
   });
 }

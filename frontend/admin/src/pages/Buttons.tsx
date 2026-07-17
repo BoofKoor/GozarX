@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { ButtonEditor } from "@/components/buttons/ButtonEditor";
 import { TelegramPreview } from "@/components/buttons/TelegramPreview";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { useButtons, useReorderButtons, useResetButton } from "@/hooks/useButtons";
 import type { ButtonConfig, ReorderItem } from "@/types/api";
@@ -40,7 +41,7 @@ const SCREEN_NAMES: Record<string, string> = {
 };
 
 export function Buttons() {
-  const { data: buttons = [], isLoading } = useButtons();
+  const { data: buttons = [], isLoading, isError, refetch } = useButtons();
   const [editing, setEditing] = useState<ButtonConfig | null>(null);
 
   const screens = useMemo(() => {
@@ -65,7 +66,9 @@ export function Buttons() {
 
       {editing && <ButtonEditor button={editing} onClose={() => setEditing(null)} />}
 
-      {isLoading ? (
+      {isError && buttons.length === 0 ? (
+        <ErrorState onRetry={() => refetch()} />
+      ) : isLoading ? (
         <div className="flex justify-center py-20">
           <Spinner className="h-8 w-8 text-brand" />
         </div>

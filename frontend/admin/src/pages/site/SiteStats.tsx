@@ -5,6 +5,7 @@ import { useState } from "react";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSiteStats } from "@/hooks/useSite";
 
@@ -18,7 +19,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export function SiteStats() {
   const [days, setDays] = useState(14);
-  const { data, isLoading } = useSiteStats(days);
+  const { data, isError, refetch } = useSiteStats(days);
 
   const topMax = data ? Math.max(1, ...data.top_locations.map((l) => l.count)) : 1;
   const claimsMax = data ? Math.max(1, ...data.claims_series.map((d) => d.count)) : 1;
@@ -45,10 +46,14 @@ export function SiteStats() {
         ))}
       </div>
 
-      {isLoading || !data ? (
-        <div className="flex justify-center py-20">
-          <Spinner className="h-8 w-8 text-brand" />
-        </div>
+      {!data ? (
+        isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : (
+          <div className="flex justify-center py-20">
+            <Spinner className="h-8 w-8 text-brand" />
+          </div>
+        )
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -61,7 +66,12 @@ export function SiteStats() {
               hint={`نرخ تبدیل: ${data.conversion_pct}٪`}
             />
             <StatCard label="کانفیگ فعال" value={data.active_configs} icon={Zap} tone="info" />
-            <StatCard label="دریافت امروز" value={data.configs_today} icon={Download} tone="brand" />
+            <StatCard
+              label="دریافت امروز"
+              value={data.configs_today}
+              icon={Download}
+              tone="brand"
+            />
             <StatCard
               label="مشترک اعلان"
               value={data.push_subscribers}

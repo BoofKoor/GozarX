@@ -14,7 +14,7 @@ export function SitePush() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
-  const { data: audience } = useSitePushAudience();
+  const { data: audience, isError: audienceError } = useSitePushAudience();
   const send = useSendSitePush();
   const recipients = audience?.recipients;
 
@@ -45,7 +45,11 @@ export function SitePush() {
       <Card className="max-w-2xl space-y-4">
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <UsersIcon className="h-4 w-4" />
-          گیرندگان: <span className="font-bold text-brand">{recipients ?? "…"}</span> دستگاهِ مشترک
+          گیرندگان:{" "}
+          <span className="font-bold text-brand">
+            {recipients ?? (audienceError ? "—" : "…")}
+          </span>{" "}
+          دستگاهِ مشترک
         </div>
         <Field label="عنوان اعلان">
           <input
@@ -79,7 +83,11 @@ export function SitePush() {
           اعلان در پس‌زمینه (arq worker) به همهٔ دستگاه‌های مشترکِ Web Push ارسال می‌شود.
         </p>
         <div className="flex justify-end">
-          <Button onClick={submit} loading={send.isPending} disabled={!title.trim() || !body.trim()}>
+          <Button
+            onClick={submit}
+            loading={send.isPending}
+            disabled={!title.trim() || !body.trim()}
+          >
             <Send className="h-4 w-4" /> ارسال اعلان
           </Button>
         </div>

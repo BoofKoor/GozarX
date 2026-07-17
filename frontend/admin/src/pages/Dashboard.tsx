@@ -45,7 +45,7 @@ export function Dashboard() {
           value={formatNumber(data.online_now)}
           icon={Radio}
           tone="success"
-          pulse
+          pulse={data.panel_online}
           hint={data.panel_online ? "هم‌اکنون متصل" : "تخمین از دیتابیس"}
         />
         <StatCard

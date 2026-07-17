@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import {
   useCreateLanding,
@@ -39,7 +40,7 @@ function saveError(e: unknown): string {
 }
 
 export function SiteLandingPages() {
-  const { data: pages = [], isLoading } = useSiteLandingPages();
+  const { data: pages = [], isLoading, isError, refetch } = useSiteLandingPages();
   const [selected, setSelected] = useState<number | "new" | null>(null);
 
   const active = selected === "new" ? null : (pages.find((p) => p.id === selected) ?? null);
@@ -59,7 +60,9 @@ export function SiteLandingPages() {
           >
             <Plus className="h-4 w-4" /> صفحه‌ی جدید
           </Button>
-          {isLoading ? (
+          {isError && pages.length === 0 ? (
+            <ErrorState compact onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="flex justify-center py-10">
               <Spinner className="h-6 w-6 text-brand" />
             </div>
@@ -149,7 +152,10 @@ function LandingEditor({
     if (page) {
       update.mutate(
         { id: page.id, body: form },
-        { onSuccess: () => toast.success("ذخیره شد."), onError: (err) => toast.error(saveError(err)) },
+        {
+          onSuccess: () => toast.success("ذخیره شد."),
+          onError: (err) => toast.error(saveError(err)),
+        },
       );
     } else {
       create.mutate(form, {
@@ -187,7 +193,11 @@ function LandingEditor({
             />
           </Field>
           <Field label="زبان">
-            <select className={INPUT} value={form.locale} onChange={(e) => set("locale", e.target.value)}>
+            <select
+              className={INPUT}
+              value={form.locale}
+              onChange={(e) => set("locale", e.target.value)}
+            >
               <option value="fa">فارسی</option>
               <option value="en">English</option>
             </select>

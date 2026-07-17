@@ -6,14 +6,13 @@ needed; every number is local site data, so the endpoint never depends on Remnaw
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-
 from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
+from gozar.services.stats import window_start, zero_filled_daily
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -61,8 +60,8 @@ async def site_stats(
     claims = SiteClaimRepository(session)
     push = PushSubscriptionRepository(session)
 
-    now = datetime.now(UTC)
-    since = now - timedelta(days=window)
+    # Inclusive N-calendar-day window on a UTC day boundary; series is zero-filled (services/stats).
+    since = window_start(window)
     total_devices = await devices.count()
     status_counts = await devices.count_by_status()
     devices_claimed = await claims.distinct_device_count()
@@ -78,6 +77,8 @@ async def site_stats(
         push_subscribers=await push.count_active(),
         range_days=window,
         status_counts=status_counts,
-        claims_series=[DayPoint(day=d, count=n) for d, n in daily],
+        claims_series=[
+            DayPoint(day=d, count=n) for d, n in zero_filled_daily(daily, since=since, days=window)
+        ],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
     )

@@ -14,7 +14,7 @@ const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
 export function Broadcast() {
   const [text, setText] = useState("");
   const [langs, setLangs] = useState<Lang[]>(ALL_LANGS); // all groups selected by default
-  const { data: audience } = useAudience(langs);
+  const { data: audience, isError: audienceError } = useAudience(langs);
   const send = useSendBroadcast();
 
   // No language selected ⇒ nobody (send is blocked); the backend would read "" as everyone, so we
@@ -50,7 +50,11 @@ export function Broadcast() {
       <Card className="max-w-2xl space-y-4">
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <UsersIcon className="h-4 w-4" />
-          گیرندگان: <span className="font-bold text-brand">{recipients ?? "…"}</span> کاربر
+          گیرندگان:{" "}
+          <span className="font-bold text-brand">
+            {recipients ?? (audienceError ? "—" : "…")}
+          </span>{" "}
+          کاربر
         </div>
 
         <div>

@@ -18,6 +18,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingsService
+from gozar.services.stats import window_start, zero_filled_daily
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -54,7 +55,7 @@ class DashboardOut(BaseModel):
     # user growth (DB)
     new_today: int
     new_this_week: int
-    growth_pct: float  # this week's signups vs last week's
+    growth_pct: float | None  # this week's signups vs last week's; None = no prior-week baseline
     # engagement (panel /system/stats)
     online_now: int
     online_last_day: int
@@ -98,7 +99,9 @@ async def dashboard_stats(
     s = await admin_svc.stats()
 
     now = datetime.now(UTC)
-    since = now - timedelta(days=window)
+    # Inclusive N-calendar-day window anchored on a UTC day boundary, so the oldest bucket is
+    # complete and the zero-filled series spans exactly `window` days (see services/stats.py).
+    since = window_start(window)
     claims = await config_log_repo.daily_counts(since)
     signups = await user_repo.signups_daily(since)
     languages = await user_repo.language_breakdown()
@@ -110,7 +113,9 @@ async def dashboard_stats(
     new_this_week = await user_repo.count_created_since(now - timedelta(days=7))
     two_weeks = await user_repo.count_created_since(now - timedelta(days=14))
     prev_week = two_weeks - new_this_week
-    growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else 0.0
+    # None (not 0.0) when there's no prior-week baseline, so a launch week with signups doesn't read
+    # as "0% — flat". The frontend renders None as a "new" badge when this week has signups.
+    growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else None
 
     # Referral & conversion.
     claimed = await config_log_repo.distinct_user_count()
@@ -144,8 +149,13 @@ async def dashboard_stats(
         conversion_pct=_pct(claimed, s.total),
         reminder_enabled=reminder_enabled,
         avg_referrals=avg_referrals,
-        claims_series=[DayPoint(day=d, count=n) for d, n in claims],
-        signups_series=[DayPoint(day=d, count=n) for d, n in signups],
+        claims_series=[
+            DayPoint(day=d, count=n) for d, n in zero_filled_daily(claims, since=since, days=window)
+        ],
+        signups_series=[
+            DayPoint(day=d, count=n)
+            for d, n in zero_filled_daily(signups, since=since, days=window)
+        ],
         languages=[NamedCount(label=lang, count=n) for lang, n in languages],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
         top_referrers=[Referrer(telegram_id=t, referral_count=n) for t, n in referrers],

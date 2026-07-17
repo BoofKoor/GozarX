@@ -10,6 +10,8 @@ import {
 } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
+import { useIsDark } from "@/hooks/useIsDark";
+import { chartTheme } from "@/lib/chartTheme";
 import { shortDay } from "@/lib/format";
 import type { DayPoint } from "@/types/api";
 
@@ -45,6 +47,7 @@ export function ActivityChart({
   onDaysChange: (d: number) => void;
 }) {
   const points = mergeSeries(claims, signups);
+  const t = chartTheme(useIsDark());
   return (
     <Card>
       <CardHeader
@@ -95,18 +98,21 @@ export function ActivityChart({
                   <stop offset="100%" stopColor="#0ea5e9" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis
-                allowDecimals={false}
-                width={32}
-                tick={{ fontSize: 11 }}
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={t.grid} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: t.axis }}
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+              <YAxis
+                allowDecimals={false}
+                width={32}
+                tick={{ fontSize: 11, fill: t.axis }}
+                tickLine={false}
+                axisLine={false}
               />
+              <Tooltip {...t.tooltip} />
               <Area
                 type="monotone"
                 dataKey="signups"

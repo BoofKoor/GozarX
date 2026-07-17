@@ -105,4 +105,6 @@ class SiteDeviceRepository(BaseRepository):
         rows = await self.session.execute(
             select(SiteDevice.status, func.count()).group_by(SiteDevice.status)
         )
-        return {str(status): int(n) for status, n in rows.all()}
+        # getattr(...,"value",...) survives a future migration of `status` to a native enum
+        # (str(EnumMember) → "SiteDeviceStatus.active_config" would silently zero the counts).
+        return {getattr(status, "value", status): int(n) for status, n in rows.all()}

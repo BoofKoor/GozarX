@@ -211,7 +211,10 @@ async def test_push_enqueues_worker_job(db_sessions, monkeypatch) -> None:
 async def test_site_stats_funnel(site_client: httpx.AsyncClient, db_sessions) -> None:
     empty = (await site_client.get("/api/admin/site/stats/")).json()
     assert empty["total_devices"] == 0 and empty["conversion_pct"] == 0.0
-    assert empty["range_days"] == 14 and empty["claims_series"] == []
+    # claims_series is zero-filled to exactly range_days ascending points (continuous time axis).
+    assert empty["range_days"] == 14
+    assert len(empty["claims_series"]) == 14
+    assert all(pt["count"] == 0 for pt in empty["claims_series"])
 
     async with db_sessions() as s:
         s.add_all([SiteDevice(uuid="d1"), SiteDevice(uuid="d2"), SiteDevice(uuid="d3")])
