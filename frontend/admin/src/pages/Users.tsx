@@ -8,7 +8,9 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Modal } from "@/components/ui/Modal";
 import { Spinner } from "@/components/ui/Spinner";
+import { useConfirm } from "@/components/ui/confirm";
 import { useUser, useUserAction, useUsers } from "@/hooks/useUsers";
+import { faDate, langLabel } from "@/lib/format";
 import type { UserAction } from "@/types/api";
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -129,9 +131,7 @@ export function Users() {
                     <td className="p-2 font-mono text-xs text-slate-500" dir="ltr">
                       {u.panel_username ?? "—"}
                     </td>
-                    <td className="p-2 text-xs text-slate-500" dir="ltr">
-                      {u.created_at ? u.created_at.slice(0, 10) : "—"}
-                    </td>
+                    <td className="p-2 text-xs text-slate-500">{faDate(u.created_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -179,9 +179,19 @@ function Field({ label, value }: { label: string; value: ReactNode }) {
 function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const { data: user, isLoading } = useUser(id);
   const action = useUserAction();
+  const confirm = useConfirm();
 
-  function run(name: UserAction, destructive = false) {
-    if (destructive && !window.confirm("از انجام این عمل مطمئنی؟")) return;
+  async function run(name: UserAction, destructive = false) {
+    if (
+      destructive &&
+      !(await confirm({
+        message: "از انجام این عمل مطمئن هستید؟",
+        tone: "danger",
+        confirmLabel: "بله، انجام بده",
+      }))
+    ) {
+      return;
+    }
     action.mutate(
       { id, action: name },
       { onSuccess: () => toast.success("انجام شد."), onError: () => toast.error("ناموفق بود.") },
@@ -205,12 +215,12 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
               value={<span className="font-mono">{user.telegram_id}</span>}
             />
             <Field label="وضعیت" value={<StatusBadge status={user.status} />} />
-            <Field label="زبان" value={user.language} />
+            <Field label="زبان" value={langLabel(user.language)} />
             <Field label="دعوت‌ها" value={user.referral_count} />
             <Field label="کانفیگ‌های گرفته‌شده" value={user.configs ?? 0} />
             <Field label="یوزرنیم پنل" value={user.panel_username ?? "—"} />
             <Field label="معرف" value={user.referred_by ?? "—"} />
-            <Field label="عضویت" value={user.created_at ? user.created_at.slice(0, 10) : "—"} />
+            <Field label="عضویت" value={faDate(user.created_at)} />
           </div>
           <div className="mt-4 flex flex-wrap gap-2">
             {user.status === "banned" ? (

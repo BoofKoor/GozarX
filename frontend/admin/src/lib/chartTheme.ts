@@ -2,6 +2,24 @@
 // slate ramp used across the panel so charts match their surrounding cards in both themes. Pair with
 // `useIsDark()` and spread `tooltipProps` onto <Tooltip/> so tooltips aren't white boxes in the dark.
 
+// One categorical series palette for every chart (brand green first, then the semantic tokens plus a
+// couple of extras). Using a single ordered palette keeps donuts, bars and legends consistent instead
+// of each chart inventing its own off-token colors.
+export const CHART_COLORS = [
+  "#7CB000", // brand
+  "#0ea5e9", // info
+  "#f59e0b", // warning
+  "#a855f7", // violet
+  "#14b8a6", // teal
+  "#ef4444", // danger
+  "#64748b", // slate
+  "#ec4899", // pink
+] as const;
+
+export function seriesColor(i: number): string {
+  return CHART_COLORS[((i % CHART_COLORS.length) + CHART_COLORS.length) % CHART_COLORS.length];
+}
+
 export interface ChartTheme {
   grid: string;
   axis: string;

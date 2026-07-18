@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/Button";
 import { logout } from "@/hooks/useAuth";
 import { getUsername } from "@/lib/auth";
 
+import { ThemeToggle } from "./ThemeToggle";
+
 export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const username = getUsername() ?? "مدیر";
   const initial = username.charAt(0).toUpperCase();
@@ -25,10 +27,13 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
           <span className="font-medium text-slate-800 dark:text-slate-200">{username}</span>
         </div>
       </div>
-      <Button variant="ghost" size="sm" onClick={logout}>
-        <LogOut className="h-4 w-4" />
-        خروج
-      </Button>
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
+        <Button variant="ghost" size="sm" onClick={logout}>
+          <LogOut className="h-4 w-4" />
+          خروج
+        </Button>
+      </div>
     </header>
   );
 }

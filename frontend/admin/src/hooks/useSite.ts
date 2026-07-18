@@ -2,6 +2,7 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 
 import { api } from "@/lib/api";
 import type {
+  SiteAnalytics,
   SetupStatus,
   SiteLandingInput,
   SiteLandingPage,
@@ -168,5 +169,13 @@ export function useSiteStats(days: number) {
     queryFn: async () =>
       (await api.get<SiteStats>("/admin/site/stats/", { params: { days } })).data,
     placeholderData: keepPreviousData, // keep the prior numbers while a new range loads
+  });
+}
+
+/** Deeper website analytics (reward economy, streaks, push health, anti-abuse). Not windowed. */
+export function useSiteAnalytics() {
+  return useQuery({
+    queryKey: ["site-analytics"],
+    queryFn: async () => (await api.get<SiteAnalytics>("/admin/site/stats/analytics")).data,
   });
 }

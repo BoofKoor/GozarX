@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useConfirm } from "@/components/ui/confirm";
 import { useSendSitePush, useSitePushAudience } from "@/hooks/useSite";
+import { formatNumber } from "@/lib/format";
 
 const INPUT =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900";
@@ -16,13 +18,19 @@ export function SitePush() {
   const [url, setUrl] = useState("");
   const { data: audience, isError: audienceError } = useSitePushAudience();
   const send = useSendSitePush();
+  const confirm = useConfirm();
   const recipients = audience?.recipients;
 
-  function submit() {
+  async function submit() {
     const t = title.trim();
     const b = body.trim();
     if (!t || !b) return;
-    if (!window.confirm(`ارسال این اعلان به ${recipients ?? "؟"} دستگاه؟`)) return;
+    const ok = await confirm({
+      title: "ارسال اعلان",
+      message: `این اعلان به ${formatNumber(recipients ?? 0)} دستگاه ارسال شود؟`,
+      confirmLabel: "ارسال",
+    });
+    if (!ok) return;
     send.mutate(
       { title: t, body: b, url: url.trim() },
       {

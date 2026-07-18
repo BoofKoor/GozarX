@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
+import { useConfirm } from "@/components/ui/confirm";
 import {
   useCreateLanding,
   useDeleteLanding,
@@ -129,6 +130,7 @@ function LandingEditor({
   const create = useCreateLanding();
   const update = useUpdateLanding();
   const del = useDeleteLanding();
+  const confirm = useConfirm();
   const [form, setForm] = useState<SiteLandingInput>(
     page
       ? {
@@ -168,8 +170,15 @@ function LandingEditor({
     }
   }
 
-  function remove() {
-    if (!page || !window.confirm("این صفحه حذف شود؟")) return;
+  async function remove() {
+    if (!page) return;
+    const ok = await confirm({
+      title: "حذف صفحه",
+      message: "این صفحهٔ فرود حذف شود؟ این عمل قابل بازگشت نیست.",
+      tone: "danger",
+      confirmLabel: "حذف",
+    });
+    if (!ok) return;
     del.mutate(page.id, {
       onSuccess: () => {
         toast.success("حذف شد.");

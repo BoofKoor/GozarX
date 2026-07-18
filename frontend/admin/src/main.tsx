@@ -6,6 +6,7 @@ import { Toaster } from "sonner";
 
 import App from "./App";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ConfirmProvider } from "./components/ui/confirm";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -17,7 +18,9 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter basename="/admin">
-          <App />
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
           <Toaster position="top-center" richColors dir="rtl" />
         </BrowserRouter>
       </QueryClientProvider>
