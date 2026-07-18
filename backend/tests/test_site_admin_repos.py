@@ -126,3 +126,26 @@ async def test_funnel_aggregates(session):
         device_uuid="uuid-2", endpoint="https://ex/2", p256dh="k", auth="a", locale="fa"
     )
     assert await push.count_active() == 2
+
+
+async def test_change_location_excluded_from_funnel(session):
+    """B1: change-location re-picks (is_change=True) inflate history but must NOT count in the
+    funnel — else a heavy switcher balloons 'configs today', the daily series, and top locations."""
+    devices = SiteDeviceRepository(session)
+    claims = SiteClaimRepository(session)
+    await devices.create("uuid-1")
+
+    since = datetime.now(UTC) - timedelta(hours=1)
+    await claims.add("uuid-1", "Germany")  # the opening provision
+    await claims.add("uuid-1", "France", is_change=True)  # switched location
+    await claims.add("uuid-1", "Finland", is_change=True)  # switched again
+
+    # Funnel stats see only the one provision (consistent with the bot's config_logs).
+    assert await claims.count_since(since) == 1
+    assert dict(await claims.location_counts(since)) == {"Germany": 1}
+    assert sum(n for _, n in await claims.daily_counts(since)) == 1
+    # History / current-location keep every delivery.
+    assert await claims.count_all() == 3
+    assert await claims.count_for_device("uuid-1") == 3
+    assert await claims.latest_location_for_device("uuid-1") == "Finland"
+    assert await claims.distinct_device_count() == 1

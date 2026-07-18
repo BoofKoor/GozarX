@@ -74,7 +74,7 @@ export interface DashboardStats {
   // user growth
   new_today: number;
   new_this_week: number;
-  growth_pct: number;
+  growth_pct: number | null; // null = no prior-week baseline (launch); render as "new" when signups > 0
   // engagement (panel /system/stats)
   online_now: number;
   online_last_day: number;
@@ -354,4 +354,69 @@ export interface SiteStats {
   status_counts: Record<string, number>;
   claims_series: DayPoint[];
   top_locations: NamedCount[];
+}
+
+// --- Phase B: dashboard analytics (/api/admin/dashboard/analytics) ---
+export interface HeatCell {
+  dow: number; // 0=Sunday .. 6=Saturday (Asia/Tehran local)
+  hour: number;
+  count: number;
+}
+
+export interface LangReminder {
+  label: string;
+  on: number;
+  off: number;
+}
+
+export interface ReferralFunnel {
+  joined: number;
+  joined_claimed: number;
+  invitee_conversion_pct: number;
+  k_factor: number; // avg successful invites per user (viral coefficient)
+}
+
+export interface DashboardAnalytics {
+  range_days: number;
+  dau: number;
+  wau: number;
+  mau: number;
+  stickiness_pct: number;
+  median_hours_to_claim: number | null;
+  activation_24h_pct: number;
+  claimers: number;
+  referral: ReferralFunnel;
+  heatmap: HeatCell[];
+  claims_distribution: Record<string, number>; // "1" | "2-3" | "4-6" | "7+" -> users
+  reminder_by_language: LangReminder[];
+}
+
+// --- Phase B: site analytics (/api/admin/site/stats/analytics) ---
+export interface RewardType {
+  type: string;
+  grants: number;
+  total_mb: number;
+}
+
+export interface PushHealth {
+  active: number;
+  inactive: number;
+  by_locale: NamedCount[];
+}
+
+export interface AbuseSignals {
+  top_ip_buckets: NamedCount[];
+  shared_fingerprint_devices: number;
+}
+
+export interface SiteAnalytics {
+  dau: number;
+  wau: number;
+  mau: number;
+  stickiness_pct: number;
+  reward_economy: RewardType[];
+  streak_distribution: Record<string, number>;
+  active_streaks: number;
+  push: PushHealth;
+  abuse: AbuseSignals;
 }

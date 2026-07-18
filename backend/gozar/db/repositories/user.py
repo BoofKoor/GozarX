@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.sql import Select
 
+from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
@@ -192,3 +193,33 @@ class UserRepository(BaseRepository):
         """Remove a user row (a broadcast removes a user ONLY on a genuine blocked/deactivated send
         error — never on a transient failure). ``config_logs`` cascade-delete via the FK."""
         await self.session.execute(delete(User).where(User.telegram_id == telegram_id))
+
+    # --- analytics (Phase B) ---------------------------------------------------------------------
+    async def referral_funnel(self) -> tuple[int, int]:
+        """``(joined_via_referral, of_those_who_claimed)`` — the invitee side of the referral funnel
+        (``referred_by`` was indexed but unused in stats). Lets the panel show invitee conversion
+        and a viral proxy, not just the top-referrer leaderboard."""
+        joined = int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.referred_by.is_not(None))
+            )
+            or 0
+        )
+        claimed = int(
+            await self.session.scalar(
+                select(func.count(func.distinct(User.telegram_id)))
+                .select_from(User)
+                .join(ConfigLog, ConfigLog.user_id == User.telegram_id)
+                .where(User.referred_by.is_not(None))
+            )
+            or 0
+        )
+        return joined, claimed
+
+    async def reminder_by_language(self) -> list[tuple[str, int, int]]:
+        """Per language → ``[(lang, reminders_on, reminders_off), …]`` — the opt-in engagement
+        signal broken out by cohort instead of one global number."""
+        on = func.count().filter(User.reminder_enabled.is_(True))
+        off = func.count().filter(User.reminder_enabled.is_(False))
+        rows = await self.session.execute(select(User.language, on, off).group_by(User.language))
+        return [(getattr(lang, "value", lang), int(a), int(b)) for lang, a, b in rows.all()]

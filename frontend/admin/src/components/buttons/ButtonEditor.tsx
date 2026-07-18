@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
 import { useUpdateButton } from "@/hooks/useButtons";
 import type { ButtonConfig, ButtonStyle, Lang } from "@/types/api";
 
@@ -54,94 +55,87 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl dark:bg-slate-900"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-1 flex items-center justify-between gap-2">
-          <h2 className="text-lg font-bold">ویرایش دکمه</h2>
-          <code
-            className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500 dark:bg-slate-800"
-            dir="ltr"
-          >
-            {button.key}
-          </code>
-        </div>
-        <div className="space-y-3">
-          {LANGS.map(({ code, label, dir }) => (
-            <div key={code}>
-              <label className="mb-1 block text-sm">{label}</label>
-              <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
-                dir={dir}
-                value={labels[code]}
-                placeholder={button.default_label[code]}
-                onChange={(e) => setLabels((s) => ({ ...s, [code]: e.target.value }))}
-              />
-            </div>
-          ))}
-          <div>
-            <label className="mb-1 block text-sm">نمایش</label>
-            <button
-              type="button"
-              disabled={button.is_critical}
-              onClick={() => setVisible((v) => !v)}
-              className={clsx(
-                "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
-                visible
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                  : "bg-slate-100 text-slate-500 dark:bg-slate-800",
-                button.is_critical && "cursor-not-allowed opacity-60",
-              )}
-            >
-              {visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              {visible ? "نمایش داده می‌شود" : "پنهان"}
-            </button>
-            {button.is_critical && (
-              <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
-                ⚠️ دکمهٔ حیاتی (بازگشت/تأیید/ناوبری) — قابل مخفی‌سازی نیست تا کاربر در صفحه گیر
-                نیفتد.
-              </p>
+    <Modal onClose={onClose} className="max-w-lg p-5" labelledBy="button-editor-title">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h2 id="button-editor-title" className="text-lg font-bold">
+          ویرایش دکمه
+        </h2>
+        <code
+          className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500 dark:bg-slate-800"
+          dir="ltr"
+        >
+          {button.key}
+        </code>
+      </div>
+      <div className="space-y-3">
+        {LANGS.map(({ code, label, dir }) => (
+          <div key={code}>
+            <label className="mb-1 block text-sm">{label}</label>
+            <input
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
+              dir={dir}
+              value={labels[code]}
+              placeholder={button.default_label[code]}
+              onChange={(e) => setLabels((s) => ({ ...s, [code]: e.target.value }))}
+            />
+          </div>
+        ))}
+        <div>
+          <label className="mb-1 block text-sm">نمایش</label>
+          <button
+            type="button"
+            disabled={button.is_critical}
+            onClick={() => setVisible((v) => !v)}
+            className={clsx(
+              "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
+              visible
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
+                : "bg-slate-100 text-slate-500 dark:bg-slate-800",
+              button.is_critical && "cursor-not-allowed opacity-60",
             )}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm">رنگ دکمه</label>
-            <div className="flex gap-2">
-              {COLORS.map((c) => (
-                <button
-                  key={c.label}
-                  type="button"
-                  onClick={() => setStyle(c.value)}
-                  className={clsx(
-                    "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs transition",
-                    style === c.value
-                      ? "border-brand"
-                      : "border-transparent hover:border-slate-300 dark:hover:border-slate-600",
-                  )}
-                >
-                  <span className={clsx("h-5 w-8 rounded", c.swatch)} />
-                  {c.label}
-                </button>
-              ))}
-            </div>
-            <p className="mt-1 text-xs text-slate-400">
-              رنگ دکمه‌های اینلاین (در نسخه‌های جدید تلگرام نمایش داده می‌شود).
+          >
+            {visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
+            {visible ? "نمایش داده می‌شود" : "پنهان"}
+          </button>
+          {button.is_critical && (
+            <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+              ⚠️ دکمهٔ حیاتی (بازگشت/تأیید/ناوبری) — قابل مخفی‌سازی نیست تا کاربر در صفحه گیر نیفتد.
             </p>
-          </div>
+          )}
         </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <Button variant="ghost" onClick={onClose}>
-            انصراف
-          </Button>
-          <Button onClick={save} loading={update.isPending}>
-            ذخیره
-          </Button>
+        <div>
+          <label className="mb-1 block text-sm">رنگ دکمه</label>
+          <div className="flex gap-2">
+            {COLORS.map((c) => (
+              <button
+                key={c.label}
+                type="button"
+                onClick={() => setStyle(c.value)}
+                className={clsx(
+                  "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs transition",
+                  style === c.value
+                    ? "border-brand"
+                    : "border-transparent hover:border-slate-300 dark:hover:border-slate-600",
+                )}
+              >
+                <span className={clsx("h-5 w-8 rounded", c.swatch)} />
+                {c.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-slate-400">
+            رنگ دکمه‌های اینلاین (در نسخه‌های جدید تلگرام نمایش داده می‌شود).
+          </p>
         </div>
       </div>
-    </div>
+      <div className="mt-5 flex justify-end gap-2">
+        <Button variant="ghost" onClick={onClose}>
+          انصراف
+        </Button>
+        <Button onClick={save} loading={update.isPending}>
+          ذخیره
+        </Button>
+      </div>
+    </Modal>
   );
 }

@@ -1,6 +1,8 @@
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
+import { useIsDark } from "@/hooks/useIsDark";
+import { chartTheme } from "@/lib/chartTheme";
 import { shortDay } from "@/lib/format";
 import type { DayPoint } from "@/types/api";
 
@@ -13,6 +15,7 @@ export function CumulativeUsersChart({ signups, total }: { signups: DayPoint[]; 
     acc += p.count;
     return { label: shortDay(p.day), total: acc };
   });
+  const t = chartTheme(useIsDark());
 
   return (
     <Card>
@@ -31,17 +34,20 @@ export function CumulativeUsersChart({ signups, total }: { signups: DayPoint[]; 
                   <stop offset="100%" stopColor="#7CB000" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
-              <YAxis
-                allowDecimals={false}
-                width={36}
-                tick={{ fontSize: 11 }}
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: t.axis }}
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip
-                contentStyle={{ borderRadius: 12, border: "1px solid #e2e8f0", fontSize: 12 }}
+              <YAxis
+                allowDecimals={false}
+                width={36}
+                tick={{ fontSize: 11, fill: t.axis }}
+                tickLine={false}
+                axisLine={false}
               />
+              <Tooltip {...t.tooltip} />
               <Area
                 type="monotone"
                 dataKey="total"

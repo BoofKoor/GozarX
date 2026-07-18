@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { useMarkMessageRead, useSiteMessages } from "@/hooks/useSite";
 import type { SiteMessage } from "@/types/api";
@@ -17,7 +18,7 @@ export function SiteInbox() {
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { data, isLoading } = useSiteMessages(page, unreadOnly);
+  const { data, isLoading, isError, refetch } = useSiteMessages(page, unreadOnly);
   const markRead = useMarkMessageRead();
 
   const items = data?.items ?? [];
@@ -54,7 +55,8 @@ export function SiteInbox() {
 
       <div className="flex items-center gap-3 text-sm">
         <span className="text-slate-500">
-          خوانده‌نشده: <span className="font-bold text-brand">{data?.unread ?? "…"}</span>
+          خوانده‌نشده:{" "}
+          <span className="font-bold text-brand">{data?.unread ?? (isError ? "—" : "…")}</span>
         </span>
         <label className="flex items-center gap-2">
           <input
@@ -69,7 +71,9 @@ export function SiteInbox() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-1">
-          {isLoading ? (
+          {isError && !data ? (
+            <ErrorState compact onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="flex justify-center py-10">
               <Spinner className="h-6 w-6 text-brand" />
             </div>
@@ -111,6 +115,7 @@ export function SiteInbox() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="صفحهٔ قبل"
                 disabled={page <= 1}
                 onClick={() => {
                   setPage((p) => p - 1);
@@ -125,6 +130,7 @@ export function SiteInbox() {
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="صفحهٔ بعد"
                 disabled={page >= totalPages}
                 onClick={() => {
                   setPage((p) => p + 1);

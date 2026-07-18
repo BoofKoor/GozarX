@@ -12,8 +12,10 @@ from gozar.db.repositories.base import BaseRepository
 
 
 class SiteClaimRepository(BaseRepository):
-    async def add(self, device_uuid: str, location: str) -> SiteClaim:
-        claim = SiteClaim(device_uuid=device_uuid, location=location)
+    async def add(self, device_uuid: str, location: str, *, is_change: bool = False) -> SiteClaim:
+        """Log one delivery. ``is_change`` marks a change-location re-pick (vs the opening
+        provision) so the admin funnel stats can exclude it — see ``SiteClaim.is_change``."""
+        claim = SiteClaim(device_uuid=device_uuid, location=location, is_change=is_change)
         self.session.add(claim)
         await self.session.flush()
         return claim
@@ -70,38 +72,44 @@ class SiteClaimRepository(BaseRepository):
         return int(await self.session.scalar(select(func.count()).select_from(SiteClaim)) or 0)
 
     async def count_since(self, since: datetime) -> int:
-        """Total site claims at or after ``since`` (admin stats: 'configs today')."""
+        """Provisions at or after ``since`` (admin stats: 'configs today'). Change-location re-picks
+        are excluded so the figure counts trials opened, matching the bot's config_logs."""
         return int(
             await self.session.scalar(
-                select(func.count()).select_from(SiteClaim).where(SiteClaim.created_at >= since)
+                select(func.count())
+                .select_from(SiteClaim)
+                .where(SiteClaim.created_at >= since, SiteClaim.is_change.is_(False))
             )
             or 0
         )
 
     async def distinct_device_count(self) -> int:
-        """How many distinct devices ever claimed ≥1 config — the funnel conversion numerator."""
+        """How many distinct devices ever claimed ≥1 config — the funnel conversion numerator.
+        (Every claimer has an opening provision, so this is unaffected by change-location rows.)"""
         return int(
             await self.session.scalar(select(func.count(func.distinct(SiteClaim.device_uuid)))) or 0
         )
 
     async def daily_counts(self, since: datetime) -> list[tuple[str, int]]:
-        """Site claims per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending."""
+        """Provisions per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        Excludes change-location re-picks (funnel metric — trials opened per day)."""
         day = func.date(SiteClaim.created_at).label("day")
         rows = await self.session.execute(
             select(day, func.count())
-            .where(SiteClaim.created_at >= since)
+            .where(SiteClaim.created_at >= since, SiteClaim.is_change.is_(False))
             .group_by(day)
             .order_by(day)
         )
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
     async def location_counts(self, since: datetime, limit: int = 10) -> list[tuple[str, int]]:
-        """Site claims grouped by location at/after ``since`` → ``[(location, count), …]`` busiest
-        first (matched by remark NAME)."""
+        """Provisions grouped by location at/after ``since`` → ``[(location, count), …]`` busiest
+        first (matched by remark NAME). Change-location re-picks are excluded, so this reflects the
+        location each trial OPENED with (consistent with the bot's config_logs)."""
         count = func.count().label("n")
         rows = await self.session.execute(
             select(SiteClaim.location, count)
-            .where(SiteClaim.created_at >= since)
+            .where(SiteClaim.created_at >= since, SiteClaim.is_change.is_(False))
             .group_by(SiteClaim.location)
             .order_by(count.desc())
             .limit(limit)

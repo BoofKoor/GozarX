@@ -1,21 +1,17 @@
-import {
-  type ChangeEvent,
-  type FormEvent,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Spinner } from "@/components/ui/Spinner";
 import { useRefreshSiteLocations, useSiteSettings, useUpdateSiteSettings } from "@/hooks/useSite";
 import { splitLocations } from "@/lib/format";
+import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
   trial_hours: number;
@@ -46,7 +42,7 @@ const EMPTY: FormState = {
 };
 
 export function SiteSettings() {
-  const { data, isLoading, isError } = useSiteSettings();
+  const { data, isLoading, isError, refetch } = useSiteSettings();
   const update = useUpdateSiteSettings();
   const refresh = useRefreshSiteLocations();
   const [form, setForm] = useState<FormState>(EMPTY);
@@ -80,14 +76,12 @@ export function SiteSettings() {
     );
   }
 
-  if (isError) {
+  if (isError && !data) {
     return (
       <div className="space-y-6">
         <h1 className="text-xl font-bold">وب‌سایت</h1>
         <SiteTabs />
-        <Card className="max-w-xl">
-          <p className="text-sm text-red-500">دریافت تنظیمات وب‌سایت از سرور ممکن نشد.</p>
-        </Card>
+        <ErrorState message="دریافت تنظیمات وب‌سایت از سرور ممکن نشد." onRetry={() => refetch()} />
       </div>
     );
   }
@@ -113,11 +107,25 @@ export function SiteSettings() {
     );
   }
 
-  const setNum = (key: NumKey) => (e: ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: Number(e.target.value) }));
+  const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (
+      !allValidNumbers([
+        { value: form.trial_hours, min: 1 },
+        { value: form.daily_limit_mb, min: 1 },
+        { value: form.referral_reward_mb, min: 0 },
+        { value: form.referral_reward_limit, min: 0 },
+        { value: form.reward_pwa_mb, min: 0 },
+        { value: form.reward_push_mb, min: 0 },
+        { value: form.reward_streak_mb, min: 0 },
+        { value: form.streak_days, min: 1 },
+      ])
+    ) {
+      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
+      return;
+    }
     update.mutate(
       {
         trial_hours: form.trial_hours,
@@ -161,40 +169,48 @@ export function SiteSettings() {
         <form onSubmit={submit} className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <Labeled label="مدت اعتبار کانفیگ (ساعت)">
-              <Input type="number" min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
+              <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
             </Labeled>
             <Labeled label="حجم روزانه (مگابایت)">
-              <Input type="number" value={form.daily_limit_mb} onChange={setNum("daily_limit_mb")} />
+              <NumberInput
+                min={1}
+                value={form.daily_limit_mb}
+                onChange={setNum("daily_limit_mb")}
+              />
             </Labeled>
             <Labeled label="پاداش هر دعوت (مگابایت)">
-              <Input
-                type="number"
+              <NumberInput
+                min={0}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Labeled>
             <Labeled label="سقف دعوت‌های پاداش‌دار">
-              <Input
-                type="number"
+              <NumberInput
+                min={0}
                 value={form.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
             </Labeled>
             <Labeled label="پاداش نصب اپ / PWA (مگابایت)">
-              <Input type="number" value={form.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
+              <NumberInput min={0} value={form.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
             </Labeled>
             <Labeled label="پاداش فعال‌کردن اعلان (مگابایت)">
-              <Input type="number" value={form.reward_push_mb} onChange={setNum("reward_push_mb")} />
+              <NumberInput
+                min={0}
+                value={form.reward_push_mb}
+                onChange={setNum("reward_push_mb")}
+              />
             </Labeled>
             <Labeled label="پاداش استریک (مگابایت)">
-              <Input
-                type="number"
+              <NumberInput
+                min={0}
                 value={form.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
             </Labeled>
             <Labeled label="روزهای لازم برای استریک">
-              <Input type="number" value={form.streak_days} onChange={setNum("streak_days")} />
+              <NumberInput min={1} value={form.streak_days} onChange={setNum("streak_days")} />
             </Labeled>
           </div>
           <Labeled label="لوکیشن‌ها (با کاما جدا کنید؛ خالی = همهٔ لوکیشن‌های اسکواد)">

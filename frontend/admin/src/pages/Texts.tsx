@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Spinner } from "@/components/ui/Spinner";
 import { previewText, useTexts, useUpdateText } from "@/hooks/useTexts";
 import type { BotText, Lang } from "@/types/api";
@@ -18,7 +19,7 @@ const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
 const GLOBAL_VARS = ["total_traffic", "used_traffic", "expire"];
 
 export function Texts() {
-  const { data: texts = [], isLoading } = useTexts();
+  const { data: texts = [], isLoading, isError, refetch } = useTexts();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
 
@@ -39,13 +40,16 @@ export function Texts() {
           <div className="relative mb-3">
             <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
+              aria-label="جستجوی متن‌ها"
               className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
               placeholder="جستجو…"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             />
           </div>
-          {isLoading ? (
+          {isError && texts.length === 0 ? (
+            <ErrorState compact onRetry={() => refetch()} />
+          ) : isLoading ? (
             <div className="flex justify-center py-10">
               <Spinner className="h-6 w-6 text-brand" />
             </div>

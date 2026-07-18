@@ -5,8 +5,9 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { useConfirm } from "@/components/ui/confirm";
 import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
-import { langLabel, telegramPreviewHtml } from "@/lib/format";
+import { formatNumber, langLabel, telegramPreviewHtml } from "@/lib/format";
 import type { Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
@@ -14,8 +15,9 @@ const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
 export function Broadcast() {
   const [text, setText] = useState("");
   const [langs, setLangs] = useState<Lang[]>(ALL_LANGS); // all groups selected by default
-  const { data: audience } = useAudience(langs);
+  const { data: audience, isError: audienceError } = useAudience(langs);
   const send = useSendBroadcast();
+  const confirm = useConfirm();
 
   // No language selected ⇒ nobody (send is blocked); the backend would read "" as everyone, so we
   // never reach it — we show 0 and disable the button instead.
@@ -27,10 +29,15 @@ export function Broadcast() {
     setLangs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
   }
 
-  function submit() {
+  async function submit() {
     const body = text.trim();
     if (!body || langs.length === 0) return;
-    if (!window.confirm(`ارسال این پیام به ${recipients ?? "؟"} کاربر (${summary})؟`)) return;
+    const ok = await confirm({
+      title: "ارسال پیام همگانی",
+      message: `این پیام به ${formatNumber(recipients ?? 0)} کاربر (${summary}) ارسال شود؟`,
+      confirmLabel: "ارسال",
+    });
+    if (!ok) return;
     send.mutate(
       { text: body, languages: langs },
       {
@@ -50,7 +57,11 @@ export function Broadcast() {
       <Card className="max-w-2xl space-y-4">
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <UsersIcon className="h-4 w-4" />
-          گیرندگان: <span className="font-bold text-brand">{recipients ?? "…"}</span> کاربر
+          گیرندگان:{" "}
+          <span className="font-bold text-brand">
+            {recipients ?? (audienceError ? "—" : "…")}
+          </span>{" "}
+          کاربر
         </div>
 
         <div>

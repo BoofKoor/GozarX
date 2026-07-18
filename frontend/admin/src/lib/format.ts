@@ -1,46 +1,81 @@
-// Small display helpers.
+// Small display helpers. The panel is fully Persian/RTL, so figures use Persian numerals and dates
+// use the Jalali calendar — via the browser's built-in Intl (no extra dependency).
 
-/** Group digits for readability (locale-agnostic so tests are stable). */
+const _FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+
+/** Map ASCII digits in a string to Persian ones (keeps units/letters/punctuation as-is). */
+export function toFaDigits(s: string): string {
+  return s.replace(/[0-9]/g, (d) => _FA_DIGITS[+d]);
+}
+
+const _FA_NUM = new Intl.NumberFormat("fa-IR");
+
+/** Group digits with Persian numerals + separator (e.g. 12345 → "۱۲٬۳۴۵"). */
 export function formatNumber(n: number): string {
-  if (!Number.isFinite(n)) return "0";
-  return n.toLocaleString("en-US");
+  if (!Number.isFinite(n)) return "۰";
+  return _FA_NUM.format(n);
+}
+
+/** A percentage with a Persian numeral and the Persian percent sign (e.g. 12.5 → "۱۲٫۵٪"). */
+export function faPct(n: number): string {
+  return `${Number.isFinite(n) ? new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(n) : "۰"}٪`;
 }
 
 /** Megabytes → a human size string (the settings store MB; we show GB when large). */
 export function formatMb(mb: number): string {
   if (mb >= 1024) {
     const gb = mb / 1024;
-    return `${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`;
+    return toFaDigits(`${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`);
   }
-  return `${mb} MB`;
+  return toFaDigits(`${mb} MB`);
 }
 
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
 export function humanBytes(n: number): string {
-  if (!Number.isFinite(n)) return "0 B";
+  if (!Number.isFinite(n)) return toFaDigits("0 B");
   let v = Math.max(n, 0);
   for (const unit of ["B", "KB", "MB", "GB", "TB"]) {
-    if (v < 1024) return `${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`;
+    if (v < 1024) return toFaDigits(`${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`);
     v /= 1024;
   }
-  return `${v.toFixed(1)} PB`;
+  return toFaDigits(`${v.toFixed(1)} PB`);
 }
 
-/** "YYYY-MM-DD" → "MM/DD" for compact chart axis labels. */
+const _FA_SHORT_DAY = new Intl.DateTimeFormat("fa-IR", {
+  month: "2-digit",
+  day: "2-digit",
+  timeZone: "UTC",
+});
+
+/** "YYYY-MM-DD" → compact Jalali "MM/DD" (Persian) for chart axis labels. */
 export function shortDay(iso: string): string {
-  const parts = iso.split("-");
-  return parts.length === 3 ? `${parts[1]}/${parts[2]}` : iso;
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : _FA_SHORT_DAY.format(d);
 }
 
-/** Seconds → a compact uptime string ("3d 4h", "12m"). */
+const _FA_DATE = new Intl.DateTimeFormat("fa-IR", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+/** ISO date/datetime → a full Jalali date (e.g. "۲۶ تیر ۱۴۰۵"); "—" when missing/invalid. */
+export function faDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "—" : _FA_DATE.format(d);
+}
+
+/** Seconds → a compact uptime string ("۳d ۴h", "۱۲m"). */
 export function humanUptime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d) return `${d}d ${h}h`;
-  if (h) return `${h}h ${m}m`;
-  return `${m}m`;
+  if (d) return toFaDigits(`${d}d ${h}h`);
+  if (h) return toFaDigits(`${h}h ${m}m`);
+  return toFaDigits(`${m}m`);
 }
 
 /** Bot language code → Persian display name (the panel is RTL/Persian). */

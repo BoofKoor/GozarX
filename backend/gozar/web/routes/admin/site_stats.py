@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
+from gozar.db.repositories.site_reward import SiteRewardRepository
+from gozar.services.settings_service import SettingsService, SiteSettingKey
+from gozar.services.stats import window_start, zero_filled_daily
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -46,6 +49,38 @@ class SiteStatsOut(BaseModel):
     top_locations: list[NamedCount]
 
 
+class RewardType(BaseModel):
+    type: str
+    grants: int
+    total_mb: int
+
+
+class PushHealth(BaseModel):
+    active: int
+    inactive: int
+    by_locale: list[NamedCount]
+
+
+class AbuseSignals(BaseModel):
+    top_ip_buckets: list[NamedCount]  # buckets with >= 2 devices (soft farming signal)
+    shared_fingerprint_devices: int
+
+
+class SiteAnalyticsOut(BaseModel):
+    """Deeper website analytics: active devices, the reward economy, streak reach, push-channel
+    health, and soft anti-abuse signals. All local site data — never depends on the panel."""
+
+    dau: int
+    wau: int
+    mau: int
+    stickiness_pct: float
+    reward_economy: list[RewardType]
+    streak_distribution: dict[str, int]
+    active_streaks: int
+    push: PushHealth
+    abuse: AbuseSignals
+
+
 def _pct(part: int, whole: int) -> float:
     return round(part / whole * 100, 1) if whole else 0.0
 
@@ -61,8 +96,8 @@ async def site_stats(
     claims = SiteClaimRepository(session)
     push = PushSubscriptionRepository(session)
 
-    now = datetime.now(UTC)
-    since = now - timedelta(days=window)
+    # Inclusive N-calendar-day window on a UTC day boundary; series is zero-filled (services/stats).
+    since = window_start(window)
     total_devices = await devices.count()
     status_counts = await devices.count_by_status()
     devices_claimed = await claims.distinct_device_count()
@@ -78,6 +113,51 @@ async def site_stats(
         push_subscribers=await push.count_active(),
         range_days=window,
         status_counts=status_counts,
-        claims_series=[DayPoint(day=d, count=n) for d, n in daily],
+        claims_series=[
+            DayPoint(day=d, count=n) for d, n in zero_filled_daily(daily, since=since, days=window)
+        ],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
+    )
+
+
+@router.get("/analytics", response_model=SiteAnalyticsOut)
+async def site_analytics(
+    request: Request,
+    session: DbSession,
+    admin: AdminUser,
+) -> SiteAnalyticsOut:
+    devices = SiteDeviceRepository(session)
+    rewards = SiteRewardRepository(session)
+    push = PushSubscriptionRepository(session)
+    settings = SettingsService(session, request.app.state.redis)
+    now = datetime.now(UTC)
+
+    dau = await devices.active_since(now - timedelta(days=1))
+    wau = await devices.active_since(now - timedelta(days=7))
+    mau = await devices.active_since(now - timedelta(days=30))
+    streak_days = await settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
+    active_streaks = await devices.active_streak_count(streak_days) if streak_days > 0 else 0
+    active, inactive = await push.count_by_active()
+
+    return SiteAnalyticsOut(
+        dau=dau,
+        wau=wau,
+        mau=mau,
+        stickiness_pct=_pct(dau, mau),
+        reward_economy=[
+            RewardType(type=t, grants=g, total_mb=mb) for t, g, mb in await rewards.totals_by_type()
+        ],
+        streak_distribution=await devices.streak_distribution(),
+        active_streaks=active_streaks,
+        push=PushHealth(
+            active=active,
+            inactive=inactive,
+            by_locale=[NamedCount(label=loc, count=n) for loc, n in await push.locale_breakdown()],
+        ),
+        abuse=AbuseSignals(
+            top_ip_buckets=[
+                NamedCount(label=b, count=n) for b, n in await devices.top_ip_buckets()
+            ],
+            shared_fingerprint_devices=await devices.shared_fingerprint_device_count(),
+        ),
     )

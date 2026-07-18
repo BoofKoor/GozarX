@@ -1,12 +1,15 @@
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import { splitLocations } from "@/lib/format";
+import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
   daily_limit_mb: number;
@@ -44,7 +47,7 @@ const EMPTY: FormState = {
 };
 
 export function Settings() {
-  const { data, isLoading } = useSettings();
+  const { data, isError, refetch } = useSettings();
   const update = useUpdateSettings();
   const [form, setForm] = useState<FormState>(EMPTY);
 
@@ -66,19 +69,40 @@ export function Settings() {
     }
   }, [data]);
 
-  if (isLoading) {
+  // Guard on "no usable data" — never fall through to the EMPTY-seeded form on a failed GET, or a
+  // save would PUT hardcoded defaults over the live economy (H1). A stale-but-present cache still
+  // renders the form; only a truly empty load shows the spinner/error.
+  if (!data) {
     return (
-      <div className="flex justify-center py-20">
-        <Spinner className="h-8 w-8 text-brand" />
+      <div className="space-y-6">
+        <h1 className="text-xl font-bold">تنظیمات</h1>
+        {isError ? (
+          <ErrorState onRetry={() => refetch()} />
+        ) : (
+          <div className="flex justify-center py-20">
+            <Spinner className="h-8 w-8 text-brand" />
+          </div>
+        )}
       </div>
     );
   }
 
-  const setNum = (key: NumKey) => (e: ChangeEvent<HTMLInputElement>) =>
-    setForm((f) => ({ ...f, [key]: Number(e.target.value) }));
+  const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (
+      !allValidNumbers([
+        { value: form.daily_limit_mb, min: 1 },
+        { value: form.referral_reward_mb, min: 0 },
+        { value: form.referral_reward_limit, min: 0 },
+        { value: form.trial_hours, min: 1 },
+        { value: form.configs_per_page, min: 1 },
+      ])
+    ) {
+      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
+      return;
+    }
     update.mutate(
       {
         daily_limit_mb: form.daily_limit_mb,
@@ -106,28 +130,27 @@ export function Settings() {
       <Card className="max-w-xl">
         <form onSubmit={submit} className="space-y-4">
           <Labeled label="حجم روزانه (مگابایت)">
-            <Input type="number" value={form.daily_limit_mb} onChange={setNum("daily_limit_mb")} />
+            <NumberInput min={1} value={form.daily_limit_mb} onChange={setNum("daily_limit_mb")} />
           </Labeled>
           <Labeled label="پاداش هر دعوت (مگابایت)">
-            <Input
-              type="number"
+            <NumberInput
+              min={0}
               value={form.referral_reward_mb}
               onChange={setNum("referral_reward_mb")}
             />
           </Labeled>
           <Labeled label="سقف دعوت‌های پاداش‌دار">
-            <Input
-              type="number"
+            <NumberInput
+              min={0}
               value={form.referral_reward_limit}
               onChange={setNum("referral_reward_limit")}
             />
           </Labeled>
           <Labeled label="مدت اعتبار کانفیگ (ساعت)">
-            <Input type="number" value={form.trial_hours} onChange={setNum("trial_hours")} />
+            <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
           </Labeled>
           <Labeled label="تعداد کانفیگ در هر صفحهٔ منو">
-            <Input
-              type="number"
+            <NumberInput
               min={1}
               value={form.configs_per_page}
               onChange={setNum("configs_per_page")}

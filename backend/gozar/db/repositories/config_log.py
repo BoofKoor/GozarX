@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import case, delete, func, select
 
 from gozar.db.models.config_log import ConfigLog
+from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
 
 
@@ -89,3 +90,78 @@ class ConfigLogRepository(BaseRepository):
             delete(ConfigLog).where(ConfigLog.user_id == user_id, ConfigLog.created_at >= since)
         )
         return int(result.rowcount or 0)
+
+    # --- analytics (Phase B) ---------------------------------------------------------------------
+    async def active_user_count_since(self, since: datetime) -> int:
+        """Distinct users who claimed at/after ``since`` — backs the DAU/WAU/MAU active-user tiles
+        (a real activity signal, unlike a raw claim count)."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(ConfigLog.user_id))).where(
+                    ConfigLog.created_at >= since
+                )
+            )
+            or 0
+        )
+
+    async def hourly_weekday_counts(
+        self, since: datetime, tz: str = "Asia/Tehran"
+    ) -> list[tuple[int, int, int]]:
+        """Claims bucketed by (weekday, hour) in ``tz`` local time → ``[(dow, hour, count), …]``.
+        Backs the activity heatmap. ``dow`` is Postgres' 0=Sunday..6=Saturday. Local time (not UTC)
+        so 'when is the bot busy' matches the audience's clock."""
+        local = func.timezone(tz, ConfigLog.created_at)
+        dow = func.extract("dow", local).label("dow")
+        hour = func.extract("hour", local).label("hour")
+        rows = await self.session.execute(
+            select(dow, hour, func.count())
+            .where(ConfigLog.created_at >= since)
+            .group_by(dow, hour)
+        )
+        return [(int(d), int(h), int(n)) for d, h, n in rows.all()]
+
+    async def claims_per_user_buckets(self) -> dict[str, int]:
+        """Histogram of lifetime claims per user → ``{"1": n, "2-3": n, "4-6": n, "7+": n}`` (only
+        users who ever claimed). Separates one-timers from power users."""
+        per_user = (
+            select(func.count().label("c"))
+            .select_from(ConfigLog)
+            .group_by(ConfigLog.user_id)
+            .subquery()
+        )
+        c = per_user.c.c
+        bucket = case(
+            (c == 1, "1"),
+            (c <= 3, "2-3"),
+            (c <= 6, "4-6"),
+            else_="7+",
+        ).label("bucket")
+        rows = await self.session.execute(
+            select(bucket, func.count()).select_from(per_user).group_by(bucket)
+        )
+        return {str(b): int(n) for b, n in rows.all()}
+
+    async def first_claim_stats(self) -> tuple[float | None, int, int]:
+        """``(median_hours, within_24h, total_claimers)`` for signup→first-claim. Median via
+        ``percentile_cont``; the delta is already in hours so the 24h filter is a plain ``<= 24``.
+        Backs the activation panel (how fast, and how many activate same-day)."""
+        firsts = (
+            select(
+                ConfigLog.user_id.label("uid"),
+                func.min(ConfigLog.created_at).label("fc"),
+            )
+            .group_by(ConfigLog.user_id)
+            .subquery()
+        )
+        delta_h = (func.extract("epoch", firsts.c.fc - User.created_at) / 3600.0).label("dh")
+        stmt = select(
+            func.percentile_cont(0.5).within_group(delta_h.asc()),
+            func.count().filter(delta_h <= 24),
+            func.count(),
+        ).select_from(firsts.join(User, User.telegram_id == firsts.c.uid))
+        median, within, total = (await self.session.execute(stmt)).one()
+        return (
+            round(float(median), 1) if median is not None else None,
+            int(within or 0),
+            int(total or 0),
+        )

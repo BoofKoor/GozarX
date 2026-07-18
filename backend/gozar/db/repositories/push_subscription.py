@@ -80,3 +80,24 @@ class PushSubscriptionRepository(BaseRepository):
             )
             or 0
         )
+
+    # --- analytics (Phase B) ---------------------------------------------------------------------
+    async def count_by_active(self) -> tuple[int, int]:
+        """``(active, inactive)`` subscription counts — push-channel health (how many opted back out
+        or were pruned as permanently gone)."""
+        active = func.count().filter(PushSubscription.active.is_(True))
+        inactive = func.count().filter(PushSubscription.active.is_(False))
+        row = (await self.session.execute(select(active, inactive))).one()
+        return int(row[0] or 0), int(row[1] or 0)
+
+    async def locale_breakdown(self) -> list[tuple[str, int]]:
+        """Active subscriptions grouped by captured browser locale → ``[(locale, count), …]`` desc.
+        Tells the operator which languages the push audience actually speaks."""
+        count = func.count().label("n")
+        rows = await self.session.execute(
+            select(PushSubscription.locale, count)
+            .where(PushSubscription.active.is_(True))
+            .group_by(PushSubscription.locale)
+            .order_by(count.desc())
+        )
+        return [(str(loc), int(n)) for loc, n in rows.all()]

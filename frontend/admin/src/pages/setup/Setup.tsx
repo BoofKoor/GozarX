@@ -1,13 +1,15 @@
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
+import { NumberInput } from "@/components/ui/NumberInput";
 import { Spinner } from "@/components/ui/Spinner";
 import { useCompleteSetup, useSetupStatus, useSquads } from "@/hooks/useSetup";
 import { splitLocations } from "@/lib/format";
+import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
   daily_limit_mb: number;
@@ -46,13 +48,23 @@ export function Setup() {
     }
   }, [squads, trialSquad]);
 
-  const setNum = (key: keyof Econ) => (e: ChangeEvent<HTMLInputElement>) =>
-    setEcon((s) => ({ ...s, [key]: Number(e.target.value) }));
+  const setNum = (key: keyof Econ) => (n: number) => setEcon((s) => ({ ...s, [key]: n }));
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!trialSquad) {
       toast.error("یک اسکواد انتخاب کنید.");
+      return;
+    }
+    if (
+      !allValidNumbers([
+        { value: econ.daily_limit_mb, min: 1 },
+        { value: econ.referral_reward_mb, min: 0 },
+        { value: econ.referral_reward_limit, min: 0 },
+        { value: econ.trial_hours, min: 1 },
+      ])
+    ) {
+      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
       return;
     }
     complete.mutate(
@@ -100,24 +112,24 @@ export function Setup() {
             )}
           </Labeled>
           <Labeled label="حجم روزانه (مگابایت)">
-            <Input type="number" value={econ.daily_limit_mb} onChange={setNum("daily_limit_mb")} />
+            <NumberInput min={1} value={econ.daily_limit_mb} onChange={setNum("daily_limit_mb")} />
           </Labeled>
           <Labeled label="پاداش هر دعوت (مگابایت)">
-            <Input
-              type="number"
+            <NumberInput
+              min={0}
               value={econ.referral_reward_mb}
               onChange={setNum("referral_reward_mb")}
             />
           </Labeled>
           <Labeled label="سقف دعوت‌های پاداش‌دار">
-            <Input
-              type="number"
+            <NumberInput
+              min={0}
               value={econ.referral_reward_limit}
               onChange={setNum("referral_reward_limit")}
             />
           </Labeled>
           <Labeled label="مدت اعتبار کانفیگ (ساعت)">
-            <Input type="number" value={econ.trial_hours} onChange={setNum("trial_hours")} />
+            <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
           </Labeled>
           <Labeled label="لوکیشن‌ها (با کاما جدا کنید؛ خالی = همهٔ لوکیشن‌های اسکواد)">
             <Input

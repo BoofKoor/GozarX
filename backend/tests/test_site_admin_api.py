@@ -16,9 +16,11 @@ import pytest_asyncio
 from httpx import ASGITransport
 
 from gozar.config.settings import get_settings
+from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice
 from gozar.db.models.site_message import SiteMessage
+from gozar.db.models.site_reward import SiteReward
 from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
 
@@ -107,9 +109,9 @@ async def test_site_settings_update_and_refresh_locations(site_client: httpx.Asy
         await site_client.put("/api/admin/site/settings/", json={"referral_reward_mb": -9})
     ).json()["referral_reward_mb"] == 0
     # trial_hours is floored to 1 (never 0)
-    assert (
-        await site_client.put("/api/admin/site/settings/", json={"trial_hours": 0})
-    ).json()["trial_hours"] == 1
+    assert (await site_client.put("/api/admin/site/settings/", json={"trial_hours": 0})).json()[
+        "trial_hours"
+    ] == 1
     # refresh-locations needs a squad; 400 before setup
     assert (await site_client.post("/api/admin/site/settings/refresh-locations")).status_code == 400
     await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
@@ -211,7 +213,10 @@ async def test_push_enqueues_worker_job(db_sessions, monkeypatch) -> None:
 async def test_site_stats_funnel(site_client: httpx.AsyncClient, db_sessions) -> None:
     empty = (await site_client.get("/api/admin/site/stats/")).json()
     assert empty["total_devices"] == 0 and empty["conversion_pct"] == 0.0
-    assert empty["range_days"] == 14 and empty["claims_series"] == []
+    # claims_series is zero-filled to exactly range_days ascending points (continuous time axis).
+    assert empty["range_days"] == 14
+    assert len(empty["claims_series"]) == 14
+    assert all(pt["count"] == 0 for pt in empty["claims_series"])
 
     async with db_sessions() as s:
         s.add_all([SiteDevice(uuid="d1"), SiteDevice(uuid="d2"), SiteDevice(uuid="d3")])
@@ -231,3 +236,50 @@ async def test_site_stats_funnel(site_client: httpx.AsyncClient, db_sessions) ->
     assert body["conversion_pct"] == round(2 / 3 * 100, 1)
     assert {x["label"]: x["count"] for x in body["top_locations"]} == {"Germany": 2, "Finland": 1}
     assert body["status_counts"].get("available") == 3
+
+
+async def test_site_analytics_empty(site_client: httpx.AsyncClient) -> None:
+    body = (await site_client.get("/api/admin/site/stats/analytics")).json()
+    assert body["dau"] == 0 and body["mau"] == 0 and body["stickiness_pct"] == 0.0
+    assert body["reward_economy"] == [] and body["streak_distribution"] == {}
+    assert body["push"] == {"active": 0, "inactive": 0, "by_locale": []}
+    assert body["abuse"] == {"top_ip_buckets": [], "shared_fingerprint_devices": 0}
+
+
+async def test_site_analytics_aggregations(site_client: httpx.AsyncClient, db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                SiteDevice(uuid="d1", streak_count=5, ip_bucket="ipA", fingerprint_hash="fpX"),
+                SiteDevice(uuid="d2", streak_count=0, ip_bucket="ipA", fingerprint_hash="fpX"),
+                SiteDevice(uuid="d3", streak_count=8, ip_bucket="ipB", fingerprint_hash="fpY"),
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                SiteClaim(device_uuid="d1", location="DE"),  # provision
+                SiteClaim(device_uuid="d2", location="NL"),  # provision
+                SiteReward(device_uuid="d1", reward_type="pwa", amount_mb=200),
+                SiteReward(device_uuid="d2", reward_type="pwa", amount_mb=200),
+                SiteReward(device_uuid="d1", reward_type="push", amount_mb=200),
+                PushSubscription(
+                    device_uuid="d1", endpoint="e1", p256dh="k", auth="a", locale="fa"
+                ),
+                PushSubscription(
+                    device_uuid="d2", endpoint="e2", p256dh="k", auth="a", locale="en", active=False
+                ),
+            ]
+        )
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/analytics")).json()
+    assert body["dau"] == 2 and body["wau"] == 2 and body["mau"] == 2  # d1, d2 provisioned
+    assert body["stickiness_pct"] == 100.0
+    econ = {r["type"]: (r["grants"], r["total_mb"]) for r in body["reward_economy"]}
+    assert econ == {"pwa": (2, 400), "push": (1, 200)}
+    assert body["streak_distribution"] == {"0": 1, "3-6": 1, "7+": 1}  # d2=0, d1=5, d3=8
+    assert body["push"]["active"] == 1 and body["push"]["inactive"] == 1
+    assert body["push"]["by_locale"] == [{"label": "fa", "count": 1}]  # active only
+    assert body["abuse"]["top_ip_buckets"] == [{"label": "ipA", "count": 2}]
+    assert body["abuse"]["shared_fingerprint_devices"] == 2  # d1 & d2 share fpX

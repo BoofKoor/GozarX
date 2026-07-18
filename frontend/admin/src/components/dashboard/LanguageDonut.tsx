@@ -1,17 +1,16 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
+import { seriesColor } from "@/lib/chartTheme";
 import { formatNumber, langLabel } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
-
-const COLORS = ["#7CB000", "#0ea5e9", "#f59e0b", "#a855f7", "#ef4444"];
 
 export function LanguageDonut({ data }: { data: NamedCount[] }) {
   const total = data.reduce((s, d) => s + d.count, 0);
   const slices = data.map((d, i) => ({
     name: langLabel(d.label),
     value: d.count,
-    color: COLORS[i % COLORS.length],
+    color: seriesColor(i),
   }));
 
   return (

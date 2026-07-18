@@ -18,6 +18,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingsService
+from gozar.services.stats import window_start, zero_filled_daily
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -54,7 +55,7 @@ class DashboardOut(BaseModel):
     # user growth (DB)
     new_today: int
     new_this_week: int
-    growth_pct: float  # this week's signups vs last week's
+    growth_pct: float | None  # this week's signups vs last week's; None = no prior-week baseline
     # engagement (panel /system/stats)
     online_now: int
     online_last_day: int
@@ -78,6 +79,45 @@ class DashboardOut(BaseModel):
     top_referrers: list[Referrer]
 
 
+class HeatCell(BaseModel):
+    dow: int  # 0=Sunday .. 6=Saturday (Postgres), in Asia/Tehran local time
+    hour: int
+    count: int
+
+
+class LangReminder(BaseModel):
+    label: str
+    on: int
+    off: int
+
+
+class ReferralFunnel(BaseModel):
+    joined: int  # users who arrived via a referral link
+    joined_claimed: int  # of those, how many ever claimed a config
+    invitee_conversion_pct: float
+    k_factor: float  # avg successful invites per user (viral coefficient); >1 ⇒ self-sustaining
+
+
+class DashboardAnalyticsOut(BaseModel):
+    """Deeper analytics for the dashboard (separate from the cheap headline ``/stats`` so the top of
+    the page stays fast). DAU/WAU/MAU are fixed 1/7/30-day active-claimer counts; activation, the
+    referral funnel, the claim distribution and reminder split are all-time; the heatmap uses the
+    selected window."""
+
+    range_days: int
+    dau: int
+    wau: int
+    mau: int
+    stickiness_pct: float  # dau / mau
+    median_hours_to_claim: float | None
+    activation_24h_pct: float  # share of claimers whose first claim was within 24h of signup
+    claimers: int
+    referral: ReferralFunnel
+    heatmap: list[HeatCell]
+    claims_distribution: dict[str, int]  # {"1","2-3","4-6","7+"} → users
+    reminder_by_language: list[LangReminder]
+
+
 def _pct(part: int, whole: int) -> float:
     return round(part / whole * 100, 1) if whole else 0.0
 
@@ -98,7 +138,9 @@ async def dashboard_stats(
     s = await admin_svc.stats()
 
     now = datetime.now(UTC)
-    since = now - timedelta(days=window)
+    # Inclusive N-calendar-day window anchored on a UTC day boundary, so the oldest bucket is
+    # complete and the zero-filled series spans exactly `window` days (see services/stats.py).
+    since = window_start(window)
     claims = await config_log_repo.daily_counts(since)
     signups = await user_repo.signups_daily(since)
     languages = await user_repo.language_breakdown()
@@ -110,7 +152,9 @@ async def dashboard_stats(
     new_this_week = await user_repo.count_created_since(now - timedelta(days=7))
     two_weeks = await user_repo.count_created_since(now - timedelta(days=14))
     prev_week = two_weeks - new_this_week
-    growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else 0.0
+    # None (not 0.0) when there's no prior-week baseline, so a launch week with signups doesn't read
+    # as "0% — flat". The frontend renders None as a "new" badge when this week has signups.
+    growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else None
 
     # Referral & conversion.
     claimed = await config_log_repo.distinct_user_count()
@@ -144,9 +188,59 @@ async def dashboard_stats(
         conversion_pct=_pct(claimed, s.total),
         reminder_enabled=reminder_enabled,
         avg_referrals=avg_referrals,
-        claims_series=[DayPoint(day=d, count=n) for d, n in claims],
-        signups_series=[DayPoint(day=d, count=n) for d, n in signups],
+        claims_series=[
+            DayPoint(day=d, count=n) for d, n in zero_filled_daily(claims, since=since, days=window)
+        ],
+        signups_series=[
+            DayPoint(day=d, count=n)
+            for d, n in zero_filled_daily(signups, since=since, days=window)
+        ],
         languages=[NamedCount(label=lang, count=n) for lang, n in languages],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
         top_referrers=[Referrer(telegram_id=t, referral_count=n) for t, n in referrers],
+    )
+
+
+@router.get("/analytics", response_model=DashboardAnalyticsOut)
+async def dashboard_analytics(
+    session: DbSession,
+    admin: AdminUser,
+    days: int = Query(default=_DEFAULT_RANGE),
+) -> DashboardAnalyticsOut:
+    window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
+    user_repo = UserRepository(session)
+    log_repo = ConfigLogRepository(session)
+    now = datetime.now(UTC)
+
+    dau = await log_repo.active_user_count_since(now - timedelta(days=1))
+    wau = await log_repo.active_user_count_since(now - timedelta(days=7))
+    mau = await log_repo.active_user_count_since(now - timedelta(days=30))
+    median_h, within_24h, claimers = await log_repo.first_claim_stats()
+    joined, joined_claimed = await user_repo.referral_funnel()
+    total = await user_repo.count()
+    referrals = await user_repo.sum_referrals()
+    heatmap = await log_repo.hourly_weekday_counts(window_start(window))
+    distribution = await log_repo.claims_per_user_buckets()
+    reminders = await user_repo.reminder_by_language()
+
+    return DashboardAnalyticsOut(
+        range_days=window,
+        dau=dau,
+        wau=wau,
+        mau=mau,
+        stickiness_pct=_pct(dau, mau),
+        median_hours_to_claim=median_h,
+        activation_24h_pct=_pct(within_24h, claimers),
+        claimers=claimers,
+        referral=ReferralFunnel(
+            joined=joined,
+            joined_claimed=joined_claimed,
+            invitee_conversion_pct=_pct(joined_claimed, joined),
+            k_factor=round(referrals / total, 2) if total else 0.0,
+        ),
+        heatmap=[HeatCell(dow=d, hour=h, count=c) for d, h, c in heatmap],
+        claims_distribution=distribution,
+        reminder_by_language=[
+            LangReminder(label=lang, on=on, off=off) for lang, on, off in reminders
+        ],
     )

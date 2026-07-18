@@ -5,6 +5,8 @@ import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import App from "./App";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ConfirmProvider } from "./components/ui/confirm";
 import "./index.css";
 
 const queryClient = new QueryClient({
@@ -13,11 +15,15 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter basename="/admin">
-        <App />
-        <Toaster position="top-center" richColors dir="rtl" />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter basename="/admin">
+          <ConfirmProvider>
+            <App />
+          </ConfirmProvider>
+          <Toaster position="top-center" richColors dir="rtl" />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   </React.StrictMode>,
 );

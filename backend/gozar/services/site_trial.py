@@ -289,7 +289,9 @@ class SiteTrialService:
         changed: bool,
     ) -> Delivered:
         name, link = self._pick(links, location_name)
-        await self._claims.add(device.uuid, name)  # one row per delivery (location = remark NAME)
+        # One row per delivery (location = remark NAME). is_change flags a change-location re-pick
+        # so the admin funnel stats exclude it and count only trials opened (matching the bot).
+        await self._claims.add(device.uuid, name, is_change=changed)
         return Delivered(
             location=name,
             link=link,
