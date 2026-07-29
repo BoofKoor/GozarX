@@ -1,7 +1,10 @@
 /* GozarX service worker — Web Push handling + a minimal offline shell.
    Push payloads are JSON { title, body, url } sent by the backend (services/push.py). */
 
-const CACHE = "gozarx-shell-v1";
+// Bump this whenever the offline shell changes — `activate` deletes every cache whose key isn't the
+// current one, so a bump cleans out an older build's cached HTML (which references now-dead asset
+// hashes) in one shot.
+const CACHE = "gozarx-shell-v2";
 const SHELL = ["/", "/status", "/offline"];
 
 self.addEventListener("install", (event) => {
@@ -27,8 +30,12 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          // Cache ONLY a real, successful same-origin page. Without the guard a deploy-time 502 (or
+          // any error page) got cached and then served offline instead of /offline.
+          if (res.ok && res.type === "basic") {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
           return res;
         })
         .catch(() => caches.match(req).then((m) => m || caches.match("/offline"))),
@@ -58,8 +65,12 @@ self.addEventListener("notificationclick", (event) => {
   const url = (event.notification.data && event.notification.data.url) || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      // Focus an existing tab AND steer it to the notification's target (e.g. /status); the old code
+      // returned focus() without ever navigating, so the click landed on whatever tab was open.
       for (const client of list) {
-        if ("focus" in client) return client.focus();
+        if ("focus" in client) {
+          return "navigate" in client ? client.navigate(url).then((c) => (c || client).focus()) : client.focus();
+        }
       }
       return self.clients.openWindow(url);
     }),

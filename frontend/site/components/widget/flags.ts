@@ -88,7 +88,10 @@ export function flagCC(name: string): string | null {
   return null;
 }
 
-// The plain display name (strip a leading flag emoji if the remark carries one).
+// The plain display name (strip a leading flag emoji if the remark carries one). Uses
+// Extended_Pictographic + regional-indicator letters, NOT \p{Emoji} — the latter also matches ASCII
+// digits, '#' and '*', so a remark like "1. Germany" would lose its leading "1." here (and locName
+// is the match key for preselect/popular/landing, so a digit-prefixed remark would silently miss).
 export function locName(name: string): string {
-  return name.replace(/^[\p{Emoji}️\s]+/u, "").trim() || name;
+  return name.replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}️\s]+/u, "").trim() || name;
 }

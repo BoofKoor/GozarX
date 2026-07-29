@@ -138,7 +138,15 @@ export function ClaimWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, preselect]);
 
-  const selected = picked ?? defaultPick ?? (compact && locs.length ? locs[0] : null);
+  // A landing page promises a SPECIFIC location (preselect). If that remark no longer matches any
+  // live location (panel rename), fall through to "no selection" — NOT the popular default — so the
+  // page never silently claims a different country than the one it advertised. The user picks.
+  const preselectMiss =
+    !!preselect &&
+    locs.length > 0 &&
+    !locs.some((l) => l === preselect || locName(l).toLowerCase() === locName(preselect).toLowerCase());
+  const selected =
+    picked ?? (preselectMiss ? null : defaultPick) ?? (compact && locs.length ? locs[0] : null);
 
   const doClaim = useCallback(async () => {
     if (!selected || mode === "provisioning") return;

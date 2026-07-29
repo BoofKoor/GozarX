@@ -17,7 +17,7 @@ import httpx
 from aiogram import Bot
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
-from arq import run_worker
+from arq import func, run_worker
 from arq.connections import RedisSettings
 from arq.cron import cron
 
@@ -38,6 +38,12 @@ from gozar.worker.tasks import (
 )
 
 logger = logging.getLogger("gozar.worker")
+
+# A full broadcast to a large audience runs for a long time (100k users at the ~25/s rate ≈ 1h), so
+# the fan-out jobs need a much larger ceiling than arq's 300s default — otherwise the job is killed
+# mid-send and most users never get the message. max_tries=1 so a failed/interrupted broadcast is
+# NEVER auto-retried from the start (that would re-blast everyone already sent) — admin re-triggers.
+_BROADCAST_TIMEOUT = 6 * 60 * 60  # 6 hours
 
 
 async def _startup(ctx: dict) -> None:
@@ -75,13 +81,15 @@ async def _shutdown(ctx: dict) -> None:
 
 class WorkerSettings:
     functions = [
-        fanout,
-        broadcast_text,
+        # Long-running fan-out jobs get a large timeout + no auto-retry (see _BROADCAST_TIMEOUT).
+        func(fanout, timeout=_BROADCAST_TIMEOUT, max_tries=1),
+        func(broadcast_text, timeout=_BROADCAST_TIMEOUT, max_tries=1),
+        func(site_push_broadcast, timeout=_BROADCAST_TIMEOUT, max_tries=1),
+        # The rest keep arq's defaults (300s timeout, retry) — they're short, bounded per-item work.
         reset_all_active,
         reconcile_trials,
         backup_database,
         sample_health,
-        site_push_broadcast,
         site_reconcile,
     ]
     # Nightly DB backup at 03:00 (UTC container clock); a system-health sample every minute

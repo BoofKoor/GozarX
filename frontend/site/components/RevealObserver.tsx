@@ -17,6 +17,14 @@ export function RevealObserver() {
     const els = Array.from(app.querySelectorAll<HTMLElement>(".reveal"));
     if (!els.length) return;
     app.classList.add("reveal-js");
+    // Pre-mark everything already in the viewport as `.in` in this SAME synchronous tick (before the
+    // browser paints). Otherwise `reveal-js` hides all `.reveal` and only the observer's async first
+    // callback restores the visible ones — so above-the-fold content flashes to opacity:0 for a frame.
+    const vh = window.innerHeight || document.documentElement.clientHeight;
+    for (const el of els) {
+      const r = el.getBoundingClientRect();
+      if (r.top < vh && r.bottom > 0) el.classList.add("in");
+    }
     const io = new IntersectionObserver(
       (entries, obs) => {
         for (const e of entries) {
