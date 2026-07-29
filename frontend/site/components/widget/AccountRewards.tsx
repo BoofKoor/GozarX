@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { hasPushSubscription, subscribeToPush } from "@/lib/push";
+import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
 
@@ -16,23 +16,16 @@ import { Icon } from "@/components/Icon";
 // "+N MB" figures come from the public config — never hardcoded.
 export function AccountRewards({ locale }: { locale: Locale }) {
   const t = translator(locale);
-  const { status, config, reload } = useSite();
+  // Push state is SHARED via the provider so this mission and the status page's Settings switch
+  // agree — enabling from one flips the other. `pushOn` = permission granted AND a live subscription
+  // (granted alone delivers nothing, so the mission must still read as claimable in that case).
+  const { status, config, reload, pushPerm: perm, pushOn, refreshPush } = useSite();
   const pwa = usePwaState();
 
-  const [perm, setPerm] = useState<NotificationPermission>("default");
-  // The REAL "notifications on" signal: an actual PushManager subscription. Permission granted from
-  // the browser's own settings (no subscription) must still render as claimable — otherwise the
-  // mission shows "completed", nothing is clickable, and no prompt can ever appear.
-  const [pushSub, setPushSub] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
   const [modal, setModal] = useState<null | "ios" | "push" | "blocked">(null);
   const pwaClaimed = useRef(false);
-
-  useEffect(() => {
-    if (typeof Notification !== "undefined") setPerm(Notification.permission);
-    void hasPushSubscription().then(setPushSub);
-  }, []);
 
   // Running as an installed PWA is itself proof of install — grant the one-time reward once
   // (the backend dedupes, so a repeat is a clean no-op). Gate on `status` being loaded so this
@@ -95,9 +88,8 @@ export function AccountRewards({ locale }: { locale: Locale }) {
     setBusy("push");
     try {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
-      setPerm(typeof Notification !== "undefined" ? Notification.permission : "default");
+      await refreshPush(); // re-sync the shared push state (also updates the Settings switch)
       if (ok) {
-        setPushSub(true);
         await api.claimReward("push");
         await reload();
         toast("✓");
@@ -181,7 +173,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
           ) : null)}
 
         {pushConfigured &&
-          (perm === "granted" && pushSub ? (
+          (pushOn ? (
             <MissionRow
               tone="violet"
               icon="bell"

@@ -24,11 +24,23 @@ export async function generateMetadata({
   const { slug } = await params;
   const row = await fetchLanding(slug, await getLocale());
   if (!row) return { title: "GozarX" }; // page 404s anyway
+  const rtl = row.locale === "fa";
   return {
     title: row.title,
     description: row.meta_description,
     alternates: { canonical: `/l/${slug}` },
-    openGraph: { title: row.title, description: row.meta_description, url: `/l/${slug}` },
+    // Setting openGraph REPLACES the layout's object, so re-carry the shared chrome (type/siteName/
+    // locale/image) — otherwise the landing's social card loses its image and the twitter card
+    // (which would inherit the home title) disagrees with it.
+    openGraph: {
+      type: "website",
+      siteName: "GozarX",
+      locale: rtl ? "fa_IR" : "en_US",
+      title: row.title,
+      description: row.meta_description,
+      url: `/l/${slug}`,
+      images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "GozarX" }],
+    },
   };
 }
 

@@ -15,7 +15,7 @@ import { Icon } from "@/components/Icon";
 // flow lives on the account page). Reward MB comes from site_* settings. Dismissible.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
-  const { config, reload } = useSite();
+  const { config, reload, refreshPush } = useSite();
   const pwa = usePwaState();
   const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -55,6 +55,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
     try {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
       if (ok) await api.claimReward("push");
+      await refreshPush(); // keep the shared push state (status-page switch/mission) in sync
       await reload();
       toast(ok ? "✓" : "—");
     } finally {

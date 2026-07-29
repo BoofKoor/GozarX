@@ -72,18 +72,18 @@ export async function generateMetadata(): Promise<Metadata> {
         "max-video-preview": -1,
       },
     },
+    // Shared OG/Twitter chrome (image, siteName, type, locale, card). Deliberately NO title/
+    // description here: Next fills og:title/og:description (and twitter's) from each page's own
+    // resolved title/description. Setting them here would pin the HOME copy onto every sub-page's
+    // and every landing's social card (they inherit this object when they don't override it).
     openGraph: {
       type: "website",
       siteName: "GozarX",
       locale: fa ? "fa_IR" : "en_US",
-      title,
-      description,
       images: [{ url: "/icons/icon-512.png", width: 512, height: 512, alt: "GozarX" }],
     },
     twitter: {
       card: "summary",
-      title,
-      description,
       images: ["/icons/icon-512.png"],
     },
     // Search Console "HTML tag" verification — only emitted when the token env var is set (else
