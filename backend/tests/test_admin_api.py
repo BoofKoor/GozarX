@@ -98,6 +98,20 @@ async def test_settings_put_partial_update(admin_client: httpx.AsyncClient) -> N
     assert body["trial_hours"] == 48
 
 
+async def test_settings_put_floors_negative_numerics(admin_client: httpx.AsyncClient) -> None:
+    # A negative daily_limit_mb makes compute_traffic_bytes go negative → every claim PanelError.
+    # trial_hours floors to 1; the rest to 0 (mirrors the site settings endpoint).
+    r = await admin_client.put(
+        "/api/admin/settings/",
+        json={"daily_limit_mb": -1024, "referral_reward_mb": -5, "trial_hours": 0},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["daily_limit_mb"] == 0
+    assert body["referral_reward_mb"] == 0
+    assert body["trial_hours"] == 1
+
+
 async def test_settings_ad_button_round_trip(admin_client: httpx.AsyncClient) -> None:
     # Fresh schema -> the ad button is off with blank text/url/emoji until the admin sets it.
     before = (await admin_client.get("/api/admin/settings/")).json()

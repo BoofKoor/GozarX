@@ -65,6 +65,24 @@ async def test_upsert_dedupes_and_reactivates(session) -> None:
     assert rows[0].active is True
 
 
+async def test_deactivate_is_device_scoped(session) -> None:
+    # The same endpoint URL can only belong to one device (unique), but the public toggle-off must
+    # never deactivate a row the caller doesn't own: a device_uuid mismatch is a no-op, while the
+    # owning device (or an unscoped prune) deactivates it.
+    await _seed_device(session, "owner")
+    await _seed_device(session, "attacker")
+    repo = PushSubscriptionRepository(session)
+    await repo.upsert(
+        device_uuid="owner", endpoint="https://e/x", p256dh="k", auth="a", locale="fa"
+    )
+    # a different device posting the owner's endpoint changes nothing
+    await repo.deactivate("https://e/x", device_uuid="attacker")
+    assert (await session.scalars(select(PushSubscription))).one().active is True
+    # the owner can turn it off
+    await repo.deactivate("https://e/x", device_uuid="owner")
+    assert (await session.scalars(select(PushSubscription))).one().active is False
+
+
 async def test_list_active_and_for_device_exclude_inactive(session) -> None:
     await _seed_device(session, "dev-1")
     await _seed_device(session, "dev-2")
@@ -237,6 +255,24 @@ async def test_endpoint_subscribe_then_unsubscribe(env, db_sessions) -> None:
     async with db_sessions() as s:
         row = (await s.scalars(select(PushSubscription))).one()
     assert row.active is False
+
+
+async def test_unsubscribe_cannot_kill_another_devices_subscription(env, db_sessions) -> None:
+    client, app = env
+    # Device A subscribes (its cookie now identifies device A).
+    sub = {"endpoint": _FCM, "p256dh": _P256, "auth": _AUTH, "locale": "en"}
+    assert (await client.post("/api/public/push/subscribe", json=sub)).json()["ok"] is True
+
+    # Device B — a fresh cookieless client (minted its own device) — posts device A's endpoint.
+    transport = ASGITransport(app=app)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as other:
+        assert (
+            await other.post("/api/public/push/unsubscribe", json={"endpoint": _FCM})
+        ).json()["ok"] is True  # the call "succeeds" but must not touch a row it doesn't own
+
+    async with db_sessions() as s:
+        row = (await s.scalars(select(PushSubscription))).one()
+    assert row.active is True  # device A's subscription is untouched
 
 
 async def test_is_allowed_push_endpoint() -> None:

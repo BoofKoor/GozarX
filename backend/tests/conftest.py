@@ -19,6 +19,14 @@ from gozar.db.base import Base
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 
 
+@pytest.fixture(autouse=True, scope="session")
+def _site_cookie_secret():
+    """Give the whole run a device-cookie signing key. current_device fails closed (503) without
+    one — correct in prod, but the site-endpoint tests must exercise the real minting flow."""
+    os.environ.setdefault("SITE_COOKIE_SECRET", "test-site-cookie-secret")
+    yield
+
+
 @pytest_asyncio.fixture
 async def session():
     if not TEST_DATABASE_URL:
