@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from redis.asyncio import Redis
 
 # Safety-net TTL (seconds) layered on top of explicit invalidation.
@@ -62,3 +65,24 @@ def site_transfer_key(code: str) -> str:
     """One-time device-transfer code -> source device payload. Stored SET ex=600 nx, GETDEL on
     redeem (10-minute expiry)."""
     return f"site:transfer:{code}"
+
+
+@asynccontextmanager
+async def single_flight(
+    redis: Redis, bucket: str, identifier: str, *, ttl_seconds: int
+) -> AsyncIterator[bool]:
+    """Serialize concurrent operations for ``(bucket, identifier)``: yields True to the first
+    holder, False to a caller arriving while it's held. The lock auto-expires after ``ttl_seconds``
+    (a crashed holder can't wedge the identifier) and is released on exit.
+
+    Guards a claim's provision: without it, a double-tap / two tabs each read the same stale
+    cooldown under READ COMMITTED, both pass, and race two panel accounts + a double credit. Redis
+    ``SET NX`` is atomic, so exactly one caller wins the window. Infra-level (no delivery imports),
+    so both the site endpoint and the bot's ``TrialService`` can reuse it."""
+    key = f"lock:{bucket}:{identifier}"
+    acquired = bool(await redis.set(key, 1, ex=max(ttl_seconds, 1), nx=True))
+    try:
+        yield acquired
+    finally:
+        if acquired:
+            await redis.delete(key)

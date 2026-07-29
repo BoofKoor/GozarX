@@ -21,9 +21,12 @@ from gozar.web.routes.public.security import rate_limit_ok
 
 router = APIRouter(tags=["public"])
 
-# A handful of codes per 10-min window per device — plenty for regenerating an expired one.
+# A handful of codes per 10-min window per device — plenty for regenerating an expired one. A per-IP
+# backstop caps a cookieless client (minted a fresh device per request, so the per-device limit
+# never bites) from spinning up transfer codes in a loop.
 _CREATE_LIMIT = 5
 _CREATE_WINDOW = 600
+_CREATE_IP_LIMIT = 20
 # Brute-force guard on the 8-char code — per client IP (the redeemer has no device trust yet).
 _REDEEM_LIMIT = 10
 _REDEEM_WINDOW = 300
@@ -56,9 +59,17 @@ async def create_transfer(
     request: Request, session: DbSession, device: CurrentDevice
 ) -> TransferCreateResponse:
     redis = request.app.state.redis
-    if not await rate_limit_ok(
+    per_device = await rate_limit_ok(
         redis, "transfer_create", device.uuid, limit=_CREATE_LIMIT, window_seconds=_CREATE_WINDOW
-    ):
+    )
+    per_ip = await rate_limit_ok(
+        redis,
+        "transfer_create_ip",
+        client_ip(request),
+        limit=_CREATE_IP_LIMIT,
+        window_seconds=_CREATE_WINDOW,
+    )
+    if not per_device or not per_ip:
         raise HTTPException(status_code=429, detail="rate_limited")
 
     code = await _service(request, session).create_code(device)

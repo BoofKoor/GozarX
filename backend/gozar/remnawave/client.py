@@ -90,7 +90,17 @@ class RemnawaveClient:
 
         if resp.status_code == 204 or not resp.content:
             return {}
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            # A 2xx that isn't JSON (an HTML error/challenge page from a proxy/Cloudflare fronting
+            # the panel) must still raise RemnawaveError — the docstring promises it and callers
+            # rely on `except RemnawaveError`; otherwise a JSONDecodeError sails past them (a 500 on
+            # /claim, an aborted reconcile sweep). Never log the body (may carry sensitive markup).
+            logger.warning("panel %s %s -> non-JSON body (HTTP %s)", method, path, resp.status_code)
+            raise RemnawaveError(
+                f"panel {method} {path} returned non-JSON", status_code=resp.status_code
+            ) from exc
         # Responses are wrapped as {"response": ...}; fall back to the raw body if absent.
         return data.get("response", data) if isinstance(data, dict) else data
 
