@@ -20,7 +20,13 @@ function GrowthBadge({ pct, newThisWeek }: { pct: number | null; newThisWeek: nu
 /** Live engagement from the panel: online now / last 24h / last 7d / never online (bar list). */
 export function EngagementPanel({ data }: { data: DashboardStats }) {
   const rows = [
-    { label: "هم‌اکنون آنلاین", value: data.online_now, color: "#22c55e" },
+    {
+      // online_now is scoped to the service's trial squad(s); the last-day/week/never figures below
+      // stay panel-wide (the panel only reports those globally), so flag the scope on this row.
+      label: data.online_squad_scoped ? "هم‌اکنون آنلاین (اسکواد سرویس)" : "هم‌اکنون آنلاین",
+      value: data.online_now,
+      color: "#22c55e",
+    },
     { label: "۲۴ ساعت اخیر", value: data.online_last_day, color: "#0ea5e9" },
     { label: "۷ روز اخیر", value: data.online_last_week, color: "#7CB000" },
     { label: "هرگز آنلاین نشده", value: data.never_online, color: "#94a3b8" },

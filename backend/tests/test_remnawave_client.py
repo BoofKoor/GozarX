@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -185,3 +185,44 @@ async def test_system_stats_parses_real_shape() -> None:
 async def test_system_stats_returns_none_on_error() -> None:
     # a panel that can't answer -> None (single bounded attempt, no raise; caller falls back to DB)
     assert await _client(lambda req: httpx.Response(500)).system_stats() is None
+
+
+def _user(username: str, squad: str, *, online_secs_ago: float | None) -> dict:
+    """A UserItemInfo row: one squad membership + an onlineAt N seconds ago (or null)."""
+    seen = None
+    if online_secs_ago is not None:
+        seen = (datetime.now(UTC) - timedelta(seconds=online_secs_ago)).isoformat()
+    return {
+        "username": username,
+        "activeInternalSquads": [{"uuid": squad, "name": squad}],
+        "userTraffic": {"usedTrafficBytes": 0, "onlineAt": seen},
+    }
+
+
+async def test_squad_online_count_only_counts_recent_members_of_the_squad() -> None:
+    users = [
+        _user("a", "trial", online_secs_ago=5),  # counts: in squad, seen 5s ago
+        _user("b", "trial", online_secs_ago=30),  # counts: in squad, seen 30s ago
+        _user("c", "trial", online_secs_ago=120),  # skip: seen 2min ago (stale)
+        _user("d", "trial", online_secs_ago=None),  # skip: never online
+        _user("e", "personal", online_secs_ago=5),  # skip: online but a different (personal) squad
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/api/users"
+        return httpx.Response(200, json={"response": {"users": users, "total": len(users)}})
+
+    count = await _client(handler).squad_online_count({"trial"})
+    assert count == 2
+
+
+async def test_squad_online_count_empty_squads_is_zero_no_call() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:  # pragma: no cover - must not be hit
+        raise AssertionError("panel must not be called when no squad is configured")
+
+    assert await _client(handler).squad_online_count(set()) == 0
+
+
+async def test_squad_online_count_returns_none_on_panel_error() -> None:
+    # falls back to the panel-wide figure at the caller (None, not a raise)
+    assert await _client(lambda req: httpx.Response(500)).squad_online_count({"trial"}) is None

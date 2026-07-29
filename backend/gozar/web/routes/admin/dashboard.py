@@ -16,8 +16,9 @@ from pydantic import BaseModel
 
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.remnawave.schemas import SystemStats
 from gozar.services.admin import AdminService
-from gozar.services.settings_service import SettingsService
+from gozar.services.settings_service import SettingKey, SettingsService, SiteSettingKey
 from gozar.services.stats import window_start, zero_filled_daily
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
@@ -26,6 +27,39 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 _ALLOWED_RANGES = (7, 14, 30)
 _DEFAULT_RANGE = 14
+_SQUAD_ONLINE_KEY = "cache:squad_online"
+_SQUAD_ONLINE_TTL = 60  # seconds — matches the panel's online cadence; caps the pagination cost
+
+
+async def _online_now(
+    panel: object,
+    settings: SettingsService,
+    redis: object,
+    stats: SystemStats | None,
+    db_active: int,
+) -> tuple[int, bool]:
+    """(online_now, squad_scoped). Prefer the count of trial-squad users online in the last minute
+    (excludes the operator's personal squads that inflate the panel-wide figure); 60s-cached. Falls
+    back to the panel-wide ``onlineNow`` (or the DB active count when the panel is down)."""
+    panel_wide = stats.online_now if stats is not None else db_active
+    squads = {
+        s
+        for s in (
+            await settings.get(SettingKey.TRIAL_SQUAD),
+            await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD),
+        )
+        if s
+    }
+    if not squads:
+        return panel_wide, False
+    cached = await redis.get(_SQUAD_ONLINE_KEY)  # type: ignore[attr-defined]
+    if cached is not None:
+        return int(cached), True
+    count = await panel.squad_online_count(squads)  # type: ignore[attr-defined]
+    if count is None:
+        return panel_wide, False
+    await redis.set(_SQUAD_ONLINE_KEY, count, ex=_SQUAD_ONLINE_TTL)  # type: ignore[attr-defined]
+    return count, True
 
 
 class DayPoint(BaseModel):
@@ -58,6 +92,7 @@ class DashboardOut(BaseModel):
     growth_pct: float | None  # this week's signups vs last week's; None = no prior-week baseline
     # engagement (panel /system/stats)
     online_now: int
+    online_squad_scoped: bool  # True: online_now counts only the trial squad(s); False: panel-wide
     online_last_day: int
     online_last_week: int
     never_online: int
@@ -163,7 +198,12 @@ async def dashboard_stats(
 
     # Engagement + trial health from one panel call (graceful when unreachable).
     stats = await panel.system_stats()
-    online_now = stats.online_now if stats is not None else s.active
+    # "Online now" scoped to the service's trial squad(s) — the panel-wide onlineNow also counts the
+    # operator's OWN personal squads. Cached 60s (bounded pagination is heavy). Falls back to the
+    # panel-wide figure when no squad is configured or the scoped call fails.
+    online_now, online_squad_scoped = await _online_now(
+        panel, settings, request.app.state.redis, stats, s.active
+    )
 
     return DashboardOut(
         total_users=s.total,
@@ -177,6 +217,7 @@ async def dashboard_stats(
         new_this_week=new_this_week,
         growth_pct=growth_pct,
         online_now=online_now,
+        online_squad_scoped=online_squad_scoped,
         online_last_day=stats.online_last_day if stats else 0,
         online_last_week=stats.online_last_week if stats else 0,
         never_online=stats.never_online if stats else 0,
