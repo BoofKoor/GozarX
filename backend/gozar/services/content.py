@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gozar.cache.redis import CACHE_TTL, content_key
+from gozar.cache.redis import CACHE_TTL, content_key, defer_cache_invalidation
 from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 
@@ -106,4 +106,6 @@ class ContentService:
     async def set(self, key: str, lang: Language, body: str, link_preview: bool = True) -> None:
         """Admin edit (Phase 7): upsert the row and invalidate its cache entry."""
         await self._repo.upsert(key, lang, body, link_preview)
-        await self._redis.delete(content_key(lang.value, key))
+        ck = content_key(lang.value, key)
+        await self._redis.delete(ck)  # eager (this request) + deferred (post-commit; see settings)
+        defer_cache_invalidation(self._repo.session, ck)

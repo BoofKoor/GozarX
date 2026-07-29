@@ -18,9 +18,27 @@ HEALTH_HISTORY_KEY = "health:history"
 HEALTH_HISTORY_MAX = 1440  # ~24h at one sample/minute
 
 
+SESSION_INVALIDATE_KEY = "cache_invalidate"  # session.info bucket drained post-commit by get_db
+
+
 def create_redis_pool(url: str) -> Redis:
     """Build a Redis client (connection pool is lazy — no socket until first command)."""
     return Redis.from_url(url, decode_responses=True)
+
+
+def defer_cache_invalidation(session: object, *keys: str) -> None:
+    """Queue cache keys to re-delete AFTER this request's transaction commits (drained by
+    ``web.dependencies.get_db``).
+
+    A service that mutates a cached value deletes the key eagerly (so a read later in the SAME
+    request repopulates from its own uncommitted row) AND defers a second delete here. That closes
+    the window where a CONCURRENT reader caches the pre-commit value for the full TTL, and evicts
+    anything cached before a rollback. Duck-typed on ``session.sync_session.info`` to stay
+    infra-level (no delivery imports)."""
+    if not keys:
+        return
+    info = session.sync_session.info  # type: ignore[attr-defined]
+    info.setdefault(SESSION_INVALIDATE_KEY, set()).update(keys)
 
 
 def content_key(lang: str, key: str) -> str:

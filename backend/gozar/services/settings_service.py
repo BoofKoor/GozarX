@@ -11,7 +11,7 @@ import json
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from gozar.cache.redis import CACHE_TTL, SETTINGS_KEY
+from gozar.cache.redis import CACHE_TTL, SETTINGS_KEY, defer_cache_invalidation
 from gozar.db.repositories.settings import SettingsRepository
 
 
@@ -104,4 +104,8 @@ class SettingsService:
 
     async def set(self, key: str, value: str) -> None:
         await self._repo.set(key, value)
+        # Evict eagerly (a read later in this request repopulates from the current txn) AND after
+        # the commit — the deferred pass closes the window where a concurrent reader caches the
+        # pre-commit value for the full TTL, and evicts anything cached before a rollback.
         await self._redis.delete(SETTINGS_KEY)
+        defer_cache_invalidation(self._repo.session, SETTINGS_KEY)
