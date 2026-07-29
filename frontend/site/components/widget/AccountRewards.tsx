@@ -42,7 +42,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
     }
   }, [pwa, status, reload]);
 
-  if (!status) return null;
+  // Reserve the card's footprint while /status loads instead of returning null — otherwise the whole
+  // ~400px card pops in when the fetch resolves and shoves the page (a status-page CLS the RUM data
+  // flagged). A quiet skeleton holds the space until the real content replaces it in-place.
+  if (!status) return <div className="card rewards-card rw2 rw2-skel" aria-busy />;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);

@@ -27,7 +27,13 @@ export function StatusView({ locale }: { locale: Locale }) {
       <div className="page-head">
         <div>
           <h1>{t("title")}</h1>
-          {status?.handle && <IdentityBar handle={status.handle} locale={locale} />}
+          {/* Reserve the identity bar + caption slot while /status loads so the whole grid doesn't
+              drop ~110px when the handle arrives (a status-page CLS). */}
+          {status?.handle ? (
+            <IdentityBar handle={status.handle} locale={locale} />
+          ) : (
+            <div className="id-slot" aria-hidden />
+          )}
         </div>
       </div>
 

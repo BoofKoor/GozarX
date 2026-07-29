@@ -118,8 +118,11 @@ function detectPlatform(): "ios" | "android" | "desktop" {
 
 export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   const t = translator(locale);
-  const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
-  useEffect(() => setPlatform(detectPlatform()), []);
+  // Detect synchronously in the initializer — this component only ever mounts CLIENT-side (inside the
+  // config state, after the fetch resolves; the SSR pass shows the skeleton), so navigator is already
+  // available on first render. Detecting in an effect instead made the row render 3 apps (column) then
+  // flip to 2 (row) on mobile, shrinking the card ~100px under the user's finger (a CLS jump).
+  const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
   // Each button is purely the deep link — tapping opens the app and imports the config. It does NOT
   // copy anything to the clipboard (the separate "copy" field is there for manual paste).
   return (

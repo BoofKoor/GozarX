@@ -201,9 +201,12 @@ export function ClaimWidget({
   // ---------- loading ----------
   if (loading) {
     return (
-      <div className="widget" aria-busy>
-        <div className="skeleton" style={{ height: 40, width: "55%", marginBottom: 16 }} />
-        <div className="skeleton" style={{ height: 120, marginBottom: 14 }} />
+      // Skeleton mirrors the S1 picker's shape (title · location grid · CTA) so it fills the
+      // reserved widget height — the resolve into the real picker doesn't visibly jump.
+      <div className="widget wskel" aria-busy>
+        <div className="skeleton" style={{ height: 40, width: "55%", marginBottom: 8 }} />
+        <div className="skeleton" style={{ height: 18, width: "72%", marginBottom: 18 }} />
+        <div className="skeleton wskel-grid" style={{ marginBottom: 16 }} />
         <div className="skeleton" style={{ height: 52 }} />
       </div>
     );
