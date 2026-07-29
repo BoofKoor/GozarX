@@ -8,24 +8,13 @@ import { Icon } from "@/components/Icon";
 // Footer — a CTA-led footer: a "grab today's config" gradient call-to-action band, then brand +
 // tagline + three link columns (Product / Resources / Legal), and a bottom bar with a dynamic-year
 // copyright + a segmented language toggle. No social or messenger links anywhere (sitewide rule).
-// Blog is omitted (the product has no blog).
-
-// Copyright year, localized: Jalali for fa (Intl, Persian digits), Gregorian for en. Stable across
-// SSR/hydration (same calendar day), so it can be computed inline.
-function copyrightYear(locale: Locale): string {
-  try {
-    return locale === "fa"
-      ? new Intl.DateTimeFormat("fa-IR", { year: "numeric" }).format(new Date())
-      : String(new Date().getFullYear());
-  } catch {
-    return locale === "fa" ? "۱۴۰۵" : "2026";
-  }
-}
+// Blog is omitted (the product has no blog). `year` is computed server-side and passed in so it
+// hydrates identically (see copyrightYear in lib/i18n).
 function setCookie(name: string, value: string) {
   document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
 }
 
-export function Footer({ locale }: { locale: Locale }) {
+export function Footer({ locale, year }: { locale: Locale; year: string }) {
   const t = translator(locale);
   const router = useRouter();
 
@@ -102,7 +91,7 @@ export function Footer({ locale }: { locale: Locale }) {
           ))}
         </div>
         <div className="ft-bottom">
-          <span>© {copyrightYear(locale)} GozarX — {t("ft_rights")}</span>
+          <span>© {year} GozarX — {t("ft_rights")}</span>
           <div className="ft-langs" role="group" aria-label="language">
             <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
               فارسی

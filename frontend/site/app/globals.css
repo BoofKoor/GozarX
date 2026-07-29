@@ -105,7 +105,9 @@ a{ color:inherit; }
 .btn:active{ transform:scale(.985); }
 .btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .btn .ic{ inline-size:19px; block-size:19px; flex:none; }
-[dir="rtl"] .btn .ic-dir{ transform:scaleX(-1); }
+/* Directional icons (arrow/send — the `ic-dir` class) point the reading direction, so they mirror
+   under RTL. One global rule covers every context; the `.cta:hover` rule below adds the slide. */
+[dir="rtl"] .ic-dir{ transform:scaleX(-1); }
 .btn.secondary{ background:var(--surface); color:var(--text); border-color:var(--border-strong); }
 .btn.secondary:hover{ border-color:var(--primary); color:var(--link); background:var(--brand-tint); }
 .btn.ghost{ background:transparent; color:var(--text); font-weight:600; }
@@ -201,7 +203,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .link-more{ display:inline-flex; align-items:center; gap:6px; font-weight:700; color:var(--link); text-decoration:none; font-size:14.5px; }
 .link-more:hover{ text-decoration:underline; }
 .link-more .ic{ inline-size:16px; block-size:16px; }
-[dir="rtl"] .link-more .ic-dir{ transform:scaleX(-1); }
 /* HERO */
   .hero{ position:relative; overflow:hidden; padding-block:32px 52px; }
 @media (min-width:940px){ .hero{ padding-block:52px 76px; } }
@@ -395,7 +396,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .locbig .nm{ font-size:15px; font-weight:700; }
 .locbig .go{ font-size:12.5px; font-weight:700; color:var(--link); display:inline-flex; align-items:center; gap:5px; }
 .locbig .go .ic{ inline-size:14px; block-size:14px; }
-[dir="rtl"] .locbig .go .ic-dir{ transform:scaleX(-1); }
 .center-more{ text-align:center; margin-block-start:32px; }
 /* MORE VOLUME — missions as a horizontal list: icon · title/desc · a bold "+N MB" reward tile */
   .mvlist{ display:grid; gap:11px; grid-template-columns:1fr; }
@@ -421,7 +421,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .appcard .app-rec{ font-size:11px; font-weight:700; line-height:1.5; color:var(--success-ink); background:var(--success-surface); border:1px solid color-mix(in srgb,var(--success) 30%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; }
 .appcard .ag{ color:var(--faint); }
 .appcard .ag .ic{ inline-size:18px; block-size:18px; }
-[dir="rtl"] .appcard .ag .ic-dir{ transform:scaleX(-1); }
 /* STATS band — a light, unified strip of three LIVE figures. Brand-tint icon tiles, a soft brand
    wash + top accent, inset gradient dividers, and a green "online" pulse on the live location count. */
 .statband{ position:relative; display:flex; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); overflow:hidden; }
@@ -476,7 +475,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .ft-cta-btn:hover{ filter:brightness(1.05); }
 .ft-cta-btn:active{ transform:scale(.985); }
 .ft-cta-btn .ic{ inline-size:17px; block-size:17px; flex:none; }
-[dir="rtl"] .ft-cta-btn .ic-dir{ transform:scaleX(-1); }
 .ft-grid{ display:grid; gap:32px; grid-template-columns:1fr 1fr; padding-block:0 30px; }
 @media (min-width:820px){ .ft-grid{ grid-template-columns:1.7fr 1fr 1fr 1fr; } }
 .ft-brand .brandmark{ margin-block-end:12px; }
@@ -681,7 +679,6 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .block-title h2:has(.htile){ gap:12px; }
 .block-title a{ font-size:13px; font-weight:700; color:var(--link); text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
 .block-title a .ic{ inline-size:14px; block-size:14px; }
-[dir="rtl"] .block-title a .ic-dir{ transform:scaleX(-1); }
 .cfg-card{ padding:20px; }
 .cfg-loc .st{ font-size:12px; color:var(--muted); }
 .cfg-loc .live{ margin-inline-start:auto; display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:700; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:4px 10px; }
@@ -925,7 +922,6 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .deflect h4{ font-size:14px; font-weight:700; margin:0 0 10px; }
 .deflect a{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--link); text-decoration:none; margin-inline-end:14px; }
 .deflect a .ic{ inline-size:14px; block-size:14px; }
-[dir="rtl"] .deflect a .ic-dir{ transform:scaleX(-1); }
 .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .field{ margin-block-end:16px; }
 .field label{ display:block; font-size:13.5px; font-weight:600; margin-block-end:7px; }
@@ -1102,7 +1098,6 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .rw2-amt.violet{ background:var(--violet-tint); color:var(--violet-ink); }
 .rw2-end{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; }
 .rw2-end.ok{ color:var(--success-ink); opacity:1; }
-[dir="rtl"] .rw2-row .ic-dir{ transform:scaleX(-1); }
 
 .rw2-foot{ display:flex; align-items:center; gap:8px; margin-block-start:10px; padding:10px 12px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); font-size:12px; color:var(--muted); }
 .rw2-foot .ic{ inline-size:14px; block-size:14px; flex:none; }

@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
-import { dir, type Locale } from "@/lib/i18n";
+import { copyrightYear, dir, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/server";
 import { GOOGLE_SITE_VERIFICATION, SITE_URL } from "@/lib/site";
 import { organizationLd, webSiteLd } from "@/lib/jsonld";
@@ -109,7 +109,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <SiteProvider locale={locale}>
             <Header locale={locale} theme={theme} />
             <main>{children}</main>
-            <Footer locale={locale} />
+            <Footer locale={locale} year={copyrightYear(locale)} />
             <RevealObserver />
           </SiteProvider>
         </div>

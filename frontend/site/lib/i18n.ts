@@ -22,6 +22,20 @@ export function faDigits(s: string | number, locale: Locale): string {
   return locale === "fa" ? str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : str;
 }
 
+// Copyright year, localized: Jalali for fa (Intl, Persian digits), Gregorian for en. Compute this on
+// the SERVER and pass the result down — reading `new Date()` during render on both server (UTC) and
+// client (the viewer's zone, e.g. UTC+3:30) would disagree near a year boundary and trip a React
+// hydration mismatch that re-renders the whole tree.
+export function copyrightYear(locale: Locale): string {
+  try {
+    return locale === "fa"
+      ? new Intl.DateTimeFormat("fa-IR", { year: "numeric" }).format(new Date())
+      : String(new Date().getFullYear());
+  } catch {
+    return locale === "fa" ? "۱۴۰۵" : "2026";
+  }
+}
+
 // Relative time ("2h ago" / "۲ ساعت پیش") for the claim history. Locale-native via Intl (fa already
 // renders Persian digits), client-only, from an ISO timestamp. Returns "" for an unparseable input.
 export function timeAgo(iso: string, locale: Locale): string {
