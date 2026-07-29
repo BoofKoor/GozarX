@@ -16,6 +16,7 @@ import gzip
 import json
 import logging
 import os
+import time
 from datetime import UTC, datetime
 
 from aiogram import Bot
@@ -57,8 +58,13 @@ _BLOCKED = "bot was blocked by the user"
 _DEACTIVATED = "user is deactivated"
 _CHAT_NOT_FOUND = "chat not found"
 
-# Fan-out throttle: ~25 sends/s, comfortably under Telegram's ~30/s broadcast ceiling.
-_SEND_DELAY = 0.04
+# Fan-out throughput: send in bounded-concurrency chunks, rate-capped under Telegram's ~30/s
+# broadcast ceiling. A fully SEQUENTIAL loop (one awaited send at a time) overlapped nothing, so the
+# real throughput was ~5/s — a 100k audience then blew past arq's 300s job timeout at ~1,500 sends
+# and the rest never got the message. Sending _CONCURRENCY at once overlaps the per-send network
+# latency; the chunk is then paced so the running average stays at _SEND_RATE.
+_CONCURRENCY = 20
+_SEND_RATE = 25  # messages/second ceiling
 
 
 def _should_remove(exc: Exception) -> bool:
@@ -94,6 +100,25 @@ async def _edit(bot: Bot, message: Message | None, text: str) -> None:
         pass
 
 
+async def _attempt(send_one: object, uid: int) -> tuple[str, float]:
+    """One send attempt mapped to an outcome (never raises): ``('sent',0)`` · ``('flood',retry)`` ·
+    ``('remove',0)`` · ``('failed',0)``. The strict removal allowlist (blocked/deactivated/chat-not-
+    found only — the v1 mass-deletion lesson) lives here, so a transient failure keeps the user.
+    """
+    try:
+        await send_one(uid)  # type: ignore[operator]
+        return ("sent", 0)
+    except TelegramRetryAfter as exc:
+        return ("flood", exc.retry_after)  # flood control — the caller backs off, then retries once
+    except (TelegramForbiddenError, TelegramNotFound) as exc:
+        return ("remove", 0) if _should_remove(exc) else ("failed", 0)
+    except TelegramAPIError:
+        return ("failed", 0)  # transient API error (incl. other BadRequests) → keep the user
+    except Exception:
+        logger.warning("broadcast: unexpected send error (kept user)")
+        return ("failed", 0)
+
+
 async def _broadcast_loop(
     bot: Bot,
     sessionmaker: object,
@@ -102,9 +127,10 @@ async def _broadcast_loop(
     languages: list[Language] | None = None,
 ) -> None:
     """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
-    applying the strict removal allowlist + throttle + progress. ``languages`` (empty/None ⇒ all)
-    narrows the audience for a language-targeted panel broadcast. Removals are batched and committed
-    once, after the loop, so a long send never holds a write transaction open.
+    applying the strict removal allowlist + a bounded-concurrency, rate-capped throttle + progress.
+    ``languages`` (empty/None ⇒ all) narrows the audience for a language-targeted panel broadcast.
+    Removals are batched and committed once, after the loop, so a long send never holds a write
+    transaction open. See ``_CONCURRENCY``/``_SEND_RATE`` for why this isn't a sequential loop.
     """
     async with sessionmaker() as session:  # type: ignore[operator]
         repo = UserRepository(session)
@@ -114,34 +140,56 @@ async def _broadcast_loop(
     sent = failed = removed = 0
     to_remove: list[int] = []
     progress = await _send(bot, admin_id, f"📣 Sending to {total} users…")
+    last_edit = 0
 
-    for i, uid in enumerate(ids, start=1):
-        try:
-            await send_one(uid)  # type: ignore[operator]
-            sent += 1
-        except TelegramRetryAfter as exc:
-            await asyncio.sleep(exc.retry_after)
-            try:
-                await send_one(uid)  # type: ignore[operator]
+    for start in range(0, total, _CONCURRENCY):
+        chunk = ids[start : start + _CONCURRENCY]
+        t0 = time.monotonic()
+        results = await asyncio.gather(*[_attempt(send_one, uid) for uid in chunk])
+
+        flooded: list[int] = []
+        flood_waits: list[float] = []
+        for uid, (tag, wait) in zip(chunk, results, strict=True):
+            if tag == "sent":
                 sent += 1
-            except Exception:
-                failed += 1
-        except (TelegramForbiddenError, TelegramNotFound) as exc:
-            if _should_remove(exc):
+            elif tag == "remove":
                 to_remove.append(uid)
                 removed += 1
+            elif tag == "flood":
+                flooded.append(uid)
+                flood_waits.append(wait)
             else:
                 failed += 1
-        except TelegramAPIError:
-            failed += 1  # transient API error (incl. other BadRequests) → keep the user
-        except Exception:
-            logger.warning("broadcast: unexpected send error (kept user)")
-            failed += 1
-        if i % 100 == 0:
+
+        # A flood-control hit signals to slow the WHOLE broadcast: back off once for the longest
+        # requested wait, then retry the flooded users once (a second flood → keep the user).
+        if flooded:
+            await asyncio.sleep(max(flood_waits))
+            for uid in flooded:
+                tag, _ = await _attempt(send_one, uid)
+                if tag == "sent":
+                    sent += 1
+                elif tag == "remove":
+                    to_remove.append(uid)
+                    removed += 1
+                else:
+                    failed += 1
+
+        done = sent + failed + removed
+        if done - last_edit >= 100:
+            last_edit = done
             await _edit(
-                bot, progress, f"📣 {i}/{total} · sent {sent} · failed {failed} · removed {removed}"
+                bot,
+                progress,
+                f"📣 {done}/{total} · sent {sent} · failed {failed} · removed {removed}",
             )
-        await asyncio.sleep(_SEND_DELAY)
+
+        # Rate cap: hold each chunk to at least len(chunk)/_SEND_RATE seconds so the running average
+        # stays under Telegram's ceiling even though the chunk itself was sent concurrently.
+        elapsed = time.monotonic() - t0
+        pace = len(chunk) / _SEND_RATE
+        if elapsed < pace:
+            await asyncio.sleep(pace - elapsed)
 
     if to_remove:
         async with sessionmaker() as session:  # type: ignore[operator]

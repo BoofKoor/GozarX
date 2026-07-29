@@ -8,7 +8,12 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramNotFound
+from aiogram.exceptions import (
+    TelegramBadRequest,
+    TelegramForbiddenError,
+    TelegramNotFound,
+    TelegramRetryAfter,
+)
 
 from gozar.db.models.enums import Language
 from gozar.worker.tasks import _should_remove, broadcast_text, fanout
@@ -167,6 +172,109 @@ async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
 
     assert removed == [2]  # only the blocked user is dropped
     assert (1, "<b>hello</b>") in bot.sent and (3, "<b>hello</b>") in bot.sent
+
+
+def _retry(retry_after: int) -> TelegramRetryAfter:
+    exc = TelegramRetryAfter.__new__(TelegramRetryAfter)
+    exc.message = "Too Many Requests: retry after"
+    exc.retry_after = retry_after
+    return exc
+
+
+class _FloodBot:
+    """User 5 floods ONCE then succeeds (a flood is transient — retry, don't drop). User 6 floods
+    forever (after the back-off + one retry it's kept, never removed — a flood is not a block)."""
+
+    def __init__(self) -> None:
+        self.sent: list[int] = []
+        self.calls: dict[int, int] = {}
+
+    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+        self.calls[chat_id] = self.calls.get(chat_id, 0) + 1
+        if chat_id == 5 and self.calls[chat_id] == 1:
+            raise _retry(1)
+        if chat_id == 6:
+            raise _retry(1)
+        self.sent.append(chat_id)
+        return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+
+    async def edit_message_text(self, text: str, chat_id: int = 0, message_id: int = 0) -> None:
+        return None
+
+
+async def test_broadcast_flood_is_retried_not_dropped(monkeypatch) -> None:
+    class FakeRepo:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def list_all_ids(self) -> list[int]:
+            return [1, 5, 6, 7]
+
+        async def delete(self, telegram_id: int) -> None:
+            raise AssertionError("a flood-controlled user must NEVER be removed")
+
+    class FakeSession:
+        async def __aenter__(self) -> FakeSession:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def commit(self) -> None:
+            return None
+
+    async def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.UserRepository", FakeRepo)
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _noop)
+
+    bot = _FloodBot()
+    ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
+    await broadcast_text(ctx, "hi", admin_id=999)
+
+    # 1 and 7 send immediately; 5 sends on its post-backoff retry; 6 floods forever but is KEPT.
+    # (999 is the admin progress chat — exclude it from the audience assertion.)
+    assert {c for c in bot.sent if c != 999} == {1, 5, 7}
+    assert bot.calls[5] == 2 and bot.calls[6] == 2  # each flooded user retried exactly once
+
+
+async def test_broadcast_delivers_whole_audience_across_chunks(monkeypatch) -> None:
+    # More users than _CONCURRENCY (20) — every one delivered exactly once across the chunks.
+    ids = list(range(1, 51))
+
+    class FakeRepo:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def list_all_ids(self) -> list[int]:
+            return list(ids)
+
+        async def delete(self, telegram_id: int) -> None:
+            return None
+
+    class FakeSession:
+        async def __aenter__(self) -> FakeSession:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def commit(self) -> None:
+            return None
+
+    async def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.UserRepository", FakeRepo)
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _noop)
+
+    bot = _LangBot()
+    ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
+    await broadcast_text(ctx, "sla", admin_id=999)
+
+    delivered = sorted(chat for chat, text in bot.sent if text == "sla")
+    assert delivered == ids  # all 50, no drops, no duplicates
 
 
 class _LangBot:
