@@ -85,7 +85,13 @@ export function Dashboard() {
           icon={Radio}
           tone="success"
           pulse={data.panel_online}
-          hint={data.panel_online ? "هم‌اکنون متصل" : "تخمین از دیتابیس"}
+          hint={
+            !data.panel_online
+              ? "تخمین از دیتابیس"
+              : data.online_squad_scoped
+                ? "آنلاینِ اسکواد سرویس"
+                : "هم‌اکنون متصل (کل پنل)"
+          }
         />
         <StatCard
           label="کاربران جدید امروز"

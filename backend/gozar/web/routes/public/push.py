@@ -102,5 +102,7 @@ async def unsubscribe(
 ) -> PushResponse:
     if await _rate_limited(request, device.uuid):
         raise HTTPException(status_code=429, detail="rate_limited")
-    await PushSubscriptionRepository(session).deactivate(body.endpoint)
+    # Scope to THIS device — a caller must not deactivate a subscription they don't own by posting
+    # someone else's endpoint URL (a leaked/shared endpoint). The prune paths stay device-agnostic.
+    await PushSubscriptionRepository(session).deactivate(body.endpoint, device_uuid=device.uuid)
     return PushResponse(ok=True)

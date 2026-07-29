@@ -229,6 +229,17 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* ===== claim widget (from Phase 1) ===== */
   .widget{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); box-shadow:var(--shadow-hero); padding:20px; isolation:isolate; }
 @media (min-width:400px){ .widget{ padding:24px; } }
+/* Reserve the S1 location-picker height on the ABOVE-THE-FOLD hero (home) + landing widget so the
+   async status/config/locations fetch resolving doesn't shove the page down ~320px (the headline
+   CLS the RUM data flagged on `#how`). The picker is the common fresh-visitor state; shorter states
+   (cooldown / delivered config) top-align inside the reserved box. Scoped so status/gallery widgets
+   keep their natural height. Mobile needs a touch more — the 22-flag grid wraps into more rows. */
+#hero-widget .widget, .landing-widget .widget,
+.status-page .grid-main > div > .widget{ min-block-size:610px; }
+@media (min-width:640px){
+  #hero-widget .widget, .landing-widget .widget,
+  .status-page .grid-main > div > .widget{ min-block-size:562px; }
+}
 .widget::before{ content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:radial-gradient(120% 78% at 100% 0%,var(--card-sheen),transparent 58%); }
 [dir="rtl"] .widget::before{ background:radial-gradient(120% 78% at 0% 0%,var(--card-sheen),transparent 58%); }
 .w-head{ display:flex; align-items:center; gap:12px; margin-block-end:20px; }
@@ -303,7 +314,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* LTR layout for the technical config field so the copyable code sits at the reading start (left)
    and the copy button lands on the RIGHT in both locales — easier thumb reach, esp. in RTL. */
 /* one standard 44px control height for BOTH the link box and the copy button */
-.copyfield{ display:flex; align-items:center; gap:8px; direction:ltr; --ctl-h:44px; }
+.copyfield{ display:flex; align-items:center; gap:8px; direction:ltr; --ctl-h:44px; flex-wrap:wrap; }
+/* shown only when BOTH clipboard paths fail (rare) — the link is auto-selected for manual copy */
+.copy-manual{ flex-basis:100%; font-size:12px; color:var(--danger-ink); direction:inherit; }
 .copyfield .code-shell{ position:relative; flex:1; min-inline-size:0; block-size:var(--ctl-h); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); overflow:hidden; }
 .copyfield code{ display:block; block-size:100%; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; line-height:calc(var(--ctl-h) - 2px); padding-inline:13px 34px; white-space:nowrap; overflow-x:auto; color:var(--text); }
 .copyfield code::-webkit-scrollbar{ height:0; }
@@ -892,6 +905,9 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .loc-flag { width: 34px; height: 34px; border-radius: 50%; box-shadow: inset 0 0 0 1px var(--flag-ring); object-fit: cover; }
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; }
 .skeleton { background: linear-gradient(90deg, var(--skel-1), var(--skel-2), var(--skel-1)); background-size: 200% 100%; animation: shimmer 1.3s linear infinite; border-radius: 8px; }
+/* the loading skeleton fills the reserved widget height (its grid block flexes to take the slack) */
+.wskel{ display:flex; flex-direction:column; }
+.wskel-grid{ flex:1 1 auto; min-block-size:300px; }
 @keyframes shimmer { to { background-position: -200% 0; } }
 .toast-wrap { position: fixed; inset-block-end: 20px; inset-inline: 0; display: flex; justify-content: center; z-index: 80; pointer-events: none; }
 .toast-wrap .toast { pointer-events: auto; display: inline-flex; align-items: center; gap: 8px; border: 0; border-inline-start: 0; animation: none; background: var(--band); color: var(--band-ink); padding: 12px 18px; border-radius: var(--r-pill); box-shadow: var(--shadow-md); font-weight: 600; font-size: 14px; }
@@ -991,6 +1007,8 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .id-bar .id-tr{ display:inline-flex; align-items:center; gap:5px; color:var(--link); font-weight:700; font-size:13px; text-decoration:none; flex:none; white-space:nowrap; }
 .id-bar .id-tr .ic{ inline-size:15px; block-size:15px; }
 .id-cap{ margin-block-start:11px; font-size:12px; color:var(--muted); }
+/* reserves the identity-bar + caption height until the handle loads (no grid drop) */
+.id-slot{ block-size:105px; }
 
 /* reward pill (standalone; the scoped .m-chip .rw / .mcard .rw keep their own rules) */
 .rw{ display:inline-flex; align-items:center; gap:4px; font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -998,6 +1016,12 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 
 /* the rewards card had no inner padding — content ran edge-to-edge; inset it like the sibling cards */
 .rewards-card{ padding:8px 20px 18px; }
+/* holds the rewards card's footprint while /status loads (see AccountRewards) — no pop-in shove.
+   Sized to the resolved card (measured ~561 mobile / ~517 desktop with the full mission set). */
+.rw2-skel{ min-block-size:560px; background:
+  linear-gradient(90deg,var(--skel-1),var(--skel-2),var(--skel-1)) 0 0/200% 100%;
+  animation:shimmer 1.3s linear infinite; opacity:.5; }
+@media (min-width:640px){ .rw2-skel{ min-block-size:518px; } }
 .rewards-card .block-title{ margin-block-end:12px; }
 /* ===== rewards card v2 — "daily rewards": streak hero + tinted mission rows + footer note ===== */
 .rw2{ --violet:#7C6CF0; --violet-tint:color-mix(in srgb,var(--violet) 14%,var(--surface)); --violet-ink:color-mix(in srgb,var(--violet) 72%,var(--text)); }
@@ -1297,6 +1321,19 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 /* Turnstile slot — interaction-only keeps it invisible until Cloudflare needs the user; when the
    challenge does materialise, give it breathing room above the CTA. */
 .ts-slot:not(:empty){ margin-block-end:12px; }
+
+/* Turnstile couldn't load (blocked/filtered network) — an honest inline notice + retry, so the CTA
+   is never left silently disabled with no explanation. */
+.ts-fail{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  margin-block-end:12px; padding:10px 12px; border-radius:var(--r-ctl);
+  background:var(--danger-surface); border:1px solid color-mix(in srgb,var(--danger) 32%,transparent);
+  font-size:12.5px; color:var(--danger-ink); }
+.ts-fail > span{ display:inline-flex; align-items:center; gap:7px; min-inline-size:0; }
+.ts-fail .ic{ inline-size:15px; block-size:15px; flex:none; }
+.ts-retry{ flex:none; font:inherit; font-weight:700; font-size:12.5px; padding:5px 12px;
+  border-radius:9px; cursor:pointer; color:var(--danger-ink); background:transparent;
+  border:1px solid color-mix(in srgb,var(--danger) 45%,transparent); }
+.ts-retry:hover{ background:color-mix(in srgb,var(--danger) 12%,transparent); }
 
 /* change-location: an inviting list row — rotating swap chip + label + real alternatives count */
 .chg-btn{ display:flex; align-items:center; gap:12px; inline-size:100%; margin-block-start:16px; padding:9px 12px; background:transparent; border:1px solid var(--border); border-radius:var(--r-ctl); cursor:pointer; font:inherit; color:var(--text); text-align:start; transition:border-color .15s, background .15s; }

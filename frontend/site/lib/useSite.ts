@@ -12,6 +12,7 @@ import {
 } from "react";
 import { api, type PublicConfig, type StatusResponse } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
+import { hasPushSubscription } from "@/lib/push";
 
 export interface SiteState {
   locale: Locale;
@@ -22,6 +23,12 @@ export interface SiteState {
   offline: boolean;
   reload: () => Promise<void>;
   refreshLocations: () => Promise<void>;
+  // Push state lives here (not per-card) so the status page's Settings switch and the Rewards
+  // card's push mission stay in sync — enabling from one must flip the other. `pushOn` = permission
+  // granted AND a live subscription (granting alone delivers nothing).
+  pushPerm: NotificationPermission;
+  pushOn: boolean;
+  refreshPush: () => Promise<void>;
 }
 
 const SiteContext = createContext<SiteState | null>(null);
@@ -38,7 +45,16 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
   const [locations, setLocations] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
+  const [pushPerm, setPushPerm] = useState<NotificationPermission>("default");
+  const [pushSub, setPushSub] = useState(false);
   const started = useRef(false);
+
+  // Re-read the browser's permission + live subscription; call after any subscribe/unsubscribe so
+  // both push consumers (Settings switch, Rewards mission) reflect the same truth.
+  const refreshPush = useCallback(async () => {
+    setPushPerm(typeof Notification !== "undefined" ? Notification.permission : "default");
+    setPushSub(await hasPushSubscription());
+  }, []);
 
   const loadLocations = useCallback(async () => {
     try {
@@ -90,7 +106,8 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
     if (started.current) return; // guard against StrictMode double-invoke (would mint twice)
     started.current = true;
     void bootstrap();
-  }, [bootstrap]);
+    void refreshPush(); // seed the shared push state once on mount
+  }, [bootstrap, refreshPush]);
 
   const value: SiteState = {
     locale,
@@ -101,6 +118,9 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
     offline,
     reload,
     refreshLocations: loadLocations,
+    pushPerm,
+    pushOn: pushPerm === "granted" && pushSub,
+    refreshPush,
   };
   return createElement(SiteContext.Provider, { value }, children);
 }

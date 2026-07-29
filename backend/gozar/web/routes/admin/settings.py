@@ -81,14 +81,19 @@ async def update_settings(
     settings = _settings(request, session)
     if body.locations is not None:
         await settings.set(SettingKey.LOCATIONS, json.dumps(body.locations))
+    # Floor the numerics (mirrors site_settings): a negative daily_limit_mb makes compute_traffic_
+    # bytes return a negative byte count, which the panel rejects — so every claim fails with a
+    # PanelError until the value is fixed. trial_hours floors to 1; the rest to 0.
     if body.daily_limit_mb is not None:
-        await settings.set(SettingKey.DAILY_LIMIT_MB, str(body.daily_limit_mb))
+        await settings.set(SettingKey.DAILY_LIMIT_MB, str(max(0, body.daily_limit_mb)))
     if body.referral_reward_mb is not None:
-        await settings.set(SettingKey.REFERRAL_REWARD_MB, str(body.referral_reward_mb))
+        await settings.set(SettingKey.REFERRAL_REWARD_MB, str(max(0, body.referral_reward_mb)))
     if body.referral_reward_limit is not None:
-        await settings.set(SettingKey.REFERRAL_REWARD_LIMIT, str(body.referral_reward_limit))
+        await settings.set(
+            SettingKey.REFERRAL_REWARD_LIMIT, str(max(0, body.referral_reward_limit))
+        )
     if body.trial_hours is not None:
-        await settings.set(SettingKey.TRIAL_HOURS, str(body.trial_hours))
+        await settings.set(SettingKey.TRIAL_HOURS, str(max(1, body.trial_hours)))
     if body.ads_enabled is not None:
         await settings.set(SettingKey.ADS_ENABLED, "true" if body.ads_enabled else "false")
     if body.configs_per_page is not None:

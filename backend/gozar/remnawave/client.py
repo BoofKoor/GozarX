@@ -9,7 +9,7 @@ attempt: on failure we log (never the token/payload) and raise ``RemnawaveError`
 from __future__ import annotations
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -20,6 +20,17 @@ from gozar.remnawave.links import parse_remark
 from gozar.remnawave.schemas import Host, InternalSquad, PanelUser, Subscription, SystemStats
 
 logger = logging.getLogger("gozar.remnawave")
+
+
+def _parse_iso(value: str | None) -> datetime | None:
+    """Panel ISO timestamp -> aware UTC datetime; None on absent/garbage (never raises)."""
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
 def _unique(items: list[str]) -> list[str]:
@@ -79,7 +90,17 @@ class RemnawaveClient:
 
         if resp.status_code == 204 or not resp.content:
             return {}
-        data = resp.json()
+        try:
+            data = resp.json()
+        except ValueError as exc:
+            # A 2xx that isn't JSON (an HTML error/challenge page from a proxy/Cloudflare fronting
+            # the panel) must still raise RemnawaveError — the docstring promises it and callers
+            # rely on `except RemnawaveError`; otherwise a JSONDecodeError sails past them (a 500 on
+            # /claim, an aborted reconcile sweep). Never log the body (may carry sensitive markup).
+            logger.warning("panel %s %s -> non-JSON body (HTTP %s)", method, path, resp.status_code)
+            raise RemnawaveError(
+                f"panel {method} {path} returned non-JSON", status_code=resp.status_code
+            ) from exc
         # Responses are wrapped as {"response": ...}; fall back to the raw body if absent.
         return data.get("response", data) if isinstance(data, dict) else data
 
@@ -153,6 +174,54 @@ class RemnawaveClient:
         except ValidationError:
             logger.warning("panel /system/stats returned an unexpected shape")
             return None
+
+    # VERIFY: GET /api/users?size&start -> response.{users[],total}. Each user (UserItemInfo) has
+    #   userTraffic.onlineAt (last-seen) + activeInternalSquads[].uuid, so we can count "online now"
+    #   scoped to specific squads — /system/stats only gives PANEL-WIDE. Paged in a single bounded
+    #   sweep (hard page cap; NOT a retry loop), 60s-cached by the caller. Returns None on any panel
+    #   error so the caller falls back to the panel-wide count. "Online" = onlineAt within
+    #   ONLINE_WINDOW_SECONDS (the panel's ~60s cadence; exact cutoff isn't readable externally).
+    ONLINE_WINDOW_SECONDS = 60
+    _USERS_PAGE_SIZE = 500
+    _USERS_MAX_PAGES = 40  # hard ceiling (20k users) so a huge panel can't become a firehose
+
+    async def squad_online_count(self, squad_uuids: set[str]) -> int | None:
+        """Count users online in the last minute who belong to ANY of ``squad_uuids`` (the service's
+        trial squad(s)) — excludes the operator's own personal squads that pollute the panel-wide
+        ``onlineNow``. Empty input -> 0 (nothing to scope to)."""
+        if not squad_uuids:
+            return 0
+        cutoff = datetime.now(UTC) - timedelta(seconds=self.ONLINE_WINDOW_SECONDS)
+        online = 0
+        start = 0
+        for _ in range(self._USERS_MAX_PAGES):
+            try:
+                data = await self._request(
+                    "GET", f"/users?size={self._USERS_PAGE_SIZE}&start={start}"
+                )
+            except RemnawaveError:
+                return None
+            users = data.get("users", []) if isinstance(data, dict) else []
+            if not users:
+                break
+            for raw in users:
+                try:
+                    user = PanelUser.model_validate(raw)
+                except ValidationError:
+                    continue
+                seen = _parse_iso(user.traffic.online_at)
+                if seen is None or seen < cutoff:
+                    continue
+                if any(ref.uuid in squad_uuids for ref in user.active_internal_squads):
+                    online += 1
+            if len(users) < self._USERS_PAGE_SIZE:
+                break
+            start += self._USERS_PAGE_SIZE
+        else:
+            logger.warning(
+                "squad_online_count: hit the %d-page cap; count is a floor", self._USERS_MAX_PAGES
+            )
+        return online
 
     # VERIFY: GET /api/internal-squads -> response.internalSquads[]
     async def list_internal_squads(self) -> list[InternalSquad]:

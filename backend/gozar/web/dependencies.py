@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import Depends, Header, HTTPException, Request, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from gozar.cache.redis import SESSION_INVALIDATE_KEY
 from gozar.config.settings import get_settings
 from gozar.web.auth import AdminNotConfigured, TokenInvalid
 from gozar.web.auth.jwt import TYPE_ACCESS, decode
@@ -27,6 +28,13 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
         except Exception:
             await session.rollback()
             raise
+        finally:
+            # Drain any deferred cache invalidations (see cache.defer_cache_invalidation): re-delete
+            # AFTER the commit/rollback so a concurrent read that repopulated the key with pre-
+            # commit data — or a value cached before rolling back — can't linger for the TTL.
+            keys = session.sync_session.info.pop(SESSION_INVALIDATE_KEY, None)
+            if keys:
+                await request.app.state.redis.delete(*keys)
 
 
 DbSession = Annotated[AsyncSession, Depends(get_db)]

@@ -11,6 +11,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from gozar.cache.redis import single_flight
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
@@ -30,9 +31,15 @@ from gozar.web.routes.public.security import rate_limit_ok, verify_turnstile
 
 router = APIRouter(tags=["public"])
 
-# Generous per-device window — blocks scripted abuse without ever tripping a real user.
+# Generous per-device window — blocks scripted abuse without ever tripping a real user. A per-IP
+# backstop is ESSENTIAL here: a cookieless client is minted a FRESH device (uuid) each request, so
+# the per-device limit alone never bites it — and /claim provisions a live panel account, so an
+# uncapped cookieless loop would mint unbounded accounts. The IP window is generous (shared NATs)
+# but far below what a provisioning loop needs.
 _CLAIM_LIMIT = 10
 _CLAIM_WINDOW = 60
+_CLAIM_IP_LIMIT = 40
+_CLAIM_IP_WINDOW = 60
 
 
 class LocationsResponse(BaseModel):
@@ -97,31 +104,45 @@ async def post_claim(
     body: ClaimRequest, request: Request, session: DbSession, device: CurrentDevice
 ) -> ClaimResponse:
     redis = request.app.state.redis
-    if not await rate_limit_ok(
+    per_device = await rate_limit_ok(
         redis, "claim", device.uuid, limit=_CLAIM_LIMIT, window_seconds=_CLAIM_WINDOW
-    ):
+    )
+    per_ip = await rate_limit_ok(
+        redis,
+        "claim_ip",
+        client_ip(request),
+        limit=_CLAIM_IP_LIMIT,
+        window_seconds=_CLAIM_IP_WINDOW,
+    )
+    if not per_device or not per_ip:
         raise HTTPException(status_code=429, detail="rate_limited")
 
     http = getattr(request.app.state, "http", None)
     if not await verify_turnstile(http, body.turnstile_token or "", client_ip(request)):
         raise HTTPException(status_code=403, detail="turnstile_failed")
 
-    result = await _service(request, session).claim(device, body.location)
-    if isinstance(result, Delivered):
-        if not result.changed:
-            await _maybe_credit_referrer(request, session, device)
-        return ClaimResponse(
-            ok=True,
-            location=result.location,
-            link=result.link,
-            expires=result.expires,
-            size=result.size,
-            changed=result.changed,
-        )
-    if isinstance(result, AlreadyClaimedToday):
-        return ClaimResponse(ok=False, reason="cooldown", retry_after=result.retry_after)
-    if isinstance(result, NotReady):
-        return ClaimResponse(ok=False, reason="not_ready")
-    if isinstance(result, NoLocations):
-        return ClaimResponse(ok=False, reason="no_locations")
-    return ClaimResponse(ok=False, reason="panel_error")
+    # Serialize concurrent claims for THIS device (double-tap / two tabs). Without it both requests
+    # read the same stale cooldown under READ COMMITTED, both provision a panel account, and the
+    # referral credit runs twice. A loser gets 429 (the SPA retries) rather than a 2nd account.
+    async with single_flight(redis, "claim_lock", device.uuid, ttl_seconds=30) as first:
+        if not first:
+            raise HTTPException(status_code=429, detail="rate_limited")
+        result = await _service(request, session).claim(device, body.location)
+        if isinstance(result, Delivered):
+            if not result.changed:
+                await _maybe_credit_referrer(request, session, device)
+            return ClaimResponse(
+                ok=True,
+                location=result.location,
+                link=result.link,
+                expires=result.expires,
+                size=result.size,
+                changed=result.changed,
+            )
+        if isinstance(result, AlreadyClaimedToday):
+            return ClaimResponse(ok=False, reason="cooldown", retry_after=result.retry_after)
+        if isinstance(result, NotReady):
+            return ClaimResponse(ok=False, reason="not_ready")
+        if isinstance(result, NoLocations):
+            return ClaimResponse(ok=False, reason="no_locations")
+        return ClaimResponse(ok=False, reason="panel_error")

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { type Locale, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 
@@ -22,6 +23,7 @@ function mmss(s: number): string {
 export function TransferCard({ locale }: { locale: Locale }) {
   const t = translator(locale);
   const [code, setCode] = useState<string | null>(null);
+  const [deadline, setDeadline] = useState(0); // ms epoch when the code expires; 0 = no active code
   const [left, setLeft] = useState(0);
   const [copied, setCopied] = useState(false);
   const [entry, setEntry] = useState("");
@@ -29,14 +31,24 @@ export function TransferCard({ locale }: { locale: Locale }) {
   const [restored, setRestored] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Derive the mm:ss remaining from an absolute deadline — NOT a per-tick decrement. The whole point
+  // of a transfer code is to walk to another device (this tab backgrounded); a per-fire counter would
+  // be throttled to ~1/min and show minutes more than reality, so the user pastes a code the server
+  // already expired. Recomputing from wall-clock keeps the display honest and clears an expired code.
   useEffect(() => {
-    if (left <= 0) {
-      if (code) setCode(null);
-      return;
-    }
-    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
+    if (!deadline) return;
+    const tick = () => {
+      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setLeft(next);
+      if (next <= 0) {
+        setCode(null);
+        setDeadline(0);
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [left, code]);
+  }, [deadline]);
 
   async function generate() {
     setBusy(true);
@@ -44,7 +56,7 @@ export function TransferCard({ locale }: { locale: Locale }) {
       const res = await api.createTransfer();
       if (res.ok && res.code) {
         setCode(res.code);
-        setLeft(res.expires_in ?? 600);
+        setDeadline(Date.now() + (res.expires_in ?? 600) * 1000);
       }
     } finally {
       setBusy(false);
@@ -53,12 +65,9 @@ export function TransferCard({ locale }: { locale: Locale }) {
 
   async function copyCode() {
     if (!code) return;
-    try {
-      await navigator.clipboard.writeText(fmt(code));
+    if (await copyText(fmt(code))) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1400);
-    } catch {
-      /* clipboard blocked */
     }
   }
 

@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { type Locale, timeAgo, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
 import { Flag } from "@/components/widget/pieces";
 import { locName } from "@/components/widget/flags";
-import { hasPushSubscription, subscribeToPush } from "@/lib/push";
+import { subscribeToPush, unsubscribeFromPush } from "@/lib/push";
 
 // My status — faithful reproduction of docs/website/design/phase-6-status.html (dashboard view):
 // page head + identity note, live stat row (usage ring / time left / daily volume / invites),
@@ -26,7 +27,13 @@ export function StatusView({ locale }: { locale: Locale }) {
       <div className="page-head">
         <div>
           <h1>{t("title")}</h1>
-          {status?.handle && <IdentityBar handle={status.handle} locale={locale} />}
+          {/* Reserve the identity bar + caption slot while /status loads so the whole grid doesn't
+              drop ~110px when the handle arrives (a status-page CLS). */}
+          {status?.handle ? (
+            <IdentityBar handle={status.handle} locale={locale} />
+          ) : (
+            <div className="id-slot" aria-hidden />
+          )}
         </div>
       </div>
 
@@ -96,12 +103,9 @@ function IdentityBar({ handle, locale }: { handle: string; locale: Locale }) {
   const t = translator(locale);
   const [copied, setCopied] = useState(false);
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(handle);
+    if (await copyText(handle)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* clipboard blocked */
     }
   }
   return (
@@ -144,16 +148,11 @@ function SettingsCard({
 }) {
   const t = translator(locale);
   const router = useRouter();
-  const { config } = useSite();
-  // Init to the SSR-safe defaults, then read the real values on mount to avoid hydration mismatch.
-  const [perm, setPerm] = useState<NotificationPermission>("default");
-  // "On" = permission granted AND a live push subscription — granted alone (e.g. allowed from the
-  // browser's own settings) delivers nothing, so the switch must still read as off and stay tappable.
-  const [pushSub, setPushSub] = useState(false);
+  // Push state is SHARED via the provider so this switch and the Rewards card's push mission agree.
+  const { config, pushPerm: perm, pushOn, refreshPush } = useSite();
+  const [busy, setBusy] = useState(false);
   const [themeState, setThemeState] = useState<string>("");
   useEffect(() => {
-    if (typeof Notification !== "undefined") setPerm(Notification.permission);
-    void hasPushSubscription().then(setPushSub);
     // Effective theme: an explicit choice sets data-theme; with no cookie the page follows the OS
     // via prefers-color-scheme (data-theme unset), so read the media query in that case.
     const attr = document.getElementById("app")?.getAttribute("data-theme");
@@ -185,13 +184,23 @@ function SettingsCard({
     setThemeState(next);
   }
   async function toggleNotif() {
-    if (perm === "denied") return;
-    const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
-    setPerm(typeof Notification !== "undefined" ? Notification.permission : "default");
-    if (ok) {
-      setPushSub(true);
-      await api.claimReward("push");
-      await onReload();
+    if (perm === "denied" || busy) return; // denied is browser-level; busy guards a double-tap
+    setBusy(true);
+    try {
+      if (pushOn) {
+        // Turn OFF: drop the subscription + stop server sends. The reward already banked stays.
+        await unsubscribeFromPush();
+      } else {
+        // Turn ON: subscribe, then claim the one-time push reward.
+        const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
+        if (ok) {
+          await api.claimReward("push");
+          await onReload();
+        }
+      }
+      await refreshPush(); // re-sync the shared state so the Rewards card mirrors this switch
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -253,9 +262,9 @@ function SettingsCard({
         <button
           className="switch"
           role="switch"
-          aria-checked={perm === "granted" && pushSub}
+          aria-checked={pushOn}
           aria-label={t("set_notif")}
-          disabled={perm === "denied" || !pushEnabled}
+          disabled={perm === "denied" || !pushEnabled || busy}
           onClick={toggleNotif}
         />
       </div>

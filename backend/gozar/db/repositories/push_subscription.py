@@ -44,14 +44,18 @@ class PushSubscriptionRepository(BaseRepository):
         )
         await self.session.execute(stmt)
 
-    async def deactivate(self, endpoint: str) -> None:
+    async def deactivate(self, endpoint: str, *, device_uuid: str | None = None) -> None:
         """Mark a subscription inactive — the toggle-off path and the 404/410 prune. Kept (not
-        deleted) so a later re-subscribe with the same endpoint cleanly reactivates the row."""
-        await self.session.execute(
-            update(PushSubscription)
-            .where(PushSubscription.endpoint == endpoint)
-            .values(active=False)
-        )
+        deleted) so a later re-subscribe with the same endpoint cleanly reactivates the row.
+
+        Pass ``device_uuid`` to scope the update to the caller's own device: the public
+        toggle-off endpoint must not let a caller (who is minted a fresh device for free) deactivate
+        a subscription they don't own by supplying someone else's endpoint URL. The 404/410 prune
+        paths (sender/worker) legitimately deactivate by endpoint alone (``device_uuid=None``)."""
+        stmt = update(PushSubscription).where(PushSubscription.endpoint == endpoint)
+        if device_uuid is not None:
+            stmt = stmt.where(PushSubscription.device_uuid == device_uuid)
+        await self.session.execute(stmt.values(active=False))
 
     async def list_for_device(self, device_uuid: str) -> list[PushSubscription]:
         """A device's ACTIVE subscriptions — the audience for a targeted nudge (expiry / volume)."""

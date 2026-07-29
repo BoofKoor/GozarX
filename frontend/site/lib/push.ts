@@ -67,3 +67,21 @@ export async function subscribeToPush(vapidPublicKey: string, locale: Locale): P
     return false;
   }
 }
+
+// Turn notifications OFF: drop the browser PushManager subscription AND tell the backend to stop
+// sending to that endpoint. Best-effort — returns whether the local subscription was removed. The
+// browser-permission grant is intentionally left untouched (only the user can revoke that).
+export async function unsubscribeFromPush(): Promise<boolean> {
+  try {
+    if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return false;
+    const reg = await navigator.serviceWorker.getRegistration();
+    const sub = reg ? await reg.pushManager.getSubscription() : null;
+    if (!sub) return true; // already off
+    const endpoint = sub.endpoint;
+    const ok = await sub.unsubscribe();
+    await api.unsubscribePush(endpoint).catch(() => {}); // stop server-side sends (best-effort)
+    return ok;
+  } catch {
+    return false;
+  }
+}

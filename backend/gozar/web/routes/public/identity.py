@@ -16,7 +16,7 @@ import logging
 import uuid as uuid_lib
 from typing import Annotated
 
-from fastapi import Depends, Request, Response
+from fastapi import Depends, HTTPException, Request, Response
 
 from gozar.config.settings import get_settings
 from gozar.db.models.site_device import SiteDevice
@@ -31,13 +31,19 @@ COOKIE_MAX_AGE = 400 * 24 * 3600
 
 
 def sign_device(device_uuid: str, secret: str) -> str:
+    # Refuse to sign with an empty key: a blank secret makes every HMAC trivially forgeable, so a
+    # cookie minted with it is worthless. current_device fails closed before reaching here; this is
+    # belt-and-suspenders so an unsigned cookie can never be handed out.
+    if not secret:
+        raise ValueError("site_cookie_secret is not set — refusing to sign a device cookie")
     mac = hmac.new(secret.encode(), device_uuid.encode(), hashlib.sha256).hexdigest()
     return f"{device_uuid}.{mac}"
 
 
 def verify_device_cookie(value: str, secret: str) -> str | None:
-    """Return the uuid iff the cookie's HMAC matches (constant-time); else None."""
-    if not value or "." not in value:
+    """Return the uuid iff the cookie's HMAC matches (constant-time); else None. A blank secret can
+    never verify — every forged ``<uuid>.<hmac('')>`` would otherwise validate."""
+    if not secret or not value or "." not in value:
         return None
     device_uuid, _, mac = value.partition(".")
     expected = hmac.new(secret.encode(), device_uuid.encode(), hashlib.sha256).hexdigest()
@@ -133,6 +139,12 @@ async def current_device(request: Request, response: Response, session: DbSessio
     """
     settings = get_settings()
     secret = settings.site_cookie_secret.get_secret_value()
+    if not secret:
+        # Fail closed: with no signing key, every device identity is forgeable (anyone could become
+        # any device — read /status, claim, mint a transfer). Refuse to serve rather than hand out
+        # spoofable cookies. The installer always generates one; only a hand-rolled setup hits this.
+        logger.error("site_cookie_secret is not set — refusing to mint device identities")
+        raise HTTPException(status_code=503, detail="site_not_configured")
     repo = SiteDeviceRepository(session)
 
     device_uuid = verify_device_cookie(request.cookies.get(DEVICE_COOKIE, ""), secret)

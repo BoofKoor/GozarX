@@ -32,7 +32,7 @@ from datetime import UTC, datetime, timedelta
 
 from redis.asyncio import Redis
 
-from gozar.cache.redis import limited_notified_key, sub_cache_key
+from gozar.cache.redis import limited_notified_key, single_flight, sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -375,6 +375,19 @@ class TrialService:
 
     # --- public flow ----------------------------------------------------------------------------
     async def claim(self, user: User) -> ClaimResult:
+        # Serialize concurrent claims for THIS user (a double-tap on the inline get-config button
+        # fires two callbacks). Without it both read the same stale cooldown under READ COMMITTED,
+        # both provision a panel account, and the referral credit runs twice. A loser gets the
+        # generic "try again" (PanelError) — the winner's provision means the retry lands on the
+        # picker (AlreadyActive). Redis SET NX is atomic, so exactly one caller wins the window.
+        async with single_flight(
+            self._redis, "claim", str(user.telegram_id), ttl_seconds=30
+        ) as first:
+            if not first:
+                return PanelError()
+            return await self._claim_locked(user)
+
+    async def _claim_locked(self, user: User) -> ClaimResult:
         # 1. Already holding a config? Re-read live state (self-heals an ended trial to available).
         if user.status is UserStatus.active_config:
             try:

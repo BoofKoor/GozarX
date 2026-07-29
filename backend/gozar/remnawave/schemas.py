@@ -16,6 +16,16 @@ class _Base(BaseModel):
 
 class UserTraffic(_Base):
     used_bytes: int = Field(default=0, alias="usedTrafficBytes")
+    # VERIFY (2.8.0 contract): UserItemInfo.userTraffic.onlineAt — the user's last-seen timestamp
+    # (nullable ISO). Basis for the squad-scoped "online now" count on the dashboard.
+    online_at: str | None = Field(default=None, alias="onlineAt")
+
+
+class ActiveSquadRef(_Base):
+    """One entry of ``UserItemInfo.activeInternalSquads`` (``GET /api/users``) — the squad a user
+    belongs to, keyed by ``uuid`` (``name`` is present too but we only match on the id)."""
+
+    uuid: str = ""
 
 
 class PanelUser(_Base):
@@ -26,6 +36,9 @@ class PanelUser(_Base):
     expire_at: str | None = Field(default=None, alias="expireAt")
     subscription_url: str | None = Field(default=None, alias="subscriptionUrl")
     traffic: UserTraffic = Field(default_factory=UserTraffic, alias="userTraffic")
+    active_internal_squads: list[ActiveSquadRef] = Field(
+        default_factory=list, alias="activeInternalSquads"
+    )
 
 
 class SquadInbound(_Base):

@@ -77,6 +77,7 @@ export interface DashboardStats {
   growth_pct: number | null; // null = no prior-week baseline (launch); render as "new" when signups > 0
   // engagement (panel /system/stats)
   online_now: number;
+  online_squad_scoped: boolean;
   online_last_day: number;
   online_last_week: number;
   never_online: number;
