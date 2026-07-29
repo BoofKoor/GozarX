@@ -2,6 +2,7 @@
 
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { hasPushSubscription, subscribeToPush } from "@/lib/push";
@@ -64,10 +65,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   async function invite() {
     try {
       if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else {
-        await navigator.clipboard.writeText(link);
-        toast(t("copied"));
-      }
+      else if (await copyText(link)) toast(t("copied"));
     } catch {
       /* user cancelled the share sheet */
     }
@@ -370,14 +368,18 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
         <span className="rw2-ring" aria-hidden>
           <svg viewBox="0 0 44 44">
             <circle className="tr" cx="22" cy="22" r="19" />
-            <circle
-              className="pr"
-              cx="22"
-              cy="22"
-              r="19"
-              strokeDasharray={`${arc} ${C - arc}`}
-              strokeDashoffset={C / 4}
-            />
+            {/* CSS already rotates the whole SVG -90° so the arc starts at 12 o'clock; a
+                strokeDashoffset here would rotate it a SECOND −90° (arc starting at 9 o'clock).
+                Skip the arc entirely at 0 so the round line-cap doesn't leave a stray dot. */}
+            {count > 0 && (
+              <circle
+                className="pr"
+                cx="22"
+                cy="22"
+                r="19"
+                strokeDasharray={`${arc} ${C - arc}`}
+              />
+            )}
           </svg>
           <Icon name="flame" sw={2} />
         </span>

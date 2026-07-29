@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { type Locale, timeAgo, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
@@ -96,12 +97,9 @@ function IdentityBar({ handle, locale }: { handle: string; locale: Locale }) {
   const t = translator(locale);
   const [copied, setCopied] = useState(false);
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(handle);
+    if (await copyText(handle)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* clipboard blocked */
     }
   }
   return (

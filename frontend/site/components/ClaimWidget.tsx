@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ClaimResponse } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
@@ -46,6 +47,22 @@ export function ClaimWidget({
   const [result, setResult] = useState<ClaimResponse | null>(null);
   const [changeLoc, setChangeLoc] = useState(false);
   const [errState, setErrState] = useState(false);
+  const [tsError, setTsError] = useState(false); // Turnstile couldn't load / errored — show a retry
+  const [tsReset, setTsReset] = useState(0); // bump to reset the widget after a token is consumed
+
+  // Clear the consumed single-use token AND reset the CF widget so the next claim gets a fresh one
+  // (clearing the token alone would leave the mounted widget holding the dead token → CTA stuck).
+  const clearToken = useCallback(() => {
+    setToken("");
+    setTsReset((n) => n + 1);
+  }, []);
+
+  // Retry a failed Turnstile load: clear the error and remount the widget for a fresh script attempt.
+  const retryTurnstile = useCallback(() => {
+    setTsError(false);
+    setToken("");
+    setTsReset((n) => n + 1);
+  }, []);
 
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
   // The admin-starred "popular" location leads the grid (stable sort — the rest keep their panel
@@ -129,7 +146,7 @@ export function ClaimWidget({
     setErrState(false);
     try {
       const res = await api.claim(selected, token || undefined);
-      setToken(""); // Turnstile tokens are single-use — never resubmit a consumed one.
+      clearToken(); // single-use token: clear it AND reset the widget for the next claim
       if (res.ok) {
         setResult(res);
         setChangeLoc(false);
@@ -145,7 +162,7 @@ export function ClaimWidget({
       setMode("idle");
       setOutcomeSeq((s) => s + 1); // every resolution re-renders the widget — snap back to its top
     }
-  }, [selected, token, mode, reload]);
+  }, [selected, token, mode, reload, clearToken]);
 
   // ---- derive the display state from the live status (status wins; result is the pre-reload view) ----
   const serverHasConfig = !!status?.has_config;
@@ -172,6 +189,10 @@ export function ClaimWidget({
         token={token}
         siteKey={config?.turnstile_site_key ?? ""}
         onToken={setToken}
+        onTsError={() => setTsError(true)}
+        onTsRetry={retryTurnstile}
+        tsError={tsError}
+        tsReset={tsReset}
         trialHours={status?.trial_hours}
       />
     </div>
@@ -267,7 +288,7 @@ export function ClaimWidget({
               className="chg-btn"
               onClick={() => {
                 setChangeLoc(true);
-                setToken("");
+                clearToken();
                 // reveal the picker that just expanded below the card (no-op if it fits on screen)
                 requestAnimationFrame(() => revealNearest(changePickRef.current));
               }}
@@ -459,6 +480,10 @@ function CtaBlock({
   token,
   siteKey,
   onToken,
+  onTsError,
+  onTsRetry,
+  tsError,
+  tsReset,
   trialHours,
 }: {
   locale: Locale;
@@ -469,12 +494,34 @@ function CtaBlock({
   token: string;
   siteKey: string;
   onToken: (t: string) => void;
+  onTsError: () => void;
+  onTsRetry: () => void;
+  tsError: boolean;
+  tsReset: number;
   trialHours?: number;
 }) {
   const t = translator(locale);
   return (
     <div className="cta-wrap">
-      {needsTurnstile && siteKey && <Turnstile siteKey={siteKey} locale={locale} onToken={onToken} />}
+      {needsTurnstile && siteKey && (
+        <Turnstile
+          siteKey={siteKey}
+          locale={locale}
+          onToken={onToken}
+          onError={onTsError}
+          resetSignal={tsReset}
+        />
+      )}
+      {needsTurnstile && tsError && (
+        <div className="ts-fail" role="alert">
+          <span>
+            <Icon name="warn" sw={2} /> {t("ts_fail")}
+          </span>
+          <button type="button" className="ts-retry" onClick={onTsRetry}>
+            {t("ts_retry")}
+          </button>
+        </div>
+      )}
       <button
         className="btn cta"
         disabled={disabled || busy || (needsTurnstile && !token)}
@@ -551,8 +598,7 @@ function ReviveBlock({ locale, refCode }: { locale: Locale; refCode: string }) {
   async function share() {
     try {
       if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else {
-        await navigator.clipboard.writeText(link);
+      else if (await copyText(link)) {
         setCopied(true);
         setTimeout(() => setCopied(false), 1600);
       }

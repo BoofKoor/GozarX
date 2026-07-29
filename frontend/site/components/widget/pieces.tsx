@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
@@ -33,24 +34,36 @@ export function Flag({ name, size = 40 }: { name: string; size?: number }) {
 export function CopyField({ value, locale }: { value: string; locale: Locale }) {
   const t = translator(locale);
   const [copied, setCopied] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const codeRef = useRef<HTMLElement>(null);
   async function copy() {
-    try {
-      await navigator.clipboard.writeText(value);
+    setFailed(false);
+    if (await copyText(value)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch {
-      /* clipboard blocked */
+      return;
+    }
+    // Total failure (rare): select the link so the user can copy it by hand + tell them to.
+    setFailed(true);
+    const node = codeRef.current;
+    if (node) {
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
     }
   }
   return (
     <div className="copyfield">
       {/* the shell owns the box (border stays crisp); its ::after fades the CONTENT's end only */}
       <span className="code-shell">
-        <code dir="ltr">{value}</code>
+        <code ref={codeRef} dir="ltr">{value}</code>
       </span>
       <button className={`btn${copied ? " copied" : ""}`} onClick={copy} type="button">
         {copied ? t("copied") : t("copy")}
       </button>
+      {failed && <span className="copy-manual">{t("copy_manual")}</span>}
     </div>
   );
 }
@@ -208,6 +221,32 @@ function toSeconds(s: string): number {
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
+
+// Seconds remaining, derived from an absolute deadline anchored once per `from` — NOT decremented
+// per interval fire. Background tabs are throttled to ~1 tick/minute; a per-fire counter would drift
+// minutes slow and fire onDone late. Recomputing from wall-clock every tick stays correct across
+// throttling/sleep. The deadline is set in an effect (client-only), so there's no SSR/hydration skew.
+function useCountdown(from: string, onDone?: () => void): number {
+  const [left, setLeft] = useState(() => toSeconds(from));
+  const doneRef = useRef(false);
+  useEffect(() => {
+    const deadline = Date.now() + toSeconds(from) * 1000;
+    doneRef.current = false;
+    const tick = () => {
+      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setLeft(next);
+      if (next <= 0 && !doneRef.current) {
+        doneRef.current = true;
+        onDone?.();
+      }
+    };
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [from, onDone]);
+  return left;
+}
+
 export function Countdown({
   from,
   label,
@@ -220,23 +259,7 @@ export function Countdown({
   onDone?: () => void;
 }) {
   const t = translator(locale);
-  const [left, setLeft] = useState(() => toSeconds(from));
-  const doneRef = useRef(false);
-  useEffect(() => {
-    setLeft(toSeconds(from));
-    doneRef.current = false;
-  }, [from]);
-  useEffect(() => {
-    if (left <= 0) {
-      if (!doneRef.current) {
-        doneRef.current = true;
-        onDone?.();
-      }
-      return;
-    }
-    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
-    return () => clearInterval(id);
-  }, [left, onDone]);
+  const left = useCountdown(from, onDone);
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
@@ -267,13 +290,7 @@ export function Countdown({
 
 // ---- InlineCountdown: plain "H:MM:SS" text that ticks (status stat card `.cd-inline`) ----
 export function InlineCountdown({ from, locale }: { from: string; locale: Locale }) {
-  const [left, setLeft] = useState(() => toSeconds(from));
-  useEffect(() => setLeft(toSeconds(from)), [from]);
-  useEffect(() => {
-    if (left <= 0) return;
-    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000);
-    return () => clearInterval(id);
-  }, [left]);
+  const left = useCountdown(from);
   if (toSeconds(from) <= 0) return <span dir="ltr">—</span>;
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);

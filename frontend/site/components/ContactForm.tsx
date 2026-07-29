@@ -21,6 +21,8 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const [sent, setSent] = useState(false);
   const [emptyErr, setEmptyErr] = useState(false);
   const [sendErr, setSendErr] = useState<string | null>(null);
+  const [tsError, setTsError] = useState(false);
+  const [tsReset, setTsReset] = useState(0);
   const msgRef = useRef<HTMLTextAreaElement>(null);
 
   const topics = [t("c_t1"), t("c_t2"), t("c_t3"), t("c_t4")];
@@ -53,6 +55,12 @@ export function ContactForm({ locale }: { locale: Locale }) {
       setSendErr(t("contact.error"));
     } finally {
       setBusy(false);
+      // Turnstile tokens are single-use: after any submit, burn the token and reset the widget so a
+      // retry gets a fresh one (reusing a consumed token → guaranteed turnstile_failed on retry).
+      if (needsTurnstile) {
+        setToken("");
+        setTsReset((n) => n + 1);
+      }
     }
   }
 
@@ -105,7 +113,31 @@ export function ContactForm({ locale }: { locale: Locale }) {
         </div>
         {needsTurnstile && config && (
           <div className="field">
-            <Turnstile siteKey={config.turnstile_site_key} locale={locale} onToken={setToken} />
+            <Turnstile
+              siteKey={config.turnstile_site_key}
+              locale={locale}
+              onToken={setToken}
+              onError={() => setTsError(true)}
+              resetSignal={tsReset}
+            />
+            {tsError && (
+              <div className="ts-fail" role="alert">
+                <span>
+                  <Icon name="warn" sw={2} /> {t("ts_fail")}
+                </span>
+                <button
+                  type="button"
+                  className="ts-retry"
+                  onClick={() => {
+                    setTsError(false);
+                    setToken("");
+                    setTsReset((n) => n + 1);
+                  }}
+                >
+                  {t("ts_retry")}
+                </button>
+              </div>
+            )}
           </div>
         )}
         {sendErr && <p className="err-text">{sendErr}</p>}

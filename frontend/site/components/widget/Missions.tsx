@@ -2,6 +2,7 @@
 
 import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
+import { copyText } from "@/lib/clipboard";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
@@ -31,10 +32,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   async function invite() {
     try {
       if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else {
-        await navigator.clipboard.writeText(link);
-        toast(t("copied"));
-      }
+      else if (await copyText(link)) toast(t("copied"));
     } catch {
       /* cancelled */
     }
