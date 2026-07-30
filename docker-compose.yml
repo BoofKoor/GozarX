@@ -63,9 +63,12 @@ services:
       context: .
       dockerfile: docker/Dockerfile.site
       args:
-        # SEO: canonical origin for robots.txt/sitemap.xml/OG tags (derived from DOMAIN) and the
-        # optional Google Search Console "HTML tag" token. Both default sensibly when unset.
-        SITE_URL: https://${DOMAIN:-gozarx.gozarxservices.com}
+        # SEO: canonical origin for robots.txt/sitemap.xml/OG tags, plus the optional Google Search
+        # Console "HTML tag" token. This MUST be the PUBLIC WEBSITE host (SITE_DOMAIN) — under domain
+        # separation DOMAIN is the admin/bot host, whose nginx block 301s everything to /admin/, so
+        # deriving it from DOMAIN pointed every canonical + sitemap URL at a redirect-to-panel and
+        # made the site un-indexable. Falls back to DOMAIN for a shared single-domain install.
+        SITE_URL: https://${SITE_DOMAIN:-${DOMAIN:-gozarx.gozarxservices.com}}
         GOOGLE_SITE_VERIFICATION: ${GOOGLE_SITE_VERIFICATION:-}
     image: gozar-site:local
     restart: unless-stopped
