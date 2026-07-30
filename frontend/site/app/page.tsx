@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
+import { fetchSiteCopy } from "@/lib/siteCopy";
 
 // Self-referencing canonical for the homepage. Set here (not in the root layout) so it applies only
 // to `/` — a layout-level canonical would be inherited by every sub-page and wrongly mark them all
@@ -22,6 +23,10 @@ import { HomeFaq } from "@/components/home/HomeFaq";
 export default async function HomePage() {
   const locale = await getLocale();
   const t = translator(locale);
+  // Editable hero copy from the admin Texts panel (site_hero_title/sub), with the in-code copy as the
+  // fallback. An edited title renders as a single gradient headline; unedited falls back to the
+  // two-part design headline. (See lib/siteCopy — degrades to all-null when the backend is absent.)
+  const copy = await fetchSiteCopy(locale);
 
   const steps = [
     { t: "how1_t", d: "how1_d", ic: "pin" },
@@ -35,9 +40,15 @@ export default async function HomePage() {
         <div className="container hero-inner">
           <div className="hero-copy">
             <h1>
-              {t("hero_h1_a")} <span className="grad">{t("hero_h1_b")}</span>
+              {copy.hero_title ? (
+                <span className="grad">{copy.hero_title}</span>
+              ) : (
+                <>
+                  {t("hero_h1_a")} <span className="grad">{t("hero_h1_b")}</span>
+                </>
+              )}
             </h1>
-            <p className="sub">{t("hero_sub")}</p>
+            <p className="sub">{copy.hero_sub ?? t("hero_sub")}</p>
             <div className="trust-row">
               <span className="pill">
                 <Icon name="check" sw={2.4} />

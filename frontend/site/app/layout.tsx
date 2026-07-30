@@ -4,6 +4,7 @@ import "./globals.css";
 import { copyrightYear, dir, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/server";
 import { GOOGLE_SITE_VERIFICATION, SITE_URL } from "@/lib/site";
+import { fetchSiteCopy } from "@/lib/siteCopy";
 import { organizationLd, webSiteLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
 import { Header } from "@/components/Header";
@@ -35,13 +36,18 @@ export async function generateMetadata(): Promise<Metadata> {
   const { locale } = await resolve();
   const fa = locale === "fa";
   // Home title/description target the head keyword cluster («کانفیگ رایگان V2Ray») + the no-signup
-  // USP; sub-pages override both with their own generateMetadata.
-  const title = fa
+  // USP; sub-pages override both with their own generateMetadata. These are the FALLBACKS — the
+  // admin can override them from the Texts panel (site_meta_title/description), fetched below and
+  // applied when set, so homepage SEO copy is tunable without a redeploy.
+  const fallbackTitle = fa
     ? "کانفیگ رایگان V2Ray روزانه، بدون ثبت‌نام | گذرایکس GozarX"
     : "GozarX — Free daily V2Ray config, no signup";
-  const description = fa
+  const fallbackDescription = fa
     ? "هر روز یک کانفیگ رایگان و اختصاصی V2Ray/VLESS بگیر — بدون ثبت‌نام و شماره. لوکیشن دلخواه را انتخاب کن و حجم روزانه‌ات را با دعوت دوستان بیشتر کن."
     : "Get a fresh personal V2Ray/VLESS config every day — no signup, no phone. Pick your location and grow your daily volume by inviting friends.";
+  const copy = await fetchSiteCopy(locale);
+  const title = copy.meta_title ?? fallbackTitle;
+  const description = copy.meta_description ?? fallbackDescription;
   return {
     // Base for all relative URLs below (canonical, OG, Twitter) so Google receives absolute links.
     metadataBase: new URL(SITE_URL),
