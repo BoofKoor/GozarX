@@ -311,25 +311,27 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
 }
 
 
-# Website copy — a SEPARATE content namespace (``site_*`` keys) so it never appears in the bot's
-# Texts editor, and vice-versa. Bilingual only (fa/en); the site has no Russian. Full microcopy lands
-# with the site app (P8) — this is the SEO/hero starter set that establishes the pattern.
+# Website copy — the ``site_*`` content namespace. The SEO/marketing strings below are EDITABLE from
+# the admin Texts panel and read by the public site at request time (GET /api/public/site-copy), with
+# the site's in-code copy as the fallback. Defaults here mirror the site's fallback so an unedited row
+# renders identically; migration 4a1e… refreshes unedited production rows to these (edits preserved).
+# Bilingual only (fa/en); the site has no Russian. The push-nudge keys further down are server-sent.
 DEFAULT_SITE_CONTENT: dict[str, dict[Language, str]] = {
     "site_meta_title": {
-        Language.fa: "گذرایکس — کانفیگ آزمایشی رایگان روزانه",
-        Language.en: "GozarX — Free daily trial config",
+        Language.fa: "کانفیگ رایگان V2Ray روزانه، بدون ثبت‌نام | گذرایکس GozarX",
+        Language.en: "GozarX — Free daily V2Ray config, no signup",
     },
     "site_meta_description": {
-        Language.fa: "هر روز یک کانفیگ آزمایشی رایگان بگیر — بدون ثبت‌نام، سریع و ساده. حجم روزانه‌ات را با دعوت دوستان بیشتر کن.",
-        Language.en: "Get a free daily trial config — no signup, fast and simple. Grow your daily volume by inviting friends.",
+        Language.fa: "هر روز یک کانفیگ رایگان و اختصاصی V2Ray/VLESS بگیر — بدون ثبت‌نام و شماره. لوکیشن دلخواه را انتخاب کن و حجم روزانه‌ات را با دعوت دوستان بیشتر کن.",
+        Language.en: "Get a fresh personal V2Ray/VLESS config every day — no signup, no phone. Pick your location and grow your daily volume by inviting friends.",
     },
     "site_hero_title": {
-        Language.fa: "کانفیگ آزمایشی رایگان، هر روز",
-        Language.en: "A free trial config, every day",
+        Language.fa: "کانفیگ رایگان و پرسرعت، در چند ثانیه",
+        Language.en: "Free, fast configs — in seconds",
     },
     "site_hero_sub": {
-        Language.fa: "بدون ثبت‌نام و بدون ایمیل. کانفیگ امروزت را بگیر و با دعوت دوستان حجم روزانه‌ات را بیشتر کن.",
-        Language.en: "No signup, no email. Grab today's config and grow your daily volume by inviting friends.",
+        Language.fa: "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود.",
+        Language.en: "Grab a free trial config every day; pick your location and connect with no signup. Invite friends and your daily volume grows too.",
     },
     # Web Push nudge copy — sent server-side (panel webhook / reconcile), localized per subscription.
     "site_push_expired_title": {

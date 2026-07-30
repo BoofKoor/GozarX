@@ -103,6 +103,13 @@ class ContentService:
     async def text(self, key: str, lang: Language, **tokens: object) -> str:
         return (await self.message(key, lang, **tokens)).text
 
+    async def raw(self, key: str, lang: Language) -> str | None:
+        """The stored body for EXACTLY ``(key, lang)`` — or ``None`` if absent. No Farsi fallback,
+        no ``[key]`` placeholder, no token rendering. For editable site copy the locale-specific
+        caller supplies its own fallback, so an unedited ``en`` request never gets ``fa`` text."""
+        row = await self._row(key, lang)
+        return row[0] if row is not None else None
+
     async def set(self, key: str, lang: Language, body: str, link_preview: bool = True) -> None:
         """Admin edit (Phase 7): upsert the row and invalidate its cache entry."""
         await self._repo.upsert(key, lang, body, link_preview)
