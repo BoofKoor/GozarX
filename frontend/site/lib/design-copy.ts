@@ -95,6 +95,11 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     loc_page_guides: "راهنمای لوکیشن‌های پرطرفدار",
     land_home: "خانه",
     land_related: "صفحات مرتبط",
+    // homepage "articles & guides" band + the footer's article row (internal links to /l/*)
+    art_eyebrow: "مقاله و راهنما",
+    art_title: "راهنماها و مقالات",
+    art_sub: "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+    ft_articles: "راهنماها و مقالات",
     chg_more: "{n} لوکیشن دیگر در دسترس",
     // rewards card (account) — daily-rewards redesign
     rw_sub: "ماموریت‌ها را کامل کن و حجم روزانه‌ات را بیشتر کن.",
@@ -589,6 +594,11 @@ export const DESIGN_COPY: Record<Locale, Record<string, string>> = {
     loc_page_guides: "Popular location guides",
     land_home: "Home",
     land_related: "Related pages",
+    // homepage "articles & guides" band + the footer's article row (internal links to /l/*)
+    art_eyebrow: "Articles & guides",
+    art_title: "Guides and articles",
+    art_sub: "How to connect with each app, and answers to common questions about free configs.",
+    ft_articles: "Guides & articles",
     chg_more: "{n} more locations available",
     // rewards card (account) — daily-rewards redesign
     rw_sub: "Complete missions to get more daily volume.",

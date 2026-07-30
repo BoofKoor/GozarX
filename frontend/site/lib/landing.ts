@@ -50,3 +50,32 @@ export async function fetchLandings(locale?: Locale): Promise<LandingSummary[]> 
     return [];
   }
 }
+
+export interface ArticleLink {
+  slug: string;
+  label: string;
+}
+
+/** Published landings WITHOUT a location — the article/guide set, for internal linking.
+ *
+ * Location landings are already linked from /locations, so the broad-keyword and app-guide pages
+ * were the only ones reachable by nothing but the sitemap. Google reports exactly those as
+ * "Discovered – currently not indexed": known, but with no internal link earning a crawl. The
+ * homepage section + footer row below link them from the site's highest-authority pages.
+ *
+ * Deduped by slug (fa+en share one URL, as in the sitemap), stable slug order from the API, and the
+ * label is the title minus its "— گذرایکس" brand suffix (same trim as the landing's related chips).
+ * Locale-agnostic on purpose: a landing serves fa to an en visitor via the backend's fa fallback,
+ * so filtering by locale would hide every link in en chrome.
+ */
+export async function fetchArticleLandings(limit = 8): Promise<ArticleLink[]> {
+  const seen = new Set<string>();
+  const out: ArticleLink[] = [];
+  for (const row of await fetchLandings()) {
+    if (row.location_remark || seen.has(row.slug)) continue;
+    seen.add(row.slug);
+    out.push({ slug: row.slug, label: row.title.split("—")[0].split("|")[0].trim() });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
