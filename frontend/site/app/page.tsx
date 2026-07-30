@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
 import { fetchSiteCopy } from "@/lib/siteCopy";
+import { fetchArticleLandings } from "@/lib/landing";
 
 // Self-referencing canonical for the homepage. Set here (not in the root layout) so it applies only
 // to `/` — a layout-level canonical would be inherited by every sub-page and wrongly mark them all
@@ -27,6 +28,11 @@ export default async function HomePage() {
   // fallback. An edited title renders as a single gradient headline; unedited falls back to the
   // two-part design headline. (See lib/siteCopy — degrades to all-null when the backend is absent.)
   const copy = await fetchSiteCopy(locale);
+  // Article/guide landings, linked from the homepage so they inherit real internal links instead of
+  // being sitemap-only orphans (see fetchArticleLandings). Empty list ⇒ the band renders nothing.
+  // The cap is deliberately above the seeded count: a low cap silently dropped the tail of the slug
+  // ordering (v2rayng-config landed there), leaving exactly the pages this band exists to link.
+  const articles = await fetchArticleLandings(24);
 
   const steps = [
     { t: "how1_t", d: "how1_d", ic: "pin" },
@@ -111,6 +117,28 @@ export default async function HomePage() {
 
       {/* FAQ teaser (live accordion) */}
       <HomeFaq locale={locale} />
+
+      {/* ARTICLES & GUIDES — server-rendered internal links to the /l/* article landings, so the
+          anchors are in the raw HTML a crawler sees (no JS) with the page's own keyword as text. */}
+      {articles.length > 0 && (
+        <section className="sec" id="articles">
+          <div className="container">
+            <div className="sec-head reveal">
+              <span className="eyebrow">{t("art_eyebrow")}</span>
+              <h2 className="sec-title">{t("art_title")}</h2>
+              <p className="sec-sub">{t("art_sub")}</p>
+            </div>
+            <div className="art-chips reveal">
+              {articles.map((a) => (
+                <Link key={a.slug} className="chip" href={`/l/${a.slug}`}>
+                  {/* bdi: fa labels stay readable inside en (LTR) chrome — same as landing chips */}
+                  <bdi>{a.label}</bdi>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* TRUST band */}
       <section className="sec">

@@ -482,6 +482,11 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .ft-col h4{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
 .ft-col a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding-block:6.5px; transition:color .15s; }
 .ft-col a:hover{ color:var(--link); }
+/* Article-landing link row (above the bottom bar) — wraps freely, so it never disturbs .ft-grid. */
+.ft-more{ display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; border-block-start:1px solid var(--border); padding-block:16px; font-size:12.5px; }
+.ft-more-h{ font-weight:800; color:var(--text); }
+.ft-more a{ color:var(--muted); text-decoration:none; transition:color .15s; }
+.ft-more a:hover{ color:var(--link); }
 .ft-bottom{ border-block-start:1px solid var(--border); padding-block:20px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); }
 .ft-langs{ display:inline-flex; padding:3px; gap:2px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
 .ft-langs button{ border:0; background:transparent; color:var(--muted); border-radius:var(--r-pill); padding:6px 15px; font:inherit; font-size:12.5px; font-weight:600; cursor:pointer; }
@@ -1285,6 +1290,10 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .landing-body a:hover{ text-decoration:underline; }
 .landing-body code{ direction:ltr; unicode-bidi:isolate; background:var(--sunken); border:1px solid var(--border); border-radius:6px; padding:1px 6px; font-size:13px; }
 .landing-widget{ margin-block:28px; }
+/* Homepage articles band — link chips on .chip's base look (centered under the section head). */
+.art-chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
+.art-chips .chip{ text-decoration:none; padding:8px 15px; font-size:13px; transition:color .15s,border-color .15s; }
+.art-chips .chip:hover{ border-color:var(--border-strong); color:var(--text); }
 .landing-related h2{ font-size:17px; margin-block-end:10px; }
 .landing-related .chips{ display:flex; flex-wrap:wrap; gap:8px; }
 .landing-related .chip{ text-decoration:none; padding:7px 14px; font-size:13px; }
