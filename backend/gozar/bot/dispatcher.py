@@ -16,6 +16,7 @@ from arq import ArqRedis
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
+from gozar.bot.errors import register_error_handler
 from gozar.bot.handlers import register_handlers
 from gozar.bot.middlewares import ContextMiddleware
 from gozar.remnawave import RemnawaveClient
@@ -37,4 +38,5 @@ def build_dispatcher(
     dp.message.outer_middleware(middleware)
     dp.callback_query.outer_middleware(middleware)
     register_handlers(dp)
+    register_error_handler(dp)
     return dp

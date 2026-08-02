@@ -7,6 +7,7 @@ constant-time) before feeding the update to the dispatcher.
 from __future__ import annotations
 
 import hmac
+import logging
 
 from aiogram import Bot, Dispatcher
 from aiogram.types import Update
@@ -15,6 +16,7 @@ from fastapi import APIRouter, Header, HTTPException, Request
 from gozar.config.settings import Settings, get_settings
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _webhook_authorized(secret: str, header: str, settings: Settings) -> bool:
@@ -35,6 +37,15 @@ async def telegram_webhook(
     dp: Dispatcher | None = getattr(request.app.state, "dp", None)
     if bot is None or dp is None:
         raise HTTPException(status_code=503, detail="bot not configured")
-    update = Update.model_validate(await request.json(), context={"bot": bot})
-    await dp.feed_update(bot, update)
+    # ACK unconditionally past this point. Telegram redelivers any update we answer with a non-2xx,
+    # so a deterministically-failing update (a malformed payload, or a handler that always raises —
+    # e.g. answering a user who has blocked the bot) would be retried forever, and the growing
+    # backlog stalls delivery for EVERY user. The dispatcher's own error handler (bot/errors.py)
+    # already absorbs handler exceptions; this is the outer belt-and-braces for everything before
+    # and around it, including update parsing.
+    try:
+        update = Update.model_validate(await request.json(), context={"bot": bot})
+        await dp.feed_update(bot, update)
+    except Exception:
+        logger.exception("dropping unprocessable telegram update")
     return {"ok": True}

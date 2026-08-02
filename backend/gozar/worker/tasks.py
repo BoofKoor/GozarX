@@ -46,17 +46,15 @@ from gozar.services.health import build_snapshot, sample_from
 from gozar.services.reminders import ReminderService
 from gozar.services.settings_service import SettingsService
 from gozar.services.site_reminders import SiteReminderService, nudge_tokens
+from gozar.services.telegram_errors import is_unreachable
 from gozar.services.trial import TrialService, human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.worker.tasks")
 
 # The ONLY delivery failures that remove a user. Anything else (rate limit, network, 5xx, any other
-# Forbidden/NotFound description) is transient → keep the user. aiogram 3 surfaces these as generic
-# classes, so we match a substring of `exc.message` (the raw "Forbidden: "/"Not Found: " prefix and
-# minor wording shifts don't matter). NB: "chat not found" is a TelegramNotFound, NOT a BadRequest.
-_BLOCKED = "bot was blocked by the user"
-_DEACTIVATED = "user is deactivated"
-_CHAT_NOT_FOUND = "chat not found"
+# Forbidden/NotFound description) is transient → keep the user. The classification lives in
+# services/telegram_errors so the bot's dispatcher error handler decides "permanently unreachable"
+# by exactly the same rule this fan-out does.
 
 # Fan-out throughput: send in bounded-concurrency chunks, rate-capped under Telegram's ~30/s
 # broadcast ceiling. A fully SEQUENTIAL loop (one awaited send at a time) overlapped nothing, so the
@@ -69,12 +67,7 @@ _SEND_RATE = 25  # messages/second ceiling
 
 def _should_remove(exc: Exception) -> bool:
     """True only for the three permanent 'this user is unreachable forever' delivery failures."""
-    msg = str(getattr(exc, "message", exc)).lower()
-    if isinstance(exc, TelegramForbiddenError):
-        return _BLOCKED in msg or _DEACTIVATED in msg
-    if isinstance(exc, TelegramNotFound):
-        return _CHAT_NOT_FOUND in msg
-    return False
+    return is_unreachable(exc)
 
 
 async def _deliver(bot: Bot, action: str, chat_id: int, src_chat: int, message_id: int) -> None:
