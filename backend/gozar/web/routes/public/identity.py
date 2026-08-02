@@ -57,8 +57,31 @@ def verify_device_cookie(value: str, secret: str) -> str | None:
 
 
 def client_ip(request: Request) -> str:
-    """The caller's IP. uvicorn runs with ``--proxy-headers``, so ``request.client.host`` already
-    reflects the real client behind nginx."""
+    """The caller's IP, from a header the caller cannot choose.
+
+    ``request.client.host`` alone is NOT safe here: uvicorn runs with ``--proxy-headers
+    --forwarded-allow-ips '*'`` and takes the LEFTMOST ``X-Forwarded-For`` entry, while nginx used
+    to *append* to whatever chain arrived. A caller who sent ``X-Forwarded-For: 1.2.3.4`` therefore
+    picked their own identity for every per-IP guard here — the /claim and push-subscribe backstops
+    became a no-op under a rotating header, and ``ip_bucket`` (the shared-IP abuse signal) could be
+    scattered at will.
+
+    Cloudflare sets ``CF-Connecting-IP`` itself and OVERWRITES any value the client supplies, so on
+    proxied traffic it is authoritative — prefer it, and only accept it when it parses as an IP so a
+    junk header can't become a rate-limit key of its own. The fallback is the connection peer, which
+    nginx now pins by overwriting ``X-Forwarded-For`` with ``$remote_addr`` (see nginx/*.conf), so
+    the header a caller sends is discarded before it ever reaches uvicorn.
+
+    Residual risk, closed at the network layer rather than here: a caller who reaches the ORIGIN
+    directly (bypassing Cloudflare) can still set ``CF-Connecting-IP``. Restrict origin :443 to
+    Cloudflare's published ranges to remove it.
+    """
+    forwarded = request.headers.get("cf-connecting-ip", "").strip()
+    if forwarded:
+        try:
+            return str(ipaddress.ip_address(forwarded))
+        except ValueError:
+            pass  # junk header — fall through to the peer address
     return request.client.host if request.client else "0.0.0.0"
 
 
