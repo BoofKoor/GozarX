@@ -28,6 +28,7 @@ from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
     Delivered,
+    LocationUnavailable,
     NoLocations,
     NotReady,
     PanelError,
@@ -66,12 +67,38 @@ def _sub(
 
 
 class FakePanel:
-    def __init__(self, sub_queue, *, create_error: Exception | None = None) -> None:
+    def __init__(
+        self,
+        sub_queue,
+        *,
+        create_error: Exception | None = None,
+        squad_locations: list[str] | None = None,
+        squad_error: Exception | None = None,
+    ) -> None:
         self.sub_queue = sub_queue
         self.create_error = create_error
         self.created: list[tuple] = []
         self.deleted: list[str] = []
+        self.squad_calls = 0
+        self.squad_error = squad_error
+        # Default: the squad serves exactly what the stubbed subscription returns — the realistic
+        # case, and the one where the scoping filter is a no-op. Tests that exercise scoping pass
+        # squad_locations explicitly.
+        if squad_locations is None:
+            names: list[str] = []
+            for item in sub_queue:
+                if isinstance(item, Exception):
+                    continue
+                names += [n for n in item[1] if n not in names]
+            squad_locations = names
+        self.squad_locations = squad_locations
         self._idx = 0
+
+    async def squad_location_names(self, squad_uuid):
+        self.squad_calls += 1
+        if self.squad_error is not None:
+            raise self.squad_error
+        return list(self.squad_locations)
 
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids):
         self.created.append((username, traffic_bytes, expire_at, squad_uuids))
@@ -196,14 +223,28 @@ async def test_not_ready_without_squad(session) -> None:
     assert not panel.created
 
 
-async def test_allowlist_filters_locations(session) -> None:
-    panel = FakePanel([(_sub(), _TWO)])
-    svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: "Germany"})
+async def test_squad_scoping_filters_locations(session) -> None:
+    """Only what the SQUAD serves survives — and the picker offers exactly that."""
+    panel = FakePanel([(_sub(), _TWO)], squad_locations=["Germany"])
+    svc = await _service(session, panel)
     device = await _device(session)
 
-    result = await svc.claim(device, "Ukraine")  # Ukraine filtered out -> only Germany remains
+    assert await svc.available_locations(device) == ["Germany"]
+    result = await svc.claim(device, "Germany")
     assert isinstance(result, Delivered)
-    assert result.location == "Germany"  # falls back to the only allowed location
+    assert result.location == "Germany"
+
+
+async def test_picking_a_location_the_squad_lacks_never_substitutes(session) -> None:
+    """The old behaviour delivered the FIRST available link instead — a config for another country,
+    indistinguishable from success unless the user read the remark."""
+    panel = FakePanel([(_sub(), _TWO)], squad_locations=["Germany"])
+    svc = await _service(session, panel)
+    device = await _device(session)
+
+    result = await svc.claim(device, "Ukraine")  # scoped out of the map
+    assert isinstance(result, LocationUnavailable)
+    assert result.available == ["Germany"]  # the live names, so the picker can re-sync
 
 
 async def test_referral_bonus_in_provisioned_traffic(session) -> None:
@@ -324,8 +365,18 @@ async def test_active_expired_self_heals_then_reclaims(session) -> None:
     assert len(panel.created) == 1
 
 
-async def test_available_locations_fresh_uses_setting(session) -> None:
-    panel = FakePanel([])
+async def test_available_locations_fresh_is_live_from_the_squad(session) -> None:
+    """The picker follows the SQUAD, not the stored snapshot — the snapshot here is deliberately
+    wrong, and must lose."""
+    panel = FakePanel([], squad_locations=["Germany", "Ukraine"])
+    svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: "Stale,Wrong"})
+    device = await _device(session)
+    assert await svc.available_locations(device) == ["Germany", "Ukraine"]
+
+
+async def test_available_locations_fresh_falls_back_when_panel_is_down(session) -> None:
+    """Panel unreachable -> last known good (here: the stored list) instead of an empty picker."""
+    panel = FakePanel([], squad_error=RemnawaveError("down"))
     svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: "Germany,Ukraine"})
     device = await _device(session)
     assert await svc.available_locations(device) == ["Germany", "Ukraine"]
@@ -493,6 +544,9 @@ class _StubPanel:
     async def subscription(self, username):
         return _sub(), {"Germany": "vless://de#Germany"}
 
+    async def squad_location_names(self, squad_uuid):
+        return ["Germany"]
+
 
 @pytest_asyncio.fixture
 async def claim_env(db_sessions) -> AsyncIterator[tuple[httpx.AsyncClient, object]]:
@@ -526,14 +580,16 @@ async def test_endpoint_claim_then_status(claim_env) -> None:
     assert body["configs"] == 1
 
 
-async def test_endpoint_locations(claim_env) -> None:
+async def test_endpoint_locations_serves_the_live_squad(claim_env) -> None:
+    """End-to-end: the endpoint reports the SQUAD's names even when the stored snapshot disagrees,
+    which is the whole point — an operator's panel change no longer needs an admin button press."""
     client, app = claim_env
     await app.state.redis.set(
-        SETTINGS_KEY, json.dumps({**_BASE, SiteSettingKey.SITE_LOCATIONS: "Germany,Ukraine"})
+        SETTINGS_KEY, json.dumps({**_BASE, SiteSettingKey.SITE_LOCATIONS: "Stale,Wrong"})
     )
     resp = await client.get("/api/public/locations")
     assert resp.status_code == 200
-    assert resp.json()["locations"] == ["Germany", "Ukraine"]
+    assert resp.json()["locations"] == ["Germany"]  # _StubPanel's squad
 
 
 async def test_endpoint_second_claim_is_change_location(claim_env) -> None:

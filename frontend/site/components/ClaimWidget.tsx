@@ -40,7 +40,7 @@ export function ClaimWidget({
   preselect?: string;
 }) {
   const t = translator(locale);
-  const { status, config, locations, loading, offline, reload } = useSite();
+  const { status, config, locations, loading, offline, reload, refreshLocations } = useSite();
   const [picked, setPicked] = useState<string | null>(null);
   const [token, setToken] = useState("");
   const [mode, setMode] = useState<Mode>("idle");
@@ -161,6 +161,13 @@ export function ClaimWidget({
         await reload();
       } else if (res.reason === "cooldown") {
         await reload();
+      } else if (res.reason === "location_unavailable") {
+        // The squad stopped serving what we offered (renamed/disabled host, or a tab left open).
+        // Drop the dead selection and re-sync the picker so the user re-picks from what's live —
+        // the server deliberately refuses to substitute a different country.
+        setPicked(null);
+        await refreshLocations();
+        setErrState(true);
       } else {
         setErrState(true);
       }
@@ -170,7 +177,7 @@ export function ClaimWidget({
       setMode("idle");
       setOutcomeSeq((s) => s + 1); // every resolution re-renders the widget — snap back to its top
     }
-  }, [selected, token, mode, reload, clearToken]);
+  }, [selected, token, mode, reload, clearToken, refreshLocations]);
 
   // ---- derive the display state from the live status (status wins; result is the pre-reload view) ----
   const serverHasConfig = !!status?.has_config;

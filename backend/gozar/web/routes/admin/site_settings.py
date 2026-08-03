@@ -8,13 +8,17 @@ A write invalidates the shared settings cache so the public site picks it up imm
 from __future__ import annotations
 
 import json
+import logging
 
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
 from gozar.remnawave import RemnawaveError
+from gozar.remnawave.links import normalize_remark
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+
+logger = logging.getLogger("gozar.web.admin")
 
 router = APIRouter(prefix="/site/settings", tags=["site-settings"])
 
@@ -88,12 +92,42 @@ async def get_site_settings(
     return await _read(_settings(request, session))
 
 
+async def _reject_unknown_locations(
+    request: Request, settings: SettingsService, wanted: list[str]
+) -> None:
+    """400 on any name the configured squad doesn't serve — matched by NORMALISED name.
+
+    The box used to accept anything, so a typo or a name left over from another squad was stored
+    and offered to visitors; picking it then produced a config for a different country. Validation
+    is best-effort by design: with no squad set, or the panel unreachable, we store what the admin
+    typed rather than blocking them during an outage.
+    """
+    squad = await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD)
+    if not squad:
+        return
+    try:
+        known = await request.app.state.panel.squad_location_names(squad)
+    except RemnawaveError:
+        logger.warning("locations not validated — panel unreachable")
+        return
+    if not known:
+        return
+    allowed = {normalize_remark(name) for name in known}
+    unknown = [name for name in wanted if normalize_remark(name) not in allowed]
+    if unknown:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"not served by the squad: {', '.join(unknown)} — available: {', '.join(known)}",
+        )
+
+
 @router.put("/", response_model=SiteSettingsOut)
 async def update_site_settings(
     body: SiteSettingsPatch, request: Request, session: DbSession, admin: AdminUser
 ) -> SiteSettingsOut:
     settings = _settings(request, session)
     if body.locations is not None:
+        await _reject_unknown_locations(request, settings, body.locations)
         await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(body.locations))
     if body.popular_location is not None:
         # empty string clears the flag (no popular location)
@@ -119,5 +153,12 @@ async def refresh_site_locations(
         names = await request.app.state.panel.squad_location_names(squad)
     except RemnawaveError as exc:
         raise HTTPException(status.HTTP_502_BAD_GATEWAY, "panel unreachable") from exc
+    if not names:
+        # Persisting [] used to be silent and doubly wrong: the picker went empty for new visitors
+        # while the claim-time filter read the same [] as "no filtering", letting every host
+        # through. Refuse instead, and leave the last working list in place.
+        raise HTTPException(
+            status.HTTP_409_CONFLICT, "squad matched no enabled host — locations left unchanged"
+        )
     await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(names))
     return await _read(settings)

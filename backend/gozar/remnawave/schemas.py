@@ -66,6 +66,10 @@ class Host(_Base):
     uuid: str = ""
     remark: str = ""  # human location name — match configs to locations by THIS, never by index
     is_disabled: bool = Field(default=False, alias="isDisabled")
+    # VERIFY: a host hidden in the panel is excluded from subscriptions but still listed by
+    # GET /api/hosts, so deriving the picker without this yields names no link ever carries.
+    # Defaults False, so a panel build that omits the field behaves exactly as before.
+    is_hidden: bool = Field(default=False, alias="isHidden")
     inbound: HostInbound = Field(default_factory=HostInbound)
     excluded_internal_squads: list[str] = Field(
         default_factory=list, alias="excludedInternalSquads"

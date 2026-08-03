@@ -284,7 +284,9 @@ class RemnawaveClient:
         """
         squads = await self.list_internal_squads()
         hosts = await self.list_hosts()
-        enabled = [h for h in hosts if not h.is_disabled]
+        # Hidden hosts are served by neither the subscription nor the picker: offering one produces
+        # a name that no link carries, which is exactly what makes a pick resolve to nothing.
+        enabled = [h for h in hosts if not h.is_disabled and not h.is_hidden]
         squad = next((s for s in squads if s.uuid == squad_uuid), None)
         if squad is None:
             logger.warning(

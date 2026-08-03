@@ -45,6 +45,9 @@ export interface ClaimResponse {
   size?: string | null;
   changed: boolean;
   retry_after?: string | null;
+  // Sent only with reason "location_unavailable": the locations the squad serves RIGHT NOW, so the
+  // picker can re-sync instead of the server quietly handing back a different country's config.
+  locations?: string[] | null;
 }
 
 export interface RewardResponse {

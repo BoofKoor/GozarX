@@ -68,14 +68,23 @@ async def complete_site_setup(
     settings = _settings(request, session)
     await settings.set(SiteSettingKey.SITE_TRIAL_SQUAD, body.trial_squad)
 
-    # No explicit allowlist? derive every location from the squad's remark names (best-effort).
+    # No explicit allowlist? derive every location from the squad's remark names. Storing an empty
+    # list here used to be the silent outcome of a panel hiccup, and it is the worst possible state:
+    # new visitors saw an empty picker while the claim-time filter read the same [] as "no
+    # filtering". Fail the wizard loudly instead — the operator can retry once the panel answers.
     locations = body.locations
     if not locations:
         try:
             locations = await request.app.state.panel.squad_location_names(body.trial_squad)
-        except RemnawaveError:
-            logger.warning("site setup: squad_location_names failed; storing an empty allowlist")
-            locations = []
+        except RemnawaveError as exc:
+            logger.warning("site setup: squad_location_names failed")
+            raise HTTPException(
+                status.HTTP_502_BAD_GATEWAY, "panel unreachable — cannot derive locations"
+            ) from exc
+        if not locations:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT, "squad matched no enabled host — check the squad's hosts"
+            )
     await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(locations))
 
     await settings.set(SiteSettingKey.SITE_TRIAL_HOURS, str(max(1, body.trial_hours)))
