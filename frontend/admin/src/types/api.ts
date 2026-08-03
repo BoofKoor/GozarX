@@ -342,17 +342,21 @@ export interface SiteMessagePage {
 
 export interface SitePushAudience {
   recipients: number;
+  by_locale: { locale: string; count: number }[];
 }
 
 export interface SitePushInput {
   title: string;
   body: string;
   url: string;
+  /** null (or absent) = every active subscription. */
+  locale?: string | null;
 }
 
 export interface SitePushResult {
   queued: boolean;
   recipients: number;
+  log_id: number;
 }
 
 export interface SiteStats {
@@ -464,4 +468,72 @@ export interface SiteAnalytics {
   active_streaks: number;
   push: PushHealth;
   abuse: AbuseSignals;
+}
+
+// --- Phase 4: website device browser (/api/admin/site/devices/*) ---
+export interface SiteDeviceRow {
+  uuid: string;
+  handle: string | null;
+  status: string; // available | active_config | blocked
+  site_panel_username: string | null;
+  referral_count: number;
+  referred_by: string | null;
+  streak_count: number;
+  last_claim_at: string | null;
+  ip_bucket: string | null;
+  has_fingerprint: boolean; // the hash itself is never exposed — it identifies the browser
+  created_at: string | null;
+}
+
+export interface SiteDevicePage {
+  items: SiteDeviceRow[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SiteDeviceClaim {
+  location: string;
+  is_change: boolean;
+  created_at: string | null;
+}
+
+export interface SiteDeviceCard extends SiteDeviceRow {
+  claims: number;
+  recent_claims: SiteDeviceClaim[];
+  rewards: string[];
+  invited: number; // raw, uncapped count of devices that arrived via this one's link
+}
+
+export interface SiteDevicePeer {
+  uuid: string;
+  handle: string | null;
+  status: string;
+  created_at: string | null;
+}
+
+export type SiteDeviceAction = "block" | "unblock" | "reset";
+
+export interface SiteDeviceListParams {
+  page: number;
+  page_size: number;
+  status?: string;
+  search?: string;
+  ip_bucket?: string;
+}
+
+// --- Phase 4: push targeting + history ---
+export interface SitePushLog {
+  id: number;
+  title: string;
+  body: string;
+  url: string;
+  locale: string | null;
+  status: string; // queued | sending | done | failed
+  recipients: number;
+  sent: number;
+  failed: number;
+  pruned: number;
+  created_at: string | null;
+  finished_at: string | null;
 }

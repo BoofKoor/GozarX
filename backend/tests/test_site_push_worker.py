@@ -14,6 +14,7 @@ from gozar.cache.redis import SETTINGS_KEY
 from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
+from gozar.db.repositories.site_push_log import SitePushLogRepository
 from gozar.remnawave.schemas import PanelUser
 from gozar.services import push
 from gozar.services.settings_service import SiteSettingKey
@@ -135,3 +136,85 @@ async def test_site_reconcile_heals_terminal_leaves_live(db_sessions, monkeypatc
 async def test_site_reconcile_missing_deps_is_noop(monkeypatch) -> None:
     # No panel/redis in ctx — the task guards and returns without touching anything.
     await site_reconcile({"sessionmaker": object()})
+
+
+async def test_site_push_broadcast_records_its_outcome(db_sessions, monkeypatch) -> None:
+    """The fan-out writes back to its site_push_logs row.
+
+    Without this the admin pressed send and the only trace was a stderr line — no way to know
+    whether anything was delivered or how many dead subscriptions were pruned.
+    """
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-log"))
+        await s.flush()
+        repo = PushSubscriptionRepository(s)
+        for ep in ("https://e/ok", "https://e/gone"):
+            await repo.upsert(device_uuid="dev-log", endpoint=ep, p256dh="k", auth="a", locale="fa")
+        log = await SitePushLogRepository(s).create(
+            title="t", body="b", url="", locale=None, recipients=2
+        )
+        log_id = log.id
+        await s.commit()
+
+    async def _fake_send(info, payload):
+        return (
+            push.PushOutcome.GONE if info["endpoint"].endswith("/gone") else push.PushOutcome.SENT
+        )
+
+    monkeypatch.setattr(push, "send_push", _fake_send)
+    monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
+    await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b", "", None, log_id)
+
+    async with db_sessions() as s:
+        row = await SitePushLogRepository(s).get(log_id)
+        assert row is not None
+        assert row.status == "done"
+        assert (row.sent, row.failed, row.pruned) == (1, 0, 1)
+        assert row.finished_at is not None
+
+
+async def test_site_push_broadcast_targets_one_locale(db_sessions, monkeypatch) -> None:
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-loc"))
+        await s.flush()
+        repo = PushSubscriptionRepository(s)
+        await repo.upsert(
+            device_uuid="dev-loc", endpoint="https://e/fa", p256dh="k", auth="a", locale="fa"
+        )
+        await repo.upsert(
+            device_uuid="dev-loc", endpoint="https://e/en", p256dh="k", auth="a", locale="en"
+        )
+        await s.commit()
+
+    reached: list[str] = []
+
+    async def _fake_send(info, payload):
+        reached.append(info["endpoint"])
+        return push.PushOutcome.SENT
+
+    monkeypatch.setattr(push, "send_push", _fake_send)
+    monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
+    await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b", "", "en", None)
+    assert reached == ["https://e/en"]
+
+
+async def test_site_push_broadcast_without_a_log_id_still_sends(db_sessions, monkeypatch) -> None:
+    """Bookkeeping must never gate delivery — a missing log id sends exactly as before."""
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-nolog"))
+        await s.flush()
+        await PushSubscriptionRepository(s).upsert(
+            device_uuid="dev-nolog", endpoint="https://e/x", p256dh="k", auth="a", locale="fa"
+        )
+        await s.commit()
+
+    sent: list[str] = []
+
+    async def _fake_send(info, payload):
+        sent.append(info["endpoint"])
+        return push.PushOutcome.SENT
+
+    monkeypatch.setattr(push, "send_push", _fake_send)
+    monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
+    await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b")
+    assert sent == ["https://e/x"]

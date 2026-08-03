@@ -190,10 +190,27 @@ async def test_push_audience_and_missing_worker(site_client: httpx.AsyncClient) 
     assert r.status_code == 503
 
 
+async def _subscribe(db_sessions, *, endpoint: str, locale: str = "fa") -> None:
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid=f"dev-{endpoint}"))
+        await s.flush()
+        s.add(
+            PushSubscription(
+                device_uuid=f"dev-{endpoint}",
+                endpoint=endpoint,
+                p256dh="k",
+                auth="a",
+                locale=locale,
+            )
+        )
+        await s.commit()
+
+
 async def test_push_enqueues_worker_job(db_sessions, monkeypatch) -> None:
     monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
     monkeypatch.setenv("ADMIN_USERNAME", "root")
     get_settings.cache_clear()
+    await _subscribe(db_sessions, endpoint="e1")
     arq = _FakeArq()
     app = _build_app(db_sessions, arq=arq)
     token = create_access("root")
@@ -206,7 +223,90 @@ async def test_push_enqueues_worker_job(db_sessions, monkeypatch) -> None:
             "/api/admin/site/push/", json={"title": "hi", "body": "there", "url": "/status"}
         )
         assert r.status_code == 200 and r.json()["queued"] is True
-    assert arq.jobs == [("site_push_broadcast", ("hi", "there", "/status"))]
+        log_id = r.json()["log_id"]
+        # The job carries the locale filter and the log id so the worker can write the outcome back.
+        assert arq.jobs == [("site_push_broadcast", ("hi", "there", "/status", None, log_id))]
+
+        # A row exists immediately, BEFORE the worker runs — a lost job stays visible as "queued"
+        # rather than vanishing without a trace.
+        history = (await c.get("/api/admin/site/push/history")).json()
+        assert len(history) == 1
+        assert history[0]["status"] == "queued"
+        assert history[0]["recipients"] == 1
+        assert history[0]["sent"] == 0
+    get_settings.cache_clear()
+
+
+async def test_push_refuses_an_empty_audience(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    arq = _FakeArq()
+    app = _build_app(db_sessions, arq=arq)
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        r = await c.post("/api/admin/site/push/", json={"title": "hi", "body": "there"})
+        # "queued to 0 devices" is exactly the silent nothing this section is meant to stop.
+        assert r.status_code == 409
+    assert arq.jobs == []
+    get_settings.cache_clear()
+
+
+async def test_push_targets_one_locale(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    await _subscribe(db_sessions, endpoint="fa1", locale="fa")
+    await _subscribe(db_sessions, endpoint="fa2", locale="fa")
+    await _subscribe(db_sessions, endpoint="en1", locale="en")
+    arq = _FakeArq()
+    app = _build_app(db_sessions, arq=arq)
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        audience = (await c.get("/api/admin/site/push/")).json()
+        assert audience["recipients"] == 3
+        assert {r["locale"]: r["count"] for r in audience["by_locale"]} == {"fa": 2, "en": 1}
+
+        r = await c.post("/api/admin/site/push/", json={"title": "hi", "body": "b", "locale": "en"})
+        assert r.status_code == 200
+        assert r.json()["recipients"] == 1  # the echo matches what will actually be sent
+        assert arq.jobs[0][1][4 - 1] == "en"
+
+        assert (
+            await c.post("/api/admin/site/push/", json={"title": "h", "body": "b", "locale": "ru"})
+        ).status_code == 422
+    get_settings.cache_clear()
+
+
+async def test_push_rejects_an_offsite_url(db_sessions, monkeypatch) -> None:
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    await _subscribe(db_sessions, endpoint="u1")
+    arq = _FakeArq()
+    app = _build_app(db_sessions, arq=arq)
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        # The value reaches every subscriber's notificationclick handler, so it must be an in-site
+        # path or a plain https address — never a javascript:, http: or protocol-relative URL.
+        for bad in ("javascript:alert(1)", "http://evil.example", "//evil.example", "data:x"):
+            r = await c.post("/api/admin/site/push/", json={"title": "h", "body": "b", "url": bad})
+            assert r.status_code == 422, f"{bad!r} should have been rejected"
+        for good in ("/status", "https://gozarx.example/status", ""):
+            r = await c.post("/api/admin/site/push/", json={"title": "h", "body": "b", "url": good})
+            assert r.status_code == 200, f"{good!r} should have been accepted"
     get_settings.cache_clear()
 
 

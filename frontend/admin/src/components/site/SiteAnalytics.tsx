@@ -1,4 +1,5 @@
-import { BellRing, Gift, Globe, ShieldAlert } from "lucide-react";
+import { BellRing, ChevronLeft, Gift, Globe, ShieldAlert } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -164,23 +165,28 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
           </div>
           <ul className="space-y-1.5 text-sm">
             {abuse.top_ip_buckets.map((b) => (
-              <li
-                key={b.label}
-                className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-1.5 dark:bg-surface-sunken/50"
-              >
-                <span className="font-mono text-xs text-content-muted" dir="ltr">
-                  {b.label}
-                </span>
-                <span className="tabular-nums text-content-muted">
-                  {formatNumber(b.count)} دستگاه
-                </span>
+              <li key={b.label}>
+                {/* The panel used to name a bucket and stop there. This opens the actual devices
+                    behind it, which is the only thing that makes the signal actionable. */}
+                <Link
+                  to={`/site/devices?ip_bucket=${encodeURIComponent(b.label)}`}
+                  className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-1.5 transition hover:bg-surface-hover"
+                >
+                  <span className="font-mono text-xs text-content-muted" dir="ltr">
+                    {b.label}
+                  </span>
+                  <span className="flex items-center gap-1 tabular-nums text-content-muted">
+                    {formatNumber(b.count)} دستگاه
+                    <ChevronLeft className="h-3.5 w-3.5" />
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
         </>
       )}
       <p className="mt-3 text-xs text-content-subtle">
-        این‌ها فقط نشانه‌اند، نه مسدودسازی خودکار — برای بررسی دستی.
+        این‌ها فقط نشانه‌اند، نه مسدودسازی خودکار — برای بررسی دستی روی هر مورد بزنید.
       </p>
     </Card>
   );

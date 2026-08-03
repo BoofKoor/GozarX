@@ -13,6 +13,7 @@ from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.models.site_message import SiteMessage
+from gozar.db.models.site_push_log import SitePushLog, SitePushStatus
 from gozar.db.models.site_reward import SiteReward, SiteRewardType
 from gozar.db.models.user import User
 
@@ -28,6 +29,8 @@ __all__ = [
     "SiteDeviceStatus",
     "SiteLandingPage",
     "SiteMessage",
+    "SitePushLog",
+    "SitePushStatus",
     "SiteReward",
     "SiteRewardType",
     "User",

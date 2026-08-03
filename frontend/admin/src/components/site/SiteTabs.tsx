@@ -1,4 +1,12 @@
-import { BarChart3, BellRing, FileText, Inbox, Settings2, Wrench } from "lucide-react";
+import {
+  BarChart3,
+  BellRing,
+  FileText,
+  Inbox,
+  MonitorSmartphone,
+  Settings2,
+  Wrench,
+} from "lucide-react";
 
 import { NavTabs, type TabItem } from "@/components/ui/Tabs";
 
@@ -8,6 +16,7 @@ import { NavTabs, type TabItem } from "@/components/ui/Tabs";
 // it dropped you out of the section with no way back except one inline link on one page.
 const TABS: TabItem[] = [
   { to: "/site/settings", label: "تنظیمات", icon: Settings2 },
+  { to: "/site/devices", label: "دستگاه‌ها", icon: MonitorSmartphone },
   { to: "/site/pages", label: "صفحه‌ها", icon: FileText },
   { to: "/site/inbox", label: "پیام‌ها", icon: Inbox },
   { to: "/site/push", label: "اعلان‌ها", icon: BellRing },

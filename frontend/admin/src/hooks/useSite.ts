@@ -3,6 +3,13 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api } from "@/lib/api";
 import type {
   SiteAnalytics,
+  SiteDeviceAction,
+  SiteDeviceCard,
+  SiteDeviceListParams,
+  SiteDevicePage,
+  SiteDevicePeer,
+  SiteDeviceRow,
+  SitePushLog,
   SetupStatus,
   SiteLandingInput,
   SiteLandingPage,
@@ -155,10 +162,13 @@ export function useSitePushAudience() {
 }
 
 export function useSendSitePush() {
-  // Sending doesn't change the subscriber count, so no cache invalidation is needed.
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: SitePushInput) =>
       (await api.post<SitePushResult>("/admin/site/push/", body)).data,
+    // Sending doesn't change the subscriber count, but it DOES add a history row — and that row is
+    // the only place the admin ever learns what happened.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-push-history"] }),
   });
 }
 
@@ -183,5 +193,62 @@ export function useSiteAnalytics(days: number) {
     queryFn: async () =>
       (await api.get<SiteAnalytics>("/admin/site/stats/analytics", { params: { days } })).data,
     placeholderData: keepPreviousData,
+  });
+}
+
+// --- website device browser (P4) ---
+export function useSiteDevices(params: SiteDeviceListParams) {
+  return useQuery({
+    queryKey: ["site-devices", params],
+    queryFn: async () => (await api.get<SiteDevicePage>("/admin/site/devices/", { params })).data,
+    placeholderData: keepPreviousData, // keep the current page visible while the next loads
+  });
+}
+
+export function useSiteDevice(uuid: string | null) {
+  return useQuery({
+    queryKey: ["site-device", uuid],
+    queryFn: async () => (await api.get<SiteDeviceCard>(`/admin/site/devices/${uuid}`)).data,
+    enabled: uuid != null,
+  });
+}
+
+/** Devices sharing this one's browser fingerprint — the rows behind the anti-abuse count. */
+export function useSiteDevicePeers(uuid: string | null) {
+  return useQuery({
+    queryKey: ["site-device-peers", uuid],
+    queryFn: async () =>
+      (await api.get<SiteDevicePeer[]>(`/admin/site/devices/${uuid}/peers`)).data,
+    enabled: uuid != null,
+  });
+}
+
+export function useSiteDeviceAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ uuid, action }: { uuid: string; action: SiteDeviceAction }) =>
+      (await api.post<SiteDeviceRow>(`/admin/site/devices/${uuid}/${action}`)).data,
+    onSuccess: (updated) => {
+      qc.setQueryData(["site-device", updated.uuid], (old: SiteDeviceCard | undefined) =>
+        old ? { ...old, ...updated } : old,
+      );
+      qc.invalidateQueries({ queryKey: ["site-devices"] });
+      // Blocking/resetting shifts the status counts the site funnel shows.
+      qc.invalidateQueries({ queryKey: ["site-stats"] });
+    },
+  });
+}
+
+// --- push history ---
+/** Recent broadcasts and their outcome. Polled while anything is still in flight so a send that
+ *  the worker is processing visibly finishes instead of sitting on "queued" forever. */
+export function useSitePushHistory() {
+  return useQuery({
+    queryKey: ["site-push-history"],
+    queryFn: async () => (await api.get<SitePushLog[]>("/admin/site/push/history")).data,
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((r) => r.status === "queued" || r.status === "sending")
+        ? 5_000
+        : false,
   });
 }
