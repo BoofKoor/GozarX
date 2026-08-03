@@ -283,3 +283,122 @@ async def test_site_analytics_aggregations(site_client: httpx.AsyncClient, db_se
     assert body["push"]["by_locale"] == [{"label": "fa", "count": 1}]  # active only
     assert body["abuse"]["top_ip_buckets"] == [{"label": "ipA", "count": 2}]
     assert body["abuse"]["shared_fingerprint_devices"] == 2  # d1 & d2 share fpX
+
+
+# --- location validation (the wizard used to be a hole straight through the settings check) ---
+
+
+async def test_setup_rejects_a_location_the_squad_does_not_serve(
+    site_client: httpx.AsyncClient,
+) -> None:
+    r = await site_client.post(
+        "/api/admin/site/setup/",
+        json={"trial_squad": "sq-1", "locations": ["Germany", "Narnia"]},
+    )
+    assert r.status_code == 400
+    # The message must name BOTH the offending value and what is actually available, so a typo is
+    # fixable without opening the panel.
+    assert "Narnia" in r.json()["detail"]
+    assert "Germany" in r.json()["detail"]
+    # Nothing was persisted — the squad is still unset.
+    assert (await site_client.get("/api/admin/site/setup/status")).json()["completed"] is False
+
+
+async def test_setup_accepts_a_valid_subset(site_client: httpx.AsyncClient) -> None:
+    r = await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Finland"]}
+    )
+    assert r.status_code == 200
+    assert (await site_client.get("/api/admin/site/settings/")).json()["locations"] == ["Finland"]
+
+
+async def test_settings_rejects_a_popular_location_outside_the_list(
+    site_client: httpx.AsyncClient,
+) -> None:
+    await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Germany"]}
+    )
+    r = await site_client.put("/api/admin/site/settings/", json={"popular_location": "Finland"})
+    assert r.status_code == 400
+    assert "Finland" in r.json()["detail"]
+    assert (await site_client.get("/api/admin/site/settings/")).json()["popular_location"] in (
+        None,
+        "",
+    )
+
+
+async def test_settings_validates_popular_against_the_list_in_the_same_request(
+    site_client: httpx.AsyncClient,
+) -> None:
+    await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Germany"]}
+    )
+    # Swapping the list and the star in ONE request must validate against the NEW list, not the
+    # stored one — otherwise a perfectly consistent edit is rejected.
+    r = await site_client.put(
+        "/api/admin/site/settings/",
+        json={"locations": ["Finland"], "popular_location": "Finland"},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["locations"] == ["Finland"] and body["popular_location"] == "Finland"
+
+
+async def test_settings_allows_clearing_the_popular_location(
+    site_client: httpx.AsyncClient,
+) -> None:
+    await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Germany"]}
+    )
+    await site_client.put("/api/admin/site/settings/", json={"popular_location": "Germany"})
+    r = await site_client.put("/api/admin/site/settings/", json={"popular_location": ""})
+    assert r.status_code == 200
+    assert r.json()["popular_location"] in (None, "")
+
+
+# --- the stats range control has to move the WHOLE page, analytics band included ---
+
+
+async def test_site_analytics_is_windowed(site_client: httpx.AsyncClient) -> None:
+    body = (await site_client.get("/api/admin/site/stats/analytics?days=7")).json()
+    assert body["range_days"] == 7
+    # an unsupported window snaps back to the default rather than silently using "all time"
+    assert (await site_client.get("/api/admin/site/stats/analytics?days=999")).json()[
+        "range_days"
+    ] == 14
+    assert (await site_client.get("/api/admin/site/stats/analytics?days=90")).json()[
+        "range_days"
+    ] == 90
+
+
+# --- landing slugs end up in a public URL (/l/{slug}) ---
+
+
+async def test_landing_rejects_an_unusable_slug(site_client: httpx.AsyncClient) -> None:
+    for bad in ("has spaces", "Upper-Case", "کانفیگ-رایگان", "trailing-", "double--hyphen"):
+        r = await site_client.post(
+            "/api/admin/site/pages/", json={"slug": bad, "locale": "fa", "title": "t"}
+        )
+        assert r.status_code == 422, f"{bad!r} should have been rejected"
+
+
+async def test_landing_accepts_a_url_safe_slug(site_client: httpx.AsyncClient) -> None:
+    r = await site_client.post(
+        "/api/admin/site/pages/",
+        json={"slug": "free-v2ray-config", "locale": "fa", "title": "کانفیگ رایگان"},
+    )
+    assert r.status_code == 201
+    assert r.json()["slug"] == "free-v2ray-config"
+
+
+async def test_landing_update_also_validates_the_slug(site_client: httpx.AsyncClient) -> None:
+    created = (
+        await site_client.post(
+            "/api/admin/site/pages/", json={"slug": "ok-slug", "locale": "fa", "title": "t"}
+        )
+    ).json()
+    r = await site_client.put(
+        f"/api/admin/site/pages/{created['id']}",
+        json={"slug": "not ok", "locale": "fa", "title": "t"},
+    )
+    assert r.status_code == 422

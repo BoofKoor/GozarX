@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/confirm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { useSendSitePush, useSitePushAudience } from "@/hooks/useSite";
+import { apiErrorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 
 export function SitePush() {
@@ -38,7 +39,7 @@ export function SitePush() {
           setBody("");
           setUrl("");
         },
-        onError: () => toast.error("ارسال نشد."),
+        onError: (err) => toast.error(apiErrorMessage(err, "ارسال نشد.")),
       },
     );
   }

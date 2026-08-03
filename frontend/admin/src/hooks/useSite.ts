@@ -172,10 +172,16 @@ export function useSiteStats(days: number) {
   });
 }
 
-/** Deeper website analytics (reward economy, streaks, push health, anti-abuse). Not windowed. */
-export function useSiteAnalytics() {
+/** Deeper website analytics (reward economy, streaks, push health, anti-abuse).
+ *
+ * Windowed by the SAME `days` the funnel above it uses. It used to ignore the range entirely, so
+ * the page's 7/14/30 buttons moved the top half of the screen and silently did nothing to the
+ * bottom half. Figures that are inherently lifetime are labelled as such in the UI. */
+export function useSiteAnalytics(days: number) {
   return useQuery({
-    queryKey: ["site-analytics"],
-    queryFn: async () => (await api.get<SiteAnalytics>("/admin/site/stats/analytics")).data,
+    queryKey: ["site-analytics", days],
+    queryFn: async () =>
+      (await api.get<SiteAnalytics>("/admin/site/stats/analytics", { params: { days } })).data,
+    placeholderData: keepPreviousData,
   });
 }

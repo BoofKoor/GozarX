@@ -452,6 +452,9 @@ export interface AbuseSignals {
 }
 
 export interface SiteAnalytics {
+  range_days: number;
+  claims_in_range: number;
+  devices_active_in_range: number;
   dau: number;
   wau: number;
   mau: number;

@@ -100,3 +100,24 @@ api.interceptors.response.use(
     return api.request(original);
   },
 );
+
+/**
+ * The server's own explanation of a failure, or `fallback`.
+ *
+ * The panel used to collapse every mutation error into one generic toast, so a 400 that said
+ * exactly which location the squad doesn't serve, a 409 ("the squad matched no enabled host") and a
+ * 502 ("panel unreachable") all read as "ذخیره نشد." — three different problems, one useless
+ * message. FastAPI puts the reason in `detail`; surface it.
+ */
+export function apiErrorMessage(error: unknown, fallback: string): string {
+  if (!axios.isAxiosError(error)) return fallback;
+  const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  // 422 bodies are a list of per-field errors; show the first message rather than "[object Object]".
+  if (Array.isArray(detail)) {
+    const first = detail.find((d) => typeof d?.msg === "string");
+    if (first) return String(first.msg);
+  }
+  if (!error.response) return "ارتباط با سرور برقرار نشد.";
+  return fallback;
+}

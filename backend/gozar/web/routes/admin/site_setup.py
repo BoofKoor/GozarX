@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.site_locations import reject_unknown_locations
 
 logger = logging.getLogger("gozar.web.admin.site_setup")
 router = APIRouter(prefix="/site/setup", tags=["site-setup"])
@@ -66,6 +67,13 @@ async def complete_site_setup(
     body: SiteSetupIn, request: Request, session: DbSession, admin: AdminUser
 ) -> SiteSetupStatusOut:
     settings = _settings(request, session)
+
+    # An EXPLICIT allowlist is validated against the squad being saved, exactly like the settings
+    # PUT does. Without this the wizard was a hole straight through that check: a typo (or a name
+    # left over from another squad) was stored, offered on the public picker, and picking it handed
+    # the visitor a config for a different country — the v1 index-mismatch lesson in a new shape.
+    await reject_unknown_locations(request, body.trial_squad, body.locations)
+
     await settings.set(SiteSettingKey.SITE_TRIAL_SQUAD, body.trial_squad)
 
     # No explicit allowlist? derive every location from the squad's remark names. Storing an empty

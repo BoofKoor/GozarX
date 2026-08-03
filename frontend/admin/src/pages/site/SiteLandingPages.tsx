@@ -11,6 +11,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useConfirm } from "@/components/ui/confirm";
+import { apiErrorMessage } from "@/lib/api";
 import {
   useCreateLanding,
   useDeleteLanding,
@@ -31,11 +32,12 @@ const BLANK: SiteLandingInput = {
 };
 
 function saveError(e: unknown): string {
-  if (isAxiosError(e)) {
-    if (e.response?.status === 409) return "این نشانی (slug) در این زبان قبلاً وجود دارد.";
-    if (e.response?.status === 422) return "ورودی نامعتبر است (زبان، نشانی و عنوان را بررسی کنید).";
+  // 409 gets a friendlier phrasing than the server's; everything else (including the slug rule the
+  // backend now enforces) shows the server's own explanation rather than a generic failure.
+  if (isAxiosError(e) && e.response?.status === 409) {
+    return "این نشانی (slug) در این زبان قبلاً وجود دارد.";
   }
-  return "ذخیره نشد.";
+  return apiErrorMessage(e, "ذخیره نشد.");
 }
 
 export function SiteLandingPages() {
@@ -182,7 +184,7 @@ function LandingEditor({
         toast.success("حذف شد.");
         onDeleted();
       },
-      onError: () => toast.error("حذف نشد."),
+      onError: (err) => toast.error(apiErrorMessage(err, "حذف نشد.")),
     });
   }
 

@@ -1,4 +1,3 @@
-import { clsx } from "clsx";
 import { BellRing, Download, Globe, Zap } from "lucide-react";
 import { useState } from "react";
 
@@ -9,12 +8,13 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Section } from "@/components/ui/Section";
+import { Segmented } from "@/components/ui/Segmented";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSiteAnalytics, useSiteStats } from "@/hooks/useSite";
 import { faPct, formatNumber, shortDay } from "@/lib/format";
 
-const RANGES = [7, 14, 30];
+const RANGE_OPTIONS = [7, 14, 30, 90].map((r) => ({ value: r, label: `${formatNumber(r)} روز` }));
 
 const STATUS_LABEL: Record<string, string> = {
   available: "آزاد",
@@ -25,30 +25,29 @@ const STATUS_LABEL: Record<string, string> = {
 export function SiteStats() {
   const [days, setDays] = useState(14);
   const { data, isError, refetch } = useSiteStats(days);
-  const { data: analytics } = useSiteAnalytics();
+  // Same window as the funnel above — the range control now moves the WHOLE page.
+  const { data: analytics } = useSiteAnalytics(days);
 
   const topMax = data ? Math.max(1, ...data.top_locations.map((l) => l.count)) : 1;
   const claimsMax = data ? Math.max(1, ...data.claims_series.map((d) => d.count)) : 1;
 
   return (
     <div className="space-y-6">
-      <PageHeader title="وب‌سایت" />
-      <SiteTabs />
-
-      <div className="flex gap-1">
-        {RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setDays(r)}
-            className={clsx(
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-              r === days ? "bg-brand/10 text-brand" : "text-content-muted hover:bg-surface-hover",
-            )}
-          >
-            {formatNumber(r)} روز
-          </button>
-        ))}
-      </div>
+      <PageHeader
+        title="آمار وب‌سایت"
+        sub="قیف بازدید تا دریافت کانفیگ، و تحلیل عمیق‌تر رفتار بازدیدکننده‌ها."
+        actions={
+          <Segmented
+            value={days}
+            onChange={setDays}
+            options={RANGE_OPTIONS}
+            size="sm"
+            ariaLabel="بازهٔ زمانی"
+          />
+        }
+      >
+        <SiteTabs />
+      </PageHeader>
 
       {!data ? (
         isError ? (

@@ -194,19 +194,29 @@ export function SiteAnalyticsSection({ data }: { data: SiteAnalytics }) {
         title="کاربران فعال وب‌سایت"
         action={<Badge tone="brand">چسبندگی {faPct(data.stickiness_pct)}</Badge>}
       />
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <Tile value={data.dau} label="روزانه" sub="DAU" />
         <Tile value={data.wau} label="هفتگی" sub="WAU" />
         <Tile value={data.mau} label="ماهانه" sub="MAU" />
+        <Tile
+          value={data.devices_active_in_range}
+          label={`فعال در ${formatNumber(data.range_days)} روز`}
+        />
+        <Tile
+          value={data.claims_in_range}
+          label={`دریافت در ${formatNumber(data.range_days)} روز`}
+        />
       </div>
 
-      <Section title="اقتصاد پاداش و استریک" />
+      {/* Everything below is LIFETIME, not windowed — say so, rather than letting the range
+          buttons above imply otherwise. */}
+      <Section title="اقتصاد پاداش و استریک" sub="ارقام کل دوره (بدون فیلتر بازه)" />
       <div className="grid gap-6 lg:grid-cols-2">
         <RewardEconomy items={data.reward_economy} />
         <StreakPanel dist={data.streak_distribution} active={data.active_streaks} />
       </div>
 
-      <Section title="کانال اعلان و ضدتقلب" />
+      <Section title="کانال اعلان و ضدتقلب" sub="ارقام کل دوره (بدون فیلتر بازه)" />
       <div className="grid gap-6 lg:grid-cols-2">
         <PushHealthPanel push={data.push} />
         <AntiAbusePanel abuse={data.abuse} />

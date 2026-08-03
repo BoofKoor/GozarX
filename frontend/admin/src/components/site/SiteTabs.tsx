@@ -1,35 +1,21 @@
-import { clsx } from "clsx";
-import { NavLink } from "react-router-dom";
+import { BarChart3, BellRing, FileText, Inbox, Settings2, Wrench } from "lucide-react";
+
+import { NavTabs, type TabItem } from "@/components/ui/Tabs";
 
 // Sub-navigation for the "Website" admin section (keeps the sidebar to one entry).
-const TABS = [
-  { to: "/site/settings", label: "تنظیمات" },
-  { to: "/site/pages", label: "صفحه‌ها" },
-  { to: "/site/inbox", label: "پیام‌ها" },
-  { to: "/site/push", label: "اعلان‌ها" },
-  { to: "/site/stats", label: "آمار" },
+//
+// The setup wizard used to be missing from this list AND rendered no tab bar of its own, so opening
+// it dropped you out of the section with no way back except one inline link on one page.
+const TABS: TabItem[] = [
+  { to: "/site/settings", label: "تنظیمات", icon: Settings2 },
+  { to: "/site/pages", label: "صفحه‌ها", icon: FileText },
+  { to: "/site/inbox", label: "پیام‌ها", icon: Inbox },
+  { to: "/site/push", label: "اعلان‌ها", icon: BellRing },
+  { to: "/site/stats", label: "آمار", icon: BarChart3 },
+  { to: "/site/setup", label: "راه‌اندازی", icon: Wrench },
 ];
 
-export function SiteTabs() {
-  return (
-    <div className="flex flex-wrap gap-1 border-b border-line">
-      {TABS.map((t) => (
-        <NavLink
-          key={t.to}
-          to={t.to}
-          end
-          className={({ isActive }) =>
-            clsx(
-              "-mb-px rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition",
-              isActive
-                ? "border-brand text-brand"
-                : "border-transparent text-content-muted hover:text-content",
-            )
-          }
-        >
-          {t.label}
-        </NavLink>
-      ))}
-    </div>
-  );
+export function SiteTabs({ unreadMessages }: { unreadMessages?: number }) {
+  const items = TABS.map((t) => (t.to === "/site/inbox" ? { ...t, count: unreadMessages } : t));
+  return <NavTabs items={items} />;
 }
