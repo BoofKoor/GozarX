@@ -148,9 +148,7 @@ async def update_page(
 
 
 @router.delete("/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_page(
-    page_id: int, request: Request, session: DbSession, admin: AdminUser
-) -> None:
+async def delete_page(page_id: int, request: Request, session: DbSession, admin: AdminUser) -> None:
     repo = SiteLandingPageRepository(session)
     page = await repo.get(page_id)
     if page is None:

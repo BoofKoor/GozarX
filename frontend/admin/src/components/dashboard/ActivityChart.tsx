@@ -16,17 +16,10 @@ import {
   gridProps,
 } from "@/components/charts/primitives";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Segmented } from "@/components/ui/Segmented";
 import { useIsDark } from "@/hooks/useIsDark";
 import { chartTheme, seriesColor } from "@/lib/chartTheme";
-import { shortDay } from "@/lib/format";
+import { formatNumber, shortDay } from "@/lib/format";
 import type { DayPoint } from "@/types/api";
-
-const RANGES = [
-  { value: 7, label: "۷ روز" },
-  { value: 14, label: "۱۴ روز" },
-  { value: 30, label: "۳۰ روز" },
-];
 
 /** Union the two daily series on a shared x-axis (each only carries days that had rows). */
 function mergeSeries(claims: DayPoint[], signups: DayPoint[]) {
@@ -46,12 +39,10 @@ export function ActivityChart({
   claims,
   signups,
   days,
-  onDaysChange,
 }: {
   claims: DayPoint[];
   signups: DayPoint[];
   days: number;
-  onDaysChange: (d: number) => void;
 }) {
   const points = mergeSeries(claims, signups);
   const t = chartTheme(useIsDark());
@@ -60,18 +51,9 @@ export function ActivityChart({
 
   return (
     <Card>
-      <CardHeader
-        title="روند فعالیت"
-        action={
-          <Segmented
-            value={days}
-            onChange={onDaysChange}
-            options={RANGES}
-            size="sm"
-            ariaLabel="بازهٔ نمودار"
-          />
-        }
-      />
+      {/* The range control lives once, in the page header — a second copy here was the same
+          control twice on one screen. */}
+      <CardHeader title="روند فعالیت" sub={`${formatNumber(days)} روز اخیر`} />
       <ChartLegend
         items={[
           { label: "دریافت کانفیگ", color: claimsColor },

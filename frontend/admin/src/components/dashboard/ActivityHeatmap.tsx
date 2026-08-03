@@ -19,9 +19,24 @@ function cellClass(count: number, max: number): string {
   return "bg-brand/20";
 }
 
-/** GitHub-style activity heatmap: config claims by weekday × hour (Asia/Tehran). Shows WHEN the bot
- *  is busy — the peak hours to schedule broadcasts or expect load. */
-export function ActivityHeatmap({ cells }: { cells: HeatCell[] }) {
+/**
+ * GitHub-style activity heatmap by weekday × hour (Asia/Tehran). Shows WHEN the bot is busy — the
+ * peak hours to schedule broadcasts or expect load.
+ *
+ * Parameterised because "when do people CLAIM" and "when do people ARRIVE" are different questions
+ * and only the first one was ever charted; both now render through this one component.
+ */
+export function ActivityHeatmap({
+  cells,
+  title = "نقشهٔ حرارتی دریافت‌ها (به وقت تهران)",
+  unit = "دریافت",
+  axisNote = "بر حسب روز × ساعت",
+}: {
+  cells: HeatCell[];
+  title?: string;
+  unit?: string;
+  axisNote?: string;
+}) {
   const counts = new Map<string, number>();
   for (const c of cells) counts.set(`${c.dow}-${c.hour}`, c.count);
   const max = Math.max(1, ...cells.map((c) => c.count));
@@ -30,8 +45,8 @@ export function ActivityHeatmap({ cells }: { cells: HeatCell[] }) {
   return (
     <Card>
       <CardHeader
-        title="نقشهٔ حرارتی فعالیت (به وقت تهران)"
-        action={<span className="text-xs text-content-subtle">دریافت‌ها بر حسب روز × ساعت</span>}
+        title={title}
+        action={<span className="text-xs text-content-subtle">{axisNote}</span>}
       />
       {total === 0 ? (
         <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
@@ -59,7 +74,7 @@ export function ActivityHeatmap({ cells }: { cells: HeatCell[] }) {
                     return (
                       <div
                         key={h}
-                        title={`${DOW_LABEL[dow]} ${toFaDigits(String(h))}:۰۰ — ${formatNumber(c)} دریافت`}
+                        title={`${DOW_LABEL[dow]} ${toFaDigits(String(h))}:۰۰ — ${formatNumber(c)} ${unit}`}
                         className={clsx("aspect-square flex-1 rounded-[3px]", cellClass(c, max))}
                       />
                     );

@@ -223,3 +223,57 @@ class UserRepository(BaseRepository):
         off = func.count().filter(User.reminder_enabled.is_(False))
         rows = await self.session.execute(select(User.language, on, off).group_by(User.language))
         return [(getattr(lang, "value", lang), int(a), int(b)) for lang, a, b in rows.all()]
+
+    # --- period comparison + deeper analytics ----------------------------------------------------
+    async def count_created_between(self, start: datetime, end: datetime) -> int:
+        """Signups in the half-open window ``[start, end)``. Backs the "vs the previous period"
+        deltas: the same figure is asked for this window and the one immediately before it, so the
+        two are always the same length and the comparison is honest."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(User)
+                .where(User.created_at >= start, User.created_at < end)
+            )
+            or 0
+        )
+
+    async def signups_hourly_weekday(
+        self, since: datetime, tz: str = "Asia/Tehran"
+    ) -> list[tuple[int, int, int]]:
+        """Signups bucketed by (weekday, hour) in ``tz`` local time → ``[(dow, hour, count), …]``.
+        The signup twin of ``ConfigLogRepository.hourly_weekday_counts``: when people ARRIVE is a
+        different question from when they claim, and only the second one was ever charted."""
+        local = func.timezone(tz, User.created_at)
+        dow = func.extract("dow", local).label("dow")
+        hour = func.extract("hour", local).label("hour")
+        rows = await self.session.execute(
+            select(dow, hour, func.count()).where(User.created_at >= since).group_by(dow, hour)
+        )
+        return [(int(d), int(h), int(n)) for d, h, n in rows.all()]
+
+    async def referral_cap_stats(self, cap: int) -> tuple[int, int]:
+        """``(at_cap, any_referrals)`` for the configured reward cap — how many inviters have
+        hit the ceiling and stopped earning. A cap of 0 means "no cap configured", so nobody is
+        at it."""
+        any_referrals = int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.referral_count > 0)
+            )
+            or 0
+        )
+        if cap <= 0:
+            return 0, any_referrals
+        at_cap = int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.referral_count >= cap)
+            )
+            or 0
+        )
+        return at_cap, any_referrals
+
+    async def status_breakdown(self) -> list[tuple[str, int]]:
+        """Users grouped by status → ``[(status_value, count), …]``. One grouped query in place of
+        the three separate ``count_by_status`` calls the stats screen used to make."""
+        rows = await self.session.execute(select(User.status, func.count()).group_by(User.status))
+        return [(getattr(s, "value", s), int(n)) for s, n in rows.all()]

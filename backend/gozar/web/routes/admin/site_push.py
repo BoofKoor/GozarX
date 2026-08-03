@@ -31,9 +31,7 @@ class PushOut(BaseModel):
 
 
 @router.get("/", response_model=PushAudienceOut)
-async def push_audience(
-    request: Request, session: DbSession, admin: AdminUser
-) -> PushAudienceOut:
+async def push_audience(request: Request, session: DbSession, admin: AdminUser) -> PushAudienceOut:
     return PushAudienceOut(recipients=await PushSubscriptionRepository(session).count_active())
 
 
@@ -45,6 +43,4 @@ async def send_site_push(
     if arq is None:
         raise HTTPException(503, "push worker is not configured")
     await arq.enqueue_job("site_push_broadcast", body.title, body.body, body.url)
-    return PushOut(
-        queued=True, recipients=await PushSubscriptionRepository(session).count_active()
-    )
+    return PushOut(queued=True, recipients=await PushSubscriptionRepository(session).count_active())

@@ -75,6 +75,17 @@ export interface DashboardStats {
   new_today: number;
   new_this_week: number;
   growth_pct: number | null; // null = no prior-week baseline (launch); render as "new" when signups > 0
+  // Window-over-window comparison: the same figures for the selected range and the equally long
+  // window immediately before it. `*_delta_pct` is null when the prior window had no baseline.
+  signups_in_range: number;
+  signups_prev_range: number;
+  signups_delta_pct: number | null;
+  claims_in_range: number;
+  claims_prev_range: number;
+  claims_delta_pct: number | null;
+  claimers_in_range: number;
+  claimers_prev_range: number;
+  claimers_delta_pct: number | null;
   // engagement (panel /system/stats)
   online_now: number;
   online_squad_scoped: boolean;
@@ -387,9 +398,39 @@ export interface DashboardAnalytics {
   activation_24h_pct: number;
   claimers: number;
   referral: ReferralFunnel;
+  referral_cap: ReferralCap;
   heatmap: HeatCell[];
+  signup_heatmap: HeatCell[];
   claims_distribution: Record<string, number>; // "1" | "2-3" | "4-6" | "7+" -> users
   reminder_by_language: LangReminder[];
+  active_users_series: DayPoint[]; // distinct claimers per day (DAU as a trend, not a point)
+  new_vs_returning: SplitDayPoint[];
+}
+
+/** One day of the new-vs-returning split: `new` = users whose FIRST-EVER claim was that day. */
+export interface SplitDayPoint {
+  day: string;
+  new: number;
+  returning: number;
+}
+
+export interface ReferralCap {
+  limit: number; // configured reward cap (0 = uncapped)
+  at_cap: number; // inviters who hit it and stopped earning
+  with_referrals: number;
+}
+
+/** A weekly signup cohort. `retention[i]` is the % of the cohort that claimed in the i-th week
+ *  after signup; index 0 is the signup week itself (the activation rate). */
+export interface CohortRow {
+  week: string;
+  size: number;
+  retention: number[];
+}
+
+export interface Retention {
+  weeks: number;
+  cohorts: CohortRow[];
 }
 
 // --- Phase B: site analytics (/api/admin/site/stats/analytics) ---

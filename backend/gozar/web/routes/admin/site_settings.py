@@ -62,9 +62,7 @@ async def _read(settings: SettingsService) -> SiteSettingsOut:
         trial_hours=await settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, 24),
         daily_limit_mb=await settings.get_int(SiteSettingKey.SITE_DAILY_LIMIT_MB, 1024),
         referral_reward_mb=await settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_MB, 0),
-        referral_reward_limit=await settings.get_int(
-            SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0
-        ),
+        referral_reward_limit=await settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),
         reward_pwa_mb=await settings.get_int(SiteSettingKey.SITE_REWARD_PWA_MB, 0),
         reward_push_mb=await settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
         reward_streak_mb=await settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),

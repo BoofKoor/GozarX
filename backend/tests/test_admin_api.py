@@ -7,8 +7,11 @@ needed. Skipped without ``TEST_DATABASE_URL`` (the ``db_sessions`` fixture skips
 
 from __future__ import annotations
 
+import csv
+import io
 import json
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import fakeredis.aioredis
@@ -589,3 +592,155 @@ async def test_system_history_returns_samples(db_sessions, monkeypatch) -> None:
     assert [r["ts"] for r in rows] == ["t1", "t2"]  # oldest-first, malformed dropped
     assert rows[1]["api_ms"] == 20
     get_settings.cache_clear()
+
+
+async def test_dashboard_supports_a_90_day_window(admin_client: httpx.AsyncClient) -> None:
+    body = (await admin_client.get("/api/admin/dashboard/stats?days=90")).json()
+    assert body["range_days"] == 90
+    assert len(body["claims_series"]) == 90  # zero-filled to exactly the window length
+
+
+async def test_dashboard_period_comparison_is_same_length_and_adjacent(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=21, created_at=now - timedelta(days=2)),  # inside a 7-day window
+                User(telegram_id=22, created_at=now - timedelta(days=9)),  # inside the PREVIOUS one
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                ConfigLog(user_id=21, location="DE", created_at=now - timedelta(days=2)),
+                ConfigLog(user_id=22, location="NL", created_at=now - timedelta(days=9)),
+                ConfigLog(user_id=22, location="NL", created_at=now - timedelta(days=10)),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/stats?days=7")).json()
+    assert body["signups_in_range"] == 1 and body["signups_prev_range"] == 1
+    assert body["signups_delta_pct"] == 0.0
+    assert body["claims_in_range"] == 1 and body["claims_prev_range"] == 2
+    assert body["claims_delta_pct"] == -50.0
+    assert body["claimers_in_range"] == 1 and body["claimers_prev_range"] == 1
+
+
+async def test_dashboard_delta_is_null_without_a_baseline(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    async with db_sessions() as s:
+        s.add(User(telegram_id=31))
+        await s.commit()
+    body = (await admin_client.get("/api/admin/dashboard/stats?days=7")).json()
+    # A launch window with real signups must not read as "0% — flat" just because there is nothing
+    # to compare against; the frontend renders null as a "new" badge instead.
+    assert body["signups_in_range"] == 1
+    assert body["signups_prev_range"] == 0
+    assert body["signups_delta_pct"] is None
+
+
+async def test_dashboard_analytics_new_vs_returning_and_active_series(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all([User(telegram_id=41), User(telegram_id=42)])
+        await s.flush()
+        s.add_all(
+            [
+                # u41 claimed days ago and again today -> today it is RETURNING.
+                ConfigLog(user_id=41, location="DE", created_at=now - timedelta(days=3)),
+                ConfigLog(user_id=41, location="DE", created_at=now),
+                # u42's only claim is today -> NEW.
+                ConfigLog(user_id=42, location="NL", created_at=now),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/analytics?days=7")).json()
+    assert len(body["active_users_series"]) == 7  # zero-filled to the window
+    assert len(body["new_vs_returning"]) == 7
+    today = now.date().isoformat()
+    row = next(r for r in body["new_vs_returning"] if r["day"] == today)
+    assert row["new"] == 1 and row["returning"] == 1
+    assert sum(c["count"] for c in body["signup_heatmap"]) == 2
+
+
+async def test_dashboard_analytics_reports_the_configured_referral_cap(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=51, referral_count=10),
+                User(telegram_id=52, referral_count=2),
+                User(telegram_id=53, referral_count=0),
+            ]
+        )
+        await s.commit()
+    # The cap comes from settings — never a hardcoded number.
+    await admin_client.put("/api/admin/settings/", json={"referral_reward_limit": 10})
+
+    cap = (await admin_client.get("/api/admin/dashboard/analytics")).json()["referral_cap"]
+    assert cap == {"limit": 10, "at_cap": 1, "with_referrals": 2}
+
+
+async def test_dashboard_retention_cohorts(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=61, created_at=now - timedelta(weeks=2)),
+                User(telegram_id=62, created_at=now - timedelta(weeks=2)),
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                # both activate in their signup week; only u61 comes back later
+                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(weeks=2)),
+                ConfigLog(user_id=62, location="DE", created_at=now - timedelta(weeks=2)),
+                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(days=2)),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/retention?weeks=4")).json()
+    assert body["weeks"] == 4
+    cohort = next(c for c in body["cohorts"] if c["size"] == 2)
+    assert cohort["retention"][0] == 100.0  # both claimed in their signup week
+    assert cohort["retention"][-1] == 50.0  # one of two returned in the latest week
+
+
+async def test_dashboard_retention_weeks_is_bounded(admin_client: httpx.AsyncClient) -> None:
+    assert (await admin_client.get("/api/admin/dashboard/retention?weeks=1")).status_code == 422
+    assert (await admin_client.get("/api/admin/dashboard/retention?weeks=99")).status_code == 422
+
+
+async def test_dashboard_csv_export(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add(User(telegram_id=71))
+        await s.flush()
+        s.add(ConfigLog(user_id=71, location="DE"))
+        await s.commit()
+
+    r = await admin_client.get("/api/admin/dashboard/export.csv?days=7")
+    assert r.status_code == 200
+    assert "text/csv" in r.headers["content-type"]
+    assert "attachment" in r.headers["content-disposition"]
+    rows = list(csv.reader(io.StringIO(r.text)))
+    assert rows[0] == [
+        "day",
+        "signups",
+        "claims",
+        "active_users",
+        "new_claimers",
+        "returning_claimers",
+    ]
+    assert len(rows) == 8  # header + 7 zero-filled days
+    today = datetime.now(UTC).date().isoformat()
+    assert [r for r in rows[1:] if r[0] == today][0][1:] == ["1", "1", "1", "1", "0"]

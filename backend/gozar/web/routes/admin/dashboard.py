@@ -9,9 +9,12 @@ panel can't answer we fall back to the DB active-config count and zero the panel
 
 from __future__ import annotations
 
+import csv
+import io
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -19,14 +22,21 @@ from gozar.db.repositories.user import UserRepository
 from gozar.remnawave.schemas import SystemStats
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingKey, SettingsService, SiteSettingKey
-from gozar.services.stats import window_start, zero_filled_daily
+from gozar.services.stats import (
+    pct_change,
+    previous_window,
+    window_start,
+    zero_filled_daily,
+    zero_filled_daily_pairs,
+)
 from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-_ALLOWED_RANGES = (7, 14, 30)
+_ALLOWED_RANGES = (7, 14, 30, 90)
 _DEFAULT_RANGE = 14
+_RETENTION_WEEKS = 8
 _SQUAD_ONLINE_KEY = "cache:squad_online"
 _SQUAD_ONLINE_TTL = 60  # seconds — matches the panel's online cadence; caps the pagination cost
 
@@ -90,6 +100,18 @@ class DashboardOut(BaseModel):
     new_today: int
     new_this_week: int
     growth_pct: float | None  # this week's signups vs last week's; None = no prior-week baseline
+    # window-over-window comparison — the SAME figures for the selected range and for the equally
+    # long window immediately before it, so every headline KPI can carry an honest delta instead of
+    # only the signups card. `*_delta_pct` is None when the prior window had no baseline.
+    signups_in_range: int
+    signups_prev_range: int
+    signups_delta_pct: float | None
+    claims_in_range: int
+    claims_prev_range: int
+    claims_delta_pct: float | None
+    claimers_in_range: int
+    claimers_prev_range: int
+    claimers_delta_pct: float | None
     # engagement (panel /system/stats)
     online_now: int
     online_squad_scoped: bool  # True: online_now counts only the trial squad(s); False: panel-wide
@@ -133,11 +155,26 @@ class ReferralFunnel(BaseModel):
     k_factor: float  # avg successful invites per user (viral coefficient); >1 ⇒ self-sustaining
 
 
+class SplitDayPoint(BaseModel):
+    """One day of the new-vs-returning split. ``new`` counts users whose FIRST-EVER claim was that
+    day; ``returning`` counts everyone else who claimed."""
+
+    day: str
+    new: int
+    returning: int
+
+
+class ReferralCap(BaseModel):
+    limit: int  # the configured reward cap (0 = uncapped)
+    at_cap: int  # inviters who have hit it and stopped earning
+    with_referrals: int  # inviters with at least one successful invite
+
+
 class DashboardAnalyticsOut(BaseModel):
     """Deeper analytics for the dashboard (separate from the cheap headline ``/stats`` so the top of
     the page stays fast). DAU/WAU/MAU are fixed 1/7/30-day active-claimer counts; activation, the
-    referral funnel, the claim distribution and reminder split are all-time; the heatmap uses the
-    selected window."""
+    referral funnel, the claim distribution and reminder split are all-time; the heatmaps, the
+    active-user series and the new/returning split use the selected window."""
 
     range_days: int
     dau: int
@@ -148,9 +185,27 @@ class DashboardAnalyticsOut(BaseModel):
     activation_24h_pct: float  # share of claimers whose first claim was within 24h of signup
     claimers: int
     referral: ReferralFunnel
+    referral_cap: ReferralCap
     heatmap: list[HeatCell]
+    signup_heatmap: list[HeatCell]
     claims_distribution: dict[str, int]  # {"1","2-3","4-6","7+"} → users
     reminder_by_language: list[LangReminder]
+    active_users_series: list[DayPoint]  # distinct claimers per day (DAU as a trend, not a point)
+    new_vs_returning: list[SplitDayPoint]
+
+
+class CohortRow(BaseModel):
+    """One weekly signup cohort. ``retention[i]`` is the share (%) of the cohort that claimed in the
+    i-th week after signup; index 0 is the signup week itself."""
+
+    week: str  # ISO date of the cohort's Monday
+    size: int
+    retention: list[float]
+
+
+class RetentionOut(BaseModel):
+    weeks: int
+    cohorts: list[CohortRow]
 
 
 def _pct(part: int, whole: int) -> float:
@@ -196,6 +251,16 @@ async def dashboard_stats(
     reminder_enabled = await user_repo.count_reminder_enabled()
     avg_referrals = round(s.referrals / s.total, 2) if s.total else 0.0
 
+    # Window-over-window comparison. `previous_window` returns the equally long, non-overlapping
+    # range immediately before the current one, so the deltas below compare like with like.
+    prev_start, prev_end = previous_window(window)
+    signups_in_range = await user_repo.count_created_since(since)
+    signups_prev_range = await user_repo.count_created_between(prev_start, prev_end)
+    claims_in_range = await config_log_repo.count_since(since)
+    claims_prev_range = await config_log_repo.count_between(prev_start, prev_end)
+    claimers_in_range = await config_log_repo.active_user_count_since(since)
+    claimers_prev_range = await config_log_repo.active_user_count_between(prev_start, prev_end)
+
     # Engagement + trial health from one panel call (graceful when unreachable).
     stats = await panel.system_stats()
     # "Online now" scoped to the service's trial squad(s) — the panel-wide onlineNow also counts the
@@ -216,6 +281,15 @@ async def dashboard_stats(
         new_today=new_today,
         new_this_week=new_this_week,
         growth_pct=growth_pct,
+        signups_in_range=signups_in_range,
+        signups_prev_range=signups_prev_range,
+        signups_delta_pct=pct_change(signups_in_range, signups_prev_range),
+        claims_in_range=claims_in_range,
+        claims_prev_range=claims_prev_range,
+        claims_delta_pct=pct_change(claims_in_range, claims_prev_range),
+        claimers_in_range=claimers_in_range,
+        claimers_prev_range=claimers_prev_range,
+        claimers_delta_pct=pct_change(claimers_in_range, claimers_prev_range),
         online_now=online_now,
         online_squad_scoped=online_squad_scoped,
         online_last_day=stats.online_last_day if stats else 0,
@@ -244,6 +318,7 @@ async def dashboard_stats(
 
 @router.get("/analytics", response_model=DashboardAnalyticsOut)
 async def dashboard_analytics(
+    request: Request,
     session: DbSession,
     admin: AdminUser,
     days: int = Query(default=_DEFAULT_RANGE),
@@ -251,7 +326,9 @@ async def dashboard_analytics(
     window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
     user_repo = UserRepository(session)
     log_repo = ConfigLogRepository(session)
+    settings = SettingsService(session, request.app.state.redis)
     now = datetime.now(UTC)
+    since = window_start(window)
 
     dau = await log_repo.active_user_count_since(now - timedelta(days=1))
     wau = await log_repo.active_user_count_since(now - timedelta(days=7))
@@ -260,9 +337,15 @@ async def dashboard_analytics(
     joined, joined_claimed = await user_repo.referral_funnel()
     total = await user_repo.count()
     referrals = await user_repo.sum_referrals()
-    heatmap = await log_repo.hourly_weekday_counts(window_start(window))
+    heatmap = await log_repo.hourly_weekday_counts(since)
+    signup_heatmap = await user_repo.signups_hourly_weekday(since)
     distribution = await log_repo.claims_per_user_buckets()
     reminders = await user_repo.reminder_by_language()
+    active_series = await log_repo.active_users_daily(since)
+    split = await log_repo.new_vs_returning_daily(since)
+    # The reward cap is a runtime setting — never hardcode the number (CLAUDE.md).
+    cap = await settings.get_int(SettingKey.REFERRAL_REWARD_LIMIT, 0)
+    at_cap, with_referrals = await user_repo.referral_cap_stats(cap)
 
     return DashboardAnalyticsOut(
         range_days=window,
@@ -279,9 +362,94 @@ async def dashboard_analytics(
             invitee_conversion_pct=_pct(joined_claimed, joined),
             k_factor=round(referrals / total, 2) if total else 0.0,
         ),
+        referral_cap=ReferralCap(limit=cap, at_cap=at_cap, with_referrals=with_referrals),
         heatmap=[HeatCell(dow=d, hour=h, count=c) for d, h, c in heatmap],
+        signup_heatmap=[HeatCell(dow=d, hour=h, count=c) for d, h, c in signup_heatmap],
         claims_distribution=distribution,
         reminder_by_language=[
             LangReminder(label=lang, on=on, off=off) for lang, on, off in reminders
         ],
+        active_users_series=[
+            DayPoint(day=d, count=n)
+            for d, n in zero_filled_daily(active_series, since=since, days=window)
+        ],
+        new_vs_returning=[
+            SplitDayPoint(day=d, new=a, returning=b)
+            for d, a, b in zero_filled_daily_pairs(split, since=since, days=window)
+        ],
+    )
+
+
+@router.get("/retention", response_model=RetentionOut)
+async def dashboard_retention(
+    session: DbSession,
+    admin: AdminUser,
+    weeks: int = Query(default=_RETENTION_WEEKS, ge=2, le=26),
+) -> RetentionOut:
+    """Weekly signup cohorts and how much of each came back to claim in later weeks.
+
+    The one view that answers "do people stick?" — every other panel measures a single moment.
+    Retention is returned as PERCENTAGES of the cohort so rows of different sizes are comparable;
+    index 0 is the signup week itself (the activation rate), 1 the week after, and so on.
+    """
+    rows = await ConfigLogRepository(session).weekly_retention_cohorts(weeks)
+    cohorts: list[CohortRow] = []
+    for week, size, offsets in rows:
+        span = (max(offsets) + 1) if offsets else 1
+        cohorts.append(
+            CohortRow(
+                week=week,
+                size=size,
+                retention=[_pct(offsets.get(i, 0), size) for i in range(span)],
+            )
+        )
+    return RetentionOut(weeks=weeks, cohorts=cohorts)
+
+
+@router.get("/export.csv", response_class=PlainTextResponse)
+async def dashboard_export(
+    session: DbSession,
+    admin: AdminUser,
+    days: int = Query(default=_DEFAULT_RANGE),
+) -> PlainTextResponse:
+    """The window's daily series as CSV — signups, claims, distinct claimers, new vs returning.
+
+    One file with every daily figure the dashboard charts, so the numbers can be checked or kept
+    outside the panel. Written with ``csv`` rather than string joins so a location or label
+    containing a comma can never shift the columns.
+    """
+    window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
+    since = window_start(window)
+    user_repo = UserRepository(session)
+    log_repo = ConfigLogRepository(session)
+
+    signups = dict(
+        zero_filled_daily(await user_repo.signups_daily(since), since=since, days=window)
+    )
+    claims = dict(zero_filled_daily(await log_repo.daily_counts(since), since=since, days=window))
+    actives = dict(
+        zero_filled_daily(await log_repo.active_users_daily(since), since=since, days=window)
+    )
+    split = {
+        day: (new, returning)
+        for day, new, returning in zero_filled_daily_pairs(
+            await log_repo.new_vs_returning_daily(since), since=since, days=window
+        )
+    }
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        ["day", "signups", "claims", "active_users", "new_claimers", "returning_claimers"]
+    )
+    for day in sorted(claims):
+        new, returning = split.get(day, (0, 0))
+        writer.writerow(
+            [day, signups.get(day, 0), claims[day], actives.get(day, 0), new, returning]
+        )
+
+    return PlainTextResponse(
+        buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="gozar-dashboard-{window}d.csv"'},
     )
