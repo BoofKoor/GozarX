@@ -11,6 +11,7 @@ from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.setting import Setting
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
+from gozar.db.models.site_faq_item import FAQ_CATEGORIES, SiteFaqItem
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.models.site_message import SiteMessage
 from gozar.db.models.site_push_log import SitePushLog, SitePushStatus
@@ -18,6 +19,7 @@ from gozar.db.models.site_reward import SiteReward, SiteRewardType
 from gozar.db.models.user import User
 
 __all__ = [
+    "FAQ_CATEGORIES",
     "ButtonConfig",
     "ConfigLog",
     "Content",
@@ -27,6 +29,7 @@ __all__ = [
     "SiteClaim",
     "SiteDevice",
     "SiteDeviceStatus",
+    "SiteFaqItem",
     "SiteLandingPage",
     "SiteMessage",
     "SitePushLog",

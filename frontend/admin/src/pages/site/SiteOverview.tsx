@@ -83,17 +83,21 @@ export function SiteOverview() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {/* Windowed, matching the 14-day query above — the overview used to show the all-time
+                identity count under the word "visitors", which only ever grows. */}
             <StatCard
-              label="بازدیدکننده (دستگاه)"
-              value={formatNumber(stats?.total_devices ?? 0)}
+              label="بازدیدکننده (۱۴ روز)"
+              value={formatNumber(stats?.visitors.value ?? 0)}
               icon={Globe}
               tone="brand"
+              delta={stats?.visitors.change_pct}
             />
             <StatCard
-              label="دریافت‌کننده"
-              value={formatNumber(stats?.devices_claimed ?? 0)}
+              label="دریافت‌کننده (۱۴ روز)"
+              value={formatNumber(stats?.claimers.value ?? 0)}
               icon={Download}
               tone="success"
+              delta={stats?.claimers.change_pct}
               hint={`نرخ تبدیل: ${faPct(stats?.conversion_pct ?? 0)}`}
             />
             <StatCard
@@ -176,7 +180,16 @@ export function SiteOverview() {
                 />
                 <Row
                   label="کانفیگ فعال روی سایت"
-                  value={formatNumber(stats?.active_configs ?? 0)}
+                  value={
+                    <span className="flex items-center gap-2">
+                      {formatNumber(stats?.active_configs_live ?? 0)}
+                      {(stats?.active_configs_stale ?? 0) > 0 && (
+                        <Badge tone="warning">
+                          {formatNumber(stats?.active_configs_stale ?? 0)} هم‌گام‌نشده
+                        </Badge>
+                      )}
+                    </span>
+                  }
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">

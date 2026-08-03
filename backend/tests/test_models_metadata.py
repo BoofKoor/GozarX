@@ -27,6 +27,7 @@ def test_all_tables_registered() -> None:
         "site_messages",
         "site_landing_pages",
         "site_push_logs",
+        "site_faq_items",
     }
 
 

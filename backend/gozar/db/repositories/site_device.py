@@ -5,15 +5,20 @@ The site analogue of ``UserRepository``, keyed by the opaque device ``uuid`` (ne
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, func, or_, select
 from sqlalchemy.sql import Select
 
+from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.base import BaseRepository
+
+# How stale a `last_seen_at` may be before the next request refreshes it. Coarse on purpose: the
+# column feeds daily buckets, and an unthrottled write would land on every page load.
+_SEEN_THROTTLE = timedelta(hours=1)
 
 
 def _device_filter(
@@ -184,6 +189,100 @@ class SiteDeviceRepository(BaseRepository):
             .limit(limit)
         )
         return [(str(b), int(n)) for b, n in rows.all()]
+
+    # --- visit tracking ---------------------------------------------------------------------------
+    async def touch_seen(self, device: SiteDevice, *, throttle: timedelta = _SEEN_THROTTLE) -> None:
+        """Record that this device was just seen, at most once per ``throttle``.
+
+        Called from the identity dependency, so it fires on every identity-bearing request — hence
+        the throttle: an unconditional UPDATE would turn every page load into a row write. A
+        one-hour resolution is far finer than the daily buckets that consume it.
+        """
+        now = datetime.now(UTC)
+        if device.last_seen_at is not None and now - device.last_seen_at < throttle:
+            return
+        device.last_seen_at = now
+        await self.session.flush()
+
+    async def count_seen_between(self, start: datetime, end: datetime) -> int:
+        """Devices seen in ``[start, end)`` — the honest "visitors in this window" figure.
+
+        The old "visits" number was ``count()``: every identity ever minted, which grows forever and
+        counts each cookieless client once per request.
+        """
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteDevice)
+                .where(SiteDevice.last_seen_at >= start, SiteDevice.last_seen_at < end)
+            )
+            or 0
+        )
+
+    async def count_new_between(self, start: datetime, end: datetime) -> int:
+        """Devices whose identity was minted in ``[start, end)`` — first-time visitors."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteDevice)
+                .where(SiteDevice.created_at >= start, SiteDevice.created_at < end)
+            )
+            or 0
+        )
+
+    async def count_returning_between(self, start: datetime, end: datetime) -> int:
+        """Devices seen in the window that already existed BEFORE it — real returning visitors.
+        This is the number that says whether the site keeps anyone, and nothing reported it."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteDevice)
+                .where(
+                    SiteDevice.last_seen_at >= start,
+                    SiteDevice.last_seen_at < end,
+                    SiteDevice.created_at < start,
+                )
+            )
+            or 0
+        )
+
+    async def seen_daily(self, since: datetime) -> list[tuple[str, int]]:
+        """Distinct devices seen per LOCAL day at/after ``since`` → ``[(day, devices), …]``.
+
+        Resolution is bounded by ``touch_seen``'s throttle: a device seen several times in a day
+        counts once, which is exactly what a daily visitor series wants.
+        """
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, SiteDevice.last_seen_at)).label("day")
+        rows = await self.session.execute(
+            select(day, func.count())
+            .where(SiteDevice.last_seen_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
+
+    async def active_config_split(self, trial_hours: int) -> tuple[int, int]:
+        """``(live, stale)`` among devices whose status is ``active_config``.
+
+        "Live" means the trial window hasn't elapsed yet (``last_claim_at + trial_hours > now``).
+        The status column alone overstates it: it is healed only by the panel webhook or the
+        15-minute reconcile sweep, and the sweep SKIPS a device whenever the panel is unreachable —
+        so during an outage the KPI silently keeps counting dead trials as active. Reporting the
+        stale count separately makes the reconcile lag visible instead of inflating the headline.
+        """
+        cutoff = datetime.now(UTC) - timedelta(hours=max(trial_hours, 1))
+        live = func.count().filter(SiteDevice.last_claim_at > cutoff)
+        stale = func.count().filter(
+            (SiteDevice.last_claim_at <= cutoff) | SiteDevice.last_claim_at.is_(None)
+        )
+        row = (
+            await self.session.execute(
+                select(live, stale)
+                .select_from(SiteDevice)
+                .where(SiteDevice.status == SiteDeviceStatus.active_config)
+            )
+        ).one()
+        return int(row[0] or 0), int(row[1] or 0)
 
     # --- admin device browser -------------------------------------------------------------------
     async def list_page(

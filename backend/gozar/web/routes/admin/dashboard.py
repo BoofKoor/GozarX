@@ -25,11 +25,11 @@ from gozar.services.settings_service import SettingKey, SettingsService, SiteSet
 from gozar.services.stats import (
     pct_change,
     previous_window,
+    start_of_today,
     window_start,
     zero_filled_daily,
     zero_filled_daily_pairs,
 )
-from gozar.services.trial import start_of_today_utc
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -238,7 +238,7 @@ async def dashboard_stats(
     referrers = await user_repo.top_referrers()
 
     # User growth: today, this week, and week-over-week change (independent of the chart range).
-    new_today = await user_repo.count_created_since(start_of_today_utc())
+    new_today = await user_repo.count_created_since(start_of_today())
     new_this_week = await user_repo.count_created_since(now - timedelta(days=7))
     two_weeks = await user_repo.count_created_since(now - timedelta(days=14))
     prev_week = two_weeks - new_this_week

@@ -13,6 +13,7 @@ from gozar.web.routes.public import (
     claim,
     contact,
     device,
+    faq,
     pages,
     push,
     rewards,
@@ -30,4 +31,5 @@ router.include_router(device.router)
 router.include_router(contact.router)
 router.include_router(push.router)
 router.include_router(pages.router)
+router.include_router(faq.router)
 router.include_router(site_copy.router)

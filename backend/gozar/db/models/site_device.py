@@ -51,3 +51,13 @@ class SiteDevice(Base):
     fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ip_bucket: Mapped[str | None] = mapped_column(String(64), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    # Last time this device was seen by the API (any identity-bearing request), refreshed at most
+    # hourly. Without it the site had NO visit signal at all: every "visitor" figure was really
+    # "identities ever minted", which counts each cookieless client (crawlers, incognito reloads)
+    # again on every request and can only ever grow.
+    # Defaulted at insert (a device was, at minimum, seen the moment it was minted) so the visitor
+    # windows never have to special-case NULL; it stays nullable only because the column was added
+    # to a live table.
+    last_seen_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True, server_default=func.now()
+    )

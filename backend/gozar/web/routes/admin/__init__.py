@@ -15,6 +15,7 @@ from gozar.web.routes.admin import (
     setup,
     site_content,
     site_devices,
+    site_faq,
     site_push,
     site_settings,
     site_setup,
@@ -41,5 +42,6 @@ router.include_router(landing.router)
 router.include_router(inbox.router)
 router.include_router(site_content.router)
 router.include_router(site_devices.router)
+router.include_router(site_faq.router)
 router.include_router(site_push.router)
 router.include_router(site_stats.router)

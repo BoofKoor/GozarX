@@ -22,7 +22,8 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.services.settings_service import SettingKey, SettingsService
-from gozar.services.trial import _DEFAULT_TRIAL_HOURS, cooldown_start, start_of_today_utc
+from gozar.services.stats import start_of_today
+from gozar.services.trial import _DEFAULT_TRIAL_HOURS, cooldown_start
 
 logger = logging.getLogger("gozar.services.admin")
 
@@ -68,7 +69,9 @@ class AdminService:
             available=await self._users.count_by_status(UserStatus.available),
             active=await self._users.count_by_status(UserStatus.active_config),
             banned=await self._users.count_by_status(UserStatus.banned),
-            configs_today=await self._logs.count_since(start_of_today_utc()),
+            # The operator's calendar day (Asia/Tehran), not UTC — a UTC midnight rolled this
+            # counter over 3.5h early, so the first hours of every local day showed yesterday.
+            configs_today=await self._logs.count_since(start_of_today()),
             referrals=await self._users.sum_referrals(),
         )
 

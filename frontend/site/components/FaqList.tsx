@@ -2,15 +2,14 @@
 
 import { useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n";
-import { FAQ_CATS, FAQ_ITEMS, FAQ_LABELS } from "@/lib/content";
+import { FAQ_CATS, FAQ_LABELS, type FaqItem } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 
 // FAQ list — faithful reproduction of the design's `vFaq`: a search box + category tabs filtering a
 // list of `.acc` accordions, with an empty state when nothing matches.
-export function FaqList({ locale }: { locale: Locale }) {
+export function FaqList({ locale, items }: { locale: Locale; items: FaqItem[] }) {
   const labels = FAQ_LABELS[locale];
   const cats = FAQ_CATS[locale];
-  const items = FAQ_ITEMS[locale];
   const [cat, setCat] = useState<string>("all");
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState<number | null>(0);

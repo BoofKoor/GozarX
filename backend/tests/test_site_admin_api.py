@@ -8,6 +8,7 @@ so no lifespan / real Redis is needed. Skipped without ``TEST_DATABASE_URL``.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 import fakeredis.aioredis
@@ -25,6 +26,7 @@ from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
 
 _SECRET = "test-admin-secret-0123456789-abcdef-ghijkl"  # >=32 bytes for PyJWT
+_DAY = timedelta(days=1)
 
 
 class _StubPanel:
@@ -312,10 +314,12 @@ async def test_push_rejects_an_offsite_url(db_sessions, monkeypatch) -> None:
 
 async def test_site_stats_funnel(site_client: httpx.AsyncClient, db_sessions) -> None:
     empty = (await site_client.get("/api/admin/site/stats/")).json()
-    assert empty["total_devices"] == 0 and empty["conversion_pct"] == 0.0
+    assert empty["visitors"]["value"] == 0 and empty["conversion_pct"] == 0.0
+    assert empty["total_devices_all_time"] == 0
     # claims_series is zero-filled to exactly range_days ascending points (continuous time axis).
     assert empty["range_days"] == 14
     assert len(empty["claims_series"]) == 14
+    assert len(empty["visitors_series"]) == 14
     assert all(pt["count"] == 0 for pt in empty["claims_series"])
 
     async with db_sessions() as s:
@@ -331,11 +335,109 @@ async def test_site_stats_funnel(site_client: httpx.AsyncClient, db_sessions) ->
         await s.commit()
 
     body = (await site_client.get("/api/admin/site/stats/")).json()
-    assert body["total_devices"] == 3
-    assert body["devices_claimed"] == 2  # d1, d2
+    # Windowed: all three devices were minted (and so last-seen) inside the window.
+    assert body["visitors"]["value"] == 3
+    assert body["new_visitors"]["value"] == 3
+    assert body["returning_visitors"]["value"] == 0  # none of them predates the window
+    assert body["claimers"]["value"] == 2  # d1, d2
     assert body["conversion_pct"] == round(2 / 3 * 100, 1)
+    # …and the lifetime figures alongside, explicitly named so the two can't be confused.
+    assert body["total_devices_all_time"] == 3
+    assert body["devices_claimed_all_time"] == 2
     assert {x["label"]: x["count"] for x in body["top_locations"]} == {"Germany": 2, "Finland": 1}
+    assert body["locations_total"] == 2
     assert body["status_counts"].get("available") == 3
+
+
+async def test_site_stats_separates_returning_visitors_from_new_ones(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """A device minted before the window but seen inside it is RETURNING, not new.
+
+    The panel used to report neither: "visits" was the all-time identity count, so the one number
+    that says whether the site keeps anyone did not exist.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                # Minted long ago, came back yesterday → returning.
+                SiteDevice(
+                    uuid="old", created_at=now - timedelta(days=40), last_seen_at=now - _DAY
+                ),
+                # Minted long ago and not seen since → outside the window entirely.
+                SiteDevice(
+                    uuid="gone",
+                    created_at=now - timedelta(days=40),
+                    last_seen_at=now - timedelta(days=40),
+                ),
+                # Minted inside the window → new.
+                SiteDevice(uuid="fresh", created_at=now - _DAY, last_seen_at=now - _DAY),
+            ]
+        )
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"]["value"] == 2  # old + fresh; "gone" is not a visitor this week
+    assert body["new_visitors"]["value"] == 1  # fresh
+    assert body["returning_visitors"]["value"] == 1  # old
+    assert body["total_devices_all_time"] == 3  # the lifetime count still sees all three
+
+
+async def test_site_stats_compares_against_the_previous_window(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """Every KPI carries the same figure over the previous, equal-length window.
+
+    Without it the range control changed a number with nothing to compare it to, and a drop looked
+    identical to a quiet week.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="cur", created_at=now - _DAY, last_seen_at=now - _DAY))
+        # Two devices in the 7 days BEFORE the current 7-day window.
+        for n, uuid in ((9, "p1"), (10, "p2")):
+            when = now - timedelta(days=n)
+            s.add(SiteDevice(uuid=uuid, created_at=when, last_seen_at=when))
+        await s.flush()
+        s.add(SiteClaim(device_uuid="cur", location="Germany", created_at=now - _DAY))
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
+    # change_pct is None (not 0.0) with no baseline, so a launch week reads as "new", not "flat".
+    assert body["claimers"] == {"value": 1, "previous": 0, "change_pct": None}
+
+
+async def test_site_stats_splits_live_from_stale_active_configs(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """`status == active_config` alone overstates live trials.
+
+    The column is healed by the panel webhook or the reconcile sweep, and the sweep SKIPS a device
+    whenever the panel is unreachable — so during an outage dead trials kept counting as active.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                SiteDevice(
+                    uuid="live", status="active_config", last_claim_at=now - timedelta(hours=2)
+                ),
+                # 24h trial that ended 6 hours ago and was never reconciled.
+                SiteDevice(
+                    uuid="dead", status="active_config", last_claim_at=now - timedelta(hours=30)
+                ),
+                SiteDevice(uuid="idle", status="available"),
+            ]
+        )
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/")).json()
+    assert body["active_configs_live"] == 1
+    assert body["active_configs_stale"] == 1
+    # The raw status column is still reported, so the gap between the two is visible.
+    assert body["status_counts"]["active_config"] == 2
 
 
 async def test_site_analytics_empty(site_client: httpx.AsyncClient) -> None:

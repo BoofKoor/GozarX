@@ -12,6 +12,7 @@ import { Setup } from "@/pages/setup/Setup";
 import { SiteContent } from "@/pages/site/SiteContent";
 import { SiteOverview } from "@/pages/site/SiteOverview";
 import { SiteDevices } from "@/pages/site/SiteDevices";
+import { SiteFaq } from "@/pages/site/SiteFaq";
 import { SiteInbox } from "@/pages/site/SiteInbox";
 import { SiteLandingPages } from "@/pages/site/SiteLandingPages";
 import { SitePush } from "@/pages/site/SitePush";
@@ -43,6 +44,7 @@ export default function App() {
             <Route path="/site/settings" element={<SiteSettings />} />
             <Route path="/site/setup" element={<SiteSetup />} />
             <Route path="/site/pages" element={<SiteLandingPages />} />
+            <Route path="/site/faq" element={<SiteFaq />} />
             <Route path="/site/content" element={<SiteContent />} />
             <Route path="/site/devices" element={<SiteDevices />} />
             <Route path="/site/inbox" element={<SiteInbox />} />

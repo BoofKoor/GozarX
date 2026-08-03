@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, Integer, String, Text, func, text
+from sqlalchemy import BigInteger, DateTime, Index, Integer, String, Text, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from gozar.db.base import Base
@@ -28,6 +28,9 @@ class SitePushStatus:
 
 class SitePushLog(Base):
     __tablename__ = "site_push_logs"
+    # Declared here as well as in the migration so autogenerate SEES it. Left out of the model, the
+    # next `make migrate` would emit a drop_index for an index the history list depends on.
+    __table_args__ = (Index("ix_site_push_logs_created_at", text("created_at DESC")),)
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     title: Mapped[str] = mapped_column(String(120))
