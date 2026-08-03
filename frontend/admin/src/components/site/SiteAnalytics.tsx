@@ -196,21 +196,36 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
 export function SiteAnalyticsSection({ data }: { data: SiteAnalytics }) {
   return (
     <>
+      {/* Two different questions, and the panel used to answer only the second one. "Seen" counts
+          every device that visited; "claimed" counts only those that provisioned — so a visitor who
+          reads the page and leaves was previously invisible in every activity number. */}
       <Section
-        title="کاربران فعال وب‌سایت"
-        action={<Badge tone="brand">چسبندگی {faPct(data.stickiness_pct)}</Badge>}
+        title="بازدیدکنندگان وب‌سایت"
+        sub="دستگاه‌هایی که سایت را باز کرده‌اند (نه فقط آن‌هایی که کانفیگ گرفته‌اند)"
+        action={<Badge tone="brand">چسبندگی {faPct(data.visit_stickiness_pct)}</Badge>}
       />
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Tile value={data.visitors_24h} label="۲۴ ساعت اخیر" sub="DAU" />
+        <Tile value={data.visitors_7d} label="۷ روز اخیر" sub="WAU" />
+        <Tile value={data.visitors_30d} label="۳۰ روز اخیر" sub="MAU" />
+        <Tile
+          value={data.claims_in_range}
+          label={`دریافت در ${formatNumber(data.range_days)} روز`}
+        />
+      </div>
+
+      <Section
+        title="دریافت‌کنندگان فعال"
+        sub="دستگاه‌هایی که در این بازه واقعاً کانفیگ گرفته‌اند"
+        action={<Badge tone="success">چسبندگی {faPct(data.stickiness_pct)}</Badge>}
+      />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile value={data.dau} label="روزانه" sub="DAU" />
         <Tile value={data.wau} label="هفتگی" sub="WAU" />
         <Tile value={data.mau} label="ماهانه" sub="MAU" />
         <Tile
           value={data.devices_active_in_range}
           label={`فعال در ${formatNumber(data.range_days)} روز`}
-        />
-        <Tile
-          value={data.claims_in_range}
-          label={`دریافت در ${formatNumber(data.range_days)} روز`}
         />
       </div>
 

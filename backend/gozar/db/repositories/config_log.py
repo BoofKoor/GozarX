@@ -6,6 +6,7 @@ from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, delete, func, select
 
+from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
@@ -59,9 +60,11 @@ class ConfigLogRepository(BaseRepository):
         )
 
     async def daily_counts(self, since: datetime) -> list[tuple[str, int]]:
-        """Claims per UTC day at or after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        """Claims per LOCAL day at or after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
         Backs the dashboard activity chart (one grouped query)."""
-        day = func.date(ConfigLog.created_at).label("day")
+        # Bucketed on the LOCAL calendar day (DISPLAY_TZ), not the UTC one: the operator reads
+        # these on Iran time, so a UTC bucket split every one of their days 3.5 hours early.
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, ConfigLog.created_at)).label("day")
         rows = await self.session.execute(
             select(day, func.count())
             .where(ConfigLog.created_at >= since)
@@ -105,7 +108,7 @@ class ConfigLogRepository(BaseRepository):
         )
 
     async def hourly_weekday_counts(
-        self, since: datetime, tz: str = "Asia/Tehran"
+        self, since: datetime, tz: str = DISPLAY_TZ_NAME
     ) -> list[tuple[int, int, int]]:
         """Claims bucketed by (weekday, hour) in ``tz`` local time → ``[(dow, hour, count), …]``.
         Backs the activity heatmap. ``dow`` is Postgres' 0=Sunday..6=Saturday. Local time (not UTC)
@@ -174,12 +177,14 @@ class ConfigLogRepository(BaseRepository):
         firsts = (
             select(
                 ConfigLog.user_id.label("uid"),
-                func.date(func.min(ConfigLog.created_at)).label("first_day"),
+                func.date(func.timezone(DISPLAY_TZ_NAME, func.min(ConfigLog.created_at))).label(
+                    "first_day"
+                ),
             )
             .group_by(ConfigLog.user_id)
             .subquery()
         )
-        day = func.date(ConfigLog.created_at).label("day")
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, ConfigLog.created_at)).label("day")
         is_new = day == firsts.c.first_day
         rows = await self.session.execute(
             select(
@@ -196,9 +201,9 @@ class ConfigLogRepository(BaseRepository):
         return [(d.isoformat(), int(a), int(b)) for d, a, b in rows.all()]
 
     async def active_users_daily(self, since: datetime) -> list[tuple[str, int]]:
-        """Distinct claimers per UTC day at/after ``since`` → ``[(day, users), …]``. DAU as a SERIES
-        — the dashboard only ever had it as a single point-in-time number."""
-        day = func.date(ConfigLog.created_at).label("day")
+        """Distinct claimers per LOCAL day at/after ``since`` → ``[(day, users), …]``. DAU as a
+        SERIES — the dashboard only ever had it as a single point-in-time number."""
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, ConfigLog.created_at)).label("day")
         rows = await self.session.execute(
             select(day, func.count(func.distinct(ConfigLog.user_id)))
             .where(ConfigLog.created_at >= since)

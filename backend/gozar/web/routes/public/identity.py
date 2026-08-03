@@ -172,6 +172,11 @@ async def current_device(request: Request, response: Response, session: DbSessio
     if device_uuid is not None:
         device = await repo.get(device_uuid)
         if device is not None:
+            # The site's only visit signal. Every identity-bearing request funnels through here, so
+            # this is where "the device was here" gets recorded; without it the admin panel could
+            # only ever count CLAIMS and report "identities ever minted" as if it were traffic.
+            # `touch_seen` throttles itself, so this is not a write per page load.
+            await repo.touch_seen(device)
             return device
 
     new_uuid = str(uuid_lib.uuid4())
@@ -181,6 +186,7 @@ async def current_device(request: Request, response: Response, session: DbSessio
         ip_bucket=ip_bucket(request, secret),
         referred_by=await _referrer(request, repo, new_uuid),
     )
+    await repo.touch_seen(device)
     set_device_cookie(response, request, new_uuid)
     return device
 

@@ -7,6 +7,7 @@ from datetime import datetime
 
 from sqlalchemy import func, select
 
+from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.repositories.base import BaseRepository
 
@@ -90,10 +91,71 @@ class SiteClaimRepository(BaseRepository):
             await self.session.scalar(select(func.count(func.distinct(SiteClaim.device_uuid)))) or 0
         )
 
+    async def count_between(self, start: datetime, end: datetime) -> int:
+        """Provisions in the half-open window ``[start, end)`` — the previous-period twin of
+        ``count_since``. Asking for the same figure over two adjacent equal-length windows is what
+        makes a "vs the previous period" delta honest rather than decorative."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteClaim)
+                .where(
+                    SiteClaim.created_at >= start,
+                    SiteClaim.created_at < end,
+                    SiteClaim.is_change.is_(False),
+                )
+            )
+            or 0
+        )
+
+    async def distinct_device_count_between(self, start: datetime, end: datetime) -> int:
+        """Distinct devices that provisioned in ``[start, end)`` — claimers in a window, as opposed
+        to ``distinct_device_count``'s all-time figure (which can only ever go up)."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteClaim.device_uuid))).where(
+                    SiteClaim.created_at >= start,
+                    SiteClaim.created_at < end,
+                    SiteClaim.is_change.is_(False),
+                )
+            )
+            or 0
+        )
+
+    async def location_total(self, since: datetime) -> int:
+        """How many DISTINCT locations were claimed at/after ``since``.
+
+        ``location_counts`` returns only the busiest ``limit``; without this the panel silently
+        renders a top-10 as if it were the whole picture.
+        """
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteClaim.location))).where(
+                    SiteClaim.created_at >= since, SiteClaim.is_change.is_(False)
+                )
+            )
+            or 0
+        )
+
+    async def change_count_since(self, since: datetime) -> int:
+        """Change-location re-picks at/after ``since``. Every other figure deliberately excludes
+        them; counting them once makes the exclusion visible instead of making the deliveries
+        disappear from the panel entirely."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteClaim)
+                .where(SiteClaim.created_at >= since, SiteClaim.is_change.is_(True))
+            )
+            or 0
+        )
+
     async def daily_counts(self, since: datetime) -> list[tuple[str, int]]:
-        """Provisions per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        """Provisions per LOCAL day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
         Excludes change-location re-picks (funnel metric — trials opened per day)."""
-        day = func.date(SiteClaim.created_at).label("day")
+        # Bucketed on the LOCAL calendar day (DISPLAY_TZ), not the UTC one: the operator reads
+        # these on Iran time, so a UTC bucket split every one of their days 3.5 hours early.
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, SiteClaim.created_at)).label("day")
         rows = await self.session.execute(
             select(day, func.count())
             .where(SiteClaim.created_at >= since, SiteClaim.is_change.is_(False))

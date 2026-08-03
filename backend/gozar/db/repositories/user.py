@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.sql import Select
 
+from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
@@ -140,9 +141,11 @@ class UserRepository(BaseRepository):
         return [(int(tid), int(n)) for tid, n in rows.all()]
 
     async def signups_daily(self, since: datetime) -> list[tuple[str, int]]:
-        """Signups per UTC day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
+        """Signups per LOCAL day at/after ``since`` → ``[(YYYY-MM-DD, count), …]`` ascending.
         Mirrors ConfigLogRepository.daily_counts for the dashboard growth chart."""
-        day = func.date(User.created_at).label("day")
+        # Bucketed on the LOCAL calendar day (DISPLAY_TZ), not the UTC one: the operator reads
+        # these on Iran time, so a UTC bucket split every one of their days 3.5 hours early.
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, User.created_at)).label("day")
         rows = await self.session.execute(
             select(day, func.count()).where(User.created_at >= since).group_by(day).order_by(day)
         )
@@ -239,7 +242,7 @@ class UserRepository(BaseRepository):
         )
 
     async def signups_hourly_weekday(
-        self, since: datetime, tz: str = "Asia/Tehran"
+        self, since: datetime, tz: str = DISPLAY_TZ_NAME
     ) -> list[tuple[int, int, int]]:
         """Signups bucketed by (weekday, hour) in ``tz`` local time → ``[(dow, hour, count), …]``.
         The signup twin of ``ConfigLogRepository.hourly_weekday_counts``: when people ARRIVE is a

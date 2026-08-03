@@ -361,17 +361,45 @@ export interface SitePushResult {
   log_id: number;
 }
 
+/** A windowed figure with the same figure over the previous, equal-length window.
+ *
+ * `change_pct` is `null` (not 0) when there's no baseline — a launch week reads as "new", not
+ * "flat", and the two render differently. */
+export interface Metric {
+  value: number;
+  previous: number;
+  change_pct: number | null;
+}
+
 export interface SiteStats {
-  total_devices: number;
-  devices_claimed: number;
-  active_configs: number;
-  conversion_pct: number;
-  configs_today: number;
-  push_subscribers: number;
   range_days: number;
+
+  // Windowed — these move with the range control.
+  visitors: Metric; // devices seen in the window
+  new_visitors: Metric; // identities minted in the window
+  returning_visitors: Metric; // seen in the window, minted before it
+  claimers: Metric; // distinct devices that provisioned in the window
+  claims: Metric; // provisions in the window (change-location re-picks excluded)
+  conversion_pct: number; // claimers / visitors, both windowed
+  conversion_pct_prev: number;
+  location_changes: number;
+
+  // Lifetime — deliberately OUTSIDE the range control, and named so the UI can say so.
+  total_devices_all_time: number;
+  devices_claimed_all_time: number;
+  conversion_all_time_pct: number;
+
+  // Right now.
+  active_configs_live: number; // trial window hasn't elapsed
+  active_configs_stale: number; // status still active_config, trial already over (reconcile lag)
+  push_subscribers: number;
+  configs_today: number; // local Asia/Tehran day
   status_counts: Record<string, number>;
+
   claims_series: DayPoint[];
+  visitors_series: DayPoint[];
   top_locations: NamedCount[];
+  locations_total: number; // distinct locations in the window (top_locations is capped at 10)
 }
 
 // --- Phase B: dashboard analytics (/api/admin/dashboard/analytics) ---
@@ -461,10 +489,15 @@ export interface SiteAnalytics {
   range_days: number;
   claims_in_range: number;
   devices_active_in_range: number;
+  /** dau/wau/mau count devices that PROVISIONED; visitors_* count devices that were SEEN. */
   dau: number;
   wau: number;
   mau: number;
   stickiness_pct: number;
+  visitors_24h: number;
+  visitors_7d: number;
+  visitors_30d: number;
+  visit_stickiness_pct: number;
   reward_economy: RewardType[];
   streak_distribution: Record<string, number>;
   active_streaks: number;
