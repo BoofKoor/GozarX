@@ -589,3 +589,30 @@ export interface SiteCopyPatch {
   fa?: string;
   en?: string;
 }
+
+// --- website FAQ (/api/admin/site/faq/*) ---
+/** Category ids the public site builds its tabs from — an item outside this set is rejected. */
+export const FAQ_CATEGORIES = ["start", "vol", "apps", "trouble"] as const;
+export type FaqCategory = (typeof FAQ_CATEGORIES)[number];
+
+export interface SiteFaqItem {
+  id: number;
+  locale: string; // fa | en
+  category: string;
+  question: string;
+  answer: string;
+  position: number;
+  published: boolean;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface SiteFaqInput {
+  locale: string;
+  category: string;
+  question: string;
+  answer: string;
+  published: boolean;
+  /** Omitted on create → the item is appended to the end of its locale's list. */
+  position?: number | null;
+}

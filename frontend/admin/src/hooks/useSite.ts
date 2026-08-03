@@ -11,6 +11,8 @@ import type {
   SiteDeviceRow,
   SiteCopyItem,
   SiteCopyPatch,
+  SiteFaqInput,
+  SiteFaqItem,
   SitePushLog,
   SetupStatus,
   SiteLandingInput,
@@ -312,5 +314,55 @@ export function useUpdateSiteCopy() {
       qc.setQueryData(["site-copy"], (old: SiteCopyItem[] | undefined) =>
         old?.map((item) => (item.key === updated.key ? updated : item)),
       ),
+  });
+}
+
+// --- website FAQ (editable questions) ---
+export function useSiteFaq(locale?: string) {
+  return useQuery({
+    queryKey: ["site-faq", locale ?? "all"],
+    queryFn: async () =>
+      (await api.get<SiteFaqItem[]>("/admin/site/faq/", { params: locale ? { locale } : {} })).data,
+  });
+}
+
+export function useCreateFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: SiteFaqInput) =>
+      (await api.post<SiteFaqItem>("/admin/site/faq/", body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-faq"] }),
+  });
+}
+
+export function useUpdateFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, body }: { id: number; body: SiteFaqInput }) =>
+      (await api.put<SiteFaqItem>(`/admin/site/faq/${id}`, body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-faq"] }),
+  });
+}
+
+export function useDeleteFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/admin/site/faq/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-faq"] }),
+  });
+}
+
+/** Reorder in ONE write: index in `ids` becomes the item's position.
+ *
+ * Moving an item by editing positions one at a time would need N requests and pass through a state
+ * where two items claim the same slot; the server applies the whole order or rejects it (409). */
+export function useReorderFaq() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: number[]) =>
+      (await api.put<SiteFaqItem[]>("/admin/site/faq/reorder", { ids })).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-faq"] }),
   });
 }

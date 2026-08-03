@@ -84,6 +84,11 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   recipients/sent/failed/pruned · created_at/finished_at). Written at ENQUEUE time by the route and
   completed by the arq worker — the fan-out is async, so without the row a broadcast that never ran
   would vanish silently instead of showing as stuck on `queued`.
+- `site_faq_items`: the public site's FAQ (locale · category · question · answer · position ·
+  published), unique on (locale, question). The site used to compile these 16 strings into its
+  bundle, so a new recurring question cost a redeploy. Defaults are seeded from `seed_faq` on boot
+  (`add_default`, never clobbering an edit) so the panel opens showing exactly what the site shows;
+  the site keeps its in-code `FAQ_ITEMS` as the fallback for an empty/unreachable response.
 - `site_devices.last_seen_at`: the site's ONLY visit signal, refreshed by `current_device` on every
   identity-bearing request (throttled to once an hour, so a page load is not a row write). Without
   it every website figure was claim-derived plus an all-time "identities minted" counter — and that
@@ -151,6 +156,9 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 10 Panel rebuild: design tokens + UI kit + app shell; retention/period-comparison metrics; website
   section fixed (shared location validation, surfaced API errors, windowed analytics) and extended
   (device browser, push targeting + history, editable site copy, inbox tools, landing editor).
+11 Website stats made honest (`site_devices.last_seen_at` visit signal, windowed KPIs with
+  previous-period deltas, local-day boundaries, live-vs-stale active configs) + editable FAQ
+  (`site_faq_items`, seeded from the site's in-code list).
 
 ## Admin panel conventions (Phase 10)
 - **Colour is the GozarX brand blue**, mirroring `docs/website/design/TOKENS.css` — never invent a
