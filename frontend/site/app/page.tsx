@@ -23,11 +23,13 @@ import { HomeFaq } from "@/components/home/HomeFaq";
 // the rest is static marketing rendered server-side. No economic numbers are hardcoded.
 export default async function HomePage() {
   const locale = await getLocale();
-  const t = translator(locale);
   // Editable hero copy from the admin Texts panel (site_hero_title/sub), with the in-code copy as the
   // fallback. An edited title renders as a single gradient headline; unedited falls back to the
   // two-part design headline. (See lib/siteCopy — degrades to all-null when the backend is absent.)
   const copy = await fetchSiteCopy(locale);
+  // The translator takes the panel's overrides as its top layer, so every allowlisted design-copy
+  // key on this page is editable without a redeploy. With none set it behaves exactly as before.
+  const t = translator(locale, copy.overrides);
   // Article/guide landings, linked from the homepage so they inherit real internal links instead of
   // being sitemap-only orphans (see fetchArticleLandings). Empty list ⇒ the band renders nothing.
   // The cap is deliberately above the seeded count: a low cap silently dropped the tail of the slug
@@ -75,7 +77,7 @@ export default async function HomePage() {
             </div>
           </div>
           <div id="hero-widget">
-            <ClaimWidget locale={locale} />
+            <ClaimWidget locale={locale} copy={copy.overrides} />
           </div>
         </div>
       </section>
@@ -104,19 +106,19 @@ export default async function HomePage() {
       </section>
 
       {/* LOCATIONS (live) */}
-      <HomeLocations locale={locale} />
+      <HomeLocations locale={locale} copy={copy.overrides} />
 
       {/* MORE VOLUME (live reward amounts) */}
-      <HomeMissions locale={locale} />
+      <HomeMissions locale={locale} copy={copy.overrides} />
 
       {/* APPS (platform-ordered) */}
-      <HomeApps locale={locale} />
+      <HomeApps locale={locale} copy={copy.overrides} />
 
       {/* STATS band (live location count) */}
       <HomeStats locale={locale} />
 
       {/* FAQ teaser (live accordion) */}
-      <HomeFaq locale={locale} />
+      <HomeFaq locale={locale} copy={copy.overrides} />
 
       {/* ARTICLES & GUIDES — server-rendered internal links to the /l/* article landings, so the
           anchors are in the raw HTML a crawler sees (no JS) with the page's own keyword as text. */}

@@ -9,6 +9,8 @@ import type {
   SiteDevicePage,
   SiteDevicePeer,
   SiteDeviceRow,
+  SiteCopyItem,
+  SiteCopyPatch,
   SitePushLog,
   SetupStatus,
   SiteLandingInput,
@@ -112,12 +114,52 @@ export function useDeleteLanding() {
 }
 
 // --- contact inbox ---
-export function useSiteMessages(page: number, unread: boolean) {
+export function useSiteMessages(page: number, unread: boolean, search?: string, locale?: string) {
   return useQuery({
-    queryKey: ["site-messages", page, unread],
+    queryKey: ["site-messages", page, unread, search ?? "", locale ?? ""],
     queryFn: async () =>
-      (await api.get<SiteMessagePage>("/admin/site/inbox/", { params: { page, unread } })).data,
+      (
+        await api.get<SiteMessagePage>("/admin/site/inbox/", {
+          params: { page, unread, search: search || undefined, locale: locale || undefined },
+        })
+      ).data,
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Unread count for the tab badge — cheap, and shared with the list query's own `unread`. */
+export function useSiteUnreadCount() {
+  return useQuery({
+    queryKey: ["site-messages-unread"],
+    queryFn: async () =>
+      (await api.get<SiteMessagePage>("/admin/site/inbox/", { params: { page: 1, unread: true } }))
+        .data.unread,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkMessageUnread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      (await api.post<SiteMessage>(`/admin/site/inbox/${id}/unread`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["site-messages"] });
+      qc.invalidateQueries({ queryKey: ["site-messages-unread"] });
+    },
+  });
+}
+
+export function useDeleteMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/admin/site/inbox/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["site-messages"] });
+      qc.invalidateQueries({ queryKey: ["site-messages-unread"] });
+    },
   });
 }
 
@@ -250,5 +292,25 @@ export function useSitePushHistory() {
       (query.state.data ?? []).some((r) => r.status === "queued" || r.status === "sending")
         ? 5_000
         : false,
+  });
+}
+
+// --- website copy editor (P5) ---
+export function useSiteCopy() {
+  return useQuery({
+    queryKey: ["site-copy"],
+    queryFn: async () => (await api.get<SiteCopyItem[]>("/admin/site/content/")).data,
+  });
+}
+
+export function useUpdateSiteCopy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ key, patch }: { key: string; patch: SiteCopyPatch }) =>
+      (await api.put<SiteCopyItem>(`/admin/site/content/${key}`, patch)).data,
+    onSuccess: (updated) =>
+      qc.setQueryData(["site-copy"], (old: SiteCopyItem[] | undefined) =>
+        old?.map((item) => (item.key === updated.key ? updated : item)),
+      ),
   });
 }

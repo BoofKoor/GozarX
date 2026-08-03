@@ -1,6 +1,6 @@
 "use client";
 
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
@@ -11,8 +11,8 @@ import { Icon } from "@/components/Icon";
 // when the panel exposes no locations.
 const SHOWN = 5;
 
-export function HomeLocations({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+  const t = translator(locale, copy);
   const { locations, loading } = useSite();
   const list = locations ?? [];
   const total = list.length;

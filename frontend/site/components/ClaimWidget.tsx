@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, type ClaimResponse } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
@@ -34,12 +34,15 @@ export function ClaimWidget({
   locale,
   compact = false,
   preselect,
+  copy,
 }: {
   locale: Locale;
   compact?: boolean;
   preselect?: string;
+  /** Panel-authored copy overrides (w_title / w_sub / cta_get …), from the homepage. */
+  copy?: CopyOverrides;
 }) {
-  const t = translator(locale);
+  const t = translator(locale, copy);
   const { status, config, locations, loading, offline, reload, refreshLocations } = useSite();
   const [picked, setPicked] = useState<string | null>(null);
   const [token, setToken] = useState("");

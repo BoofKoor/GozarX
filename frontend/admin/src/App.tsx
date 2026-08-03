@@ -9,6 +9,8 @@ import { Dashboard } from "@/pages/Dashboard";
 import { Login } from "@/pages/Login";
 import { Settings } from "@/pages/Settings";
 import { Setup } from "@/pages/setup/Setup";
+import { SiteContent } from "@/pages/site/SiteContent";
+import { SiteOverview } from "@/pages/site/SiteOverview";
 import { SiteDevices } from "@/pages/site/SiteDevices";
 import { SiteInbox } from "@/pages/site/SiteInbox";
 import { SiteLandingPages } from "@/pages/site/SiteLandingPages";
@@ -37,9 +39,11 @@ export default function App() {
             <Route path="/system" element={<System />} />
             <Route path="/settings" element={<Settings />} />
             {/* Website ("site") admin section (P9). */}
+            <Route path="/site" element={<SiteOverview />} />
             <Route path="/site/settings" element={<SiteSettings />} />
             <Route path="/site/setup" element={<SiteSetup />} />
             <Route path="/site/pages" element={<SiteLandingPages />} />
+            <Route path="/site/content" element={<SiteContent />} />
             <Route path="/site/devices" element={<SiteDevices />} />
             <Route path="/site/inbox" element={<SiteInbox />} />
             <Route path="/site/push" element={<SitePush />} />

@@ -502,3 +502,63 @@ async def test_landing_update_also_validates_the_slug(site_client: httpx.AsyncCl
         json={"slug": "not ok", "locale": "fa", "title": "t"},
     )
     assert r.status_code == 422
+
+
+# --- inbox: search, locale filter, unread toggle, delete ---
+
+
+async def _seed_messages(db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                SiteMessage(subject="سوال دربارهٔ آلمان", body="سلام", locale="fa"),
+                SiteMessage(subject="Billing question", body="hello there", locale="en"),
+                SiteMessage(
+                    subject="spam", body="buy now", locale="fa", reply_handle="a@b.com", read=True
+                ),
+            ]
+        )
+        await s.commit()
+
+
+async def test_inbox_search_matches_subject_body_and_handle(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    await _seed_messages(db_sessions)
+    for query, expected in (("آلمان", 1), ("hello", 1), ("a@b.com", 1), ("nothing", 0)):
+        body = (await site_client.get(f"/api/admin/site/inbox/?search={query}")).json()
+        assert len(body["items"]) == expected, query
+        # The pager must divide by the FILTERED count, not the total — otherwise a search shows
+        # phantom empty pages past the real end.
+        assert body["matching"] == expected
+        assert body["total"] == 3
+
+
+async def test_inbox_filters_by_locale(site_client: httpx.AsyncClient, db_sessions) -> None:
+    await _seed_messages(db_sessions)
+    body = (await site_client.get("/api/admin/site/inbox/?locale=en")).json()
+    assert [m["subject"] for m in body["items"]] == ["Billing question"]
+    assert body["matching"] == 1
+
+
+async def test_inbox_can_mark_a_message_unread_again(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    await _seed_messages(db_sessions)
+    read = next(
+        m for m in (await site_client.get("/api/admin/site/inbox/")).json()["items"] if m["read"]
+    )
+    r = await site_client.post(f"/api/admin/site/inbox/{read['id']}/unread")
+    assert r.status_code == 200 and r.json()["read"] is False
+    # Opening a message marks it read automatically, so "leave it for later" needs this.
+    assert (await site_client.get("/api/admin/site/inbox/")).json()["unread"] == 3
+
+
+async def test_inbox_delete_removes_the_message(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    await _seed_messages(db_sessions)
+    first = (await site_client.get("/api/admin/site/inbox/")).json()["items"][0]
+    assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 204
+    assert (await site_client.get("/api/admin/site/inbox/")).json()["total"] == 2
+    assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 404

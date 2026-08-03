@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Icon } from "@/components/Icon";
 
@@ -15,8 +15,8 @@ const MISSIONS = [
   { t: "mv4_t", d: "mv4_d", ic: "cal", key: "reward_streak_mb" },
 ] as const;
 
-export function HomeMissions({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+  const t = translator(locale, copy);
   const { config } = useSite();
 
   return (

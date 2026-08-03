@@ -2,9 +2,11 @@ import {
   BarChart3,
   BellRing,
   FileText,
+  Gauge,
   Inbox,
   MonitorSmartphone,
   Settings2,
+  Type,
   Wrench,
 } from "lucide-react";
 
@@ -15,8 +17,10 @@ import { NavTabs, type TabItem } from "@/components/ui/Tabs";
 // The setup wizard used to be missing from this list AND rendered no tab bar of its own, so opening
 // it dropped you out of the section with no way back except one inline link on one page.
 const TABS: TabItem[] = [
+  { to: "/site", label: "نمای کلی", icon: Gauge },
   { to: "/site/settings", label: "تنظیمات", icon: Settings2 },
   { to: "/site/devices", label: "دستگاه‌ها", icon: MonitorSmartphone },
+  { to: "/site/content", label: "محتوا", icon: Type },
   { to: "/site/pages", label: "صفحه‌ها", icon: FileText },
   { to: "/site/inbox", label: "پیام‌ها", icon: Inbox },
   { to: "/site/push", label: "اعلان‌ها", icon: BellRing },

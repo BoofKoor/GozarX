@@ -71,7 +71,7 @@ export const NAV: NavGroup[] = [
     label: "وب‌سایت",
     items: [
       {
-        to: "/site/settings",
+        to: "/site",
         label: "وب‌سایت",
         icon: Globe,
         match: "/site",

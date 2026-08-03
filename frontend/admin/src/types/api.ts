@@ -335,6 +335,8 @@ export interface SiteMessage {
 export interface SiteMessagePage {
   items: SiteMessage[];
   total: number;
+  /** Rows matching the ACTIVE filter — what the pager divides by (`total` counts everything). */
+  matching: number;
   unread: number;
   page: number;
   page_size: number;
@@ -536,4 +538,21 @@ export interface SitePushLog {
   pruned: number;
   created_at: string | null;
   finished_at: string | null;
+}
+
+// --- Phase 5: website copy editor (/api/admin/site/content) ---
+export interface SiteCopyItem {
+  key: string;
+  group: string; // seo | hero | widget | sections | push
+  fa: string;
+  en: string;
+  /** What the site renders when the row is blank — its in-code / seeded copy. */
+  default_fa: string;
+  default_en: string;
+  overridden: boolean;
+}
+
+export interface SiteCopyPatch {
+  fa?: string;
+  en?: string;
 }
