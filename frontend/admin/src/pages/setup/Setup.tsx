@@ -88,7 +88,7 @@ export function Setup() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-lg">
         <h1 className="mb-1 text-xl font-bold text-brand">راه‌اندازی اولیه</h1>
-        <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mb-6 text-sm text-content-muted">
           اسکواد آزمایشی و مقادیر اولیهٔ سرویس را تنظیم کنید.
         </p>
         <form onSubmit={submit} className="space-y-4">
@@ -101,7 +101,7 @@ export function Setup() {
               <select
                 value={trialSquad}
                 onChange={(e) => setTrialSquad(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
+                className="field-control"
               >
                 {(squads ?? []).map((s) => (
                   <option key={s.uuid} value={s.uuid}>

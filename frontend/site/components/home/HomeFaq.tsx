@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 
 // FAQ teaser — the design's `.faqwrap` of `.acc` accordions (first open). Toggles `data-open`
 // exactly like the artifact; the CSS drives the body reveal + chevron rotation.
 const QA = ["faq1", "faq2", "faq3", "faq4", "faq5"] as const;
 
-export function HomeFaq({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+export function HomeFaq({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+  const t = translator(locale, copy);
   const [open, setOpen] = useState(0);
 
   return (

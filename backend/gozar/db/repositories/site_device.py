@@ -7,12 +7,35 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import case, func, select
+from sqlalchemy import case, func, or_, select
+from sqlalchemy.sql import Select
 
 from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.base import BaseRepository
+
+
+def _device_filter(
+    stmt: Select, status: str | None, search: str | None, ip_bucket: str | None
+) -> Select:
+    """Admin device-list filters: status, an IP bucket (deep-linked from the anti-abuse panel), and
+    a substring search over handle / uuid / panel username. Shared by the page and its count so the
+    two can never disagree about how many rows match."""
+    if status:
+        stmt = stmt.where(SiteDevice.status == status)
+    if ip_bucket:
+        stmt = stmt.where(SiteDevice.ip_bucket == ip_bucket)
+    if search and search.strip():
+        like = f"%{search.strip()}%"
+        stmt = stmt.where(
+            or_(
+                SiteDevice.handle.ilike(like),
+                SiteDevice.uuid.ilike(like),
+                SiteDevice.site_panel_username.ilike(like),
+            )
+        )
+    return stmt
 
 
 class SiteDeviceRepository(BaseRepository):
@@ -161,6 +184,66 @@ class SiteDeviceRepository(BaseRepository):
             .limit(limit)
         )
         return [(str(b), int(n)) for b, n in rows.all()]
+
+    # --- admin device browser -------------------------------------------------------------------
+    async def list_page(
+        self,
+        *,
+        limit: int,
+        offset: int,
+        status: str | None = None,
+        search: str | None = None,
+        ip_bucket: str | None = None,
+    ) -> list[SiteDevice]:
+        """A page of devices, newest first, with optional status / search / IP-bucket filters.
+
+        ``uuid`` (PK) tiebreaks ``created_at``: two devices minted in the same second would
+        otherwise be dropped or duplicated across pages by LIMIT/OFFSET.
+        """
+        stmt = _device_filter(select(SiteDevice), status, search, ip_bucket)
+        stmt = stmt.order_by(SiteDevice.created_at.desc(), SiteDevice.uuid.desc())
+        result = await self.session.scalars(stmt.limit(limit).offset(offset))
+        return list(result.all())
+
+    async def count_filtered(
+        self,
+        *,
+        status: str | None = None,
+        search: str | None = None,
+        ip_bucket: str | None = None,
+    ) -> int:
+        stmt = _device_filter(
+            select(func.count()).select_from(SiteDevice), status, search, ip_bucket
+        )
+        return int(await self.session.scalar(stmt) or 0)
+
+    async def list_fingerprint_peers(
+        self, fingerprint_hash: str | None, exclude_uuid: str, limit: int = 10
+    ) -> list[SiteDevice]:
+        """Other devices sharing this one's browser fingerprint — the concrete rows behind the
+        anti-abuse panel's "N devices share a fingerprint" figure, which named none of them."""
+        if not fingerprint_hash:
+            return []
+        result = await self.session.scalars(
+            select(SiteDevice)
+            .where(
+                SiteDevice.fingerprint_hash == fingerprint_hash,
+                SiteDevice.uuid != exclude_uuid,
+            )
+            .order_by(SiteDevice.created_at.desc())
+            .limit(limit)
+        )
+        return list(result.all())
+
+    async def count_referred_by(self, uuid: str) -> int:
+        """Devices that arrived through this one's invite link. ``referral_count`` on the row is the
+        REWARDED tally (capped); this is the raw one, so the two can be compared."""
+        return int(
+            await self.session.scalar(
+                select(func.count()).select_from(SiteDevice).where(SiteDevice.referred_by == uuid)
+            )
+            or 0
+        )
 
     async def shared_fingerprint_device_count(self) -> int:
         """Devices sharing a ``fingerprint_hash`` with at least one other device (soft multi-account

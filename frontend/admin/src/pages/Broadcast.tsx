@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/confirm";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
 import { formatNumber, langLabel, telegramPreviewHtml } from "@/lib/format";
 import type { Lang } from "@/types/api";
@@ -52,10 +53,10 @@ export function Broadcast() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">پیام همگانی</h1>
+      <PageHeader title="پیام همگانی" />
 
       <Card className="max-w-2xl space-y-4">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-content-muted">
           <UsersIcon className="h-4 w-4" />
           گیرندگان:{" "}
           <span className="font-bold text-brand">
@@ -65,9 +66,7 @@ export function Broadcast() {
         </div>
 
         <div>
-          <div className="mb-1.5 text-xs text-slate-500 dark:text-slate-400">
-            زبان گیرندگان (پیش‌فرض: همه):
-          </div>
+          <div className="mb-1.5 text-xs text-content-muted">زبان گیرندگان (پیش‌فرض: همه):</div>
           <div className="flex flex-wrap gap-2">
             {ALL_LANGS.map((code) => {
               const on = langs.includes(code);
@@ -81,7 +80,7 @@ export function Broadcast() {
                     "rounded-full border px-3 py-1 text-sm transition-colors",
                     on
                       ? "border-brand bg-brand text-white"
-                      : "border-slate-300 text-slate-500 hover:border-brand dark:border-slate-700",
+                      : "border-line-strong text-content-muted hover:border-brand",
                   )}
                 >
                   {langLabel(code)}
@@ -90,18 +89,18 @@ export function Broadcast() {
             })}
           </div>
           {langs.length === 0 && (
-            <p className="mt-1.5 text-xs text-rose-500">حداقل یک زبان را انتخاب کنید.</p>
+            <p className="mt-1.5 text-xs text-danger-600">حداقل یک زبان را انتخاب کنید.</p>
           )}
         </div>
 
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-content-muted">
           متن به کاربرانِ زبان‌های انتخاب‌شده ارسال می‌شود. قالب‌بندی HTML تلگرام مجاز است (
           <code dir="ltr">{"<b> <i> <a> <code>"}</code>). ارسال در پس‌زمینه انجام می‌شود و پیشرفت آن
           در تلگرامِ مالک گزارش داده می‌شود.
         </p>
 
         <textarea
-          className="min-h-[160px] w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
+          className="field-control min-h-[160px]"
           placeholder="متن پیام…"
           value={text}
           onChange={(e) => setText(e.target.value)}
@@ -110,12 +109,12 @@ export function Broadcast() {
 
         {text.trim() && (
           <div>
-            <div className="mb-1.5 flex items-center gap-1.5 text-xs text-slate-500">
+            <div className="mb-1.5 flex items-center gap-1.5 text-xs text-content-muted">
               <Eye className="h-3.5 w-3.5" />
               پیش‌نمایش:
             </div>
             <div
-              className="whitespace-pre-wrap rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800"
+              className="whitespace-pre-wrap rounded-lg border border-dashed border-line-strong bg-surface-sunken p-3 text-sm"
               dir="auto"
               dangerouslySetInnerHTML={{ __html: telegramPreviewHtml(text) }}
             />

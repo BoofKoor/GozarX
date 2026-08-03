@@ -39,3 +39,37 @@ def zero_filled_daily(
         (day.isoformat(), counts.get(day.isoformat(), 0))
         for day in (start + timedelta(days=d) for d in range(max(days, 1)))
     ]
+
+
+def zero_filled_daily_pairs(
+    rows: list[tuple[str, int, int]], *, since: datetime, days: int
+) -> list[tuple[str, int, int]]:
+    """:func:`zero_filled_daily` for a two-value series (e.g. new vs returning claimers per day)."""
+    counts = {day: (a, b) for day, a, b in rows}
+    start = since.date()
+    return [
+        (day.isoformat(), *counts.get(day.isoformat(), (0, 0)))
+        for day in (start + timedelta(days=d) for d in range(max(days, 1)))
+    ]
+
+
+def previous_window(days: int) -> tuple[datetime, datetime]:
+    """``(start, end)`` of the window immediately BEFORE the current ``days``-day one.
+
+    The comparison period must be exactly as long as the current one and must not overlap it, or a
+    "+30% vs last period" chip is meaningless. ``end`` is the current window's start, so the two are
+    adjacent half-open ranges.
+    """
+    current_start = window_start(days)
+    return current_start - timedelta(days=max(days, 1)), current_start
+
+
+def pct_change(current: int, previous: int) -> float | None:
+    """Percent change vs the prior period, or ``None`` when there's no baseline to compare against.
+
+    ``None`` (not ``0.0``) on a zero baseline matters: a launch period with real activity would
+    otherwise render as "0% — flat". The frontend shows a "new" badge for ``None`` instead.
+    """
+    if previous <= 0:
+        return None
+    return round((current - previous) / previous * 100, 1)

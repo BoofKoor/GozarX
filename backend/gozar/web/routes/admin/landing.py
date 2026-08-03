@@ -8,6 +8,7 @@ where the public site consumes it) — nothing here is user-supplied.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request, status
@@ -21,6 +22,18 @@ from gozar.web.dependencies import AdminUser, DbSession
 router = APIRouter(prefix="/site/pages", tags=["site-pages"])
 
 _LOCALES = {"fa", "en"}
+# The site serves these at /l/{slug}, so the slug has to survive a URL untouched. Only lowercase
+# ASCII words joined by single hyphens — the box used to accept spaces, uppercase and Unicode, all
+# of which produced a link that either 404'd or got percent-mangled in the sitemap.
+_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+
+def _require_slug(slug: str) -> None:
+    if not _SLUG.match(slug):
+        raise HTTPException(
+            422,
+            "slug must be lowercase a-z, 0-9 and single hyphens (e.g. free-v2ray-config)",
+        )
 
 
 class LandingOut(BaseModel):
@@ -85,6 +98,7 @@ async def create_page(
     body: LandingIn, request: Request, session: DbSession, admin: AdminUser
 ) -> LandingOut:
     _require_locale(body.locale)
+    _require_slug(body.slug)
     repo = SiteLandingPageRepository(session)
     if await repo.get_by_slug(body.slug, body.locale) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "a page with this slug+locale already exists")
@@ -121,6 +135,7 @@ async def update_page(
     page_id: int, body: LandingIn, request: Request, session: DbSession, admin: AdminUser
 ) -> LandingOut:
     _require_locale(body.locale)
+    _require_slug(body.slug)
     repo = SiteLandingPageRepository(session)
     page = await repo.get(page_id)
     if page is None:
@@ -148,9 +163,7 @@ async def update_page(
 
 
 @router.delete("/{page_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_page(
-    page_id: int, request: Request, session: DbSession, admin: AdminUser
-) -> None:
+async def delete_page(page_id: int, request: Request, session: DbSession, admin: AdminUser) -> None:
     repo = SiteLandingPageRepository(session)
     page = await repo.get(page_id)
     if page is None:

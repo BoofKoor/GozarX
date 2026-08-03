@@ -108,9 +108,7 @@ def fingerprint_hash(request: Request) -> str:
     return hashlib.sha256(f"{ua}|{al}".encode()).hexdigest()[:64]
 
 
-async def _referrer(
-    request: Request, repo: SiteDeviceRepository, new_uuid: str
-) -> str | None:
+async def _referrer(request: Request, repo: SiteDeviceRepository, new_uuid: str) -> str | None:
     """The inviter's device UUID from a ``?ref=`` link, captured once when a device is minted.
 
     ``ref`` may be either the inviter's public handle (``GZ-…`` — the form invite links now use) or

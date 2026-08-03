@@ -20,7 +20,7 @@ export function ClaimsDistribution({ data }: { data: Record<string, number> }) {
     <Card>
       <CardHeader title="توزیع دریافت به‌ازای کاربر" icon={BarChart3} />
       {total === 0 ? (
-        <div className="flex h-32 items-center justify-center text-sm text-slate-400">
+        <div className="flex h-32 items-center justify-center text-sm text-content-subtle">
           داده‌ای نیست
         </div>
       ) : (
@@ -28,10 +28,10 @@ export function ClaimsDistribution({ data }: { data: Record<string, number> }) {
           {rows.map((r) => (
             <li key={r.key}>
               <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-slate-600 dark:text-slate-300">{r.label}</span>
-                <span className="tabular-nums text-slate-500">{formatNumber(r.value)}</span>
+                <span className="text-content-muted">{r.label}</span>
+                <span className="tabular-nums text-content-muted">{formatNumber(r.value)}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
                 <div
                   className="h-full rounded-full bg-brand transition-all"
                   style={{ width: `${(r.value / max) * 100}%` }}

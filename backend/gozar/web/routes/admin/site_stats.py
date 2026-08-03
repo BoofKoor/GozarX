@@ -22,7 +22,7 @@ from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/site/stats", tags=["site-stats"])
 
-_ALLOWED_RANGES = (7, 14, 30)
+_ALLOWED_RANGES = (7, 14, 30, 90)
 _DEFAULT_RANGE = 14
 
 
@@ -68,12 +68,21 @@ class AbuseSignals(BaseModel):
 
 class SiteAnalyticsOut(BaseModel):
     """Deeper website analytics: active devices, the reward economy, streak reach, push-channel
-    health, and soft anti-abuse signals. All local site data — never depends on the panel."""
+    health, and soft anti-abuse signals. All local site data — never depends on the panel.
 
+    ``range_days`` echoes the window the WINDOWED figures used, and ``all_time_note`` marks that the
+    rest (reward totals, streak reach, push health, abuse signals) are lifetime figures. The page's
+    7/14/30 buttons used to move only the funnel above this band while everything here silently
+    ignored them — the control lied about half the screen.
+    """
+
+    range_days: int
     dau: int
     wau: int
     mau: int
     stickiness_pct: float
+    claims_in_range: int
+    devices_active_in_range: int
     reward_economy: list[RewardType]
     streak_distribution: dict[str, int]
     active_streaks: int
@@ -125,12 +134,16 @@ async def site_analytics(
     request: Request,
     session: DbSession,
     admin: AdminUser,
+    days: int = Query(default=_DEFAULT_RANGE),
 ) -> SiteAnalyticsOut:
+    window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
     devices = SiteDeviceRepository(session)
+    claims = SiteClaimRepository(session)
     rewards = SiteRewardRepository(session)
     push = PushSubscriptionRepository(session)
     settings = SettingsService(session, request.app.state.redis)
     now = datetime.now(UTC)
+    since = window_start(window)
 
     dau = await devices.active_since(now - timedelta(days=1))
     wau = await devices.active_since(now - timedelta(days=7))
@@ -140,6 +153,9 @@ async def site_analytics(
     active, inactive = await push.count_by_active()
 
     return SiteAnalyticsOut(
+        range_days=window,
+        claims_in_range=await claims.count_since(since),
+        devices_active_in_range=await devices.active_since(since),
         dau=dau,
         wau=wau,
         mau=mau,

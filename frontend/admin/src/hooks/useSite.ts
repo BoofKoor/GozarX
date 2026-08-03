@@ -3,6 +3,15 @@ import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tansta
 import { api } from "@/lib/api";
 import type {
   SiteAnalytics,
+  SiteDeviceAction,
+  SiteDeviceCard,
+  SiteDeviceListParams,
+  SiteDevicePage,
+  SiteDevicePeer,
+  SiteDeviceRow,
+  SiteCopyItem,
+  SiteCopyPatch,
+  SitePushLog,
   SetupStatus,
   SiteLandingInput,
   SiteLandingPage,
@@ -105,12 +114,52 @@ export function useDeleteLanding() {
 }
 
 // --- contact inbox ---
-export function useSiteMessages(page: number, unread: boolean) {
+export function useSiteMessages(page: number, unread: boolean, search?: string, locale?: string) {
   return useQuery({
-    queryKey: ["site-messages", page, unread],
+    queryKey: ["site-messages", page, unread, search ?? "", locale ?? ""],
     queryFn: async () =>
-      (await api.get<SiteMessagePage>("/admin/site/inbox/", { params: { page, unread } })).data,
+      (
+        await api.get<SiteMessagePage>("/admin/site/inbox/", {
+          params: { page, unread, search: search || undefined, locale: locale || undefined },
+        })
+      ).data,
     placeholderData: keepPreviousData,
+  });
+}
+
+/** Unread count for the tab badge — cheap, and shared with the list query's own `unread`. */
+export function useSiteUnreadCount() {
+  return useQuery({
+    queryKey: ["site-messages-unread"],
+    queryFn: async () =>
+      (await api.get<SiteMessagePage>("/admin/site/inbox/", { params: { page: 1, unread: true } }))
+        .data.unread,
+    refetchInterval: 60_000,
+  });
+}
+
+export function useMarkMessageUnread() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) =>
+      (await api.post<SiteMessage>(`/admin/site/inbox/${id}/unread`)).data,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["site-messages"] });
+      qc.invalidateQueries({ queryKey: ["site-messages-unread"] });
+    },
+  });
+}
+
+export function useDeleteMessage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/admin/site/inbox/${id}`);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["site-messages"] });
+      qc.invalidateQueries({ queryKey: ["site-messages-unread"] });
+    },
   });
 }
 
@@ -155,10 +204,13 @@ export function useSitePushAudience() {
 }
 
 export function useSendSitePush() {
-  // Sending doesn't change the subscriber count, so no cache invalidation is needed.
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: async (body: SitePushInput) =>
       (await api.post<SitePushResult>("/admin/site/push/", body)).data,
+    // Sending doesn't change the subscriber count, but it DOES add a history row — and that row is
+    // the only place the admin ever learns what happened.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["site-push-history"] }),
   });
 }
 
@@ -172,10 +224,93 @@ export function useSiteStats(days: number) {
   });
 }
 
-/** Deeper website analytics (reward economy, streaks, push health, anti-abuse). Not windowed. */
-export function useSiteAnalytics() {
+/** Deeper website analytics (reward economy, streaks, push health, anti-abuse).
+ *
+ * Windowed by the SAME `days` the funnel above it uses. It used to ignore the range entirely, so
+ * the page's 7/14/30 buttons moved the top half of the screen and silently did nothing to the
+ * bottom half. Figures that are inherently lifetime are labelled as such in the UI. */
+export function useSiteAnalytics(days: number) {
   return useQuery({
-    queryKey: ["site-analytics"],
-    queryFn: async () => (await api.get<SiteAnalytics>("/admin/site/stats/analytics")).data,
+    queryKey: ["site-analytics", days],
+    queryFn: async () =>
+      (await api.get<SiteAnalytics>("/admin/site/stats/analytics", { params: { days } })).data,
+    placeholderData: keepPreviousData,
+  });
+}
+
+// --- website device browser (P4) ---
+export function useSiteDevices(params: SiteDeviceListParams) {
+  return useQuery({
+    queryKey: ["site-devices", params],
+    queryFn: async () => (await api.get<SiteDevicePage>("/admin/site/devices/", { params })).data,
+    placeholderData: keepPreviousData, // keep the current page visible while the next loads
+  });
+}
+
+export function useSiteDevice(uuid: string | null) {
+  return useQuery({
+    queryKey: ["site-device", uuid],
+    queryFn: async () => (await api.get<SiteDeviceCard>(`/admin/site/devices/${uuid}`)).data,
+    enabled: uuid != null,
+  });
+}
+
+/** Devices sharing this one's browser fingerprint — the rows behind the anti-abuse count. */
+export function useSiteDevicePeers(uuid: string | null) {
+  return useQuery({
+    queryKey: ["site-device-peers", uuid],
+    queryFn: async () =>
+      (await api.get<SiteDevicePeer[]>(`/admin/site/devices/${uuid}/peers`)).data,
+    enabled: uuid != null,
+  });
+}
+
+export function useSiteDeviceAction() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ uuid, action }: { uuid: string; action: SiteDeviceAction }) =>
+      (await api.post<SiteDeviceRow>(`/admin/site/devices/${uuid}/${action}`)).data,
+    onSuccess: (updated) => {
+      qc.setQueryData(["site-device", updated.uuid], (old: SiteDeviceCard | undefined) =>
+        old ? { ...old, ...updated } : old,
+      );
+      qc.invalidateQueries({ queryKey: ["site-devices"] });
+      // Blocking/resetting shifts the status counts the site funnel shows.
+      qc.invalidateQueries({ queryKey: ["site-stats"] });
+    },
+  });
+}
+
+// --- push history ---
+/** Recent broadcasts and their outcome. Polled while anything is still in flight so a send that
+ *  the worker is processing visibly finishes instead of sitting on "queued" forever. */
+export function useSitePushHistory() {
+  return useQuery({
+    queryKey: ["site-push-history"],
+    queryFn: async () => (await api.get<SitePushLog[]>("/admin/site/push/history")).data,
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((r) => r.status === "queued" || r.status === "sending")
+        ? 5_000
+        : false,
+  });
+}
+
+// --- website copy editor (P5) ---
+export function useSiteCopy() {
+  return useQuery({
+    queryKey: ["site-copy"],
+    queryFn: async () => (await api.get<SiteCopyItem[]>("/admin/site/content/")).data,
+  });
+}
+
+export function useUpdateSiteCopy() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ key, patch }: { key: string; patch: SiteCopyPatch }) =>
+      (await api.put<SiteCopyItem>(`/admin/site/content/${key}`, patch)).data,
+    onSuccess: (updated) =>
+      qc.setQueryData(["site-copy"], (old: SiteCopyItem[] | undefined) =>
+        old?.map((item) => (item.key === updated.key ? updated : item)),
+      ),
   });
 }

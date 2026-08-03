@@ -15,20 +15,21 @@ export function TelegramPreview({ buttons, lang }: { buttons: ButtonConfig[]; la
 
   if (visible.length === 0) {
     return (
-      <div className="rounded-xl bg-slate-100 py-6 text-center text-sm text-slate-400 dark:bg-slate-800">
+      <div className="rounded-xl bg-surface-sunken py-6 text-center text-sm text-content-subtle">
         دکمه‌ای برای نمایش نیست
       </div>
     );
   }
 
   return (
-    <div className="space-y-1.5 rounded-xl border border-slate-200 bg-gradient-to-br from-sky-50 to-indigo-50 p-3 dark:border-slate-700 dark:from-slate-800 dark:to-slate-800">
+    // A faint brand wash stands in for a Telegram chat background — readable in both themes.
+    <div className="space-y-1.5 rounded-xl border border-line bg-gradient-to-br from-brand/[0.07] to-accent-500/[0.07] p-3">
       {rows.map((row, i) => (
         <div key={i} className="flex gap-1.5">
           {row.map((b) => (
             <div
               key={b.key}
-              className="flex-1 truncate rounded-lg bg-white px-3 py-1.5 text-center text-sm shadow-sm dark:bg-slate-700"
+              className="flex-1 truncate rounded-lg bg-surface px-3 py-1.5 text-center text-sm shadow-card"
             >
               {b.effective_label[lang]}
             </div>

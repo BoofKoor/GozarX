@@ -251,12 +251,21 @@ export function getDict(locale: Locale): Dict {
 }
 export type Translator = (key: string) => string;
 
-// Lookup order: this module's chrome keys, then the verbatim design copy (DESIGN_COPY, the faithful
-// per-page copy from the Phase 0-8 artifacts), then fa fallback, then the raw key. So the rebuilt
-// design components (design keys) and the older content pages (dotted keys) both resolve.
-export function translator(locale: Locale): Translator {
+/** Panel-authored overrides for design-copy keys (GET /api/public/site-copy → `copy`). */
+export type CopyOverrides = Record<string, string> | undefined;
+
+// Lookup order: admin overrides, then this module's chrome keys, then the verbatim design copy
+// (DESIGN_COPY, the faithful per-page copy from the Phase 0-8 artifacts), then fa fallback, then
+// the raw key. So the rebuilt design components (design keys) and the older content pages (dotted
+// keys) both resolve.
+//
+// `overrides` is what makes homepage copy editable from the admin panel. It is always optional and
+// only ever ADDS a layer on top: with no backend, an unedited install or a failed fetch, the
+// lookup is byte-for-byte what it was before.
+export function translator(locale: Locale, overrides?: CopyOverrides): Translator {
   const d = getDict(locale);
   const design = DESIGN_COPY[locale] ?? DESIGN_COPY.fa;
   const designFa = DESIGN_COPY.fa;
-  return (key: string) => d[key] ?? design[key] ?? designFa[key] ?? key;
+  return (key: string) =>
+    overrides?.[key] ?? d[key] ?? design[key] ?? designFa[key] ?? key;
 }

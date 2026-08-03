@@ -67,23 +67,30 @@ class PushSubscriptionRepository(BaseRepository):
         )
         return list(rows.all())
 
-    async def list_active(self) -> list[PushSubscription]:
-        """Every ACTIVE subscription — the audience for a site push broadcast (arq worker)."""
-        rows = await self.session.scalars(
-            select(PushSubscription).where(PushSubscription.active.is_(True))
-        )
+    async def list_active(self, locale: str | None = None) -> list[PushSubscription]:
+        """Every ACTIVE subscription — the audience for a site push broadcast (arq worker).
+
+        ``locale`` narrows the fan-out to subscribers whose browser reported that language. The
+        breakdown was already computed for the analytics panel but there was no way to actually
+        SEND to one of those groups, so every announcement went to everybody in one language.
+        """
+        stmt = select(PushSubscription).where(PushSubscription.active.is_(True))
+        if locale:
+            stmt = stmt.where(PushSubscription.locale == locale)
+        rows = await self.session.scalars(stmt)
         return list(rows.all())
 
-    async def count_active(self) -> int:
-        """How many active subscriptions — the push-broadcast recipient echo (admin panel)."""
-        return int(
-            await self.session.scalar(
-                select(func.count())
-                .select_from(PushSubscription)
-                .where(PushSubscription.active.is_(True))
-            )
-            or 0
+    async def count_active(self, locale: str | None = None) -> int:
+        """How many active subscriptions — the push-broadcast recipient echo (admin panel).
+        Same optional ``locale`` narrowing as ``list_active``, so the echo matches the send."""
+        stmt = (
+            select(func.count())
+            .select_from(PushSubscription)
+            .where(PushSubscription.active.is_(True))
         )
+        if locale:
+            stmt = stmt.where(PushSubscription.locale == locale)
+        return int(await self.session.scalar(stmt) or 0)
 
     # --- analytics (Phase B) ---------------------------------------------------------------------
     async def count_by_active(self) -> tuple[int, int]:

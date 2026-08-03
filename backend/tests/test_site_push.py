@@ -266,9 +266,9 @@ async def test_unsubscribe_cannot_kill_another_devices_subscription(env, db_sess
     # Device B — a fresh cookieless client (minted its own device) — posts device A's endpoint.
     transport = ASGITransport(app=app)
     async with httpx.AsyncClient(transport=transport, base_url="http://t") as other:
-        assert (
-            await other.post("/api/public/push/unsubscribe", json={"endpoint": _FCM})
-        ).json()["ok"] is True  # the call "succeeds" but must not touch a row it doesn't own
+        assert (await other.post("/api/public/push/unsubscribe", json={"endpoint": _FCM})).json()[
+            "ok"
+        ] is True  # the call "succeeds" but must not touch a row it doesn't own
 
     async with db_sessions() as s:
         row = (await s.scalars(select(PushSubscription))).one()

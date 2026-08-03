@@ -1,35 +1,34 @@
-import { clsx } from "clsx";
-import { NavLink } from "react-router-dom";
+import {
+  BarChart3,
+  BellRing,
+  FileText,
+  Gauge,
+  Inbox,
+  MonitorSmartphone,
+  Settings2,
+  Type,
+  Wrench,
+} from "lucide-react";
+
+import { NavTabs, type TabItem } from "@/components/ui/Tabs";
 
 // Sub-navigation for the "Website" admin section (keeps the sidebar to one entry).
-const TABS = [
-  { to: "/site/settings", label: "تنظیمات" },
-  { to: "/site/pages", label: "صفحه‌ها" },
-  { to: "/site/inbox", label: "پیام‌ها" },
-  { to: "/site/push", label: "اعلان‌ها" },
-  { to: "/site/stats", label: "آمار" },
+//
+// The setup wizard used to be missing from this list AND rendered no tab bar of its own, so opening
+// it dropped you out of the section with no way back except one inline link on one page.
+const TABS: TabItem[] = [
+  { to: "/site", label: "نمای کلی", icon: Gauge },
+  { to: "/site/settings", label: "تنظیمات", icon: Settings2 },
+  { to: "/site/devices", label: "دستگاه‌ها", icon: MonitorSmartphone },
+  { to: "/site/content", label: "محتوا", icon: Type },
+  { to: "/site/pages", label: "صفحه‌ها", icon: FileText },
+  { to: "/site/inbox", label: "پیام‌ها", icon: Inbox },
+  { to: "/site/push", label: "اعلان‌ها", icon: BellRing },
+  { to: "/site/stats", label: "آمار", icon: BarChart3 },
+  { to: "/site/setup", label: "راه‌اندازی", icon: Wrench },
 ];
 
-export function SiteTabs() {
-  return (
-    <div className="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800">
-      {TABS.map((t) => (
-        <NavLink
-          key={t.to}
-          to={t.to}
-          end
-          className={({ isActive }) =>
-            clsx(
-              "-mb-px rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition",
-              isActive
-                ? "border-brand text-brand"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
-            )
-          }
-        >
-          {t.label}
-        </NavLink>
-      ))}
-    </div>
-  );
+export function SiteTabs({ unreadMessages }: { unreadMessages?: number }) {
+  const items = TABS.map((t) => (t.to === "/site/inbox" ? { ...t, count: unreadMessages } : t));
+  return <NavTabs items={items} />;
 }

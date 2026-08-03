@@ -14,6 +14,9 @@ export interface SiteCopy {
   hero_sub: string | null;
   meta_title: string | null;
   meta_description: string | null;
+  /** design-copy key -> panel override. Only customised keys appear; everything else falls back to
+   *  the in-code DESIGN_COPY, so an unedited install renders exactly as it always did. */
+  overrides: Record<string, string>;
 }
 
 const EMPTY: SiteCopy = {
@@ -21,6 +24,7 @@ const EMPTY: SiteCopy = {
   hero_sub: null,
   meta_title: null,
   meta_description: null,
+  overrides: {},
 };
 
 export async function fetchSiteCopy(locale: Locale): Promise<SiteCopy> {
@@ -29,7 +33,9 @@ export async function fetchSiteCopy(locale: Locale): Promise<SiteCopy> {
       next: { revalidate: REVALIDATE },
     });
     if (!res.ok) return EMPTY;
-    return { ...EMPTY, ...((await res.json()) as Partial<SiteCopy>) };
+    const data = (await res.json()) as Partial<SiteCopy>;
+    // An older backend has no `overrides` field; default it rather than letting `undefined` through.
+    return { ...EMPTY, ...data, overrides: data.overrides ?? {} };
   } catch {
     return EMPTY;
   }

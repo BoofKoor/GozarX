@@ -1,15 +1,21 @@
-import { type FormEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import { Coins, Gift, MapPin, Server } from "lucide-react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { LocationPicker } from "@/components/site/LocationPicker";
+import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
+import { Card, CardHeader } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Input } from "@/components/ui/Input";
+import { Field } from "@/components/ui/Field";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSquads } from "@/hooks/useSetup";
 import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from "@/hooks/useSite";
+import { apiErrorMessage } from "@/lib/api";
 import { splitLocations } from "@/lib/format";
 import { allValidNumbers } from "@/lib/validate";
 
@@ -44,8 +50,9 @@ export function SiteSetup() {
   const complete = useCompleteSiteSetup();
   const [trialSquad, setTrialSquad] = useState("");
   const [econ, setEcon] = useState<Econ>(DEFAULT_ECON);
-  const [locations, setLocations] = useState("");
-  const { data: derivable } = useSiteDerivableLocations(trialSquad);
+  const [locations, setLocations] = useState<string[]>([]);
+  const [locationsText, setLocationsText] = useState("");
+  const derivable = useSiteDerivableLocations(trialSquad);
   const hydrated = useRef(false);
 
   // Hydrate ONCE from current site settings (safe re-run). A ref guard stops a later cache write
@@ -63,7 +70,10 @@ export function SiteSetup() {
         reward_streak_mb: current.reward_streak_mb,
         streak_days: current.streak_days,
       });
-      if (current.locations.length > 0) setLocations(current.locations.join("، "));
+      if (current.locations.length > 0) {
+        setLocations(current.locations);
+        setLocationsText(current.locations.join("، "));
+      }
     }
   }, [current]);
 
@@ -78,11 +88,13 @@ export function SiteSetup() {
   if (!current) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-bold">راه‌اندازی وب‌سایت</h1>
+        <PageHeader title="راه‌اندازی وب‌سایت">
+          <SiteTabs />
+        </PageHeader>
         {settingsError ? (
           <ErrorState onRetry={() => refetchSettings()} />
         ) : (
-          <Card className="max-w-xl">
+          <Card className="max-w-2xl">
             <div className="flex justify-center py-16">
               <Spinner className="h-8 w-8 text-brand" />
             </div>
@@ -93,6 +105,8 @@ export function SiteSetup() {
   }
 
   const setNum = (key: keyof Econ) => (n: number) => setEcon((s) => ({ ...s, [key]: n }));
+  const picker = derivable.data;
+  const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -116,118 +130,142 @@ export function SiteSetup() {
       return;
     }
     complete.mutate(
-      { trial_squad: trialSquad, locations: splitLocations(locations), ...econ },
+      {
+        trial_squad: trialSquad,
+        locations: pickerUnavailable ? splitLocations(locationsText) : locations,
+        ...econ,
+      },
       {
         onSuccess: () => {
           toast.success("راه‌اندازی وب‌سایت کامل شد.");
           navigate("/site/settings", { replace: true });
         },
-        onError: () => toast.error("ذخیره نشد."),
+        // The server rejects a location the squad doesn't serve — say WHICH one.
+        onError: (err) => toast.error(apiErrorMessage(err, "ذخیره نشد.")),
       },
     );
   }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">راه‌اندازی وب‌سایت</h1>
-      <Card className="max-w-xl">
-        <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
-          اسکواد آزمایشی و اقتصاد وب‌سایت را تنظیم کنید. لوکیشن‌ها از روی نام remark همان اسکواد
-          استخراج می‌شوند.
-        </p>
-        <form onSubmit={submit} className="space-y-4">
-          <Labeled label="اسکواد آزمایشی وب‌سایت">
+      <PageHeader
+        title="راه‌اندازی وب‌سایت"
+        sub="اسکواد آزمایشی و اقتصاد سایت. لوکیشن‌ها از روی نام remark همان اسکواد استخراج می‌شوند."
+        actions={
+          <Button
+            type="submit"
+            form="site-setup"
+            loading={complete.isPending}
+            disabled={!trialSquad}
+          >
+            ذخیره و تکمیل
+          </Button>
+        }
+      >
+        <SiteTabs />
+      </PageHeader>
+
+      <form id="site-setup" onSubmit={submit} className="space-y-6">
+        <Card className="max-w-2xl">
+          <CardHeader title="اسکواد" icon={Server} />
+          <Field label="اسکواد آزمایشی وب‌سایت">
             {isLoading ? (
               <Spinner className="h-5 w-5 text-brand" />
             ) : isError ? (
-              <div className="text-sm text-red-500">دریافت اسکوادها از پنل ممکن نشد.</div>
+              <div className="text-sm text-danger-600">دریافت اسکوادها از پنل ممکن نشد.</div>
             ) : (
-              <select
+              <Select
                 value={trialSquad}
                 onChange={(e) => {
                   setTrialSquad(e.target.value);
-                  setLocations(""); // a new squad has its own locations; empty => derive them all
+                  // A new squad has its own locations; clearing means "derive them all".
+                  setLocations([]);
+                  setLocationsText("");
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
               >
                 {(squads ?? []).map((s) => (
                   <option key={s.uuid} value={s.uuid}>
                     {s.name}
                   </option>
                 ))}
-              </select>
+              </Select>
             )}
-          </Labeled>
+          </Field>
+        </Card>
+
+        <Card className="max-w-2xl">
+          <CardHeader title="اقتصاد پایه" icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Labeled label="مدت اعتبار کانفیگ (ساعت)">
+            <Field label="مدت اعتبار کانفیگ (ساعت)">
               <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
-            </Labeled>
-            <Labeled label="حجم روزانه (مگابایت)">
+            </Field>
+            <Field label="حجم روزانه (مگابایت)">
               <NumberInput
                 min={1}
                 value={econ.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
-            </Labeled>
-            <Labeled label="پاداش هر دعوت (مگابایت)">
+            </Field>
+          </div>
+        </Card>
+
+        <Card className="max-w-2xl">
+          <CardHeader title="پاداش‌ها" icon={Gift} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="پاداش هر دعوت (مگابایت)">
               <NumberInput
                 min={0}
                 value={econ.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
-            </Labeled>
-            <Labeled label="سقف دعوت‌های پاداش‌دار">
+            </Field>
+            <Field label="سقف دعوت‌های پاداش‌دار">
               <NumberInput
                 min={0}
                 value={econ.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
-            </Labeled>
-            <Labeled label="پاداش نصب اپ / PWA (مگابایت)">
+            </Field>
+            <Field label="پاداش نصب اپ / PWA (مگابایت)">
               <NumberInput min={0} value={econ.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
-            </Labeled>
-            <Labeled label="پاداش فعال‌کردن اعلان (مگابایت)">
+            </Field>
+            <Field label="پاداش فعال‌کردن اعلان (مگابایت)">
               <NumberInput
                 min={0}
                 value={econ.reward_push_mb}
                 onChange={setNum("reward_push_mb")}
               />
-            </Labeled>
-            <Labeled label="پاداش استریک (مگابایت)">
+            </Field>
+            <Field label="پاداش استریک (مگابایت)">
               <NumberInput
                 min={0}
                 value={econ.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
-            </Labeled>
-            <Labeled label="روزهای لازم برای استریک">
+            </Field>
+            <Field label="روزهای لازم برای استریک">
               <NumberInput min={1} value={econ.streak_days} onChange={setNum("streak_days")} />
-            </Labeled>
+            </Field>
           </div>
-          <Labeled label="لوکیشن‌ها (با کاما جدا کنید؛ خالی = همهٔ لوکیشن‌های اسکواد)">
-            <Input
-              value={locations}
-              onChange={(e) => setLocations(e.target.value)}
-              placeholder="مثال: آلمان، هلند"
-            />
-          </Labeled>
-          {derivable && derivable.length > 0 && (
-            <p className="text-xs text-slate-400">لوکیشن‌های این اسکواد: {derivable.join("، ")}</p>
-          )}
-          <Button type="submit" loading={complete.isPending} disabled={!trialSquad}>
-            ذخیره و تکمیل
-          </Button>
-        </form>
-      </Card>
-    </div>
-  );
-}
+        </Card>
 
-function Labeled({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <label className="mb-1 block text-sm">{label}</label>
-      {children}
+        <Card className="max-w-2xl">
+          <CardHeader
+            title="لوکیشن‌ها"
+            sub="خالی گذاشتن یعنی همهٔ لوکیشن‌های اسکواد ارائه شوند."
+            icon={MapPin}
+          />
+          <LocationPicker
+            available={picker}
+            loading={derivable.isLoading}
+            unavailable={pickerUnavailable}
+            selected={locations}
+            onChange={setLocations}
+            fallbackText={locationsText}
+            onFallbackTextChange={setLocationsText}
+          />
+        </Card>
+      </form>
     </div>
   );
 }

@@ -1,31 +1,31 @@
-import { clsx } from "clsx";
-import { ChevronLeft, ChevronRight, Search } from "lucide-react";
+import { Search, UserX } from "lucide-react";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
+import { Drawer } from "@/components/ui/Drawer";
+import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
-import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Pagination } from "@/components/ui/Pagination";
+import { Segmented } from "@/components/ui/Segmented";
 import { Spinner } from "@/components/ui/Spinner";
+import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import { useConfirm } from "@/components/ui/confirm";
 import { useUser, useUserAction, useUsers } from "@/hooks/useUsers";
-import { faDate, langLabel } from "@/lib/format";
+import { faDate, formatNumber, langLabel } from "@/lib/format";
 import type { UserAction } from "@/types/api";
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  available: { label: "در دسترس", cls: "bg-slate-100 text-slate-600 dark:bg-slate-800" },
-  active_config: {
-    label: "فعال",
-    cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
-  },
-  banned: {
-    label: "مسدود",
-    cls: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300",
-  },
+const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
+  available: { label: "در دسترس", tone: "neutral" },
+  active_config: { label: "فعال", tone: "success" },
+  banned: { label: "مسدود", tone: "danger" },
 };
 
-const FILTERS: { value: string; label: string }[] = [
+const FILTERS = [
   { value: "", label: "همه" },
   { value: "available", label: "در دسترس" },
   { value: "active_config", label: "فعال" },
@@ -35,8 +35,8 @@ const FILTERS: { value: string; label: string }[] = [
 const PAGE_SIZE = 25;
 
 function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS[status] ?? { label: status, cls: "bg-slate-100 text-slate-600" };
-  return <span className={clsx("rounded px-1.5 py-0.5 text-xs", meta.cls)}>{meta.label}</span>;
+  const meta = STATUS[status] ?? { label: status, tone: "neutral" as BadgeTone };
+  return <Badge tone={meta.tone}>{meta.label}</Badge>;
 }
 
 export function Users() {
@@ -60,40 +60,32 @@ export function Users() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">کاربران</h1>
-
-      {detailId != null && <UserDetail id={detailId} onClose={() => setDetailId(null)} />}
-
-      <Card className="space-y-3">
-        <div className="relative">
-          <Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            aria-label="جستجوی کاربران"
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 pr-9 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
-            placeholder="جستجو با آیدی تلگرام یا یوزرنیم پنل…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
+      <PageHeader title="کاربران" sub={`${formatNumber(total)} کاربر ثبت‌شده در ربات`}>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="min-w-[240px] flex-1">
+            <Input
+              aria-label="جستجوی کاربران"
+              icon={<Search className="h-4 w-4" />}
+              placeholder="جستجو با آیدی تلگرام یا یوزرنیم پنل…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <Segmented
+            value={status}
+            onChange={setStatus}
+            options={FILTERS}
+            size="sm"
+            ariaLabel="فیلتر وضعیت"
           />
         </div>
-        <div className="flex flex-wrap gap-2">
-          {FILTERS.map((f) => (
-            <button
-              key={f.value}
-              onClick={() => setStatus(f.value)}
-              className={clsx(
-                "rounded-full px-3 py-1 text-xs transition",
-                status === f.value
-                  ? "bg-brand text-white"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300",
-              )}
-            >
-              {f.label}
-            </button>
-          ))}
-        </div>
-      </Card>
+      </PageHeader>
 
-      <Card>
+      {/* Mounted only while a row is selected — the drawer's hooks (useConfirm, the detail query)
+          have no reason to run on a closed panel. */}
+      {detailId != null && <UserDetail id={detailId} onClose={() => setDetailId(null)} />}
+
+      <Card padded={false} className="p-5">
         {isError && !data ? (
           <ErrorState compact onRetry={() => refetch()} />
         ) : isLoading ? (
@@ -101,77 +93,65 @@ export function Users() {
             <Spinner className="h-7 w-7 text-brand" />
           </div>
         ) : !data || data.items.length === 0 ? (
-          <div className="py-12 text-center text-sm text-slate-400">کاربری یافت نشد</div>
+          <EmptyState
+            icon={UserX}
+            title="کاربری یافت نشد"
+            message={
+              search || status
+                ? "با این جستجو/فیلتر نتیجه‌ای نبود. فیلترها را بردارید."
+                : "هنوز کسی ربات را استارت نکرده است."
+            }
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="text-xs text-slate-400">
-                <tr className="border-b border-slate-100 dark:border-slate-800">
-                  <th className="p-2 text-right font-medium">آیدی تلگرام</th>
-                  <th className="p-2 text-right font-medium">وضعیت</th>
-                  <th className="p-2 text-right font-medium">دعوت‌ها</th>
-                  <th className="p-2 text-right font-medium">یوزرنیم پنل</th>
-                  <th className="p-2 text-right font-medium">عضویت</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.items.map((u) => (
-                  <tr
-                    key={u.telegram_id}
-                    onClick={() => setDetailId(u.telegram_id)}
-                    className="cursor-pointer border-b border-slate-50 transition hover:bg-slate-50 dark:border-slate-800/50 dark:hover:bg-slate-800/50"
-                  >
-                    <td className="p-2 font-mono" dir="ltr">
-                      {u.telegram_id}
-                    </td>
-                    <td className="p-2">
-                      <StatusBadge status={u.status} />
-                    </td>
-                    <td className="p-2">{u.referral_count}</td>
-                    <td className="p-2 font-mono text-xs text-slate-500" dir="ltr">
-                      {u.panel_username ?? "—"}
-                    </td>
-                    <td className="p-2 text-xs text-slate-500">{faDate(u.created_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <Table>
+            <THead>
+              <TR>
+                <TH>آیدی تلگرام</TH>
+                <TH>وضعیت</TH>
+                <TH>دعوت‌ها</TH>
+                <TH>یوزرنیم پنل</TH>
+                <TH>عضویت</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {data.items.map((u) => (
+                <TR
+                  key={u.telegram_id}
+                  onClick={() => setDetailId(u.telegram_id)}
+                  selected={u.telegram_id === detailId}
+                >
+                  <TD className="font-mono" dir="ltr">
+                    {u.telegram_id}
+                  </TD>
+                  <TD>
+                    <StatusBadge status={u.status} />
+                  </TD>
+                  <TD className="tabular-nums">{formatNumber(u.referral_count)}</TD>
+                  <TD className="font-mono text-xs text-content-muted" dir="ltr">
+                    {u.panel_username ?? "—"}
+                  </TD>
+                  <TD className="whitespace-nowrap text-xs text-content-muted">
+                    {faDate(u.created_at)}
+                  </TD>
+                </TR>
+              ))}
+            </TBody>
+          </Table>
         )}
 
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
-          <span>
-            {total} کاربر · صفحه {page}/{pages}
-          </span>
-          <div className="flex gap-1">
-            <button
-              aria-label="صفحهٔ قبل"
-              disabled={page <= 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
-            <button
-              aria-label="صفحهٔ بعد"
-              disabled={page >= pages}
-              onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg p-1.5 hover:bg-slate-100 disabled:opacity-30 dark:hover:bg-slate-800"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+        <Pagination page={page} totalPages={pages} onChange={setPage} className="mt-4" />
       </Card>
     </div>
   );
 }
 
-function Field({ label, value }: { label: string; value: ReactNode }) {
+function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
-    <div className="flex justify-between gap-2 border-b border-slate-100 py-1.5 dark:border-slate-800">
-      <span className="text-slate-500">{label}</span>
-      <span dir="ltr">{value}</span>
+    <div className="flex justify-between gap-2 border-b border-line py-2 text-sm last:border-0">
+      <span className="text-content-muted">{label}</span>
+      <span dir="ltr" className="text-content">
+        {value}
+      </span>
     </div>
   );
 }
@@ -199,44 +179,51 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
   }
 
   return (
-    <Modal onClose={onClose} className="max-w-md p-5" labelledBy="user-card-title">
-      <h2 id="user-card-title" className="mb-3 text-lg font-bold">
-        کارت کاربر
-      </h2>
+    <Drawer
+      open
+      onClose={onClose}
+      title="کارت کاربر"
+      sub={String(id)}
+      footer={
+        <Button variant="ghost" onClick={onClose}>
+          بستن
+        </Button>
+      }
+    >
       {isLoading || !user ? (
-        <div className="flex justify-center py-8">
+        <div className="flex justify-center py-10">
           <Spinner className="h-6 w-6 text-brand" />
         </div>
       ) : (
         <>
-          <div className="space-y-0 text-sm">
-            <Field
+          <div>
+            <DetailRow
               label="آیدی تلگرام"
               value={<span className="font-mono">{user.telegram_id}</span>}
             />
-            <Field label="وضعیت" value={<StatusBadge status={user.status} />} />
-            <Field label="زبان" value={langLabel(user.language)} />
-            <Field label="دعوت‌ها" value={user.referral_count} />
-            <Field label="کانفیگ‌های گرفته‌شده" value={user.configs ?? 0} />
-            <Field label="یوزرنیم پنل" value={user.panel_username ?? "—"} />
-            <Field label="معرف" value={user.referred_by ?? "—"} />
-            <Field label="عضویت" value={faDate(user.created_at)} />
+            <DetailRow label="وضعیت" value={<StatusBadge status={user.status} />} />
+            <DetailRow label="زبان" value={langLabel(user.language)} />
+            <DetailRow label="دعوت‌ها" value={formatNumber(user.referral_count)} />
+            <DetailRow label="کانفیگ‌های گرفته‌شده" value={formatNumber(user.configs ?? 0)} />
+            <DetailRow label="یوزرنیم پنل" value={user.panel_username ?? "—"} />
+            <DetailRow label="معرف" value={user.referred_by ?? "—"} />
+            <DetailRow label="عضویت" value={faDate(user.created_at)} />
           </div>
-          <div className="mt-4 flex flex-wrap gap-2">
+          <div className="mt-5 flex flex-wrap gap-2">
             {user.status === "banned" ? (
               <Button onClick={() => run("unban")} loading={action.isPending}>
                 رفع مسدودی
               </Button>
             ) : (
-              <Button onClick={() => run("ban", true)} loading={action.isPending}>
+              <Button variant="danger" onClick={() => run("ban", true)} loading={action.isPending}>
                 مسدودسازی
               </Button>
             )}
-            <Button variant="ghost" onClick={() => run("reclaim")} loading={action.isPending}>
+            <Button variant="outline" onClick={() => run("reclaim")} loading={action.isPending}>
               اجازهٔ دریافت مجدد
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => run("zero_referrals", true)}
               loading={action.isPending}
             >
@@ -245,11 +232,6 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
           </div>
         </>
       )}
-      <div className="mt-4 flex justify-end">
-        <Button variant="ghost" onClick={onClose}>
-          بستن
-        </Button>
-      </div>
-    </Modal>
+    </Drawer>
   );
 }

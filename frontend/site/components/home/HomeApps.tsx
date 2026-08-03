@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 
 // APPS section — the design's `.approw` of `.appcard`s, ordered by the detected platform. Real app
@@ -29,8 +29,8 @@ function detectPlatform(): "ios" | "android" | "desktop" {
   return "desktop";
 }
 
-export function HomeApps({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+export function HomeApps({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+  const t = translator(locale, copy);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   useEffect(() => setPlatform(detectPlatform()), []);
   const order = ["happ", ...(REST_ORDER[platform] ?? REST_ORDER.desktop)];

@@ -26,6 +26,7 @@ def test_all_tables_registered() -> None:
         "push_subscriptions",
         "site_messages",
         "site_landing_pages",
+        "site_push_logs",
     }
 
 

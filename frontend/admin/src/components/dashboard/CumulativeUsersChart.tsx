@@ -1,8 +1,17 @@
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
+import { AreaGradient, ChartFrame, axisProps, gridProps } from "@/components/charts/primitives";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useIsDark } from "@/hooks/useIsDark";
-import { chartTheme } from "@/lib/chartTheme";
+import { chartTheme, seriesColor } from "@/lib/chartTheme";
 import { shortDay } from "@/lib/format";
 import type { DayPoint } from "@/types/api";
 
@@ -16,50 +25,32 @@ export function CumulativeUsersChart({ signups, total }: { signups: DayPoint[]; 
     return { label: shortDay(p.day), total: acc };
   });
   const t = chartTheme(useIsDark());
+  const color = seriesColor(0);
 
   return (
     <Card>
       <CardHeader title="رشد کاربران (تجمعی)" />
-      <div className="h-56" dir="ltr">
-        {points.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-400">
-            داده‌ای برای این بازه نیست
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={points} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-              <defs>
-                <linearGradient id="g-cumulative" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#7CB000" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="#7CB000" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 11, fill: t.axis }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                allowDecimals={false}
-                width={36}
-                tick={{ fontSize: 11, fill: t.axis }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <Tooltip {...t.tooltip} />
-              <Area
-                type="monotone"
-                dataKey="total"
-                name="کل کاربران"
-                stroke="#7CB000"
-                strokeWidth={2}
-                fill="url(#g-cumulative)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </div>
+      <ChartFrame height="h-56" empty={points.length === 0}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={points} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <defs>
+              <AreaGradient id="g-cumulative" color={color} />
+            </defs>
+            <CartesianGrid {...gridProps(t)} />
+            <XAxis dataKey="label" {...axisProps(t)} />
+            <YAxis allowDecimals={false} width={36} {...axisProps(t)} />
+            <Tooltip {...t.tooltip} />
+            <Area
+              type="monotone"
+              dataKey="total"
+              name="کل کاربران"
+              stroke={color}
+              strokeWidth={2}
+              fill="url(#g-cumulative)"
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </ChartFrame>
     </Card>
   );
 }

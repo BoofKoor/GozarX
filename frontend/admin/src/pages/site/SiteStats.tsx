@@ -1,4 +1,3 @@
-import { clsx } from "clsx";
 import { BellRing, Download, Globe, Zap } from "lucide-react";
 import { useState } from "react";
 
@@ -7,13 +6,15 @@ import { SiteAnalyticsSection } from "@/components/site/SiteAnalytics";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Section } from "@/components/ui/Section";
+import { Segmented } from "@/components/ui/Segmented";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSiteAnalytics, useSiteStats } from "@/hooks/useSite";
 import { faPct, formatNumber, shortDay } from "@/lib/format";
 
-const RANGES = [7, 14, 30];
+const RANGE_OPTIONS = [7, 14, 30, 90].map((r) => ({ value: r, label: `${formatNumber(r)} روز` }));
 
 const STATUS_LABEL: Record<string, string> = {
   available: "آزاد",
@@ -24,32 +25,29 @@ const STATUS_LABEL: Record<string, string> = {
 export function SiteStats() {
   const [days, setDays] = useState(14);
   const { data, isError, refetch } = useSiteStats(days);
-  const { data: analytics } = useSiteAnalytics();
+  // Same window as the funnel above — the range control now moves the WHOLE page.
+  const { data: analytics } = useSiteAnalytics(days);
 
   const topMax = data ? Math.max(1, ...data.top_locations.map((l) => l.count)) : 1;
   const claimsMax = data ? Math.max(1, ...data.claims_series.map((d) => d.count)) : 1;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">وب‌سایت</h1>
-      <SiteTabs />
-
-      <div className="flex gap-1">
-        {RANGES.map((r) => (
-          <button
-            key={r}
-            onClick={() => setDays(r)}
-            className={clsx(
-              "rounded-lg px-3 py-1.5 text-sm font-medium transition",
-              r === days
-                ? "bg-brand/10 text-brand"
-                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800",
-            )}
-          >
-            {formatNumber(r)} روز
-          </button>
-        ))}
-      </div>
+      <PageHeader
+        title="آمار وب‌سایت"
+        sub="قیف بازدید تا دریافت کانفیگ، و تحلیل عمیق‌تر رفتار بازدیدکننده‌ها."
+        actions={
+          <Segmented
+            value={days}
+            onChange={setDays}
+            options={RANGE_OPTIONS}
+            size="sm"
+            ariaLabel="بازهٔ زمانی"
+          />
+        }
+      >
+        <SiteTabs />
+      </PageHeader>
 
       {!data ? (
         isError ? (
@@ -95,11 +93,11 @@ export function SiteStats() {
           </div>
 
           <Card>
-            <h3 className="mb-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+            <h3 className="mb-3 text-sm font-bold text-content-muted">
               دریافت روزانه ({formatNumber(days)} روز اخیر)
             </h3>
             {data.claims_series.length === 0 ? (
-              <p className="py-4 text-center text-sm text-slate-400">داده‌ای نیست.</p>
+              <p className="py-4 text-center text-sm text-content-subtle">داده‌ای نیست.</p>
             ) : (
               <div className="flex h-24 items-end gap-1" dir="ltr">
                 {data.claims_series.map((d) => (
@@ -116,20 +114,22 @@ export function SiteStats() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Card>
-              <h3 className="mb-3 text-sm font-bold text-slate-600 dark:text-slate-300">
+              <h3 className="mb-3 text-sm font-bold text-content-muted">
                 پرطرفدارترین لوکیشن‌ها ({formatNumber(days)} روز اخیر)
               </h3>
               {data.top_locations.length === 0 ? (
-                <p className="py-4 text-center text-sm text-slate-400">داده‌ای نیست.</p>
+                <p className="py-4 text-center text-sm text-content-subtle">داده‌ای نیست.</p>
               ) : (
                 <ul className="space-y-2">
                   {data.top_locations.map((l) => (
                     <li key={l.label}>
                       <div className="mb-1 flex justify-between text-sm">
                         <span dir="auto">{l.label}</span>
-                        <span className="tabular-nums text-slate-500">{formatNumber(l.count)}</span>
+                        <span className="tabular-nums text-content-muted">
+                          {formatNumber(l.count)}
+                        </span>
                       </div>
-                      <div className="h-2 rounded-full bg-slate-100 dark:bg-slate-800">
+                      <div className="h-2 rounded-full bg-surface-sunken">
                         <div
                           className="h-2 rounded-full bg-brand"
                           style={{ width: `${(l.count / topMax) * 100}%` }}
@@ -142,18 +142,16 @@ export function SiteStats() {
             </Card>
 
             <Card>
-              <h3 className="mb-3 text-sm font-bold text-slate-600 dark:text-slate-300">
-                وضعیت دستگاه‌ها
-              </h3>
+              <h3 className="mb-3 text-sm font-bold text-content-muted">وضعیت دستگاه‌ها</h3>
               <ul className="space-y-2 text-sm">
                 {Object.entries(data.status_counts).map(([status, count]) => (
                   <li key={status} className="flex justify-between">
                     <span>{STATUS_LABEL[status] ?? status}</span>
-                    <span className="tabular-nums text-slate-500">{formatNumber(count)}</span>
+                    <span className="tabular-nums text-content-muted">{formatNumber(count)}</span>
                   </li>
                 ))}
                 {Object.keys(data.status_counts).length === 0 && (
-                  <li className="py-4 text-center text-slate-400">داده‌ای نیست.</li>
+                  <li className="py-4 text-center text-content-subtle">داده‌ای نیست.</li>
                 )}
               </ul>
             </Card>

@@ -29,7 +29,7 @@ export function ReferralFunnelPanel({ data }: { data: DashboardAnalytics }) {
           tone="bg-brand"
         />
       </div>
-      <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+      <div className="mt-3 flex items-center justify-between text-xs text-content-subtle">
         <span>نرخ تبدیل دعوت‌شده‌ها: {faPct(r.invitee_conversion_pct)}</span>
         <span>{viral ? "رشد خودپایدار (K ≥ ۱)" : "K < ۱"}</span>
       </div>
@@ -51,10 +51,10 @@ function Stage({
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-slate-600 dark:text-slate-300">{label}</span>
-        <span className="font-medium tabular-nums text-slate-500">{formatNumber(value)}</span>
+        <span className="text-content-muted">{label}</span>
+        <span className="font-medium tabular-nums text-content-muted">{formatNumber(value)}</span>
       </div>
-      <div className="h-2.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div className="h-2.5 overflow-hidden rounded-full bg-surface-sunken">
         <div
           className={`h-full rounded-full transition-all ${tone}`}
           style={{ width: `${Math.max(2, Math.min(100, width))}%` }}

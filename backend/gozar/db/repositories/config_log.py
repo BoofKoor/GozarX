@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, delete, func, select
 
@@ -114,9 +114,7 @@ class ConfigLogRepository(BaseRepository):
         dow = func.extract("dow", local).label("dow")
         hour = func.extract("hour", local).label("hour")
         rows = await self.session.execute(
-            select(dow, hour, func.count())
-            .where(ConfigLog.created_at >= since)
-            .group_by(dow, hour)
+            select(dow, hour, func.count()).where(ConfigLog.created_at >= since).group_by(dow, hour)
         )
         return [(int(d), int(h), int(n)) for d, h, n in rows.all()]
 
@@ -140,6 +138,125 @@ class ConfigLogRepository(BaseRepository):
             select(bucket, func.count()).select_from(per_user).group_by(bucket)
         )
         return {str(b): int(n) for b, n in rows.all()}
+
+    # --- period comparison + retention ------------------------------------------------------------
+    async def count_between(self, start: datetime, end: datetime) -> int:
+        """Claims in the half-open window ``[start, end)`` — the previous-period comparison twin of
+        ``count_since``."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(ConfigLog)
+                .where(ConfigLog.created_at >= start, ConfigLog.created_at < end)
+            )
+            or 0
+        )
+
+    async def active_user_count_between(self, start: datetime, end: datetime) -> int:
+        """Distinct claimers in ``[start, end)`` — previous-period twin of
+        ``active_user_count_since``."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(ConfigLog.user_id))).where(
+                    ConfigLog.created_at >= start, ConfigLog.created_at < end
+                )
+            )
+            or 0
+        )
+
+    async def new_vs_returning_daily(self, since: datetime) -> list[tuple[str, int, int]]:
+        """Per UTC day at/after ``since`` → ``[(day, first_time_claimers, returning_claimers), …]``.
+
+        A day's claimer is "new" when that day is their FIRST-EVER claim day (computed over all
+        history, not just the window — otherwise everyone looks new on the first day of the range).
+        The daily claim count alone can't tell growth from repeat usage; this splits them.
+        """
+        firsts = (
+            select(
+                ConfigLog.user_id.label("uid"),
+                func.date(func.min(ConfigLog.created_at)).label("first_day"),
+            )
+            .group_by(ConfigLog.user_id)
+            .subquery()
+        )
+        day = func.date(ConfigLog.created_at).label("day")
+        is_new = day == firsts.c.first_day
+        rows = await self.session.execute(
+            select(
+                day,
+                func.count(func.distinct(ConfigLog.user_id)).filter(is_new),
+                func.count(func.distinct(ConfigLog.user_id)).filter(~is_new),
+            )
+            .select_from(ConfigLog)
+            .join(firsts, firsts.c.uid == ConfigLog.user_id)
+            .where(ConfigLog.created_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(a), int(b)) for d, a, b in rows.all()]
+
+    async def active_users_daily(self, since: datetime) -> list[tuple[str, int]]:
+        """Distinct claimers per UTC day at/after ``since`` → ``[(day, users), …]``. DAU as a SERIES
+        — the dashboard only ever had it as a single point-in-time number."""
+        day = func.date(ConfigLog.created_at).label("day")
+        rows = await self.session.execute(
+            select(day, func.count(func.distinct(ConfigLog.user_id)))
+            .where(ConfigLog.created_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
+
+    async def weekly_retention_cohorts(
+        self, weeks: int = 6
+    ) -> list[tuple[str, int, dict[int, int]]]:
+        """Weekly signup cohorts → ``[(week_iso, cohort_size, {week_offset: returners}), …]``.
+
+        ``week_offset`` 0 is the signup week itself, 1 the following week, and so on. A user counts
+        for an offset when they claimed at least once during that week. This is the one view that
+        answers "do people come back?" — every existing panel measured a single moment instead.
+
+        Only cohorts inside the last ``weeks`` weeks are returned, newest cohort last.
+        """
+        cohort_start = func.date_trunc("week", User.created_at)
+        # The window boundary is computed in Python and bound as a normal parameter. Building it in
+        # SQL needed an INTERVAL cast, which asyncpg rejects (it wants a timedelta, not a string).
+        oldest = datetime.now(UTC) - timedelta(weeks=max(weeks, 1) - 1)
+        window_start = func.date_trunc("week", oldest)
+
+        sizes = await self.session.execute(
+            select(cohort_start.label("cohort"), func.count())
+            .where(cohort_start >= window_start)
+            .group_by(cohort_start)
+            .order_by(cohort_start)
+        )
+        cohort_sizes = [(c, int(n)) for c, n in sizes.all()]
+        if not cohort_sizes:
+            return []
+
+        claim_week = func.date_trunc("week", ConfigLog.created_at)
+        # Whole weeks between the cohort's week and the claim's week.
+        offset = func.floor(
+            func.extract("epoch", claim_week - cohort_start) / (7 * 24 * 3600)
+        ).label("offset")
+        rows = await self.session.execute(
+            select(
+                cohort_start.label("cohort"),
+                offset,
+                func.count(func.distinct(ConfigLog.user_id)),
+            )
+            .select_from(User)
+            .join(ConfigLog, ConfigLog.user_id == User.telegram_id)
+            .where(cohort_start >= window_start, claim_week >= cohort_start)
+            .group_by(cohort_start, offset)
+        )
+        by_cohort: dict[object, dict[int, int]] = {}
+        for cohort, off, n in rows.all():
+            by_cohort.setdefault(cohort, {})[int(off)] = int(n)
+        return [
+            (cohort.date().isoformat(), size, by_cohort.get(cohort, {}))
+            for cohort, size in cohort_sizes
+        ]
 
     async def first_claim_stats(self) -> tuple[float | None, int, int]:
         """``(median_hours, within_24h, total_claimers)`` for signup→first-claim. Median via

@@ -1,4 +1,14 @@
 /** @type {import('tailwindcss').Config} */
+
+// Every colour resolves to a CSS custom property defined in src/styles/tokens.css. Wrapping them as
+// `rgb(var(--x) / <alpha-value>)` keeps Tailwind's opacity modifiers working (`bg-brand/10`).
+// Semantic roles (surface/line/text) flip with the theme in the token file, so components never
+// need a `dark:` twin for their base colours.
+const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
+
+const ramp = (prefix, stops) =>
+  Object.fromEntries(stops.map((s) => [s, token(`${prefix}-${s}`)]));
+
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   darkMode: "class",
@@ -8,36 +18,57 @@ export default {
         sans: ["Vazirmatn", "Tahoma", "Segoe UI", "system-ui", "sans-serif"],
       },
       colors: {
-        // Brand green (Gozar). Full ramp so cards/badges/charts can tint consistently.
         brand: {
-          DEFAULT: "#7CB000",
-          50: "#f3f9e6",
-          100: "#e4f1c4",
-          200: "#cde79a",
-          400: "#9ccb33",
-          500: "#7CB000",
-          600: "#6a9700",
-          700: "#577c00",
-          900: "#33490a",
+          DEFAULT: token("brand-500"),
+          ...ramp("brand", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
         },
-        // Semantic palette — used by Badge/StatCard/Button beside the brand green.
-        success: { DEFAULT: "#16a34a", 50: "#f0fdf4", 500: "#22c55e", 600: "#16a34a", 700: "#15803d" },
-        warning: { DEFAULT: "#d97706", 50: "#fffbeb", 500: "#f59e0b", 600: "#d97706", 700: "#b45309" },
-        danger: { DEFAULT: "#dc2626", 50: "#fef2f2", 500: "#ef4444", 600: "#dc2626", 700: "#b91c1c" },
-        info: { DEFAULT: "#0284c7", 50: "#f0f9ff", 500: "#0ea5e9", 600: "#0284c7", 700: "#0369a1" },
+        accent: { DEFAULT: token("accent-500"), ...ramp("accent", [400, 500, 600]) },
+        success: { DEFAULT: token("success-600"), ...ramp("success", [400, 500, 600, 700]) },
+        warning: { DEFAULT: token("warning-600"), ...ramp("warning", [400, 500, 600, 700]) },
+        danger: { DEFAULT: token("danger-600"), ...ramp("danger", [400, 500, 600, 700]) },
+        info: { DEFAULT: token("info-600"), ...ramp("info", [400, 500, 600, 700]) },
+
+        // Semantic roles — the vocabulary components should reach for.
+        canvas: token("bg"),
+        surface: {
+          DEFAULT: token("surface"),
+          sunken: token("surface-sunken"),
+          hover: token("surface-hover"),
+        },
+        nav: token("nav"),
+        line: { DEFAULT: token("line"), strong: token("line-strong") },
+        content: {
+          DEFAULT: token("text"),
+          muted: token("text-muted"),
+          subtle: token("text-subtle"),
+        },
       },
+      borderColor: { DEFAULT: token("line") },
+      ringColor: { DEFAULT: token("ring") },
       boxShadow: {
-        card: "0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)",
-        "card-hover": "0 4px 12px -2px rgb(15 23 42 / 0.10), 0 2px 6px -2px rgb(15 23 42 / 0.06)",
+        card: "var(--shadow-card)",
+        raised: "var(--shadow-raised)",
+        overlay: "var(--shadow-overlay)",
+        glow: "var(--shadow-glow)",
       },
+      borderRadius: { xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem" },
       keyframes: {
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(4px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        "scale-in": {
+          "0%": { opacity: "0", transform: "scale(0.97)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        shimmer: {
+          "100%": { transform: "translateX(-100%)" }, // RTL: sweep runs right → left
+        },
       },
       animation: {
         "fade-in": "fade-in 0.3s ease-out both",
+        "scale-in": "scale-in 0.15s ease-out both",
+        shimmer: "shimmer 1.6s infinite",
       },
     },
   },

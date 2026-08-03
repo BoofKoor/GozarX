@@ -14,12 +14,12 @@ function Bar({ label, pct, hint }: { label: string; pct: number; hint?: string }
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-sm">
-        <span className="text-slate-600 dark:text-slate-300">{label}</span>
+        <span className="text-content-muted">{label}</span>
         <span className="font-medium tabular-nums">
-          {pct}%{hint ? <span className="ms-1 text-xs text-slate-400">{hint}</span> : null}
+          {pct}%{hint ? <span className="ms-1 text-xs text-content-subtle">{hint}</span> : null}
         </span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+      <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
         <div
           className={`h-full rounded-full ${barColor(pct)} transition-all`}
           style={{ width: `${Math.min(100, pct)}%` }}
@@ -51,7 +51,7 @@ export function GozarHostCard({ host }: { host: HostResources }) {
           pct={host.disk_pct}
           hint={`${humanBytes(host.disk_used)} / ${humanBytes(host.disk_total)}`}
         />
-        <div className="text-xs text-slate-400">
+        <div className="text-xs text-content-subtle">
           بار ۵ و ۱۵ دقیقه: {host.load5} · {host.load15}
         </div>
       </div>
@@ -66,7 +66,7 @@ export function PanelHostCard({ panel }: { panel: PanelStats | null }) {
     <Card>
       <CardHeader title="منابع سرور پنل" icon={Cpu} />
       {panel === null ? (
-        <div className="flex h-32 items-center justify-center text-sm text-slate-400">
+        <div className="flex h-32 items-center justify-center text-sm text-content-subtle">
           پنل در دسترس نیست
         </div>
       ) : (
@@ -76,16 +76,16 @@ export function PanelHostCard({ panel }: { panel: PanelStats | null }) {
             pct={memPct}
             hint={`${humanBytes(panel.mem_used)} / ${humanBytes(panel.mem_total)}`}
           />
-          <div className="grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 text-center dark:border-slate-800">
+          <div className="grid grid-cols-2 gap-3 border-t border-line pt-3 text-center">
             <div>
               <div className="text-lg font-bold tabular-nums">{panel.cpu_cores}</div>
-              <div className="text-xs text-slate-400">هسته پردازنده</div>
+              <div className="text-xs text-content-subtle">هسته پردازنده</div>
             </div>
             <div>
               <div className="text-lg font-bold tabular-nums">
                 {humanUptime(panel.uptime_seconds)}
               </div>
-              <div className="text-xs text-slate-400">آپ‌تایم</div>
+              <div className="text-xs text-content-subtle">آپ‌تایم</div>
             </div>
           </div>
         </div>

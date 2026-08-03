@@ -37,6 +37,7 @@ from gozar.db.models.site_device import SiteDeviceStatus
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
+from gozar.db.repositories.site_push_log import SitePushLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
 from gozar.remnawave.schemas import PanelUser
@@ -360,10 +361,22 @@ async def reconcile_trials(ctx: dict) -> None:
 
 
 # ── Site Web Push: broadcast + reconcile sweep ────────────────────────────────────────────────
-async def site_push_broadcast(ctx: dict, title: str, body: str, url: str = "") -> None:
-    """Fan a Web Push out to every ACTIVE site subscription (admin-composed copy). Prunes a
-    subscription ONLY on a 404/410 from the push service (never on a transient error — the v1
-    mass-deletion lesson). Bulk push runs in the worker, never in a handler.
+async def site_push_broadcast(
+    ctx: dict,
+    title: str,
+    body: str,
+    url: str = "",
+    locale: str | None = None,
+    log_id: int | None = None,
+) -> None:
+    """Fan a Web Push out to the ACTIVE site subscriptions (admin-composed copy).
+
+    Prunes a subscription ONLY on a 404/410 from the push service (never on a transient error — the
+    v1 mass-deletion lesson). Bulk push runs in the worker, never in a handler.
+
+    ``locale`` narrows the audience to one language. ``log_id`` points at the ``site_push_logs`` row
+    the route created; the outcome is written back to it so the admin can actually see whether the
+    broadcast landed — this used to be a stderr line and nothing else.
     """
     sessionmaker = ctx.get("sessionmaker")
     if sessionmaker is None:
@@ -372,8 +385,11 @@ async def site_push_broadcast(ctx: dict, title: str, body: str, url: str = "") -
 
     payload = json.dumps({"title": title, "body": body, "url": url})
     async with sessionmaker() as session:
-        subs = await PushSubscriptionRepository(session).list_active()
+        subs = await PushSubscriptionRepository(session).list_active(locale)
         jobs = [(s.endpoint, push.subscription_info(s)) for s in subs]
+        if log_id is not None:
+            await SitePushLogRepository(session).mark_sending(log_id)
+            await session.commit()
 
     sent = failed = 0
     gone: list[str] = []
@@ -392,6 +408,12 @@ async def site_push_broadcast(ctx: dict, title: str, body: str, url: str = "") -
             repo = PushSubscriptionRepository(session)
             for endpoint in gone:
                 await repo.deactivate(endpoint)
+            await session.commit()
+    if log_id is not None:
+        async with sessionmaker() as session:
+            await SitePushLogRepository(session).complete(
+                log_id, sent=sent, failed=failed, pruned=len(gone)
+            )
             await session.commit()
     logger.info(
         "site_push_broadcast: sent %d · failed %d · pruned %d (of %d)",

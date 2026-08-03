@@ -75,6 +75,17 @@ export interface DashboardStats {
   new_today: number;
   new_this_week: number;
   growth_pct: number | null; // null = no prior-week baseline (launch); render as "new" when signups > 0
+  // Window-over-window comparison: the same figures for the selected range and the equally long
+  // window immediately before it. `*_delta_pct` is null when the prior window had no baseline.
+  signups_in_range: number;
+  signups_prev_range: number;
+  signups_delta_pct: number | null;
+  claims_in_range: number;
+  claims_prev_range: number;
+  claims_delta_pct: number | null;
+  claimers_in_range: number;
+  claimers_prev_range: number;
+  claimers_delta_pct: number | null;
   // engagement (panel /system/stats)
   online_now: number;
   online_squad_scoped: boolean;
@@ -324,6 +335,8 @@ export interface SiteMessage {
 export interface SiteMessagePage {
   items: SiteMessage[];
   total: number;
+  /** Rows matching the ACTIVE filter — what the pager divides by (`total` counts everything). */
+  matching: number;
   unread: number;
   page: number;
   page_size: number;
@@ -331,17 +344,21 @@ export interface SiteMessagePage {
 
 export interface SitePushAudience {
   recipients: number;
+  by_locale: { locale: string; count: number }[];
 }
 
 export interface SitePushInput {
   title: string;
   body: string;
   url: string;
+  /** null (or absent) = every active subscription. */
+  locale?: string | null;
 }
 
 export interface SitePushResult {
   queued: boolean;
   recipients: number;
+  log_id: number;
 }
 
 export interface SiteStats {
@@ -387,9 +404,39 @@ export interface DashboardAnalytics {
   activation_24h_pct: number;
   claimers: number;
   referral: ReferralFunnel;
+  referral_cap: ReferralCap;
   heatmap: HeatCell[];
+  signup_heatmap: HeatCell[];
   claims_distribution: Record<string, number>; // "1" | "2-3" | "4-6" | "7+" -> users
   reminder_by_language: LangReminder[];
+  active_users_series: DayPoint[]; // distinct claimers per day (DAU as a trend, not a point)
+  new_vs_returning: SplitDayPoint[];
+}
+
+/** One day of the new-vs-returning split: `new` = users whose FIRST-EVER claim was that day. */
+export interface SplitDayPoint {
+  day: string;
+  new: number;
+  returning: number;
+}
+
+export interface ReferralCap {
+  limit: number; // configured reward cap (0 = uncapped)
+  at_cap: number; // inviters who hit it and stopped earning
+  with_referrals: number;
+}
+
+/** A weekly signup cohort. `retention[i]` is the % of the cohort that claimed in the i-th week
+ *  after signup; index 0 is the signup week itself (the activation rate). */
+export interface CohortRow {
+  week: string;
+  size: number;
+  retention: number[];
+}
+
+export interface Retention {
+  weeks: number;
+  cohorts: CohortRow[];
 }
 
 // --- Phase B: site analytics (/api/admin/site/stats/analytics) ---
@@ -411,6 +458,9 @@ export interface AbuseSignals {
 }
 
 export interface SiteAnalytics {
+  range_days: number;
+  claims_in_range: number;
+  devices_active_in_range: number;
   dau: number;
   wau: number;
   mau: number;
@@ -420,4 +470,89 @@ export interface SiteAnalytics {
   active_streaks: number;
   push: PushHealth;
   abuse: AbuseSignals;
+}
+
+// --- Phase 4: website device browser (/api/admin/site/devices/*) ---
+export interface SiteDeviceRow {
+  uuid: string;
+  handle: string | null;
+  status: string; // available | active_config | blocked
+  site_panel_username: string | null;
+  referral_count: number;
+  referred_by: string | null;
+  streak_count: number;
+  last_claim_at: string | null;
+  ip_bucket: string | null;
+  has_fingerprint: boolean; // the hash itself is never exposed — it identifies the browser
+  created_at: string | null;
+}
+
+export interface SiteDevicePage {
+  items: SiteDeviceRow[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface SiteDeviceClaim {
+  location: string;
+  is_change: boolean;
+  created_at: string | null;
+}
+
+export interface SiteDeviceCard extends SiteDeviceRow {
+  claims: number;
+  recent_claims: SiteDeviceClaim[];
+  rewards: string[];
+  invited: number; // raw, uncapped count of devices that arrived via this one's link
+}
+
+export interface SiteDevicePeer {
+  uuid: string;
+  handle: string | null;
+  status: string;
+  created_at: string | null;
+}
+
+export type SiteDeviceAction = "block" | "unblock" | "reset";
+
+export interface SiteDeviceListParams {
+  page: number;
+  page_size: number;
+  status?: string;
+  search?: string;
+  ip_bucket?: string;
+}
+
+// --- Phase 4: push targeting + history ---
+export interface SitePushLog {
+  id: number;
+  title: string;
+  body: string;
+  url: string;
+  locale: string | null;
+  status: string; // queued | sending | done | failed
+  recipients: number;
+  sent: number;
+  failed: number;
+  pruned: number;
+  created_at: string | null;
+  finished_at: string | null;
+}
+
+// --- Phase 5: website copy editor (/api/admin/site/content) ---
+export interface SiteCopyItem {
+  key: string;
+  group: string; // seo | hero | widget | sections | push
+  fa: string;
+  en: string;
+  /** What the site renders when the row is blank — its in-code / seeded copy. */
+  default_fa: string;
+  default_en: string;
+  overridden: boolean;
+}
+
+export interface SiteCopyPatch {
+  fa?: string;
+  en?: string;
 }

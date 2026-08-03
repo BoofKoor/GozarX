@@ -56,9 +56,7 @@ async def test_handle_collision_retries(session, monkeypatch) -> None:
     # Force the generator to return the taken handle once, then a fresh one — create must retry
     # past the collision rather than raise.
     outputs = iter([taken.handle, "GZ-FRESH2"])
-    monkeypatch.setattr(
-        "gozar.db.repositories.site_device.new_handle", lambda: next(outputs)
-    )
+    monkeypatch.setattr("gozar.db.repositories.site_device.new_handle", lambda: next(outputs))
     other = await repo.create("55555555-5555-5555-5555-555555555555")
     assert other.handle == "GZ-FRESH2"
 
