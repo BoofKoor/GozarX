@@ -20,6 +20,7 @@ from gozar.services.site_referral import SiteReferralService
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
     Delivered,
+    LocationUnavailable,
     NoLocations,
     NotReady,
     PanelError,
@@ -60,6 +61,8 @@ class ClaimResponse(BaseModel):
     size: str | None = None
     changed: bool = False
     retry_after: str | None = None
+    # Live squad names, sent only with reason='location_unavailable' so the picker can re-sync.
+    locations: list[str] | None = None
 
 
 def _service(request: Request, session) -> SiteTrialService:
@@ -145,4 +148,10 @@ async def post_claim(
             return ClaimResponse(ok=False, reason="not_ready")
         if isinstance(result, NoLocations):
             return ClaimResponse(ok=False, reason="no_locations")
+        if isinstance(result, LocationUnavailable):
+            # The squad no longer serves what was picked. Hand back the live names so the SPA can
+            # re-render the picker — never silently deliver a different country's config.
+            return ClaimResponse(
+                ok=False, reason="location_unavailable", locations=result.available
+            )
         return ClaimResponse(ok=False, reason="panel_error")

@@ -67,6 +67,24 @@ def site_sub_cache_key(device_uuid: str) -> str:
     return f"site:sub:{device_uuid}"
 
 
+# The squad's live location names, shared by every visitor. SQUAD_LOCATIONS_TTL keeps the picker
+# effectively live (a panel edit shows within a minute) without a panel round-trip per pageview;
+# LAST_GOOD holds the newest successful derivation so a panel outage degrades to the last real
+# answer instead of an empty picker.
+SQUAD_LOCATIONS_TTL = 60
+SQUAD_LOCATIONS_LAST_GOOD_TTL = 7 * 24 * 3600
+
+
+def site_squad_locations_key(squad_uuid: str) -> str:
+    """Live squad -> location names, short-lived and shared across visitors."""
+    return f"site:squadlocs:{squad_uuid}"
+
+
+def site_squad_locations_last_good_key(squad_uuid: str) -> str:
+    """Newest SUCCESSFUL derivation for the squad — the fallback while the panel is unreachable."""
+    return f"site:squadlocs:lastgood:{squad_uuid}"
+
+
 def site_limited_notified_key(device_uuid: str) -> str:
     """One-shot guard for the site's data-limit push nudge (the site analogue of
     ``limited_notified_key``)."""

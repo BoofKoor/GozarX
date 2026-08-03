@@ -212,6 +212,10 @@ class _ClaimPanel:
     async def create_trial_user(self, username, traffic_bytes, expire_at, squad_uuids):
         return PanelUser(uuid="u1", username=username)
 
+    async def squad_location_names(self, squad_uuid):
+        # The squad serves what this stub's subscription returns — scoping is a no-op here.
+        return ["Germany"]
+
     async def subscription(self, username):
         from gozar.remnawave.schemas import Subscription, SubscriptionUser
 

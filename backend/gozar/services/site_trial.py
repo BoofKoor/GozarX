@@ -25,11 +25,19 @@ from redis.asyncio import Redis
 from sqlalchemy import update
 from sqlalchemy.ext.asyncio import async_object_session
 
-from gozar.cache.redis import site_limited_notified_key, site_sub_cache_key
+from gozar.cache.redis import (
+    SQUAD_LOCATIONS_LAST_GOOD_TTL,
+    SQUAD_LOCATIONS_TTL,
+    site_limited_notified_key,
+    site_squad_locations_key,
+    site_squad_locations_last_good_key,
+    site_sub_cache_key,
+)
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
+from gozar.remnawave.links import normalize_remark
 from gozar.remnawave.schemas import Subscription
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_economy import (
@@ -72,8 +80,21 @@ class Delivered:
     changed: bool = False
 
 
+@dataclass(frozen=True)
+class LocationUnavailable:
+    """The picked location isn't one the squad serves right now (renamed/disabled/stale tab).
+
+    Carries the names that ARE live so the client can re-render the picker instead of leaving the
+    user guessing. Replaces the old behaviour of silently delivering a different country's config.
+    """
+
+    available: list[str]
+
+
 # Reuses the bot's storage-agnostic result variants for the shared states.
-SiteClaimResult = Delivered | AlreadyClaimedToday | NotReady | NoLocations | PanelError
+SiteClaimResult = (
+    Delivered | AlreadyClaimedToday | NotReady | NoLocations | PanelError | LocationUnavailable
+)
 
 
 @dataclass(frozen=True)
@@ -224,13 +245,69 @@ class SiteTrialService:
     async def _clear_cache(self, uuid: str) -> None:
         await self._redis.delete(site_sub_cache_key(uuid))
 
+    async def squad_locations(self) -> list[str] | None:
+        """The configured squad's location names, LIVE — or ``None`` when they can't be determined.
+
+        ``None`` is a distinct answer from ``[]`` and the difference matters everywhere downstream:
+        ``None`` means "the panel didn't tell us" (unreachable, or no squad configured yet) and must
+        never be treated as a verdict, while ``[]`` means "this squad genuinely serves nothing".
+        Conflating the two is what made an empty allowlist mean 'keep every host'.
+
+        Cached for SQUAD_LOCATIONS_TTL (60s) and shared by all visitors, so a panel edit surfaces
+        within a minute without a panel round-trip per pageview. Every success also refreshes a
+        long-lived last-good copy, which is what a panel outage falls back to.
+        """
+        squad = await self._settings.get(SiteSettingKey.SITE_TRIAL_SQUAD)
+        if not squad:
+            return None
+        live_key = site_squad_locations_key(squad)
+        cached = await self._redis.get(live_key)
+        if cached is not None:
+            try:
+                return [str(x) for x in json.loads(cached)]
+            except (ValueError, TypeError):
+                pass  # poisoned entry — fall through and re-derive
+        try:
+            names = await self._panel.squad_location_names(squad)
+        except RemnawaveError:
+            logger.warning("squad_locations: panel unreachable — falling back to last good")
+            return await self._last_good_locations(squad)
+        await self._redis.set(live_key, json.dumps(names), ex=SQUAD_LOCATIONS_TTL)
+        if names:  # never let an empty derivation overwrite a real one
+            await self._redis.set(
+                site_squad_locations_last_good_key(squad),
+                json.dumps(names),
+                ex=SQUAD_LOCATIONS_LAST_GOOD_TTL,
+            )
+        return names
+
+    async def _last_good_locations(self, squad: str) -> list[str] | None:
+        """Newest successful derivation, else the stored list, else ``None`` (still unknown)."""
+        raw = await self._redis.get(site_squad_locations_last_good_key(squad))
+        if raw is not None:
+            try:
+                return [str(x) for x in json.loads(raw)]
+            except (ValueError, TypeError):
+                pass
+        stored = await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
+        return stored or None
+
     async def _filter_locations(self, links: dict[str, str]) -> dict[str, str]:
-        """Intersect the link map with the SITE_LOCATIONS allowlist (empty -> keep all)."""
-        allow = await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
-        if not allow:
+        """Keep only links the configured squad actually serves, matched by NORMALISED name.
+
+        Names arrive from two places that spell the same location differently — the raw host
+        remark and the rendered link fragment — so the comparison runs through ``normalize_remark``
+        on both sides. The link map keeps its own keys: normalisation joins, it never displays.
+
+        A ``None`` allowlist (panel unreachable / no squad set) keeps every link — refusing a config
+        we already hold would punish the user for our outage. An EMPTY allowlist is a real answer
+        and filters everything out.
+        """
+        allow = await self.squad_locations()
+        if allow is None:
             return dict(links)
-        allowed = set(allow)
-        return {name: link for name, link in links.items() if name in allowed}
+        allowed = {normalize_remark(name) for name in allow}
+        return {name: link for name, link in links.items() if normalize_remark(name) in allowed}
 
     # --- self-heal ------------------------------------------------------------------------------
     async def _reset(self, device: SiteDevice) -> None:
@@ -266,12 +343,23 @@ class SiteTrialService:
         return f"s{device.uuid[:8]}_{int(datetime.now(UTC).timestamp())}"
 
     @staticmethod
-    def _pick(links: dict[str, str], location_name: str) -> tuple[str, str]:
-        """The (name, link) for the requested location, matched by NAME; falls back to the first
-        available if the exact name isn't in the squad-derived map. Caller guarantees non-empty."""
+    def _pick(links: dict[str, str], location_name: str) -> tuple[str, str] | None:
+        """The (name, link) for the requested location, or ``None`` if the squad lacks it.
+
+        Matched by NAME (never by index), exact first, then by normalised name so a template token
+        or spacing difference between the picker's copy and the link's fragment still resolves.
+
+        There is deliberately NO "first available" fallback: it silently handed the user a config
+        for a DIFFERENT country than the one they tapped, which is worse than an honest failure and
+        indistinguishable from success for anyone not reading the remark.
+        """
         if location_name in links:
             return location_name, links[location_name]
-        return next(iter(links.items()))
+        wanted = normalize_remark(location_name)
+        for name, link in links.items():
+            if normalize_remark(name) == wanted:
+                return name, link
+        return None
 
     async def _allowance_bytes(self, device: SiteDevice) -> int:
         return await site_device_allowance_bytes(self._settings, device, self._rewards)
@@ -287,8 +375,13 @@ class SiteTrialService:
         location_name: str,
         *,
         changed: bool,
-    ) -> Delivered:
-        name, link = self._pick(links, location_name)
+    ) -> Delivered | LocationUnavailable:
+        picked = self._pick(links, location_name)
+        if picked is None:
+            # The squad stopped serving what the picker offered (host renamed/disabled/moved, or a
+            # stale tab). Report it with the names that ARE live so the client can re-offer them.
+            return LocationUnavailable(available=list(links.keys()))
+        name, link = picked
         # One row per delivery (location = remark NAME). is_change flags a change-location re-pick
         # so the admin funnel stats exclude it and count only trials opened (matching the bot).
         await self._claims.add(device.uuid, name, is_change=changed)
@@ -302,8 +395,15 @@ class SiteTrialService:
 
     # --- public flow ----------------------------------------------------------------------------
     async def available_locations(self, device: SiteDevice) -> list[str] | PanelError:
-        """Location names for the picker. For an active device: the cached (or live) subscription
-        map; for a fresh device: the SITE_LOCATIONS setting (the upfront picker options)."""
+        """Location names for the picker.
+
+        Active device: its own live subscription map (what it can actually switch between). Fresh
+        device: the squad's LIVE names — previously a hand-maintained ``SITE_LOCATIONS`` snapshot
+        that nothing re-derived, so every host added, renamed or removed in Remnawave stayed
+        invisible until an admin remembered to press a button. ``squad_locations`` falls back to the
+        last successful derivation (and then to the stored list) when the panel is unreachable, so
+        an outage degrades to slightly-stale rather than an empty picker.
+        """
         cached = await self._load_cache(device.uuid)
         if cached is not None:
             return list(cached.links.keys())
@@ -315,6 +415,9 @@ class SiteTrialService:
             if refreshed is not None:
                 _, links = refreshed
                 return list(links.keys())
+        live = await self.squad_locations()
+        if live is not None:
+            return live
         return await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
 
     async def claim(self, device: SiteDevice, location_name: str) -> SiteClaimResult:
