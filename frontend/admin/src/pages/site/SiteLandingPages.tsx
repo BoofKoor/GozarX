@@ -8,6 +8,7 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useConfirm } from "@/components/ui/confirm";
 import {
@@ -17,9 +18,6 @@ import {
   useUpdateLanding,
 } from "@/hooks/useSite";
 import type { SiteLandingInput, SiteLandingPage } from "@/types/api";
-
-const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900";
 
 const BLANK: SiteLandingInput = {
   slug: "",
@@ -49,7 +47,7 @@ export function SiteLandingPages() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">وب‌سایت</h1>
+      <PageHeader title="وب‌سایت" />
       <SiteTabs />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -68,7 +66,7 @@ export function SiteLandingPages() {
               <Spinner className="h-6 w-6 text-brand" />
             </div>
           ) : pages.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">هنوز صفحه‌ای ساخته نشده.</p>
+            <p className="py-6 text-center text-sm text-content-subtle">هنوز صفحه‌ای ساخته نشده.</p>
           ) : (
             <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
               {pages.map((p) => (
@@ -79,15 +77,15 @@ export function SiteLandingPages() {
                       "flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm transition",
                       p.id === selected
                         ? "bg-brand/10 text-brand"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+                        : "text-content-muted hover:bg-surface-hover",
                     )}
                   >
                     <span dir="ltr" className="truncate">
                       {p.slug}
                     </span>
                     <span className="flex shrink-0 items-center gap-1.5">
-                      <span className="text-xs uppercase text-slate-400">{p.locale}</span>
-                      {!p.published && <span className="text-xs text-amber-500">پیش‌نویس</span>}
+                      <span className="text-xs uppercase text-content-subtle">{p.locale}</span>
+                      {!p.published && <span className="text-xs text-warning-600">پیش‌نویس</span>}
                     </span>
                   </button>
                 </li>
@@ -105,7 +103,7 @@ export function SiteLandingPages() {
               onDeleted={() => setSelected(null)}
             />
           ) : (
-            <Card className="flex h-64 items-center justify-center text-slate-400">
+            <Card className="flex h-64 items-center justify-center text-content-subtle">
               <div className="text-center">
                 <FileText className="mx-auto mb-2 h-8 w-8" />
                 یک صفحه را برای ویرایش انتخاب کنید یا صفحه‌ی جدید بسازید
@@ -195,7 +193,7 @@ function LandingEditor({
           <Field label="نشانی (slug)">
             <input
               dir="ltr"
-              className={INPUT}
+              className="field-control"
               value={form.slug}
               onChange={(e) => set("slug", e.target.value)}
               placeholder="free-v2ray-config"
@@ -203,7 +201,7 @@ function LandingEditor({
           </Field>
           <Field label="زبان">
             <select
-              className={INPUT}
+              className="field-control"
               value={form.locale}
               onChange={(e) => set("locale", e.target.value)}
             >
@@ -214,21 +212,21 @@ function LandingEditor({
         </div>
         <Field label="عنوان (title / SEO)">
           <input
-            className={INPUT}
+            className="field-control"
             value={form.title}
             onChange={(e) => set("title", e.target.value)}
           />
         </Field>
         <Field label="توضیح متا (meta description)">
           <input
-            className={INPUT}
+            className="field-control"
             value={form.meta_description}
             onChange={(e) => set("meta_description", e.target.value)}
           />
         </Field>
         <Field label="سرتیتر صفحه (اختیاری)">
           <input
-            className={INPUT}
+            className="field-control"
             value={form.heading ?? ""}
             onChange={(e) => set("heading", e.target.value || null)}
           />
@@ -236,14 +234,14 @@ function LandingEditor({
         <Field label="محتوا (body)">
           <textarea
             dir="auto"
-            className={clsx(INPUT, "min-h-[160px]")}
+            className="field-control min-h-[160px]"
             value={form.body}
             onChange={(e) => set("body", e.target.value)}
           />
         </Field>
         <Field label="لوکیشن پیش‌انتخاب در ویجت (نام remark، اختیاری)">
           <input
-            className={INPUT}
+            className="field-control"
             value={form.location_remark ?? ""}
             onChange={(e) => set("location_remark", e.target.value || null)}
             placeholder="مثال: آلمان"

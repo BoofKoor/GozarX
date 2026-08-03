@@ -22,16 +22,19 @@ export function ActiveUsersPanel({ data }: { data: DashboardAnalytics }) {
       />
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
-          <div key={t.sub} className="rounded-xl bg-slate-50 p-3 text-center dark:bg-slate-800/50">
+          <div
+            key={t.sub}
+            className="rounded-xl bg-surface-sunken p-3 text-center dark:bg-surface-sunken/50"
+          >
             <div className="text-xl font-bold tabular-nums">{formatNumber(t.value)}</div>
-            <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{t.label}</div>
-            <div className="text-[10px] uppercase tracking-wide text-slate-400" dir="ltr">
+            <div className="mt-0.5 text-xs text-content-muted">{t.label}</div>
+            <div className="text-[10px] uppercase tracking-wide text-content-subtle" dir="ltr">
               {t.sub}
             </div>
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-slate-400">
+      <p className="mt-3 text-xs text-content-subtle">
         کاربر فعال = دستِ‌کم یک دریافت کانفیگ در بازهٔ زمانی؛ چسبندگی سهم کاربرانی است که هر روز
         برمی‌گردند.
       </p>

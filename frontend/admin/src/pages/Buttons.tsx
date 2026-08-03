@@ -20,6 +20,7 @@ import { ButtonEditor } from "@/components/buttons/ButtonEditor";
 import { TelegramPreview } from "@/components/buttons/TelegramPreview";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useButtons, useReorderButtons, useResetButton } from "@/hooks/useButtons";
 import type { ButtonConfig, ReorderItem } from "@/types/api";
@@ -57,8 +58,8 @@ export function Buttons() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold">دکمه‌ها</h1>
-        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+        <PageHeader title="دکمه‌ها" />
+        <p className="mt-1 text-sm text-content-muted">
           متن (سه‌زبانه)، نمایش و چیدمان دکمه‌های ربات. برای جابه‌جایی، دکمه را بکش — حتی بین
           ردیف‌ها. دکمه‌های حیاتی (بازگشت/تأیید) قابل مخفی‌سازی نیستند.
         </p>
@@ -169,7 +170,7 @@ function ScreenGroup({
     <Card>
       <div className="mb-3 flex items-center gap-2">
         <h2 className="text-base font-bold">{SCREEN_NAMES[screen] ?? screen}</h2>
-        <code className="text-xs text-slate-400" dir="ltr">
+        <code className="text-xs text-content-subtle" dir="ltr">
           {screen}
         </code>
       </div>
@@ -200,7 +201,7 @@ function ScreenGroup({
         </SortableContext>
         <DragOverlay>
           {activeButton ? (
-            <div className="rounded-lg border-2 border-brand bg-white px-2 py-2 text-sm shadow-lg dark:bg-slate-800">
+            <div className="rounded-lg border-2 border-brand bg-surface px-2 py-2 text-sm shadow-lg">
               {activeButton.effective_label.fa}
             </div>
           ) : null}
@@ -227,12 +228,10 @@ function RowZone({
       ref={setNodeRef}
       className={clsx(
         "rounded-lg border p-2 transition",
-        isOver
-          ? "border-brand bg-brand/10"
-          : "border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50",
+        isOver ? "border-brand bg-brand/10" : "border-line bg-surface-sunken",
       )}
     >
-      <div className="mb-1.5 text-[10px] font-mono text-slate-400">ردیف {row}</div>
+      <div className="mb-1.5 text-[10px] font-mono text-content-subtle">ردیف {row}</div>
       <div className="flex flex-col gap-1.5">
         {buttons.map((b) => (
           <DraggableButton
@@ -255,8 +254,8 @@ function NewRowZone() {
       className={clsx(
         "rounded-lg border-2 border-dashed p-3 text-center text-sm transition",
         isOver
-          ? "border-emerald-500 bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30"
-          : "border-slate-300 text-slate-400 dark:border-slate-700",
+          ? "border-success-500 bg-success-500/12 text-success-700"
+          : "border-line-strong text-content-subtle",
       )}
     >
       <span className="inline-flex items-center gap-1.5">
@@ -288,12 +287,12 @@ function DraggableButton({
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-2 py-2 dark:border-slate-700 dark:bg-slate-900"
+      className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2"
     >
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab text-slate-400 hover:text-slate-600 active:cursor-grabbing"
+        className="cursor-grab text-content-subtle hover:text-content-muted active:cursor-grabbing"
         title="کشیدن برای جابه‌جایی"
       >
         <GripVertical className="h-4 w-4" />
@@ -301,21 +300,21 @@ function DraggableButton({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
           <span className="truncate text-sm">{button.effective_label.fa}</span>
-          {!button.is_visible && <EyeOff className="h-3 w-3 shrink-0 text-slate-400" />}
+          {!button.is_visible && <EyeOff className="h-3 w-3 shrink-0 text-content-subtle" />}
           {button.is_critical && (
-            <AlertCircle className="h-3 w-3 shrink-0 text-amber-500" aria-label="حیاتی" />
+            <AlertCircle className="h-3 w-3 shrink-0 text-warning-600" aria-label="حیاتی" />
           )}
           {button.customized && (
             <span className="shrink-0 rounded bg-brand/10 px-1 text-[10px] text-brand">سفارشی</span>
           )}
         </div>
-        <code className="text-[10px] text-slate-400" dir="ltr">
+        <code className="text-[10px] text-content-subtle" dir="ltr">
           {button.key}
         </code>
       </div>
       <button
         onClick={onEdit}
-        className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-brand dark:hover:bg-slate-800"
+        className="rounded p-1.5 text-content-subtle hover:bg-surface-hover hover:text-brand"
         title="ویرایش"
       >
         <Pencil className="h-3.5 w-3.5" />
@@ -323,7 +322,7 @@ function DraggableButton({
       {button.customized && (
         <button
           onClick={onReset}
-          className="rounded p-1.5 text-slate-400 hover:bg-rose-50 hover:text-rose-500 dark:hover:bg-rose-950/40"
+          className="rounded p-1.5 text-content-subtle hover:bg-danger-500/12 hover:text-danger-700"
           title="بازنشانی به پیش‌فرض"
         >
           <RotateCcw className="h-3.5 w-3.5" />

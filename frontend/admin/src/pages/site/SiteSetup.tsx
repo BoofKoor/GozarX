@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSquads } from "@/hooks/useSetup";
 import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from "@/hooks/useSite";
@@ -78,7 +79,7 @@ export function SiteSetup() {
   if (!current) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-bold">راه‌اندازی وب‌سایت</h1>
+        <PageHeader title="راه‌اندازی وب‌سایت" />
         {settingsError ? (
           <ErrorState onRetry={() => refetchSettings()} />
         ) : (
@@ -129,9 +130,9 @@ export function SiteSetup() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">راه‌اندازی وب‌سایت</h1>
+      <PageHeader title="راه‌اندازی وب‌سایت" />
       <Card className="max-w-xl">
-        <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
+        <p className="mb-6 text-sm text-content-muted">
           اسکواد آزمایشی و اقتصاد وب‌سایت را تنظیم کنید. لوکیشن‌ها از روی نام remark همان اسکواد
           استخراج می‌شوند.
         </p>
@@ -148,7 +149,7 @@ export function SiteSetup() {
                   setTrialSquad(e.target.value);
                   setLocations(""); // a new squad has its own locations; empty => derive them all
                 }}
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
+                className="field-control"
               >
                 {(squads ?? []).map((s) => (
                   <option key={s.uuid} value={s.uuid}>
@@ -212,7 +213,9 @@ export function SiteSetup() {
             />
           </Labeled>
           {derivable && derivable.length > 0 && (
-            <p className="text-xs text-slate-400">لوکیشن‌های این اسکواد: {derivable.join("، ")}</p>
+            <p className="text-xs text-content-subtle">
+              لوکیشن‌های این اسکواد: {derivable.join("، ")}
+            </p>
           )}
           <Button type="submit" loading={complete.isPending} disabled={!trialSquad}>
             ذخیره و تکمیل

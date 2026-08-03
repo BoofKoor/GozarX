@@ -28,7 +28,7 @@ export function ThemeToggle() {
       onClick={toggle}
       aria-label={isDark ? "روشن‌کردن پوسته" : "تیره‌کردن پوسته"}
       title="تغییر پوسته (Shift+D)"
-      className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+      className="flex h-9 w-9 items-center justify-center rounded-xl text-content-muted transition hover:bg-surface-hover hover:text-content"
     >
       {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
     </button>

@@ -12,7 +12,7 @@ const TABS = [
 
 export function SiteTabs() {
   return (
-    <div className="flex flex-wrap gap-1 border-b border-slate-200 dark:border-slate-800">
+    <div className="flex flex-wrap gap-1 border-b border-line">
       {TABS.map((t) => (
         <NavLink
           key={t.to}
@@ -23,7 +23,7 @@ export function SiteTabs() {
               "-mb-px rounded-t-lg border-b-2 px-3 py-2 text-sm font-medium transition",
               isActive
                 ? "border-brand text-brand"
-                : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
+                : "border-transparent text-content-muted hover:text-content",
             )
           }
         >

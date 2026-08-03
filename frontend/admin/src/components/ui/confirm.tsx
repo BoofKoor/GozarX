@@ -45,7 +45,7 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
           <h2 id="confirm-title" className="text-lg font-bold">
             {opts.title ?? "تأیید"}
           </h2>
-          <div className="mt-2 text-sm text-slate-600 dark:text-slate-300">{opts.message}</div>
+          <div className="mt-2 text-sm text-content-muted">{opts.message}</div>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => settle(false)}>
               {opts.cancelLabel ?? "انصراف"}

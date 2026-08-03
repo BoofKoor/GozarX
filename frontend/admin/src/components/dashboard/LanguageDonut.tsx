@@ -1,11 +1,13 @@
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
+import { useIsDark } from "@/hooks/useIsDark";
 import { seriesColor } from "@/lib/chartTheme";
 import { formatNumber, langLabel } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
 
 export function LanguageDonut({ data }: { data: NamedCount[] }) {
+  useIsDark(); // slice colours come from CSS tokens — re-render when the theme flips
   const total = data.reduce((s, d) => s + d.count, 0);
   const slices = data.map((d, i) => ({
     name: langLabel(d.label),
@@ -17,7 +19,7 @@ export function LanguageDonut({ data }: { data: NamedCount[] }) {
     <Card>
       <CardHeader title="زبان کاربران" />
       {total === 0 ? (
-        <div className="flex h-40 items-center justify-center text-sm text-slate-400">
+        <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
           هنوز کاربری نیست
         </div>
       ) : (
@@ -45,9 +47,9 @@ export function LanguageDonut({ data }: { data: NamedCount[] }) {
             {slices.map((s) => (
               <li key={s.name} className="flex items-center gap-2 text-sm">
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
-                <span className="flex-1 text-slate-600 dark:text-slate-300">{s.name}</span>
+                <span className="flex-1 text-content-muted">{s.name}</span>
                 <span className="font-medium tabular-nums">{formatNumber(s.value)}</span>
-                <span className="w-10 text-left text-xs text-slate-400 tabular-nums">
+                <span className="w-10 text-left text-xs text-content-subtle tabular-nums">
                   {Math.round((s.value / total) * 100)}%
                 </span>
               </li>

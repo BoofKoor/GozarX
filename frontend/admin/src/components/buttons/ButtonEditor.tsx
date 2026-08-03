@@ -15,10 +15,10 @@ const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
 ];
 
 const COLORS: { value: ButtonStyle; label: string; swatch: string }[] = [
-  { value: null, label: "پیش‌فرض", swatch: "bg-slate-300 dark:bg-slate-600" },
-  { value: "primary", label: "آبی", swatch: "bg-blue-500" },
-  { value: "success", label: "سبز", swatch: "bg-emerald-500" },
-  { value: "danger", label: "قرمز", swatch: "bg-rose-500" },
+  { value: null, label: "پیش‌فرض", swatch: "bg-line-strong" },
+  { value: "primary", label: "آبی", swatch: "bg-brand" },
+  { value: "success", label: "سبز", swatch: "bg-success-500" },
+  { value: "danger", label: "قرمز", swatch: "bg-danger-500" },
 ];
 
 /** Modal to edit a button's per-language label, visibility, and color (order is via drag-drop). */
@@ -61,7 +61,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           ویرایش دکمه
         </h2>
         <code
-          className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-500 dark:bg-slate-800"
+          className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs text-content-muted"
           dir="ltr"
         >
           {button.key}
@@ -72,7 +72,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           <div key={code}>
             <label className="mb-1 block text-sm">{label}</label>
             <input
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900"
+              className="field-control"
               dir={dir}
               value={labels[code]}
               placeholder={button.default_label[code]}
@@ -89,8 +89,8 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
             className={clsx(
               "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
               visible
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                : "bg-slate-100 text-slate-500 dark:bg-slate-800",
+                ? "bg-success-500/12 text-success-700"
+                : "bg-surface-sunken text-content-muted",
               button.is_critical && "cursor-not-allowed opacity-60",
             )}
           >
@@ -98,7 +98,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
             {visible ? "نمایش داده می‌شود" : "پنهان"}
           </button>
           {button.is_critical && (
-            <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+            <p className="mt-2 rounded bg-warning-500/12 p-2 text-xs text-warning-700">
               ⚠️ دکمهٔ حیاتی (بازگشت/تأیید/ناوبری) — قابل مخفی‌سازی نیست تا کاربر در صفحه گیر نیفتد.
             </p>
           )}
@@ -115,7 +115,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
                   "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs transition",
                   style === c.value
                     ? "border-brand"
-                    : "border-transparent hover:border-slate-300 dark:hover:border-slate-600",
+                    : "border-transparent hover:border-line-strong",
                 )}
               >
                 <span className={clsx("h-5 w-8 rounded", c.swatch)} />
@@ -123,7 +123,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-content-subtle">
             رنگ دکمه‌های اینلاین (در نسخه‌های جدید تلگرام نمایش داده می‌شود).
           </p>
         </div>

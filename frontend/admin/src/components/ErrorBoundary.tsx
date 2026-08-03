@@ -27,8 +27,8 @@ export class ErrorBoundary extends Component<Props, State> {
     if (!this.state.hasError) return this.props.children;
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center">
-        <div className="text-lg font-bold text-slate-800 dark:text-slate-100">مشکلی پیش آمد</div>
-        <p className="max-w-sm text-sm text-slate-500 dark:text-slate-400">
+        <div className="text-lg font-bold text-content">مشکلی پیش آمد</div>
+        <p className="max-w-sm text-sm text-content-muted">
           خطای غیرمنتظره‌ای رخ داد. لطفاً صفحه را دوباره بارگذاری کنید.
         </p>
         <button

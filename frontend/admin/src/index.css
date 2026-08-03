@@ -1,3 +1,5 @@
+@import "./styles/tokens.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -30,15 +32,45 @@
 @layer base {
   html {
     font-family: "Vazirmatn", Tahoma, "Segoe UI", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
   }
 
   body {
-    @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
+    @apply bg-canvas text-content antialiased;
+  }
+
+  /* Every focusable element gets the same ring, so keyboard users see one consistent affordance. */
+  :focus-visible {
+    @apply outline-none ring-2 ring-brand/45 ring-offset-2 ring-offset-canvas;
   }
 
   /* Tabular numerals so KPI counters and table figures don't jitter as values change. */
   .tabular-nums {
     font-variant-numeric: tabular-nums;
+  }
+
+  /* Native controls should follow the theme rather than the OS default (dark dropdown lists,
+     correct date/number spinner colours). */
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+}
+
+@layer components {
+  /* The one input surface. Every text field, textarea and select in the panel composes this, which
+     is what removed the three hand-copied `INPUT` class strings across the site pages. */
+  .field-control {
+    @apply w-full rounded-xl border border-line-strong bg-surface px-3 py-2 text-sm text-content
+      transition placeholder:text-content-subtle
+      focus:border-brand focus:ring-2 focus:ring-brand/25
+      disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .field-control-invalid {
+    @apply border-danger-500 focus:border-danger-500 focus:ring-danger-500/25;
   }
 }
 
@@ -46,10 +78,7 @@
   /* Slim, theme-aware scrollbars for the long lists (users, texts) and the sidebar. */
   .scrollbar-thin {
     scrollbar-width: thin;
-    scrollbar-color: theme("colors.slate.300") transparent;
-  }
-  .dark .scrollbar-thin {
-    scrollbar-color: theme("colors.slate.700") transparent;
+    scrollbar-color: rgb(var(--line-strong)) transparent;
   }
   .scrollbar-thin::-webkit-scrollbar {
     width: 6px;
@@ -57,9 +86,17 @@
   }
   .scrollbar-thin::-webkit-scrollbar-thumb {
     border-radius: 9999px;
-    background-color: theme("colors.slate.300");
+    background-color: rgb(var(--line-strong));
   }
-  .dark .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: theme("colors.slate.700");
+
+  /* Respect the OS "reduce motion" setting — the panel animates a lot now. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }

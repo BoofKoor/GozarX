@@ -6,6 +6,7 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useMarkMessageRead, useSiteMessages } from "@/hooks/useSite";
 import type { SiteMessage } from "@/types/api";
@@ -50,11 +51,11 @@ export function SiteInbox() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">وب‌سایت</h1>
+      <PageHeader title="وب‌سایت" />
       <SiteTabs />
 
       <div className="flex items-center gap-3 text-sm">
-        <span className="text-slate-500">
+        <span className="text-content-muted">
           خوانده‌نشده:{" "}
           <span className="font-bold text-brand">{data?.unread ?? (isError ? "—" : "…")}</span>
         </span>
@@ -78,7 +79,7 @@ export function SiteInbox() {
               <Spinner className="h-6 w-6 text-brand" />
             </div>
           ) : items.length === 0 ? (
-            <p className="py-6 text-center text-sm text-slate-400">پیامی نیست.</p>
+            <p className="py-6 text-center text-sm text-content-subtle">پیامی نیست.</p>
           ) : (
             <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
               {items.map((m) => (
@@ -89,11 +90,11 @@ export function SiteInbox() {
                       "flex w-full items-start gap-2 rounded-lg px-2 py-2 text-right text-sm transition",
                       m.id === selectedId
                         ? "bg-brand/10 text-brand"
-                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800",
+                        : "text-content-muted hover:bg-surface-hover",
                     )}
                   >
                     {m.read ? (
-                      <MailOpen className="mt-0.5 h-4 w-4 shrink-0 text-slate-400" />
+                      <MailOpen className="mt-0.5 h-4 w-4 shrink-0 text-content-subtle" />
                     ) : (
                       <Mail className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
                     )}
@@ -101,7 +102,7 @@ export function SiteInbox() {
                       <span className={clsx("block truncate", !m.read && "font-bold")} dir="auto">
                         {m.subject}
                       </span>
-                      <span className="block truncate text-xs text-slate-400">
+                      <span className="block truncate text-xs text-content-subtle">
                         {fmtDate(m.created_at)}
                       </span>
                     </span>
@@ -124,7 +125,7 @@ export function SiteInbox() {
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
-              <span className="text-slate-400">
+              <span className="text-content-subtle">
                 {page} / {totalPages}
               </span>
               <Button
@@ -149,21 +150,21 @@ export function SiteInbox() {
               <h2 className="text-lg font-bold" dir="auto">
                 {selected.subject}
               </h2>
-              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400">
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-content-subtle">
                 <span>{fmtDate(selected.created_at)}</span>
                 <span>زبان: {selected.locale}</span>
                 {selected.reply_handle && <span dir="auto">راه پاسخ: {selected.reply_handle}</span>}
               </div>
               {/* User-submitted text — render as PLAIN text (never HTML). */}
               <div
-                className="whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800"
+                className="whitespace-pre-wrap rounded-lg border border-line bg-surface-sunken p-3 text-sm"
                 dir="auto"
               >
                 {selected.body}
               </div>
             </Card>
           ) : (
-            <Card className="flex h-64 items-center justify-center text-slate-400">
+            <Card className="flex h-64 items-center justify-center text-content-subtle">
               <div className="text-center">
                 <Mail className="mx-auto mb-2 h-8 w-8" />
                 یک پیام را برای خواندن انتخاب کنید

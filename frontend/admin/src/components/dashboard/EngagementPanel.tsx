@@ -2,6 +2,8 @@ import { Radio } from "lucide-react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
+import { useIsDark } from "@/hooks/useIsDark";
+import { seriesColor, tokenColor } from "@/lib/chartTheme";
 import { formatNumber } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
 
@@ -19,17 +21,20 @@ function GrowthBadge({ pct, newThisWeek }: { pct: number | null; newThisWeek: nu
 
 /** Live engagement from the panel: online now / last 24h / last 7d / never online (bar list). */
 export function EngagementPanel({ data }: { data: DashboardStats }) {
+  // The bar colours are resolved from CSS tokens at render time, so this component has to re-render
+  // when the theme flips — that subscription is exactly what useIsDark() provides.
+  useIsDark();
   const rows = [
     {
       // online_now is scoped to the service's trial squad(s); the last-day/week/never figures below
       // stay panel-wide (the panel only reports those globally), so flag the scope on this row.
       label: data.online_squad_scoped ? "هم‌اکنون آنلاین (اسکواد سرویس)" : "هم‌اکنون آنلاین",
       value: data.online_now,
-      color: "#22c55e",
+      color: tokenColor("success-500"),
     },
-    { label: "۲۴ ساعت اخیر", value: data.online_last_day, color: "#0ea5e9" },
-    { label: "۷ روز اخیر", value: data.online_last_week, color: "#7CB000" },
-    { label: "هرگز آنلاین نشده", value: data.never_online, color: "#94a3b8" },
+    { label: "۲۴ ساعت اخیر", value: data.online_last_day, color: seriesColor(0) },
+    { label: "۷ روز اخیر", value: data.online_last_week, color: seriesColor(1) },
+    { label: "هرگز آنلاین نشده", value: data.never_online, color: tokenColor("text-subtle") },
   ];
   const max = Math.max(1, ...rows.map((r) => r.value));
 
@@ -41,7 +46,7 @@ export function EngagementPanel({ data }: { data: DashboardStats }) {
         action={<GrowthBadge pct={data.growth_pct} newThisWeek={data.new_this_week} />}
       />
       {!data.panel_online && (
-        <div className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">
+        <div className="mb-3 rounded-lg bg-warning-500/12 px-3 py-2 text-xs text-warning-700">
           آمار زندهٔ پنل در دسترس نیست — اعداد آنلاین صفر نمایش داده می‌شوند.
         </div>
       )}
@@ -49,12 +54,12 @@ export function EngagementPanel({ data }: { data: DashboardStats }) {
         {rows.map((r) => (
           <li key={r.label}>
             <div className="mb-1 flex items-center justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-300">{r.label}</span>
-              <span className="font-medium tabular-nums text-slate-500">
+              <span className="text-content-muted">{r.label}</span>
+              <span className="font-medium tabular-nums text-content-muted">
                 {formatNumber(r.value)}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
               <div
                 className="h-full rounded-full transition-all"
                 style={{ width: `${(r.value / max) * 100}%`, backgroundColor: r.color }}

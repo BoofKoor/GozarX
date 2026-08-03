@@ -78,7 +78,7 @@ export function Modal({
         tabIndex={-1}
         onMouseDown={(e) => e.stopPropagation()}
         className={clsx(
-          "w-full rounded-2xl bg-white shadow-xl outline-none dark:bg-slate-900",
+          "animate-scale-in w-full rounded-2xl border border-line bg-surface shadow-overlay outline-none",
           className,
         )}
       >

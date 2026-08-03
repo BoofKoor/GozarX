@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
 import { NumberInput } from "@/components/ui/NumberInput";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useRefreshSiteLocations, useSiteSettings, useUpdateSiteSettings } from "@/hooks/useSite";
 import { splitLocations } from "@/lib/format";
@@ -79,7 +80,7 @@ export function SiteSettings() {
   if (isError && !data) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-bold">وب‌سایت</h1>
+        <PageHeader title="وب‌سایت" />
         <SiteTabs />
         <ErrorState message="دریافت تنظیمات وب‌سایت از سرور ممکن نشد." onRetry={() => refetch()} />
       </div>
@@ -90,10 +91,10 @@ export function SiteSettings() {
   if (!data?.trial_squad) {
     return (
       <div className="space-y-6">
-        <h1 className="text-xl font-bold">وب‌سایت</h1>
+        <PageHeader title="وب‌سایت" />
         <SiteTabs />
         <Card className="max-w-xl">
-          <p className="mb-4 text-sm text-slate-500 dark:text-slate-400">
+          <p className="mb-4 text-sm text-content-muted">
             وب‌سایت هنوز راه‌اندازی نشده است. ابتدا اسکواد آزمایشی و اقتصاد آن را تنظیم کنید.
           </p>
           <Link
@@ -159,7 +160,7 @@ export function SiteSettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold">تنظیمات وب‌سایت</h1>
+        <PageHeader title="تنظیمات وب‌سایت" />
         <Link to="/site/setup" className="text-sm text-brand hover:underline">
           تغییر اسکواد / راه‌اندازی مجدد
         </Link>
@@ -236,7 +237,7 @@ export function SiteSettings() {
             <select
               value={form.popular_location}
               onChange={(e) => setForm((f) => ({ ...f, popular_location: e.target.value }))}
-              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/30 dark:border-slate-700 dark:bg-slate-900"
+              className="field-control"
             >
               <option value="">— بدون —</option>
               {Array.from(

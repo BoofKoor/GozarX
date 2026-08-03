@@ -1,0 +1,126 @@
+/* Design tokens — the single source of truth for the panel's colour system.
+ *
+ * Values mirror the website's own token file (docs/website/design/TOKENS.css) so the panel and the
+ * public site read as one product: GozarX blue #2563EB (light) / #3B82F6 (dark), cyan #06B6D4 as
+ * the secondary accent, and the same slate neutrals. The panel previously carried a leftover green
+ * (#7CB000) that matched neither the logo nor the site.
+ *
+ * Every value is stored as raw `R G B` channels (no `rgb()` wrapper) so tailwind.config.js can wrap
+ * them as `rgb(var(--token) / <alpha-value>)` and Tailwind's opacity modifiers (`bg-surface/60`)
+ * keep working. Light values live on `:root`; `.dark` re-points the SEMANTIC tokens only.
+ *
+ * The rule this replaces: components used to hand-write `bg-white dark:bg-slate-900` on every
+ * surface, so retheming meant editing dozens of files and dark mode drifted from light. Components
+ * now name a role (`bg-surface`, `text-muted`, `border-line`) and the theme resolves it.
+ */
+
+:root {
+  /* ── Brand ramp (GozarX blue) ─────────────────────────────────────────────
+     500 = --primary #2563EB, 600 = --primary-2/--primary-hover #1D4ED8, 400 = --ring #3B82F6. */
+  --brand-50: 239 245 255; /* --brand-tint  #EFF5FF */
+  --brand-100: 224 235 255; /* --brand-tint-2 #E0EBFF */
+  --brand-200: 191 219 254;
+  --brand-300: 147 197 253;
+  --brand-400: 59 130 246;
+  --brand-500: 37 99 235;
+  --brand-600: 29 78 216;
+  --brand-700: 30 64 175;
+  --brand-800: 30 58 138;
+  --brand-900: 23 37 84;
+  --brand-950: 12 20 46;
+
+  /* Secondary accent (cyan) — hero gradients on the site, sparingly here for "second series". */
+  --accent-400: 34 211 238;
+  --accent-500: 6 182 212;
+  --accent-600: 14 116 144;
+
+  /* ── Status ramps ─────────────────────────────────────────────────────────
+     Matched to the site's --success/--warning/--danger and their dark variants. */
+  --success-400: 52 211 153;
+  --success-500: 16 185 129;
+  --success-600: 5 150 105;
+  --success-700: 4 120 87;
+
+  --warning-400: 251 191 36;
+  --warning-500: 245 158 11;
+  --warning-600: 217 119 6;
+  --warning-700: 180 83 9;
+
+  --danger-400: 248 113 113;
+  --danger-500: 239 68 68;
+  --danger-600: 220 38 38;
+  --danger-700: 185 28 28;
+
+  --info-400: 56 189 248;
+  --info-500: 14 165 233;
+  --info-600: 2 132 199;
+  --info-700: 3 105 161;
+
+  /* Chart series — 6 hues that stay distinguishable in both themes and for the common
+     colour-vision deficiencies (blue / cyan / amber / violet / emerald / rose). Series 1 is the
+     brand so the primary metric always reads as "ours". */
+  --chart-1: 37 99 235;
+  --chart-2: 6 182 212;
+  --chart-3: 245 158 11;
+  --chart-4: 139 92 246;
+  --chart-5: 16 185 129;
+  --chart-6: 244 63 94;
+
+  /* ── Semantic surfaces (LIGHT) ────────────────────────────────────────────── */
+  --bg: 246 248 252; /* --bg      #F6F8FC */
+  --surface: 255 255 255; /* --surface #FFFFFF */
+  --surface-sunken: 241 245 249; /* --sunken  #F1F5F9 */
+  --surface-hover: 238 242 248; /* --sunken-2 #EEF2F8 */
+  --nav: 255 255 255;
+
+  --line: 228 233 242; /* --border        #E4E9F2 */
+  --line-strong: 211 218 230; /* --border-strong #D3DAE6 */
+
+  --text: 15 23 42; /* --text  #0F172A */
+  --text-muted: 94 107 128; /* --muted #5E6B80 — AA on bg/surface/sunken */
+  --text-subtle: 124 138 160; /* --faint #7C8AA0 — large/decorative tier */
+
+  --ring: 59 130 246; /* --ring #3B82F6 */
+
+  /* Elevation — tuned per theme (dark surfaces need lift from light, not shadow). */
+  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
+  --shadow-raised: 0 4px 12px -2px rgb(15 23 42 / 0.1), 0 2px 6px -2px rgb(15 23 42 / 0.06);
+  --shadow-overlay: 0 20px 40px -12px rgb(15 23 42 / 0.22), 0 8px 16px -8px rgb(15 23 42 / 0.12);
+  --shadow-glow: 0 4px 14px rgb(37 99 235 / 0.28);
+}
+
+.dark {
+  /* ── Semantic surfaces (DARK) ─────────────────────────────────────────────── */
+  --bg: 2 6 23; /* --bg       #020617 */
+  --surface: 14 23 41; /* --surface  #0E1729 */
+  --surface-sunken: 10 17 32; /* --sunken   #0A1120 */
+  --surface-hover: 24 35 56; /* --raised   #182338 */
+  --nav: 14 23 41;
+
+  --line: 41 52 71; /* rgba(148,163,184,.16) flattened on --surface */
+  --line-strong: 57 71 94; /* rgba(148,163,184,.28) flattened on --surface */
+
+  --text: 241 245 249; /* --text  #F1F5F9 */
+  --text-muted: 148 163 184; /* --muted #94A3B8 */
+  --text-subtle: 100 116 139; /* --faint #64748B */
+
+  --ring: 59 130 246;
+
+  /* On a near-black canvas the site lifts primary to #3B82F6 and hover to #60A5FA — mirror that so
+     brand-coloured text and icons keep AA contrast without changing the identity. */
+  --brand-500: 59 130 246;
+  --brand-600: 37 99 235;
+  --brand-700: 147 197 253; /* --brand-tint-ink #93C5FD — the "ink" shade on tinted chips */
+
+  /* Same flip for the status "ink" shades (the site's --success-ink / --warning-ink / --danger-ink),
+     so a tinted badge needs ONE class (`text-success-700`) instead of a light/dark pair. */
+  --success-700: 110 231 183;
+  --warning-700: 252 211 77;
+  --danger-700: 252 165 165;
+  --info-700: 125 211 252;
+
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
+  --shadow-raised: 0 4px 14px -2px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.4);
+  --shadow-overlay: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 8px 16px -8px rgb(0 0 0 / 0.5);
+  --shadow-glow: 0 4px 16px rgb(59 130 246 / 0.36);
+}

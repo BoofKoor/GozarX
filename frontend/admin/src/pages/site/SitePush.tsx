@@ -6,11 +6,9 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { useConfirm } from "@/components/ui/confirm";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { useSendSitePush, useSitePushAudience } from "@/hooks/useSite";
 import { formatNumber } from "@/lib/format";
-
-const INPUT =
-  "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand dark:border-slate-700 dark:bg-slate-900";
 
 export function SitePush() {
   const [title, setTitle] = useState("");
@@ -47,11 +45,11 @@ export function SitePush() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">وب‌سایت</h1>
+      <PageHeader title="وب‌سایت" />
       <SiteTabs />
 
       <Card className="max-w-2xl space-y-4">
-        <div className="flex items-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center gap-2 text-sm text-content-muted">
           <UsersIcon className="h-4 w-4" />
           گیرندگان:{" "}
           <span className="font-bold text-brand">
@@ -61,7 +59,7 @@ export function SitePush() {
         </div>
         <Field label="عنوان اعلان">
           <input
-            className={INPUT}
+            className="field-control"
             dir="auto"
             maxLength={120}
             value={title}
@@ -70,7 +68,7 @@ export function SitePush() {
         </Field>
         <Field label="متن اعلان">
           <textarea
-            className={`${INPUT} min-h-[120px]`}
+            className="field-control min-h-[120px]"
             dir="auto"
             maxLength={300}
             value={body}
@@ -79,7 +77,7 @@ export function SitePush() {
         </Field>
         <Field label="لینک مقصد (اختیاری)">
           <input
-            className={INPUT}
+            className="field-control"
             dir="ltr"
             maxLength={512}
             value={url}
@@ -87,7 +85,7 @@ export function SitePush() {
             placeholder="/status"
           />
         </Field>
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-content-subtle">
           اعلان در پس‌زمینه (arq worker) به همهٔ دستگاه‌های مشترکِ Web Push ارسال می‌شود.
         </p>
         <div className="flex justify-end">

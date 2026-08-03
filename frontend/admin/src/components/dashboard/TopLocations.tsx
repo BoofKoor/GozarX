@@ -10,7 +10,7 @@ export function TopLocations({ data }: { data: NamedCount[] }) {
     <Card>
       <CardHeader title="پرطرفدارترین لوکیشن‌ها" />
       {data.length === 0 ? (
-        <div className="flex h-40 items-center justify-center text-sm text-slate-400">
+        <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
           هنوز کانفیگی دریافت نشده
         </div>
       ) : (
@@ -18,12 +18,12 @@ export function TopLocations({ data }: { data: NamedCount[] }) {
           {data.map((d) => (
             <li key={d.label}>
               <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="truncate text-slate-700 dark:text-slate-200">{d.label}</span>
-                <span className="font-medium tabular-nums text-slate-500">
+                <span className="truncate text-content">{d.label}</span>
+                <span className="font-medium tabular-nums text-content-muted">
                   {formatNumber(d.count)}
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+              <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
                 <div
                   className="h-full rounded-full bg-brand transition-all"
                   style={{ width: `${(d.count / max) * 100}%` }}

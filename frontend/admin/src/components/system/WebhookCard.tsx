@@ -46,14 +46,17 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
         />
       </dl>
       {webhook.last_error && (
-        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800/60" dir="ltr">
-          <div className="mb-0.5 text-slate-400">
+        <div
+          className="mt-3 rounded-lg bg-surface-sunken p-3 text-xs dark:bg-surface-sunken/60"
+          dir="ltr"
+        >
+          <div className="mb-0.5 text-content-subtle">
             last error{" "}
             {webhook.last_error_at
               ? `· ${new Date(webhook.last_error_at).toLocaleString("fa-IR")}`
               : ""}
           </div>
-          <code className="text-danger-600 dark:text-danger-500">{webhook.last_error}</code>
+          <code className="text-danger-700">{webhook.last_error}</code>
         </div>
       )}
     </Card>
@@ -62,11 +65,9 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
 
 function Row({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
   return (
-    <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 dark:border-slate-800">
-      <dt className="text-slate-500">{label}</dt>
-      <dd className={danger ? "font-medium text-danger-600 dark:text-danger-500" : "font-medium"}>
-        {value}
-      </dd>
+    <div className="flex items-center justify-between border-b border-line pb-1.5">
+      <dt className="text-content-muted">{label}</dt>
+      <dd className={danger ? "font-medium text-danger-700" : "font-medium"}>{value}</dd>
     </div>
   );
 }

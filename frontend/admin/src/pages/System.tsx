@@ -5,6 +5,7 @@ import { HistoryChart } from "@/components/system/HistoryChart";
 import { GozarHostCard, PanelHostCard } from "@/components/system/ResourceGauges";
 import { WebhookCard } from "@/components/system/WebhookCard";
 import { Card } from "@/components/ui/Card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSystemHealth, useSystemHistory } from "@/hooks/useSystem";
 
@@ -22,7 +23,7 @@ export function System() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">سیستم</h1>
+      <PageHeader title="سیستم" />
       <HealthBanner data={health} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <GozarHostCard host={health.host} />
@@ -37,7 +38,7 @@ export function System() {
 function SystemSkeleton() {
   return (
     <div className="space-y-6">
-      <h1 className="text-xl font-bold">سیستم</h1>
+      <PageHeader title="سیستم" />
       <Card>
         <Skeleton className="h-16 w-full" />
       </Card>
