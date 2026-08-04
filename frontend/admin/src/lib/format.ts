@@ -42,24 +42,40 @@ export function faPct(n: number | null | undefined): string {
   return `${value}${getLocale() === "fa" ? "٪" : "%"}`;
 }
 
+/**
+ * Wrap a "<number> <LATIN UNIT>" quantity in a Unicode isolate.
+ *
+ * These strings are returned by plain functions and land inside Persian sentences, where the
+ * bidi algorithm reorders them: «۱ GB» renders as «GB ۱», with the unit ahead of its own number.
+ * A `dir="ltr"` span would fix it, but only at a call site — FSI…PDI travels with the string, so
+ * every caller gets it for free.
+ */
+function isolateQuantity(s: string): string {
+  return `\u2068${s}\u2069`;
+}
+
 /** Megabytes → a human size string (the settings store MB; we show GB when large). */
 export function formatMb(mb: number): string {
   if (mb >= 1024) {
     const gb = mb / 1024;
-    return localizeDigits(`${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`);
+    return isolateQuantity(localizeDigits(`${Number.isInteger(gb) ? gb : gb.toFixed(1)} GB`));
   }
-  return localizeDigits(`${mb} MB`);
+  return isolateQuantity(localizeDigits(`${mb} MB`));
 }
 
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
 export function humanBytes(n: number): string {
-  if (!Number.isFinite(n)) return localizeDigits("0 B");
+  if (!Number.isFinite(n)) return isolateQuantity(localizeDigits("0 B"));
   let v = Math.max(n, 0);
   for (const unit of ["B", "KB", "MB", "GB", "TB"]) {
-    if (v < 1024) return localizeDigits(`${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`);
+    if (v < 1024) {
+      return isolateQuantity(
+        localizeDigits(`${unit === "B" ? Math.round(v) : v.toFixed(1)} ${unit}`),
+      );
+    }
     v /= 1024;
   }
-  return localizeDigits(`${v.toFixed(1)} PB`);
+  return isolateQuantity(localizeDigits(`${v.toFixed(1)} PB`));
 }
 
 /** "YYYY-MM-DD" → a compact "MM/DD" in the locale's calendar, for chart axis labels. */
@@ -125,9 +141,9 @@ export function humanUptime(seconds: number): string {
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d) return localizeDigits(`${d}d ${h}h`);
-  if (h) return localizeDigits(`${h}h ${m}m`);
-  return localizeDigits(`${m}m`);
+  if (d) return isolateQuantity(localizeDigits(`${d}d ${h}h`));
+  if (h) return isolateQuantity(localizeDigits(`${h}h ${m}m`));
+  return isolateQuantity(localizeDigits(`${m}m`));
 }
 
 /** Bot language code → its display name, in the panel's own language. */
@@ -146,6 +162,11 @@ export function splitLocations(raw: string): string[] {
     .split(/[,،]/)
     .map((s) => s.trim())
     .filter(Boolean);
+}
+
+/** Join a list with the locale's own comma — the inverse of `splitLocations`. */
+export function joinList(list: string[]): string {
+  return list.join(getLocale() === "fa" ? "، " : ", ");
 }
 
 // The formatting tags Telegram actually renders (attribute-less; <a href> handled separately).

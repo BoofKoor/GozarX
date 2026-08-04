@@ -15,8 +15,9 @@ import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSquads } from "@/hooks/useSetup";
 import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from "@/hooks/useSite";
+import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
-import { splitLocations } from "@/lib/format";
+import { joinList, splitLocations } from "@/lib/format";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -42,6 +43,7 @@ const DEFAULT_ECON: Econ = {
 };
 
 export function SiteSetup() {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const { data: squads, isLoading, isError } = useSquads();
   // pre-fill so re-running never clobbers live values; must LOAD before the form is usable, or a
@@ -72,7 +74,7 @@ export function SiteSetup() {
       });
       if (current.locations.length > 0) {
         setLocations(current.locations);
-        setLocationsText(current.locations.join("، "));
+        setLocationsText(joinList(current.locations));
       }
     }
   }, [current]);
@@ -88,7 +90,7 @@ export function SiteSetup() {
   if (!current) {
     return (
       <div className="space-y-6">
-        <PageHeader title="راه‌اندازی وب‌سایت">
+        <PageHeader title={t("ssu.title")}>
           <SiteTabs />
         </PageHeader>
         {settingsError ? (
@@ -111,7 +113,7 @@ export function SiteSetup() {
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!trialSquad) {
-      toast.error("یک اسکواد انتخاب کنید.");
+      toast.error(t("setup.pickSquad"));
       return;
     }
     if (
@@ -126,7 +128,7 @@ export function SiteSetup() {
         { value: econ.streak_days, min: 1 },
       ])
     ) {
-      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
+      toast.error(t("set.invalidNumbers"));
       return;
     }
     complete.mutate(
@@ -137,11 +139,11 @@ export function SiteSetup() {
       },
       {
         onSuccess: () => {
-          toast.success("راه‌اندازی وب‌سایت کامل شد.");
+          toast.success(t("ssu.done"));
           navigate("/site/settings", { replace: true });
         },
         // The server rejects a location the squad doesn't serve — say WHICH one.
-        onError: (err) => toast.error(apiErrorMessage(err, "ذخیره نشد.")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("ss.saveFailed"))),
       },
     );
   }
@@ -149,8 +151,8 @@ export function SiteSetup() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="راه‌اندازی وب‌سایت"
-        sub="اسکواد آزمایشی و اقتصاد سایت. لوکیشن‌ها از روی نام remark همان اسکواد استخراج می‌شوند."
+        title={t("ssu.title")}
+        sub={t("ssu.sub")}
         actions={
           <Button
             type="submit"
@@ -158,7 +160,7 @@ export function SiteSetup() {
             loading={complete.isPending}
             disabled={!trialSquad}
           >
-            ذخیره و تکمیل
+            {t("ssu.submit")}
           </Button>
         }
       >
@@ -167,12 +169,12 @@ export function SiteSetup() {
 
       <form id="site-setup" onSubmit={submit} className="space-y-6">
         <Card className="max-w-2xl">
-          <CardHeader title="اسکواد" icon={Server} />
-          <Field label="اسکواد آزمایشی وب‌سایت">
+          <CardHeader title={t("ssu.squad")} icon={Server} />
+          <Field label={t("ssu.squad.field")}>
             {isLoading ? (
               <Spinner className="h-5 w-5 text-brand" />
             ) : isError ? (
-              <div className="text-sm text-danger-600">دریافت اسکوادها از پنل ممکن نشد.</div>
+              <ErrorState compact message={t("setup.squadsUnreachable")} />
             ) : (
               <Select
                 value={trialSquad}
@@ -194,12 +196,12 @@ export function SiteSetup() {
         </Card>
 
         <Card className="max-w-2xl">
-          <CardHeader title="اقتصاد پایه" icon={Coins} />
+          <CardHeader title={t("ss.economy")} icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="مدت اعتبار کانفیگ (ساعت)">
+            <Field label={t("set.trialHours")}>
               <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
             </Field>
-            <Field label="حجم روزانه (مگابایت)">
+            <Field label={t("set.dailyLimit")}>
               <NumberInput
                 min={1}
                 value={econ.daily_limit_mb}
@@ -210,51 +212,47 @@ export function SiteSetup() {
         </Card>
 
         <Card className="max-w-2xl">
-          <CardHeader title="پاداش‌ها" icon={Gift} />
+          <CardHeader title={t("ss.rewards")} icon={Gift} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="پاداش هر دعوت (مگابایت)">
+            <Field label={t("set.rewardMb")}>
               <NumberInput
                 min={0}
                 value={econ.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
-            <Field label="سقف دعوت‌های پاداش‌دار">
+            <Field label={t("set.rewardLimit")}>
               <NumberInput
                 min={0}
                 value={econ.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
             </Field>
-            <Field label="پاداش نصب اپ / PWA (مگابایت)">
+            <Field label={t("ss.reward.pwa")}>
               <NumberInput min={0} value={econ.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
             </Field>
-            <Field label="پاداش فعال‌کردن اعلان (مگابایت)">
+            <Field label={t("ss.reward.push")}>
               <NumberInput
                 min={0}
                 value={econ.reward_push_mb}
                 onChange={setNum("reward_push_mb")}
               />
             </Field>
-            <Field label="پاداش استریک (مگابایت)">
+            <Field label={t("ss.reward.streak")}>
               <NumberInput
                 min={0}
                 value={econ.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
             </Field>
-            <Field label="روزهای لازم برای استریک">
+            <Field label={t("ss.reward.streakDays")}>
               <NumberInput min={1} value={econ.streak_days} onChange={setNum("streak_days")} />
             </Field>
           </div>
         </Card>
 
         <Card className="max-w-2xl">
-          <CardHeader
-            title="لوکیشن‌ها"
-            sub="خالی گذاشتن یعنی همهٔ لوکیشن‌های اسکواد ارائه شوند."
-            icon={MapPin}
-          />
+          <CardHeader title={t("ss.locations")} sub={t("ssu.locations.sub")} icon={MapPin} />
           <LocationPicker
             available={picker}
             loading={derivable.isLoading}

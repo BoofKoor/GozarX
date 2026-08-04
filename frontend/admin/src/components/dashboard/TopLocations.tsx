@@ -1,17 +1,19 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatNumber } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 /** Div-based horizontal bar list (RTL-friendly, no recharts axis quirks). */
 export function TopLocations({ data }: { data: NamedCount[] }) {
+  const { t } = useI18n();
   const max = Math.max(1, ...data.map((d) => d.count));
 
   return (
     <Card>
-      <CardHeader title="پرطرفدارترین لوکیشن‌ها" />
+      <CardHeader title={t("d.topLocations")} />
       {data.length === 0 ? (
         <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
-          هنوز کانفیگی دریافت نشده
+          {t("d.topLocations.empty")}
         </div>
       ) : (
         <ul className="space-y-3">

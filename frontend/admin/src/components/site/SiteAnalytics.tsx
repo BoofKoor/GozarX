@@ -4,19 +4,20 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Section } from "@/components/ui/Section";
+import { useI18n, type MessageKey } from "@/i18n";
 import { faPct, formatMb, formatNumber, langLabel } from "@/lib/format";
 import type { AbuseSignals, PushHealth, RewardType, SiteAnalytics } from "@/types/api";
 
-const REWARD_LABEL: Record<string, string> = {
-  pwa: "نصب اپ (PWA)",
-  push: "فعال‌کردن اعلان",
+const REWARD_LABEL: Record<string, MessageKey> = {
+  pwa: "sa.reward.pwa",
+  push: "sa.reward.push",
 };
 
-const STREAK_ORDER: { key: string; label: string }[] = [
-  { key: "0", label: "بدون استریک" },
-  { key: "1-2", label: "۱–۲ روز" },
-  { key: "3-6", label: "۳–۶ روز" },
-  { key: "7+", label: "۷+ روز" },
+const STREAK_ORDER: { key: string; label: MessageKey }[] = [
+  { key: "0", label: "sa.streak.0" },
+  { key: "1-2", label: "sa.streak.1-2" },
+  { key: "3-6", label: "sa.streak.3-6" },
+  { key: "7+", label: "sa.streak.7+" },
 ];
 
 function Tile({ value, label, sub }: { value: number; label: string; sub?: string }) {
@@ -34,17 +35,18 @@ function Tile({ value, label, sub }: { value: number; label: string; sub?: strin
 }
 
 function RewardEconomy({ items }: { items: RewardType[] }) {
+  const { t } = useI18n();
   const totalMb = items.reduce((s, r) => s + r.total_mb, 0);
   return (
     <Card>
       <CardHeader
-        title="اقتصاد پاداش"
+        title={t("sa.rewards")}
         icon={Gift}
-        action={<Badge tone="brand">مجموع {formatMb(totalMb)}</Badge>}
+        action={<Badge tone="brand">{t("sa.rewards.total", { mb: formatMb(totalMb) })}</Badge>}
       />
       {items.length === 0 ? (
         <div className="flex h-32 items-center justify-center text-sm text-content-subtle">
-          هنوز پاداشی اعطا نشده
+          {t("sa.rewards.empty")}
         </div>
       ) : (
         <ul className="space-y-2 text-sm">
@@ -53,44 +55,46 @@ function RewardEconomy({ items }: { items: RewardType[] }) {
               key={r.type}
               className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-2 dark:bg-surface-sunken/50"
             >
-              <span className="text-content-muted">{REWARD_LABEL[r.type] ?? r.type}</span>
+              <span className="text-content-muted">
+                {REWARD_LABEL[r.type] ? t(REWARD_LABEL[r.type]) : r.type}
+              </span>
               <span className="flex items-center gap-3 text-xs">
-                <span className="text-content-subtle">{formatNumber(r.grants)} نفر</span>
+                <span className="text-content-subtle">
+                  {t("sa.rewards.people", { n: formatNumber(r.grants) })}
+                </span>
                 <span className="font-medium tabular-nums text-brand">{formatMb(r.total_mb)}</span>
               </span>
             </li>
           ))}
         </ul>
       )}
-      <p className="mt-3 text-xs text-content-subtle">
-        پاداش‌های یک‌بارهٔ ثبت‌شده (نصب اپ / اعلان). پاداش دعوت و استریک از شمارندهٔ دستگاه محاسبه
-        می‌شوند.
-      </p>
+      <p className="mt-3 text-xs text-content-subtle">{t("sa.rewards.note")}</p>
     </Card>
   );
 }
 
 function StreakPanel({ dist, active }: { dist: Record<string, number>; active: number }) {
+  const { t } = useI18n();
   const rows = STREAK_ORDER.map((b) => ({ ...b, value: dist[b.key] ?? 0 }));
   const max = Math.max(1, ...rows.map((r) => r.value));
   const total = rows.reduce((s, r) => s + r.value, 0);
   return (
     <Card>
       <CardHeader
-        title="استریک روزانه"
+        title={t("sa.streak")}
         icon={BellRing}
-        action={<Badge tone="success">{formatNumber(active)} روی استریک فعال</Badge>}
+        action={<Badge tone="success">{t("sa.streak.active", { n: formatNumber(active) })}</Badge>}
       />
       {total === 0 ? (
         <div className="flex h-32 items-center justify-center text-sm text-content-subtle">
-          داده‌ای نیست
+          {t("sa.streak.empty")}
         </div>
       ) : (
         <ul className="space-y-2.5">
           {rows.map((r) => (
             <li key={r.key}>
               <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-content-muted">{r.label}</span>
+                <span className="text-content-muted">{t(r.label)}</span>
                 <span className="tabular-nums text-content-muted">{formatNumber(r.value)}</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
@@ -108,20 +112,23 @@ function StreakPanel({ dist, active }: { dist: Record<string, number>; active: n
 }
 
 function PushHealthPanel({ push }: { push: PushHealth }) {
+  const { t } = useI18n();
   const total = push.active + push.inactive || 1;
   return (
     <Card>
-      <CardHeader title="کانال اعلان (Web Push)" icon={Globe} />
+      <CardHeader title={t("sa.push")} icon={Globe} />
       <div className="mb-3 flex gap-3">
-        <Tile value={push.active} label="فعال" />
-        <Tile value={push.inactive} label="غیرفعال / حذف‌شده" />
+        <Tile value={push.active} label={t("sa.push.active")} />
+        <Tile value={push.inactive} label={t("sa.push.inactive")} />
       </div>
       <div className="mb-3 flex h-2 overflow-hidden rounded-full bg-surface-sunken">
         <div className="h-full bg-brand" style={{ width: `${(push.active / total) * 100}%` }} />
       </div>
       {push.by_locale.length > 0 && (
         <div>
-          <div className="mb-1.5 text-xs font-medium text-content-muted">زبان مشترکین فعال:</div>
+          <div className="mb-1.5 text-xs font-medium text-content-muted">
+            {t("sa.push.byLocale")}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {push.by_locale.map((l) => (
               <span
@@ -139,29 +146,30 @@ function PushHealthPanel({ push }: { push: PushHealth }) {
 }
 
 function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
+  const { t } = useI18n();
   return (
     <Card>
       <CardHeader
-        title="سیگنال‌های ضدتقلب"
+        title={t("sa.abuse")}
         icon={ShieldAlert}
         action={
           abuse.shared_fingerprint_devices > 0 ? (
             <Badge tone="warning">
-              {formatNumber(abuse.shared_fingerprint_devices)} دستگاه اثرانگشت مشترک
+              {t("sa.abuse.sharedFp", { n: formatNumber(abuse.shared_fingerprint_devices) })}
             </Badge>
           ) : (
-            <Badge tone="success">پاک</Badge>
+            <Badge tone="success">{t("sa.abuse.clean")}</Badge>
           )
         }
       />
       {abuse.top_ip_buckets.length === 0 ? (
         <div className="flex h-28 items-center justify-center text-center text-sm text-content-subtle">
-          هیچ IP مشترکی بین چند دستگاه دیده نشد
+          {t("sa.abuse.noIp")}
         </div>
       ) : (
         <>
           <div className="mb-1.5 text-xs font-medium text-content-muted">
-            IPهای پرتکرار (چند دستگاه پشت یک IP):
+            {t("sa.abuse.busyIps")}
           </div>
           <ul className="space-y-1.5 text-sm">
             {abuse.top_ip_buckets.map((b) => (
@@ -176,7 +184,7 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
                     {b.label}
                   </span>
                   <span className="flex items-center gap-1 tabular-nums text-content-muted">
-                    {formatNumber(b.count)} دستگاه
+                    {t("sa.abuse.devices", { n: formatNumber(b.count) })}
                     <ChevronLeft className="h-3.5 w-3.5" />
                   </span>
                 </Link>
@@ -185,59 +193,64 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
           </ul>
         </>
       )}
-      <p className="mt-3 text-xs text-content-subtle">
-        این‌ها فقط نشانه‌اند، نه مسدودسازی خودکار — برای بررسی دستی روی هر مورد بزنید.
-      </p>
+      <p className="mt-3 text-xs text-content-subtle">{t("sa.abuse.note")}</p>
     </Card>
   );
 }
 
 /** The full deeper-analytics band for the website stats page. */
 export function SiteAnalyticsSection({ data }: { data: SiteAnalytics }) {
+  const { t } = useI18n();
   return (
     <>
       {/* Two different questions, and the panel used to answer only the second one. "Seen" counts
           every device that visited; "claimed" counts only those that provisioned — so a visitor who
           reads the page and leaves was previously invisible in every activity number. */}
       <Section
-        title="بازدیدکنندگان وب‌سایت"
-        sub="دستگاه‌هایی که سایت را باز کرده‌اند (نه فقط آن‌هایی که کانفیگ گرفته‌اند)"
-        action={<Badge tone="brand">چسبندگی {faPct(data.visit_stickiness_pct)}</Badge>}
+        title={t("sa.visitors")}
+        sub={t("sa.visitors.sub")}
+        action={
+          <Badge tone="brand">
+            {t("sa.stickiness", { pct: faPct(data.visit_stickiness_pct) })}
+          </Badge>
+        }
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile value={data.visitors_24h} label="۲۴ ساعت اخیر" sub="DAU" />
-        <Tile value={data.visitors_7d} label="۷ روز اخیر" sub="WAU" />
-        <Tile value={data.visitors_30d} label="۳۰ روز اخیر" sub="MAU" />
+        <Tile value={data.visitors_24h} label={t("sa.range.24h")} sub="DAU" />
+        <Tile value={data.visitors_7d} label={t("sa.range.7d")} sub="WAU" />
+        <Tile value={data.visitors_30d} label={t("sa.range.30d")} sub="MAU" />
         <Tile
           value={data.claims_in_range}
-          label={`دریافت در ${formatNumber(data.range_days)} روز`}
+          label={t("sa.claimsInRange", { n: formatNumber(data.range_days) })}
         />
       </div>
 
       <Section
-        title="دریافت‌کنندگان فعال"
-        sub="دستگاه‌هایی که در این بازه واقعاً کانفیگ گرفته‌اند"
-        action={<Badge tone="success">چسبندگی {faPct(data.stickiness_pct)}</Badge>}
+        title={t("sa.claimers")}
+        sub={t("sa.claimers.sub")}
+        action={
+          <Badge tone="success">{t("sa.stickiness", { pct: faPct(data.stickiness_pct) })}</Badge>
+        }
       />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Tile value={data.dau} label="روزانه" sub="DAU" />
-        <Tile value={data.wau} label="هفتگی" sub="WAU" />
-        <Tile value={data.mau} label="ماهانه" sub="MAU" />
+        <Tile value={data.dau} label={t("sa.daily")} sub="DAU" />
+        <Tile value={data.wau} label={t("sa.weekly")} sub="WAU" />
+        <Tile value={data.mau} label={t("sa.monthly")} sub="MAU" />
         <Tile
           value={data.devices_active_in_range}
-          label={`فعال در ${formatNumber(data.range_days)} روز`}
+          label={t("sa.activeInRange", { n: formatNumber(data.range_days) })}
         />
       </div>
 
       {/* Everything below is LIFETIME, not windowed — say so, rather than letting the range
           buttons above imply otherwise. */}
-      <Section title="اقتصاد پاداش و استریک" sub="ارقام کل دوره (بدون فیلتر بازه)" />
+      <Section title={t("sa.section.rewards")} sub={t("sa.section.allTime")} />
       <div className="grid gap-6 lg:grid-cols-2">
         <RewardEconomy items={data.reward_economy} />
         <StreakPanel dist={data.streak_distribution} active={data.active_streaks} />
       </div>
 
-      <Section title="کانال اعلان و ضدتقلب" sub="ارقام کل دوره (بدون فیلتر بازه)" />
+      <Section title={t("sa.section.push")} sub={t("sa.section.allTime")} />
       <div className="grid gap-6 lg:grid-cols-2">
         <PushHealthPanel push={data.push} />
         <AntiAbusePanel abuse={data.abuse} />

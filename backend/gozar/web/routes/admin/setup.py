@@ -16,6 +16,7 @@ from pydantic import BaseModel, Field
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.site_locations import reject_unknown_locations
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
@@ -64,6 +65,10 @@ async def complete_setup(
     body: SetupIn, request: Request, session: DbSession, admin: AdminUser
 ) -> SetupStatusOut:
     settings = _settings(request, session)
+    # Validated against the squad being chosen right here, the same way the settings PUT and both
+    # website writers are — a wizard that stores an unserved name hands the bot a location it can
+    # never match to a config.
+    await reject_unknown_locations(request, body.trial_squad, body.locations)
     await settings.set(SettingKey.TRIAL_SQUAD, body.trial_squad)
     await settings.set(SettingKey.LOCATIONS, json.dumps(body.locations))
     await settings.set(SettingKey.DAILY_LIMIT_MB, str(body.daily_limit_mb))

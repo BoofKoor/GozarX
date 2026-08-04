@@ -12,7 +12,13 @@ import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
 import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { useI18n } from "@/i18n";
-import { formatNumber, langLabel, localizeDigits, telegramPreviewHtml } from "@/lib/format";
+import {
+  formatNumber,
+  joinList,
+  langLabel,
+  localizeDigits,
+  telegramPreviewHtml,
+} from "@/lib/format";
 import type { Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
@@ -61,7 +67,7 @@ export function Broadcast() {
   // blocked here rather than allowed to mean its opposite.
   const recipients = langs.length ? (audience?.recipients ?? 0) : 0;
   const allSelected = langs.length === ALL_LANGS.length;
-  const summary = allSelected ? t("bc.langs.all") : langs.map(langLabel).join("، ");
+  const summary = allSelected ? t("bc.langs.all") : joinList(langs.map(langLabel));
 
   const body = text.trim();
   const overLimit = text.length > MAX_CHARS;

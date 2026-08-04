@@ -16,7 +16,7 @@ import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
 import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
-import { splitLocations } from "@/lib/format";
+import { joinList, splitLocations } from "@/lib/format";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -76,7 +76,7 @@ export function Settings() {
         configs_per_page: data.configs_per_page,
         ads_enabled: data.ads_enabled,
         locations: data.locations,
-        locationsText: data.locations.join("، "),
+        locationsText: joinList(data.locations),
         ad_button_enabled: data.ad_button_enabled,
         ad_button_text: data.ad_button_text,
         ad_button_url: data.ad_button_url,
@@ -252,7 +252,7 @@ export function Settings() {
                 dir="ltr"
                 value={form.ad_button_emoji_id}
                 onChange={(e) => setForm((f) => ({ ...f, ad_button_emoji_id: e.target.value }))}
-                placeholder="مثال: 5368324170671202286"
+                placeholder={t("set.adButton.emojiPlaceholder")}
               />
             </Field>
           </div>

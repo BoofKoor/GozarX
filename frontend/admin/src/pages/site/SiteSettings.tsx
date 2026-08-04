@@ -20,8 +20,9 @@ import {
   useSiteSettings,
   useUpdateSiteSettings,
 } from "@/hooks/useSite";
+import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
-import { splitLocations } from "@/lib/format";
+import { joinList, splitLocations } from "@/lib/format";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -55,6 +56,7 @@ const EMPTY: FormState = {
 };
 
 export function SiteSettings() {
+  const { t } = useI18n();
   const { data, isLoading, isError, refetch } = useSiteSettings();
   const update = useUpdateSiteSettings();
   const refresh = useRefreshSiteLocations();
@@ -79,7 +81,7 @@ export function SiteSettings() {
         reward_streak_mb: data.reward_streak_mb,
         streak_days: data.streak_days,
         locations: data.locations,
-        locationsText: data.locations.join("، "),
+        locationsText: joinList(data.locations),
         popular_location: data.popular_location ?? "",
       });
     }
@@ -96,10 +98,10 @@ export function SiteSettings() {
   if (isError && !data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="وب‌سایت">
+        <PageHeader title={t("ss.title")}>
           <SiteTabs />
         </PageHeader>
-        <ErrorState message="دریافت تنظیمات وب‌سایت از سرور ممکن نشد." onRetry={() => refetch()} />
+        <ErrorState message={t("ss.unreachable")} onRetry={() => refetch()} />
       </div>
     );
   }
@@ -108,17 +110,17 @@ export function SiteSettings() {
   if (!data?.trial_squad) {
     return (
       <div className="space-y-6">
-        <PageHeader title="وب‌سایت">
+        <PageHeader title={t("ss.title")}>
           <SiteTabs />
         </PageHeader>
         <Card>
           <EmptyState
             icon={MapPin}
-            title="وب‌سایت هنوز راه‌اندازی نشده است"
-            message="ابتدا اسکواد آزمایشی و اقتصاد آن را تنظیم کنید تا سایت بتواند کانفیگ بدهد."
+            title={t("ss.notSetUp")}
+            message={t("ss.notSetUp.msg")}
             action={
               <Link to="/site/setup">
-                <Button>راه‌اندازی وب‌سایت</Button>
+                <Button>{t("ssu.title")}</Button>
               </Link>
             }
           />
@@ -151,7 +153,7 @@ export function SiteSettings() {
         { value: form.streak_days, min: 1 },
       ])
     ) {
-      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
+      toast.error(t("set.invalidNumbers"));
       return;
     }
     update.mutate(
@@ -168,10 +170,10 @@ export function SiteSettings() {
         popular_location: form.popular_location,
       },
       {
-        onSuccess: () => toast.success("تنظیمات وب‌سایت ذخیره شد."),
+        onSuccess: () => toast.success(t("ss.saved")),
         // Show the server's own reason (which location isn't served, panel unreachable, …) rather
-        // than one generic "ذخیره نشد." for every distinct failure.
-        onError: (err) => toast.error(apiErrorMessage(err, "ذخیره نشد.")),
+        // than one generic "could not save" for every distinct failure.
+        onError: (err) => toast.error(apiErrorMessage(err, t("ss.saveFailed"))),
       },
     );
   }
@@ -179,23 +181,27 @@ export function SiteSettings() {
   function refreshFromSquad() {
     refresh.mutate(undefined, {
       onSuccess: (d) => {
-        setForm((f) => ({ ...f, locations: d.locations, locationsText: d.locations.join("، ") }));
+        setForm((f) => ({
+          ...f,
+          locations: d.locations,
+          locationsText: joinList(d.locations),
+        }));
         derivable.refetch();
-        toast.success("لوکیشن‌ها از اسکواد به‌روزرسانی شد.");
+        toast.success(t("ss.locations.refreshed"));
       },
-      onError: (err) => toast.error(apiErrorMessage(err, "به‌روزرسانی لوکیشن‌ها ممکن نشد.")),
+      onError: (err) => toast.error(apiErrorMessage(err, t("ss.locations.refreshFailed"))),
     });
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="وب‌سایت"
-        sub="اقتصاد و لوکیشن‌های سایت عمومی. جدا از اقتصاد ربات تلگرام."
+        title={t("ss.title")}
+        sub={t("ss.sub")}
         actions={
           <Button type="submit" form="site-settings" loading={update.isPending}>
             <Save className="h-4 w-4" />
-            ذخیره
+            {t("ss.save")}
           </Button>
         }
       >
@@ -204,12 +210,12 @@ export function SiteSettings() {
 
       <form id="site-settings" onSubmit={submit} className="space-y-6">
         <Card className="max-w-2xl">
-          <CardHeader title="اقتصاد پایه" icon={Coins} />
+          <CardHeader title={t("ss.economy")} icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="مدت اعتبار کانفیگ (ساعت)">
+            <Field label={t("set.trialHours")}>
               <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
             </Field>
-            <Field label="حجم روزانه (مگابایت)">
+            <Field label={t("set.dailyLimit")}>
               <NumberInput
                 min={1}
                 value={form.daily_limit_mb}
@@ -220,43 +226,40 @@ export function SiteSettings() {
         </Card>
 
         <Card className="max-w-2xl">
-          <CardHeader title="پاداش‌ها" sub="راه‌های افزایش حجم روزانهٔ بازدیدکننده" icon={Gift} />
+          <CardHeader title={t("ss.rewards")} sub={t("ss.rewards.sub")} icon={Gift} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="پاداش هر دعوت (مگابایت)">
+            <Field label={t("set.rewardMb")}>
               <NumberInput
                 min={0}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
-            <Field
-              label="سقف دعوت‌های پاداش‌دار"
-              hint="بعد از این تعداد، دعوت تازه پاداشی اضافه نمی‌کند."
-            >
+            <Field label={t("set.rewardLimit")} hint={t("set.rewardLimit.hint")}>
               <NumberInput
                 min={0}
                 value={form.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
             </Field>
-            <Field label="پاداش نصب اپ / PWA (مگابایت)">
+            <Field label={t("ss.reward.pwa")}>
               <NumberInput min={0} value={form.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
             </Field>
-            <Field label="پاداش فعال‌کردن اعلان (مگابایت)">
+            <Field label={t("ss.reward.push")}>
               <NumberInput
                 min={0}
                 value={form.reward_push_mb}
                 onChange={setNum("reward_push_mb")}
               />
             </Field>
-            <Field label="پاداش استریک (مگابایت)">
+            <Field label={t("ss.reward.streak")}>
               <NumberInput
                 min={0}
                 value={form.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
             </Field>
-            <Field label="روزهای لازم برای استریک">
+            <Field label={t("ss.reward.streakDays")}>
               <NumberInput min={1} value={form.streak_days} onChange={setNum("streak_days")} />
             </Field>
           </div>
@@ -264,12 +267,12 @@ export function SiteSettings() {
 
         <Card className="max-w-2xl">
           <CardHeader
-            title="لوکیشن‌ها"
-            sub="فقط لوکیشن‌هایی که اسکواد سرویس می‌دهد قابل انتخاب‌اند."
+            title={t("ss.locations")}
+            sub={t("ss.locations.sub")}
             icon={MapPin}
             action={
               <Link to="/site/setup" className="text-xs text-brand hover:underline">
-                تغییر اسکواد
+                {t("ss.locations.changeSquad")}
               </Link>
             }
           />
@@ -285,15 +288,12 @@ export function SiteSettings() {
               onRefresh={refreshFromSquad}
               refreshing={refresh.isPending}
             />
-            <Field
-              label="لوکیشن محبوب"
-              hint="نشان ⭐ روی پیکر سایت. فقط می‌تواند یکی از لوکیشن‌های بالا باشد."
-            >
+            <Field label={t("ss.popular")} hint={t("ss.popular.hint")}>
               <Select
                 value={form.popular_location}
                 onChange={(e) => setForm((f) => ({ ...f, popular_location: e.target.value }))}
               >
-                <option value="">— بدون —</option>
+                <option value="">{t("ss.popular.none")}</option>
                 {offered.map((l) => (
                   <option key={l} value={l}>
                     {l}

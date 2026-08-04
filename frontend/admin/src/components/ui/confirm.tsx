@@ -1,5 +1,7 @@
 import { createContext, type ReactNode, useCallback, useContext, useRef, useState } from "react";
 
+import { useI18n } from "@/i18n";
+
 import { Button } from "./Button";
 import { Modal } from "./Modal";
 
@@ -21,6 +23,7 @@ const ConfirmContext = createContext<ConfirmFn | null>(null);
  * resolves true on confirm, false on cancel / backdrop / Esc.
  */
 export function ConfirmProvider({ children }: { children: ReactNode }) {
+  const { t } = useI18n();
   const [opts, setOpts] = useState<ConfirmOptions | null>(null);
   const resolver = useRef<((v: boolean) => void) | null>(null);
 
@@ -43,18 +46,18 @@ export function ConfirmProvider({ children }: { children: ReactNode }) {
       {opts && (
         <Modal onClose={() => settle(false)} className="max-w-sm p-5" labelledBy="confirm-title">
           <h2 id="confirm-title" className="text-lg font-bold">
-            {opts.title ?? "تأیید"}
+            {opts.title ?? t("ui.confirm")}
           </h2>
           <div className="mt-2 text-sm text-content-muted">{opts.message}</div>
           <div className="mt-5 flex justify-end gap-2">
             <Button variant="ghost" onClick={() => settle(false)}>
-              {opts.cancelLabel ?? "انصراف"}
+              {opts.cancelLabel ?? t("ui.cancel")}
             </Button>
             <Button
               variant={opts.tone === "danger" ? "danger" : "primary"}
               onClick={() => settle(true)}
             >
-              {opts.confirmLabel ?? "تأیید"}
+              {opts.confirmLabel ?? t("ui.confirm")}
             </Button>
           </div>
         </Modal>

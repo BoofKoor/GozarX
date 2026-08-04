@@ -15,18 +15,20 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Textarea } from "@/components/ui/Textarea";
 import { useConfirm } from "@/components/ui/confirm";
 import { useSendSitePush, useSitePushAudience, useSitePushHistory } from "@/hooks/useSite";
+import { useI18n, type MessageKey } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { faDate, formatNumber, langLabel } from "@/lib/format";
 import type { SitePushLog } from "@/types/api";
 
-const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
-  queued: { label: "در صف", tone: "neutral" },
-  sending: { label: "در حال ارسال", tone: "info" },
-  done: { label: "ارسال شد", tone: "success" },
-  failed: { label: "ناموفق", tone: "danger" },
+const STATUS: Record<string, { label: MessageKey; tone: BadgeTone }> = {
+  queued: { label: "sp.status.queued", tone: "neutral" },
+  sending: { label: "sp.status.sending", tone: "info" },
+  done: { label: "sp.status.done", tone: "success" },
+  failed: { label: "sp.status.failed", tone: "danger" },
 };
 
 export function SitePush() {
+  const { t } = useI18n();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [url, setUrl] = useState("");
@@ -39,7 +41,7 @@ export function SitePush() {
   // Targeting options are built from the audience the panel already reports, so the operator can
   // only pick a language that actually has subscribers.
   const localeOptions = [
-    { value: "", label: `همه (${formatNumber(audience?.recipients ?? 0)})` },
+    { value: "", label: t("sp.audience.all", { n: formatNumber(audience?.recipients ?? 0) }) },
     ...(audience?.by_locale ?? []).map((l) => ({
       value: l.locale,
       label: `${langLabel(l.locale)} (${formatNumber(l.count)})`,
@@ -50,62 +52,59 @@ export function SitePush() {
     : (audience?.recipients ?? 0);
 
   async function submit() {
-    const t = title.trim();
+    const headline = title.trim();
     const b = body.trim();
-    if (!t || !b) return;
+    if (!headline || !b) return;
     const ok = await confirm({
-      title: "ارسال اعلان",
-      message: `این اعلان به ${formatNumber(reach)} دستگاه ارسال شود؟`,
-      confirmLabel: "ارسال",
+      title: t("sp.send.title"),
+      message: t("sp.send.confirm", { n: formatNumber(reach) }),
+      confirmLabel: t("sp.send.label"),
     });
     if (!ok) return;
     send.mutate(
-      { title: t, body: b, url: url.trim(), locale: locale || null },
+      { title: headline, body: b, url: url.trim(), locale: locale || null },
       {
         onSuccess: (r) => {
-          toast.success(`در صف ارسال به ${formatNumber(r.recipients)} دستگاه قرار گرفت.`);
+          toast.success(t("sp.send.queued", { n: formatNumber(r.recipients) }));
           setTitle("");
           setBody("");
           setUrl("");
         },
         // 422 (bad link), 409 (nobody subscribed) and 503 (worker down) are very different
         // problems; show the server's own words instead of one generic failure.
-        onError: (err) => toast.error(apiErrorMessage(err, "ارسال نشد.")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("sp.send.failed"))),
       },
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="اعلان‌های وب‌سایت"
-        sub="اعلان Web Push به بازدیدکننده‌هایی که اعلان را فعال کرده‌اند."
-      >
+      <PageHeader title={t("sp.title")} sub={t("sp.sub")}>
         <SiteTabs />
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-5">
         <Card className="space-y-4 lg:col-span-3">
           <CardHeader
-            title="اعلان جدید"
+            title={t("sp.new")}
             icon={BellRing}
             action={
               <span className="flex items-center gap-1.5 text-xs text-content-muted">
                 <UsersIcon className="h-3.5 w-3.5" />
-                {audienceError ? "—" : formatNumber(reach)} گیرنده
+                {audienceError ? "—" : t("sp.reach", { n: formatNumber(reach) })}
               </span>
             }
           />
-          <Field label="مخاطب" hint="فقط زبان‌هایی که مشترک دارند نمایش داده می‌شوند.">
+          <Field label={t("sp.audience")} hint={t("sp.audience.hint")}>
             <Segmented
               value={locale}
               onChange={setLocale}
               options={localeOptions}
               size="sm"
-              ariaLabel="زبان مخاطب"
+              ariaLabel={t("sp.audience.aria")}
             />
           </Field>
-          <Field label="عنوان اعلان">
+          <Field label={t("sp.headline")}>
             <Input
               dir="auto"
               maxLength={120}
@@ -113,7 +112,7 @@ export function SitePush() {
               onChange={(e) => setTitle(e.target.value)}
             />
           </Field>
-          <Field label="متن اعلان">
+          <Field label={t("sp.body")}>
             <Textarea
               dir="auto"
               maxLength={300}
@@ -122,10 +121,7 @@ export function SitePush() {
               onChange={(e) => setBody(e.target.value)}
             />
           </Field>
-          <Field
-            label="لینک مقصد (اختیاری)"
-            hint="یک مسیر داخلی مثل /status یا یک آدرس https://. آدرس دیگری پذیرفته نمی‌شود."
-          >
+          <Field label={t("sp.url")} hint={t("sp.url.hint")}>
             <Input
               dir="ltr"
               maxLength={512}
@@ -138,27 +134,21 @@ export function SitePush() {
           <PushPreview title={title} body={body} />
 
           <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-content-subtle">
-              ارسال در پس‌زمینه (arq worker) انجام می‌شود.
-            </p>
+            <p className="text-xs text-content-subtle">{t("sp.worker")}</p>
             <Button
               onClick={submit}
               loading={send.isPending}
               disabled={!title.trim() || !body.trim()}
             >
-              <Send className="h-4 w-4" /> ارسال اعلان
+              <Send className="h-4 w-4" /> {t("sp.send")}
             </Button>
           </div>
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader
-            title="تاریخچهٔ ارسال"
-            sub="نتیجهٔ هر ارسال؛ تا وقتی ورکر تمام کند خودکار به‌روز می‌شود."
-            icon={History}
-          />
+          <CardHeader title={t("sp.history")} sub={t("sp.history.sub")} icon={History} />
           {history.length === 0 ? (
-            <EmptyState title="هنوز اعلانی ارسال نشده" />
+            <EmptyState title={t("sp.history.empty")} />
           ) : (
             <ul className="space-y-2">
               {history.map((row) => (
@@ -174,20 +164,21 @@ export function SitePush() {
 
 /** What the notification will actually look like — the box used to be write-only. */
 function PushPreview({ title, body }: { title: string; body: string }) {
+  const { t } = useI18n();
   if (!title.trim() && !body.trim()) return null;
   return (
     <div>
-      <div className="mb-1.5 text-xs font-medium text-content-muted">پیش‌نمایش:</div>
+      <div className="mb-1.5 text-xs font-medium text-content-muted">{t("sp.preview")}</div>
       <div className="flex gap-3 rounded-xl border border-line bg-surface-sunken p-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
           <BellRing className="h-4 w-4" />
         </div>
         <div className="min-w-0">
           <div className="truncate text-sm font-semibold text-content" dir="auto">
-            {title.trim() || "عنوان اعلان"}
+            {title.trim() || t("sp.headline")}
           </div>
           <div className="line-clamp-2 text-xs text-content-muted" dir="auto">
-            {body.trim() || "متن اعلان"}
+            {body.trim() || t("sp.body")}
           </div>
         </div>
       </div>
@@ -196,7 +187,8 @@ function PushPreview({ title, body }: { title: string; body: string }) {
 }
 
 function PushHistoryRow({ row }: { row: SitePushLog }) {
-  const meta = STATUS[row.status] ?? { label: row.status, tone: "neutral" as BadgeTone };
+  const { t } = useI18n();
+  const meta = STATUS[row.status];
   const delivered = row.recipients > 0 ? (row.sent / row.recipients) * 100 : 0;
   return (
     <li className="rounded-xl border border-line p-3">
@@ -210,8 +202,8 @@ function PushHistoryRow({ row }: { row: SitePushLog }) {
             {row.locale && ` · ${langLabel(row.locale)}`}
           </div>
         </div>
-        <Badge tone={meta.tone} dot={row.status === "sending"}>
-          {meta.label}
+        <Badge tone={meta?.tone ?? "neutral"} dot={row.status === "sending"}>
+          {meta ? t(meta.label) : row.status}
         </Badge>
       </div>
       {row.status === "done" && (
@@ -226,10 +218,10 @@ function PushHistoryRow({ row }: { row: SitePushLog }) {
             />
           </div>
           <div className="mt-1.5 flex flex-wrap gap-x-3 text-[11px] tabular-nums text-content-muted">
-            <span>رسیده: {formatNumber(row.sent)}</span>
-            {row.failed > 0 && <span>ناموفق: {formatNumber(row.failed)}</span>}
-            {row.pruned > 0 && <span>حذف‌شده: {formatNumber(row.pruned)}</span>}
-            <span>از {formatNumber(row.recipients)}</span>
+            <span>{t("sp.stat.sent", { n: formatNumber(row.sent) })}</span>
+            {row.failed > 0 && <span>{t("sp.stat.failed", { n: formatNumber(row.failed) })}</span>}
+            {row.pruned > 0 && <span>{t("sp.stat.pruned", { n: formatNumber(row.pruned) })}</span>}
+            <span>{t("sp.stat.of", { n: formatNumber(row.recipients) })}</span>
           </div>
         </>
       )}

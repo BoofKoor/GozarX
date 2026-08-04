@@ -6,6 +6,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { faPct, formatNumber, shortDay } from "@/lib/format";
 import type { Retention } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 /** Colour ramp for a retention cell: transparent at 0%, solid brand at 100%. Alpha is bucketed so
  *  neighbouring cells stay visually distinct instead of blending into a gradient. */
@@ -24,6 +25,7 @@ function cellClass(pct: number): string {
  * every other panel on the dashboard measures a single moment.
  */
 export function RetentionCohorts({ data }: { data: Retention }) {
+  const { t } = useI18n();
   const width = Math.max(1, ...data.cohorts.map((c) => c.retention.length));
   // Average activation across cohorts big enough to mean something.
   const sized = data.cohorts.filter((c) => c.size > 0);
@@ -34,27 +36,31 @@ export function RetentionCohorts({ data }: { data: Retention }) {
   return (
     <Card>
       <CardHeader
-        title="نگه‌داشت هفتگی (کوهورت)"
-        sub="هر سطر یک هفتهٔ ثبت‌نام؛ ستون‌ها درصد همان گروه که در هفته‌های بعد کانفیگ گرفته‌اند."
+        title={t("d.cohorts")}
+        sub={t("d.cohorts.sub")}
         icon={CalendarRange}
         action={
           sized.length > 0 ? (
-            <Badge tone="brand">میانگین فعال‌سازی {faPct(avgActivation)}</Badge>
+            <Badge tone="brand">{t("d.cohorts.avg", { pct: faPct(avgActivation) })}</Badge>
           ) : undefined
         }
       />
       {data.cohorts.length === 0 ? (
-        <EmptyState title="هنوز کوهورتی نیست" message="پس از چند هفته فعالیت اینجا پر می‌شود." />
+        <EmptyState title={t("d.cohorts.empty")} message={t("d.cohorts.emptyMsg")} />
       ) : (
         <div className="scrollbar-thin overflow-x-auto">
           <table className="w-full min-w-[560px] border-collapse text-xs">
             <thead>
               <tr>
-                <th className="p-1.5 text-start font-semibold text-content-muted">هفتهٔ ثبت‌نام</th>
-                <th className="p-1.5 text-start font-semibold text-content-muted">اندازه</th>
+                <th className="p-1.5 text-start font-semibold text-content-muted">
+                  {t("d.cohorts.week")}
+                </th>
+                <th className="p-1.5 text-start font-semibold text-content-muted">
+                  {t("d.cohorts.size")}
+                </th>
                 {Array.from({ length: width }).map((_, i) => (
                   <th key={i} className="p-1.5 text-center font-semibold text-content-muted">
-                    {i === 0 ? "همان هفته" : `هفتهٔ ${formatNumber(i)}`}
+                    {i === 0 ? t("d.cohorts.same") : t("d.cohorts.weekN", { n: formatNumber(i) })}
                   </th>
                 ))}
               </tr>
@@ -78,7 +84,10 @@ export function RetentionCohorts({ data }: { data: Retention }) {
                             "rounded-md py-1.5 text-center tabular-nums",
                             cellClass(pct),
                           )}
-                          title={`${faPct(pct)} از ${formatNumber(c.size)} نفر`}
+                          title={t("d.cohorts.cell", {
+                            pct: faPct(pct),
+                            n: formatNumber(c.size),
+                          })}
                         >
                           {faPct(pct)}
                         </div>

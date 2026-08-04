@@ -69,6 +69,15 @@ export function translate(
   return render(table[key] ?? key, tokens);
 }
 
+/**
+ * Translate OUTSIDE a component — a class error boundary, an axios interceptor, a recharts prop
+ * factory. Same escape hatch `lib/format` uses: it reads the module-level locale rather than
+ * subscribing to it, so it does not re-render on a language switch. Components use `useI18n().t`.
+ */
+export function t(key: MessageKey, tokens?: Record<string, string | number>): string {
+  return translate(getLocale(), key, tokens);
+}
+
 export interface I18n {
   locale: Locale;
   dir: "rtl" | "ltr";

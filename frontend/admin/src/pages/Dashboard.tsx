@@ -106,7 +106,7 @@ export function Dashboard() {
     try {
       await downloadDashboardCsv(days);
     } catch {
-      toast.error("خروجی گرفتن ممکن نشد.");
+      toast.error(t("d.exportFailed"));
     } finally {
       setExporting(false);
     }
@@ -229,9 +229,9 @@ export function Dashboard() {
             render={(d) => (
               <ActivityHeatmap
                 cells={d.signup_heatmap}
-                title="نقشهٔ حرارتی ثبت‌نام‌ها (به وقت تهران)"
-                unit="ثبت‌نام"
-                axisNote="ورود کاربران تازه بر حسب روز × ساعت"
+                title={t("d.heat.signups")}
+                unit={t("d.heat.signupsUnit")}
+                axisNote={t("d.heat.signupsAxis")}
               />
             )}
           />
@@ -258,18 +258,19 @@ export function Dashboard() {
 
 /** DAU as a trend rather than a single number — the dashboard only ever showed today's value. */
 function ActiveUsersSeries({ data }: { data: DashboardAnalytics }) {
+  const { t } = useI18n();
   const total = data.active_users_series.reduce((s, p) => s + p.count, 0);
   const peak = Math.max(1, ...data.active_users_series.map((p) => p.count));
   return (
     <Card>
       <CardHeader
-        title="کاربران فعال روزانه"
-        sub="تعداد افراد یکتایی که هر روز کانفیگ گرفته‌اند."
+        title={t("d.dau")}
+        sub={t("d.dau.sub")}
         icon={Activity}
-        action={<Badge tone="brand">اوج {formatNumber(peak)}</Badge>}
+        action={<Badge tone="brand">{t("d.dau.peak", { n: formatNumber(peak) })}</Badge>}
       />
       {total === 0 ? (
-        <EmptyState title="در این بازه کسی کانفیگ نگرفته است" />
+        <EmptyState title={t("d.dau.empty")} />
       ) : (
         <div className="flex h-40 items-end gap-1" dir="ltr">
           {data.active_users_series.map((p) => (
@@ -288,22 +289,19 @@ function ActiveUsersSeries({ data }: { data: DashboardAnalytics }) {
 
 /** How many inviters have hit the configured reward ceiling and stopped earning. */
 function ReferralCapPanel({ data }: { data: DashboardAnalytics }) {
+  const { t } = useI18n();
   const { limit, at_cap, with_referrals } = data.referral_cap;
   const share = with_referrals ? (at_cap / with_referrals) * 100 : 0;
   return (
     <Card>
       <CardHeader
-        title="سقف پاداش دعوت"
-        sub={
-          limit > 0
-            ? `سقف فعلی: ${formatNumber(limit)} دعوت پاداش‌دار`
-            : "سقفی تنظیم نشده — دعوت‌ها بی‌نهایت پاداش می‌گیرند."
-        }
+        title={t("d.cap")}
+        sub={limit > 0 ? t("d.cap.current", { n: formatNumber(limit) }) : t("d.cap.none")}
         icon={Gift}
         action={<Badge tone={share > 50 ? "warning" : "neutral"}>{faPct(share)}</Badge>}
       />
       {with_referrals === 0 ? (
-        <EmptyState title="هنوز دعوت موفقی ثبت نشده" />
+        <EmptyState title={t("d.cap.empty")} />
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
@@ -311,22 +309,19 @@ function ReferralCapPanel({ data }: { data: DashboardAnalytics }) {
               <div className="text-xl font-bold tabular-nums text-content">
                 {formatNumber(with_referrals)}
               </div>
-              <div className="mt-0.5 text-xs text-content-muted">دعوت‌کنندهٔ فعال</div>
+              <div className="mt-0.5 text-xs text-content-muted">{t("d.cap.active")}</div>
             </div>
             <div className="rounded-xl bg-surface-sunken p-3 text-center">
               <div className="text-xl font-bold tabular-nums text-content">
                 {formatNumber(at_cap)}
               </div>
-              <div className="mt-0.5 text-xs text-content-muted">رسیده به سقف</div>
+              <div className="mt-0.5 text-xs text-content-muted">{t("d.cap.atCap")}</div>
             </div>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
             <div className="h-full rounded-full bg-brand" style={{ width: `${share}%` }} />
           </div>
-          <p className="text-xs text-content-muted">
-            کسانی که به سقف رسیده‌اند دیگر با دعوت تازه حجم نمی‌گیرند؛ اگر این نسبت بالا رفت، سقف را
-            از «تنظیمات ربات» بالا ببرید.
-          </p>
+          <p className="text-xs text-content-muted">{t("d.cap.note")}</p>
         </div>
       )}
     </Card>

@@ -26,6 +26,7 @@ import {
   useSiteStats,
   useSiteUnreadCount,
 } from "@/hooks/useSite";
+import { useI18n } from "@/i18n";
 import { faDate, faPct, formatMb, formatNumber } from "@/lib/format";
 
 /**
@@ -35,9 +36,12 @@ import { faDate, faPct, formatMb, formatNumber } from "@/lib/format";
  * the site set up, is anything waiting for me, and where do I go". Composed entirely from the
  * existing queries — no new backend surface.
  */
+const RANGE_DAYS = 14;
+
 export function SiteOverview() {
+  const { t } = useI18n();
   const { data: settings, isLoading: settingsLoading } = useSiteSettings();
-  const { data: stats } = useSiteStats(14);
+  const { data: stats } = useSiteStats(RANGE_DAYS);
   const { data: pages } = useSiteLandingPages();
   const { data: unread } = useSiteUnreadCount();
   const { data: pushHistory } = useSitePushHistory();
@@ -49,13 +53,13 @@ export function SiteOverview() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="نمای کلی وب‌سایت"
-        sub="وضعیت سایت عمومی در یک نگاه."
+        title={t("so.title")}
+        sub={t("so.sub")}
         actions={
           <a href="/" target="_blank" rel="noopener noreferrer">
             <Button variant="outline" size="sm">
               <ExternalLink className="h-4 w-4" />
-              مشاهدهٔ سایت
+              {t("so.visit")}
             </Button>
           </a>
         }
@@ -71,11 +75,11 @@ export function SiteOverview() {
         <Card>
           <EmptyState
             icon={Wrench}
-            title="وب‌سایت هنوز راه‌اندازی نشده است"
-            message="تا وقتی اسکواد آزمایشی تنظیم نشود، سایت عمومی نمی‌تواند کانفیگ بدهد."
+            title={t("so.notSetUp")}
+            message={t("so.notSetUp.msg")}
             action={
               <Link to="/site/setup">
-                <Button>راه‌اندازی وب‌سایت</Button>
+                <Button>{t("so.setUpNow")}</Button>
               </Link>
             }
           />
@@ -86,28 +90,28 @@ export function SiteOverview() {
             {/* Windowed, matching the 14-day query above — the overview used to show the all-time
                 identity count under the word "visitors", which only ever grows. */}
             <StatCard
-              label="بازدیدکننده (۱۴ روز)"
+              label={t("so.kpi.visitors", { days: formatNumber(RANGE_DAYS) })}
               value={formatNumber(stats?.visitors.value ?? 0)}
               icon={Globe}
               tone="brand"
               delta={stats?.visitors.change_pct}
             />
             <StatCard
-              label="دریافت‌کننده (۱۴ روز)"
+              label={t("so.kpi.claimers", { days: formatNumber(RANGE_DAYS) })}
               value={formatNumber(stats?.claimers.value ?? 0)}
               icon={Download}
               tone="success"
               delta={stats?.claimers.change_pct}
-              hint={`نرخ تبدیل: ${faPct(stats?.conversion_pct ?? 0)}`}
+              hint={t("so.kpi.conversion", { pct: faPct(stats?.conversion_pct ?? 0) })}
             />
             <StatCard
-              label="مشترک اعلان"
+              label={t("so.kpi.subscribers")}
               value={formatNumber(stats?.push_subscribers ?? 0)}
               icon={BellRing}
               tone="warning"
             />
             <StatCard
-              label="پیام خوانده‌نشده"
+              label={t("so.kpi.unread")}
               value={formatNumber(unread ?? 0)}
               icon={Inbox}
               tone={unread ? "danger" : "neutral"}
@@ -116,76 +120,83 @@ export function SiteOverview() {
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-              <CardHeader title="پیکربندی فعلی" icon={Wrench} />
+              <CardHeader title={t("so.config")} icon={Wrench} />
               <div>
                 <Row
-                  label="لوکیشن‌های ارائه‌شده"
+                  label={t("so.config.locations")}
                   value={
                     settings && settings.locations.length > 0
-                      ? `${formatNumber(settings.locations.length)} لوکیشن`
-                      : "همهٔ لوکیشن‌های اسکواد"
+                      ? t("so.config.locationsN", { n: formatNumber(settings.locations.length) })
+                      : t("so.config.locationsAll")
                   }
                 />
-                <Row label="لوکیشن محبوب" value={settings?.popular_location || "—"} />
+                <Row label={t("so.config.popular")} value={settings?.popular_location || "—"} />
                 <Row
-                  label="حجم روزانه"
+                  label={t("so.config.daily")}
                   value={settings ? formatMb(settings.daily_limit_mb) : "—"}
                 />
                 <Row
-                  label="مدت اعتبار کانفیگ"
-                  value={settings ? `${formatNumber(settings.trial_hours)} ساعت` : "—"}
+                  label={t("so.config.trial")}
+                  value={
+                    settings ? t("so.config.hours", { n: formatNumber(settings.trial_hours) }) : "—"
+                  }
                 />
                 <Row
-                  label="پاداش هر دعوت"
+                  label={t("so.config.reward")}
                   value={settings ? formatMb(settings.referral_reward_mb) : "—"}
                 />
               </div>
               <div className="mt-4 flex gap-2">
                 <Link to="/site/settings">
                   <Button variant="outline" size="sm">
-                    ویرایش تنظیمات
+                    {t("so.config.editSettings")}
                   </Button>
                 </Link>
                 <Link to="/site/content">
                   <Button variant="ghost" size="sm">
-                    ویرایش محتوا
+                    {t("so.config.editCopy")}
                   </Button>
                 </Link>
               </div>
             </Card>
 
             <Card>
-              <CardHeader title="محتوا و ارتباط" icon={FileText} />
+              <CardHeader title={t("so.reach")} icon={FileText} />
               <div>
                 <Row
-                  label="صفحه‌های فرود منتشرشده"
-                  value={`${formatNumber(publishedPages)} از ${formatNumber(pages?.length ?? 0)}`}
+                  label={t("so.reach.pages")}
+                  value={t("so.reach.pagesOf", {
+                    n: formatNumber(publishedPages),
+                    total: formatNumber(pages?.length ?? 0),
+                  })}
                 />
                 <Row
-                  label="آخرین اعلان"
+                  label={t("so.reach.lastPush")}
                   value={
                     lastPush ? (
                       <span className="flex items-center gap-2">
                         {faDate(lastPush.created_at)}
                         <Badge tone={lastPush.status === "done" ? "success" : "neutral"}>
                           {lastPush.status === "done"
-                            ? `${formatNumber(lastPush.sent)} تحویل`
+                            ? t("so.reach.delivered", { n: formatNumber(lastPush.sent) })
                             : lastPush.status}
                         </Badge>
                       </span>
                     ) : (
-                      "هنوز ارسال نشده"
+                      t("so.reach.noPush")
                     )
                   }
                 />
                 <Row
-                  label="کانفیگ فعال روی سایت"
+                  label={t("so.reach.activeConfigs")}
                   value={
                     <span className="flex items-center gap-2">
                       {formatNumber(stats?.active_configs_live ?? 0)}
                       {(stats?.active_configs_stale ?? 0) > 0 && (
                         <Badge tone="warning">
-                          {formatNumber(stats?.active_configs_stale ?? 0)} هم‌گام‌نشده
+                          {t("so.reach.stale", {
+                            n: formatNumber(stats?.active_configs_stale ?? 0),
+                          })}
                         </Badge>
                       )}
                     </span>
@@ -196,19 +207,19 @@ export function SiteOverview() {
                 <Link to="/site/pages">
                   <Button variant="outline" size="sm">
                     <FileText className="h-4 w-4" />
-                    صفحه‌ها
+                    {t("so.link.pages")}
                   </Button>
                 </Link>
                 <Link to="/site/inbox">
                   <Button variant="ghost" size="sm">
                     <Inbox className="h-4 w-4" />
-                    پیام‌ها
+                    {t("so.link.inbox")}
                   </Button>
                 </Link>
                 <Link to="/site/devices">
                   <Button variant="ghost" size="sm">
                     <MonitorSmartphone className="h-4 w-4" />
-                    دستگاه‌ها
+                    {t("so.link.devices")}
                   </Button>
                 </Link>
               </div>

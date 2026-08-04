@@ -84,14 +84,31 @@ async def test_setup_lists_squads(admin_client: httpx.AsyncClient) -> None:
 async def test_setup_complete_persists_and_flips_status(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.post(
         "/api/admin/setup/",
-        json={"trial_squad": "sq-1", "locations": ["NL", "DE"], "daily_limit_mb": 2048},
+        json={
+            "trial_squad": "sq-1",
+            "locations": ["Germany", "Finland"],
+            "daily_limit_mb": 2048,
+        },
     )
     assert r.status_code == 200 and r.json()["completed"] is True
     assert (await admin_client.get("/api/admin/setup/status")).json()["completed"] is True
     settings = (await admin_client.get("/api/admin/settings/")).json()
     assert settings["trial_squad"] == "sq-1"
-    assert settings["locations"] == ["NL", "DE"]
+    assert settings["locations"] == ["Germany", "Finland"]
     assert settings["daily_limit_mb"] == 2048
+
+
+async def test_setup_rejects_a_location_the_chosen_squad_does_not_serve(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """The wizard used to store whatever it was handed, straight past the settings check."""
+    r = await admin_client.post(
+        "/api/admin/setup/", json={"trial_squad": "sq-1", "locations": ["Germany", "Narnia"]}
+    )
+    assert r.status_code == 400
+    assert "Narnia" in r.json()["detail"]
+    # Nothing persisted — the wizard is still open.
+    assert (await admin_client.get("/api/admin/setup/status")).json()["completed"] is False
 
 
 async def test_settings_put_partial_update(admin_client: httpx.AsyncClient) -> None:

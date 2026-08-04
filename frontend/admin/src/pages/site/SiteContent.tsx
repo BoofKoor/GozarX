@@ -14,17 +14,19 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { Textarea } from "@/components/ui/Textarea";
 import { useSiteCopy, useUpdateSiteCopy } from "@/hooks/useSite";
+import { useI18n, type MessageKey } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
+import { formatNumber, langLabel } from "@/lib/format";
 import type { SiteCopyItem } from "@/types/api";
 
-const GROUP_LABELS: Record<string, { title: string; sub: string }> = {
-  seo: { title: "متا و سئو", sub: "عنوان و توضیح صفحهٔ اصلی در نتایج گوگل" },
-  hero: { title: "هدر اصلی", sub: "اولین چیزی که بازدیدکننده می‌بیند" },
-  widget: { title: "ویجت دریافت کانفیگ", sub: "کادر گرفتن کانفیگ روی صفحهٔ اصلی" },
-  sections: { title: "بخش‌های صفحهٔ اصلی", sub: "عنوان و زیرعنوان بخش‌های لوکیشن، اپ‌ها و سوالات" },
+const GROUP_LABELS: Record<string, { title: MessageKey; sub: MessageKey }> = {
+  seo: { title: "sc.group.seo", sub: "sc.group.seo.sub" },
+  hero: { title: "sc.group.hero", sub: "sc.group.hero.sub" },
+  widget: { title: "sc.group.widget", sub: "sc.group.widget.sub" },
+  sections: { title: "sc.group.sections", sub: "sc.group.sections.sub" },
   push: {
-    title: "متن اعلان‌های خودکار",
-    sub: "پیام‌هایی که خود سرویس هنگام اتمام کانفیگ می‌فرستد",
+    title: "sc.group.push",
+    sub: "sc.group.push.sub",
   },
 };
 
@@ -42,6 +44,7 @@ const MULTILINE = /(_sub|_description|_body)$/;
  * the default" rather than "show nothing" — clearing one is how you revert.
  */
 export function SiteContent() {
+  const { t } = useI18n();
   const { data, isLoading, isError, refetch } = useSiteCopy();
   const [filter, setFilter] = useState("");
 
@@ -68,10 +71,12 @@ export function SiteContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="محتوای وب‌سایت"
-        sub="متن‌هایی که بازدیدکنندهٔ سایت می‌بیند. تغییرات بدون دیپلوی اعمال می‌شوند."
+        title={t("sc.title")}
+        sub={t("sc.sub")}
         actions={
-          overridden > 0 ? <Badge tone="brand">{overridden} مورد سفارشی‌شده</Badge> : undefined
+          overridden > 0 ? (
+            <Badge tone="brand">{t("sc.overridden", { n: formatNumber(overridden) })}</Badge>
+          ) : undefined
         }
       >
         <SiteTabs />
@@ -79,9 +84,9 @@ export function SiteContent() {
 
       <div className="max-w-md">
         <Input
-          aria-label="جستجو در متن‌ها"
+          aria-label={t("sc.searchAria")}
           icon={<Search className="h-4 w-4" />}
-          placeholder="جستجو در کلید یا متن…"
+          placeholder={t("sc.search")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
         />
@@ -95,14 +100,14 @@ export function SiteContent() {
         </div>
       ) : groups.length === 0 ? (
         <Card>
-          <EmptyState icon={Type} title="متنی با این جستجو پیدا نشد" />
+          <EmptyState icon={Type} title={t("sc.empty")} />
         </Card>
       ) : (
         groups.map(({ group, items }) => (
           <Card key={group}>
             <CardHeader
-              title={GROUP_LABELS[group]?.title ?? group}
-              sub={GROUP_LABELS[group]?.sub}
+              title={GROUP_LABELS[group] ? t(GROUP_LABELS[group].title) : group}
+              sub={GROUP_LABELS[group] ? t(GROUP_LABELS[group].sub) : undefined}
               icon={Type}
             />
             <div className="space-y-5">
@@ -118,6 +123,7 @@ export function SiteContent() {
 }
 
 function CopyEditor({ item }: { item: SiteCopyItem }) {
+  const { t } = useI18n();
   const update = useUpdateSiteCopy();
   const [fa, setFa] = useState(item.fa);
   const [en, setEn] = useState(item.en);
@@ -131,9 +137,9 @@ function CopyEditor({ item }: { item: SiteCopyItem }) {
         onSuccess: (saved) => {
           setFa(saved.fa);
           setEn(saved.en);
-          toast.success("ذخیره شد.");
+          toast.success(t("sc.saved"));
         },
-        onError: (err) => toast.error(apiErrorMessage(err, "ذخیره نشد.")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("sc.saveFailed"))),
       },
     );
   }
@@ -151,26 +157,29 @@ function CopyEditor({ item }: { item: SiteCopyItem }) {
   return (
     <div className="rounded-xl border border-line p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <code className="text-xs text-content-subtle" dir="ltr">
+        <code className="font-mono text-xs text-content-subtle" dir="ltr">
           {item.key}
         </code>
         <div className="flex items-center gap-1.5">
           {item.overridden ? (
-            <Badge tone="brand">سفارشی</Badge>
+            <Badge tone="brand">{t("sc.custom")}</Badge>
           ) : (
-            <Badge tone="neutral">پیش‌فرض سایت</Badge>
+            <Badge tone="neutral">{t("sc.default")}</Badge>
           )}
           {item.overridden && (
             <Button variant="ghost" size="xs" onClick={reset} loading={update.isPending}>
               <RotateCcw className="h-3.5 w-3.5" />
-              بازگشت به پیش‌فرض
+              {t("sc.reset")}
             </Button>
           )}
         </div>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Field label="فارسی" hint={item.default_fa ? `پیش‌فرض: ${item.default_fa}` : undefined}>
+        <Field
+          label={langLabel("fa")}
+          hint={item.default_fa ? t("sc.defaultHint", { value: item.default_fa }) : undefined}
+        >
           <Control
             dir="rtl"
             value={fa}
@@ -178,7 +187,10 @@ function CopyEditor({ item }: { item: SiteCopyItem }) {
             onChange={(e: { target: { value: string } }) => setFa(e.target.value)}
           />
         </Field>
-        <Field label="English" hint={item.default_en ? `Default: ${item.default_en}` : undefined}>
+        <Field
+          label={langLabel("en")}
+          hint={item.default_en ? t("sc.defaultHint", { value: item.default_en }) : undefined}
+        >
           <Control
             dir="ltr"
             value={en}
@@ -191,7 +203,7 @@ function CopyEditor({ item }: { item: SiteCopyItem }) {
       <div className="mt-3 flex justify-end">
         <Button size="sm" onClick={() => save()} loading={update.isPending} disabled={!dirty}>
           <Save className="h-4 w-4" />
-          ذخیره
+          {t("sc.save")}
         </Button>
       </div>
     </div>

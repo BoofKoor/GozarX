@@ -25,21 +25,19 @@ import {
   useSiteFaq,
   useUpdateFaq,
 } from "@/hooks/useSite";
+import { useI18n, type MessageKey } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, langLabel } from "@/lib/format";
 import { FAQ_CATEGORIES, type SiteFaqInput, type SiteFaqItem } from "@/types/api";
 
-const LOCALES = [
-  { value: "fa", label: "فارسی" },
-  { value: "en", label: "English" },
-];
+const LOCALES = ["fa", "en"];
 
 // Mirrors the tab labels the public site renders for each category id.
-const CATEGORY_LABEL: Record<string, string> = {
-  start: "شروع",
-  vol: "حجم و دعوت",
-  apps: "اپ‌ها",
-  trouble: "عیب‌یابی",
+const CATEGORY_LABEL: Record<string, MessageKey> = {
+  start: "sf.cat.start",
+  vol: "sf.cat.vol",
+  apps: "sf.cat.apps",
+  trouble: "sf.cat.trouble",
 };
 
 const BLANK = (locale: string): SiteFaqInput => ({
@@ -59,6 +57,7 @@ const BLANK = (locale: string): SiteFaqInput => ({
  * list here exactly.
  */
 export function SiteFaq() {
+  const { t } = useI18n();
   const [locale, setLocale] = useState("fa");
   const [filter, setFilter] = useState("");
   const [editing, setEditing] = useState<SiteFaqItem | "new" | null>(null);
@@ -88,42 +87,42 @@ export function SiteFaq() {
     reorder.mutate(
       next.map((i) => i.id),
       {
-        onError: (err) => toast.error(apiErrorMessage(err, "ترتیب ذخیره نشد.")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("sf.reorderFailed"))),
       },
     );
   }
 
   async function remove(item: SiteFaqItem) {
     const ok = await confirm({
-      title: "حذف سوال",
-      message: `«${item.question}» حذف شود؟ این عمل قابل بازگشت نیست.`,
+      title: t("sf.delete.title"),
+      message: t("sf.delete.confirm", { q: item.question }),
       tone: "danger",
-      confirmLabel: "حذف",
+      confirmLabel: t("sf.delete"),
     });
     if (!ok) return;
     del.mutate(item.id, {
-      onSuccess: () => toast.success("سوال حذف شد."),
-      onError: (err) => toast.error(apiErrorMessage(err, "حذف نشد.")),
+      onSuccess: () => toast.success(t("sf.deleted")),
+      onError: (err) => toast.error(apiErrorMessage(err, t("sf.deleteFailed"))),
     });
   }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="سوالات متداول"
-        sub="سوال‌های صفحهٔ «سوالات متداول» سایت. تغییرات بدون دیپلوی اعمال می‌شوند."
+        title={t("sf.title")}
+        sub={t("sf.sub")}
         actions={
           <div className="flex items-center gap-2">
             <Segmented
               value={locale}
               onChange={setLocale}
-              options={LOCALES}
+              options={LOCALES.map((l) => ({ value: l, label: langLabel(l) }))}
               size="sm"
-              ariaLabel="زبان"
+              ariaLabel={t("sf.localeAria")}
             />
             <Button size="sm" onClick={() => setEditing("new")}>
               <Plus className="h-4 w-4" />
-              سوال تازه
+              {t("sf.new")}
             </Button>
           </div>
         }
@@ -134,15 +133,15 @@ export function SiteFaq() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="max-w-md flex-1">
           <Input
-            aria-label="جستجو در سوال‌ها"
+            aria-label={t("sf.searchAria")}
             icon={<Search className="h-4 w-4" />}
-            placeholder="جستجو در سوال یا پاسخ…"
+            placeholder={t("sf.search")}
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           />
         </div>
         {unpublished > 0 && (
-          <Badge tone="warning">{formatNumber(unpublished)} مورد منتشرنشده</Badge>
+          <Badge tone="warning">{t("sf.unpublishedCount", { n: formatNumber(unpublished) })}</Badge>
         )}
       </div>
 
@@ -156,14 +155,10 @@ export function SiteFaq() {
         <Card>
           <EmptyState
             icon={HelpCircle}
-            title={filter ? "سوالی با این جستجو پیدا نشد" : "هنوز سوالی ثبت نشده"}
-            message={
-              filter
-                ? undefined
-                : "تا وقتی سوالی اینجا نباشد، سایت همان فهرست پیش‌فرض داخل کد را نشان می‌دهد."
-            }
+            title={filter ? t("sf.empty.filtered") : t("sf.empty.none")}
+            message={filter ? undefined : t("sf.empty.noneMsg")}
             action={
-              !filter ? <Button onClick={() => setEditing("new")}>سوال تازه</Button> : undefined
+              !filter ? <Button onClick={() => setEditing("new")}>{t("sf.new")}</Button> : undefined
             }
           />
         </Card>
@@ -182,7 +177,7 @@ export function SiteFaq() {
                       variant="ghost"
                       size="sm"
                       iconOnly
-                      aria-label="انتقال به بالا"
+                      aria-label={t("sf.moveUp")}
                       disabled={Boolean(filter) || index === 0 || reorder.isPending}
                       onClick={() => move(index, -1)}
                     >
@@ -192,7 +187,7 @@ export function SiteFaq() {
                       variant="ghost"
                       size="sm"
                       iconOnly
-                      aria-label="انتقال به پایین"
+                      aria-label={t("sf.moveDown")}
                       disabled={Boolean(filter) || index === items.length - 1 || reorder.isPending}
                       onClick={() => move(index, 1)}
                     >
@@ -208,7 +203,7 @@ export function SiteFaq() {
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-content">{item.question}</span>
                       <Badge tone="neutral">{CATEGORY_LABEL[item.category] ?? item.category}</Badge>
-                      {!item.published && <Badge tone="warning">منتشرنشده</Badge>}
+                      {!item.published && <Badge tone="warning">{t("sf.unpublished")}</Badge>}
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-content-muted">{item.answer}</p>
                   </button>
@@ -217,7 +212,7 @@ export function SiteFaq() {
                     variant="ghost"
                     size="sm"
                     iconOnly
-                    aria-label="حذف"
+                    aria-label={t("sf.delete")}
                     onClick={() => remove(item)}
                   >
                     <Trash2 className="h-4 w-4 text-danger-600" />
@@ -249,6 +244,7 @@ function FaqEditor({
   locale: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [form, setForm] = useState<SiteFaqInput>(
     item
       ? {
@@ -272,17 +268,17 @@ function FaqEditor({
       answer: form.answer.trim(),
     };
     if (!body.question || !body.answer) {
-      toast.error("سوال و پاسخ نمی‌توانند خالی باشند.");
+      toast.error(t("sf.emptyFields"));
       return;
     }
     const opts = {
       onSuccess: () => {
-        toast.success(item ? "ذخیره شد." : "سوال اضافه شد.");
+        toast.success(item ? t("sf.saved") : t("sf.added"));
         onClose();
       },
       // Surface the server's own reason — a duplicate question (409) and an unknown category (422)
-      // must not collapse into one generic "نشد".
-      onError: (err: unknown) => toast.error(apiErrorMessage(err, "ذخیره نشد.")),
+      // must not collapse into one generic failure.
+      onError: (err: unknown) => toast.error(apiErrorMessage(err, t("sf.saveFailed"))),
     };
     if (item) update.mutate({ id: item.id, body }, opts);
     else create.mutate(body, opts);
@@ -292,47 +288,47 @@ function FaqEditor({
     <RecordDialog
       open
       onClose={onClose}
-      title={item ? "ویرایش سوال" : "سوال تازه"}
-      sub={item ? `شناسه ${item.id}` : "به انتهای فهرست همان زبان اضافه می‌شود"}
+      title={item ? t("sf.edit.title") : t("sf.new")}
+      sub={item ? t("sf.edit.id", { id: formatNumber(item.id) }) : t("sf.edit.newSub")}
       footer={
         <div className="flex gap-2">
           <Button onClick={save} loading={saving}>
-            ذخیره
+            {t("sf.save")}
           </Button>
           <Button variant="ghost" onClick={onClose}>
-            انصراف
+            {t("sf.cancel")}
           </Button>
         </div>
       }
     >
       <div className="space-y-4">
-        <Field label="زبان">
+        <Field label={t("sf.field.locale")}>
           <Select
             value={form.locale}
             onChange={(e) => setForm({ ...form, locale: e.target.value })}
           >
             {LOCALES.map((l) => (
-              <option key={l.value} value={l.value}>
-                {l.label}
+              <option key={l} value={l}>
+                {langLabel(l)}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="دسته" hint="تب‌های صفحهٔ سوالات سایت از همین فهرست ساخته می‌شوند.">
+        <Field label={t("sf.field.category")} hint={t("sf.field.categoryHint")}>
           <Select
             value={form.category}
             onChange={(e) => setForm({ ...form, category: e.target.value })}
           >
             {FAQ_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABEL[c] ?? c}
+                {CATEGORY_LABEL[c] ? t(CATEGORY_LABEL[c]) : c}
               </option>
             ))}
           </Select>
         </Field>
 
-        <Field label="سوال">
+        <Field label={t("sf.field.question")}>
           <Input
             value={form.question}
             maxLength={300}
@@ -340,7 +336,7 @@ function FaqEditor({
           />
         </Field>
 
-        <Field label="پاسخ" hint="متن ساده — سایت آن را بدون HTML نمایش می‌دهد.">
+        <Field label={t("sf.field.answer")} hint={t("sf.field.answerHint")}>
           <Textarea
             rows={6}
             value={form.answer}
@@ -352,8 +348,8 @@ function FaqEditor({
         <Switch
           checked={form.published}
           onChange={(published) => setForm({ ...form, published })}
-          label="منتشر شده"
-          hint="خاموش‌کردن، سوال را از سایت برمی‌دارد بدون اینکه حذفش کند."
+          label={t("sf.field.published")}
+          hint={t("sf.field.publishedHint")}
         />
       </div>
     </RecordDialog>

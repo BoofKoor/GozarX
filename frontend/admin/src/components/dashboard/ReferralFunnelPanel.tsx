@@ -4,34 +4,38 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 /** The invitee side of referrals (from the previously-unused users.referred_by): how many joined via
  *  an invite and how many of those activated, plus the K-factor viral coefficient. */
 export function ReferralFunnelPanel({ data }: { data: DashboardAnalytics }) {
+  const { t } = useI18n();
   const r = data.referral;
   const claimedWidth = r.joined > 0 ? (r.joined_claimed / r.joined) * 100 : 0;
   const viral = r.k_factor >= 1;
   return (
     <Card>
       <CardHeader
-        title="قیف دعوت"
+        title={t("d.funnel")}
         icon={GitBranch}
         action={
-          <Badge tone={viral ? "success" : "neutral"}>ضریب K: {formatNumber(r.k_factor)}</Badge>
+          <Badge tone={viral ? "success" : "neutral"}>
+            {t("d.funnel.k", { k: formatNumber(r.k_factor) })}
+          </Badge>
         }
       />
       <div className="space-y-3">
-        <Stage label="کاربرانِ دعوت‌شده" value={r.joined} width={100} tone="bg-brand/30" />
+        <Stage label={t("d.funnel.joined")} value={r.joined} width={100} tone="bg-brand/30" />
         <Stage
-          label="از آن‌ها کانفیگ گرفتند"
+          label={t("d.funnel.claimed")}
           value={r.joined_claimed}
           width={claimedWidth}
           tone="bg-brand"
         />
       </div>
       <div className="mt-3 flex items-center justify-between text-xs text-content-subtle">
-        <span>نرخ تبدیل دعوت‌شده‌ها: {faPct(r.invitee_conversion_pct)}</span>
-        <span>{viral ? "رشد خودپایدار (K ≥ ۱)" : "K < ۱"}</span>
+        <span>{t("d.funnel.conversion", { pct: faPct(r.invitee_conversion_pct) })}</span>
+        <span>{viral ? t("d.funnel.viral") : t("d.funnel.notViral")}</span>
       </div>
     </Card>
   );

@@ -3,9 +3,18 @@ import { clsx } from "clsx";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatNumber, localizeDigits } from "@/lib/format";
 import type { HeatCell } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 // Postgres dow: 0=Sunday .. 6=Saturday. Persian names indexed by that dow value.
-const DOW_LABEL = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنج‌شنبه", "جمعه", "شنبه"];
+const DOW_KEYS = [
+  "d.dow.0",
+  "d.dow.1",
+  "d.dow.2",
+  "d.dow.3",
+  "d.dow.4",
+  "d.dow.5",
+  "d.dow.6",
+] as const;
 // The Persian week starts on Saturday, so render rows in that order.
 const ROW_ORDER = [6, 0, 1, 2, 3, 4, 5];
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
@@ -28,15 +37,17 @@ function cellClass(count: number, max: number): string {
  */
 export function ActivityHeatmap({
   cells,
-  title = "نقشهٔ حرارتی دریافت‌ها (به وقت تهران)",
-  unit = "دریافت",
-  axisNote = "بر حسب روز × ساعت",
+  title,
+  unit,
+  axisNote,
 }: {
   cells: HeatCell[];
   title?: string;
   unit?: string;
   axisNote?: string;
 }) {
+  const { t } = useI18n();
+  const DOW_LABEL = DOW_KEYS.map((k) => t(k));
   const counts = new Map<string, number>();
   for (const c of cells) counts.set(`${c.dow}-${c.hour}`, c.count);
   const max = Math.max(1, ...cells.map((c) => c.count));
@@ -45,12 +56,12 @@ export function ActivityHeatmap({
   return (
     <Card>
       <CardHeader
-        title={title}
-        action={<span className="text-xs text-content-subtle">{axisNote}</span>}
+        title={title ?? t("d.heat.claims")}
+        action={<span className="text-xs text-content-subtle">{axisNote ?? t("d.heat.axis")}</span>}
       />
       {total === 0 ? (
         <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
-          داده‌ای برای این بازه نیست
+          {t("d.heat.empty")}
         </div>
       ) : (
         <div className="overflow-x-auto" dir="ltr">
@@ -74,7 +85,7 @@ export function ActivityHeatmap({
                     return (
                       <div
                         key={h}
-                        title={`${DOW_LABEL[dow]} ${localizeDigits(String(h))}:${localizeDigits("00")} — ${formatNumber(c)} ${unit}`}
+                        title={`${DOW_LABEL[dow]} ${localizeDigits(String(h))}:${localizeDigits("00")} — ${formatNumber(c)} ${unit ?? t("d.heat.claimsUnit")}`}
                         className={clsx("aspect-square flex-1 rounded-[3px]", cellClass(c, max))}
                       />
                     );
@@ -84,13 +95,13 @@ export function ActivityHeatmap({
             ))}
             {/* legend */}
             <div className="mt-2 flex items-center justify-end gap-1.5 pr-1 text-[10px] text-content-subtle">
-              <span>کم</span>
+              <span>{t("d.heat.low")}</span>
               {["bg-surface-sunken", "bg-brand/20", "bg-brand/45", "bg-brand/70", "bg-brand"].map(
                 (c) => (
                   <span key={c} className={clsx("h-3 w-3 rounded-[3px]", c)} />
                 ),
               )}
-              <span>زیاد</span>
+              <span>{t("d.heat.high")}</span>
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
 import { Textarea } from "@/components/ui/Textarea";
 import { useI18n } from "@/i18n";
-import { formatNumber, langLabel } from "@/lib/format";
+import { formatNumber, joinList, langLabel } from "@/lib/format";
 import { previewText, useTexts, useUpdateText } from "@/hooks/useTexts";
 import type { BotText, Lang } from "@/types/api";
 
@@ -177,7 +177,7 @@ function KeyRow({
   return (
     <button
       onClick={onClick}
-      title={missing.length ? t("texts.missing", { langs: missing.map(langLabel).join("، ") }) : ""}
+      title={missing.length ? t("texts.missing", { langs: joinList(missing.map(langLabel)) }) : ""}
       className={clsx(
         "flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-sm transition",
         active

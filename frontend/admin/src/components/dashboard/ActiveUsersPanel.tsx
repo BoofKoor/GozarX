@@ -4,21 +4,27 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 /** Active-user tiles (DAU/WAU/MAU) + stickiness = DAU/MAU. A real engagement signal beyond raw
  *  claim counts: the share of the monthly base that comes back on a given day. */
 export function ActiveUsersPanel({ data }: { data: DashboardAnalytics }) {
+  const { t } = useI18n();
   const tiles = [
-    { label: "روزانه", sub: "DAU", value: data.dau },
-    { label: "هفتگی", sub: "WAU", value: data.wau },
-    { label: "ماهانه", sub: "MAU", value: data.mau },
+    { label: t("d.active.daily"), sub: "DAU", value: data.dau },
+    { label: t("d.active.weekly"), sub: "WAU", value: data.wau },
+    { label: t("d.active.monthly"), sub: "MAU", value: data.mau },
   ];
   return (
     <Card>
       <CardHeader
-        title="کاربران فعال"
+        title={t("d.active")}
         icon={Activity}
-        action={<Badge tone="brand">چسبندگی {faPct(data.stickiness_pct)}</Badge>}
+        action={
+          <Badge tone="brand">
+            {t("d.active.stickiness", { pct: faPct(data.stickiness_pct) })}
+          </Badge>
+        }
       />
       <div className="grid grid-cols-3 gap-3">
         {tiles.map((t) => (
@@ -34,10 +40,7 @@ export function ActiveUsersPanel({ data }: { data: DashboardAnalytics }) {
           </div>
         ))}
       </div>
-      <p className="mt-3 text-xs text-content-subtle">
-        کاربر فعال = دستِ‌کم یک دریافت کانفیگ در بازهٔ زمانی؛ چسبندگی سهم کاربرانی است که هر روز
-        برمی‌گردند.
-      </p>
+      <p className="mt-3 text-xs text-content-subtle">{t("d.active.note")}</p>
     </Card>
   );
 }
