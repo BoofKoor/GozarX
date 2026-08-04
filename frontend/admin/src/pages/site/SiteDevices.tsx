@@ -162,7 +162,12 @@ export function SiteDevices() {
             </THead>
             <TBody>
               {data.items.map((d) => (
-                <TR key={d.uuid} onClick={() => setSelected(d.uuid)} selected={d.uuid === selected}>
+                <TR
+                  key={d.uuid}
+                  onClick={() => setSelected(d.uuid)}
+                  selected={d.uuid === selected}
+                  label={t("sd.row.open", { handle: d.handle ?? d.uuid })}
+                >
                   <TD>
                     <span className="font-mono text-xs" dir="ltr">
                       {d.handle ?? d.uuid.slice(0, 8)}

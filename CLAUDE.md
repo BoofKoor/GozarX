@@ -226,6 +226,18 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   offered in a picker and then matches no remark, so the claim dead-ends. Validation is best-effort
   by design — with no squad set, or the panel unreachable, the admin's value is stored rather than
   the admin locked out. The panel drives the same choice through the shared `<LocationPicker>`.
+- **A modal surface owes the keyboard four things**, and they live in ONE place (`useFocusTrap`):
+  Esc closes · focus moves in and is restored on exit · Tab cycles inside · background scroll locks.
+  A dialog also needs a NAME — `role="dialog"` without `aria-labelledby` announces "dialog" and
+  nothing else. And a drawer that stays mounted to animate must be `inert` while closed, not merely
+  `aria-hidden` + `pointer-events-none`: those stop the mouse and the screen reader but leave every
+  link inside in the tab order (nine of them, on a phone, before the page).
+- **A row that opens something is a control.** `<TR onClick>` gives it `tabIndex`, `role="button"`,
+  Enter/Space and a `label` naming the record — without them the whole table is mouse-only, which
+  on Users and Devices meant no record could be opened by keyboard at all.
+- **Don't gate focusability on layout.** `offsetParent` is null for any `position: fixed` element —
+  which every dialog panel is — and for everything under jsdom, where it silently empties the
+  focusable list and makes the trap untestable. Read hidden-ness from attributes.
 - **A missing translation fails `tsc`; a literal that never reached the catalogue fails a TEST.**
   `i18n/no-literals.test.ts` walks the source for Persian outside `messages.ts`, `lib/format` (which
   owns the locale tables) and comments. Adding to its allowlist needs a reason that is not "this one

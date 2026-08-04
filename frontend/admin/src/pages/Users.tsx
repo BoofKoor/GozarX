@@ -118,6 +118,7 @@ export function Users() {
                   key={u.telegram_id}
                   onClick={() => setDetailId(u.telegram_id)}
                   selected={u.telegram_id === detailId}
+                  label={t("users.row.open", { id: String(u.telegram_id) })}
                 >
                   <TD>
                     <span className="flex items-center gap-2.5">
