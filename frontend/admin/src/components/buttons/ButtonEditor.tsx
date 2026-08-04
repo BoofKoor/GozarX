@@ -4,25 +4,30 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/Button";
+import { Field } from "@/components/ui/Field";
+import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { useI18n, type MessageKey } from "@/i18n";
+import { langLabel } from "@/lib/format";
 import { useUpdateButton } from "@/hooks/useButtons";
 import type { ButtonConfig, ButtonStyle, Lang } from "@/types/api";
 
-const LANGS: { code: Lang; label: string; dir: "rtl" | "ltr" }[] = [
-  { code: "fa", label: "فارسی", dir: "rtl" },
-  { code: "en", label: "English", dir: "ltr" },
-  { code: "ru", label: "Русский", dir: "ltr" },
+const LANGS: { code: Lang; dir: "rtl" | "ltr" }[] = [
+  { code: "fa", dir: "rtl" },
+  { code: "en", dir: "ltr" },
+  { code: "ru", dir: "ltr" },
 ];
 
-const COLORS: { value: ButtonStyle; label: string; swatch: string }[] = [
-  { value: null, label: "پیش‌فرض", swatch: "bg-line-strong" },
-  { value: "primary", label: "آبی", swatch: "bg-brand" },
-  { value: "success", label: "سبز", swatch: "bg-success-500" },
-  { value: "danger", label: "قرمز", swatch: "bg-danger-500" },
+const COLORS: { value: ButtonStyle; key: MessageKey; swatch: string }[] = [
+  { value: null, key: "btn.color.default", swatch: "bg-line-strong" },
+  { value: "primary", key: "btn.color.primary", swatch: "bg-brand" },
+  { value: "success", key: "btn.color.success", swatch: "bg-success-500" },
+  { value: "danger", key: "btn.color.danger", swatch: "bg-danger-500" },
 ];
 
 /** Modal to edit a button's per-language label, visibility, and color (order is via drag-drop). */
 export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClose: () => void }) {
+  const { t } = useI18n();
   const update = useUpdateButton();
   const [labels, setLabels] = useState<Record<Lang, string>>({ ...button.effective_label });
   const [visible, setVisible] = useState(button.is_visible);
@@ -46,42 +51,44 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
       },
       {
         onSuccess: () => {
-          toast.success("ذخیره شد.");
+          toast.success(t("btn.saved"));
           onClose();
         },
-        onError: () => toast.error("ذخیره نشد."),
+        onError: () => toast.error(t("btn.saveFailed")),
       },
     );
   }
 
   return (
     <Modal onClose={onClose} className="max-w-lg p-5" labelledBy="button-editor-title">
-      <div className="mb-1 flex items-center justify-between gap-2">
+      <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id="button-editor-title" className="text-lg font-bold">
-          ویرایش دکمه
+          {t("btn.editor.title")}
         </h2>
         <code
-          className="rounded bg-surface-sunken px-1.5 py-0.5 text-xs text-content-muted"
+          className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs text-content-muted"
           dir="ltr"
         >
           {button.key}
         </code>
       </div>
       <div className="space-y-3">
-        {LANGS.map(({ code, label, dir }) => (
-          <div key={code}>
-            <label className="mb-1 block text-sm">{label}</label>
-            <input
-              className="field-control"
+        {LANGS.map(({ code, dir }, i) => (
+          <Field
+            key={code}
+            label={langLabel(code)}
+            hint={i === LANGS.length - 1 ? t("btn.editor.labelHint") : undefined}
+          >
+            <Input
               dir={dir}
               value={labels[code]}
               placeholder={button.default_label[code]}
               onChange={(e) => setLabels((s) => ({ ...s, [code]: e.target.value }))}
             />
-          </div>
+          </Field>
         ))}
-        <div>
-          <label className="mb-1 block text-sm">نمایش</label>
+
+        <Field label={t("btn.editor.visibility")}>
           <button
             type="button"
             disabled={button.is_critical}
@@ -89,51 +96,49 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
             className={clsx(
               "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
               visible
-                ? "bg-success-500/12 text-success-700"
+                ? "bg-success-500/15 text-success-700"
                 : "bg-surface-sunken text-content-muted",
               button.is_critical && "cursor-not-allowed opacity-60",
             )}
           >
             {visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-            {visible ? "نمایش داده می‌شود" : "پنهان"}
+            {visible ? t("btn.editor.shown") : t("btn.editor.hidden")}
           </button>
           {button.is_critical && (
-            <p className="mt-2 rounded bg-warning-500/12 p-2 text-xs text-warning-700">
-              ⚠️ دکمهٔ حیاتی (بازگشت/تأیید/ناوبری) — قابل مخفی‌سازی نیست تا کاربر در صفحه گیر نیفتد.
+            <p className="mt-2 rounded-lg bg-warning-500/15 p-2 text-xs text-warning-700">
+              {t("btn.editor.criticalNote")}
             </p>
           )}
-        </div>
-        <div>
-          <label className="mb-1 block text-sm">رنگ دکمه</label>
+        </Field>
+
+        <Field label={t("btn.editor.color")} hint={t("btn.editor.colorHint")}>
           <div className="flex gap-2">
             {COLORS.map((c) => (
               <button
-                key={c.label}
+                key={c.key}
                 type="button"
                 onClick={() => setStyle(c.value)}
+                aria-pressed={style === c.value}
                 className={clsx(
                   "flex flex-col items-center gap-1 rounded-lg border-2 px-3 py-1.5 text-xs transition",
                   style === c.value
-                    ? "border-brand"
-                    : "border-transparent hover:border-line-strong",
+                    ? "border-brand text-content"
+                    : "border-transparent text-content-muted hover:border-line-strong",
                 )}
               >
                 <span className={clsx("h-5 w-8 rounded", c.swatch)} />
-                {c.label}
+                {t(c.key)}
               </button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-content-subtle">
-            رنگ دکمه‌های اینلاین (در نسخه‌های جدید تلگرام نمایش داده می‌شود).
-          </p>
-        </div>
+        </Field>
       </div>
       <div className="mt-5 flex justify-end gap-2">
         <Button variant="ghost" onClick={onClose}>
-          انصراف
+          {t("btn.cancel")}
         </Button>
         <Button onClick={save} loading={update.isPending}>
-          ذخیره
+          {t("btn.save")}
         </Button>
       </div>
     </Modal>

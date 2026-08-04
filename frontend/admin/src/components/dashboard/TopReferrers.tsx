@@ -4,14 +4,16 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatNumber } from "@/lib/format";
 import type { Referrer } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 export function TopReferrers({ data }: { data: Referrer[] }) {
+  const { t } = useI18n();
   return (
     <Card>
-      <CardHeader title="برترین دعوت‌کننده‌ها" icon={Gift} />
+      <CardHeader title={t("d.topReferrers")} icon={Gift} />
       {data.length === 0 ? (
         <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
-          هنوز دعوتی ثبت نشده
+          {t("d.topReferrers.empty")}
         </div>
       ) : (
         <ul className="divide-y divide-line">
@@ -23,7 +25,9 @@ export function TopReferrers({ data }: { data: Referrer[] }) {
               <code className="flex-1 text-sm text-content-muted" dir="ltr">
                 {r.telegram_id}
               </code>
-              <Badge tone="brand">{formatNumber(r.referral_count)} دعوت</Badge>
+              <Badge tone="brand">
+                {t("d.topReferrers.count", { n: formatNumber(r.referral_count) })}
+              </Badge>
             </li>
           ))}
         </ul>

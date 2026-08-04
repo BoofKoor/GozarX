@@ -263,10 +263,18 @@ class ConfigLogRepository(BaseRepository):
             for cohort, size in cohort_sizes
         ]
 
-    async def first_claim_stats(self) -> tuple[float | None, int, int]:
-        """``(median_hours, within_24h, total_claimers)`` for signup→first-claim. Median via
+    async def first_claim_stats(
+        self,
+        since: datetime | None = None,
+        until: datetime | None = None,
+    ) -> tuple[float | None, int, int]:
+        """``(median_hours, within_24h, cohort_size)`` for signup→first-claim. Median via
         ``percentile_cont``; the delta is already in hours so the 24h filter is a plain ``<= 24``.
-        Backs the activation panel (how fast, and how many activate same-day)."""
+
+        The window bounds the user's FIRST CLAIM, not their signup — the cohort is "everyone who
+        activated during this period", which is what makes the figure comparable to the same
+        period before it. Called with no bounds it is the all-time figure.
+        """
         firsts = (
             select(
                 ConfigLog.user_id.label("uid"),
@@ -281,6 +289,10 @@ class ConfigLogRepository(BaseRepository):
             func.count().filter(delta_h <= 24),
             func.count(),
         ).select_from(firsts.join(User, User.telegram_id == firsts.c.uid))
+        if since is not None:
+            stmt = stmt.where(firsts.c.fc >= since)
+        if until is not None:
+            stmt = stmt.where(firsts.c.fc < until)
         median, within, total = (await self.session.execute(stmt)).one()
         return (
             round(float(median), 1) if median is not None else None,

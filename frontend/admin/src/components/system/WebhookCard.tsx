@@ -1,47 +1,62 @@
 import { AlertTriangle, CheckCircle2, Webhook } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { formatNumber } from "@/lib/format";
+import { useI18n } from "@/i18n";
+import { faDateTime, formatNumber, localizeDigits } from "@/lib/format";
 import type { Probe, WebhookHealth } from "@/types/api";
 
 export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; telegram: Probe }) {
+  const { t } = useI18n();
   // Match the backend's overall-status threshold: health.py marks the service degraded only when
   // pending EXCEEDS 50 (_PENDING_BACKLOG), so this card must stay "healthy" through 50 too — else at
-  // exactly 50 the banner reads "سالم" while this badge contradicts it with "بررسی شود".
+  // exactly 50 the banner would read "healthy" while this badge contradicted it.
   const healthy =
     webhook.configured && telegram.ok && !webhook.recent_error && webhook.pending <= 50;
   return (
     <Card>
       <CardHeader
-        title="پاسخگویی وبهوک تلگرام"
+        title={t("sys.wh.title")}
         icon={Webhook}
         action={
           <Badge tone={healthy ? "success" : webhook.configured ? "warning" : "neutral"}>
             {healthy ? (
               <>
-                <CheckCircle2 className="h-3.5 w-3.5" /> سالم
+                <CheckCircle2 className="h-3.5 w-3.5" /> {t("sys.wh.ok")}
               </>
             ) : webhook.configured ? (
               <>
-                <AlertTriangle className="h-3.5 w-3.5" /> بررسی شود
+                <AlertTriangle className="h-3.5 w-3.5" /> {t("sys.wh.check")}
               </>
             ) : (
-              "غیرفعال"
+              t("sys.wh.off")
             )}
           </Badge>
         }
       />
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
-        <Row label="آدرس وبهوک" value={webhook.url_set ? "تنظیم شده" : "تنظیم نشده"} />
         <Row
-          label="تأخیر API تلگرام"
-          value={telegram.latency_ms != null ? `${telegram.latency_ms} ms` : "—"}
+          label={t("sys.wh.url")}
+          value={webhook.url_set ? t("sys.wh.urlSet") : t("sys.wh.urlUnset")}
         />
-        <Row label="آپدیت‌های معلق" value={formatNumber(webhook.pending)} />
         <Row
-          label="خطای اخیر"
-          value={webhook.recent_error ? "بله (۵ دقیقهٔ اخیر)" : "خیر"}
+          label={t("sys.wh.latency")}
+          value={
+            telegram.latency_ms != null ? (
+              // `88 ms` reordered to `ms 88` beside Persian — a unit belongs after its number.
+              <span dir="ltr" className="tabular-nums">
+                {localizeDigits(String(telegram.latency_ms))} ms
+              </span>
+            ) : (
+              "—"
+            )
+          }
+        />
+        <Row label={t("sys.wh.pending")} value={formatNumber(webhook.pending)} />
+        <Row
+          label={t("sys.wh.recentError")}
+          value={webhook.recent_error ? t("sys.wh.recentErrorYes") : t("sys.wh.recentErrorNo")}
           danger={webhook.recent_error}
         />
       </dl>
@@ -51,10 +66,8 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
           dir="ltr"
         >
           <div className="mb-0.5 text-content-subtle">
-            last error{" "}
-            {webhook.last_error_at
-              ? `· ${new Date(webhook.last_error_at).toLocaleString("fa-IR")}`
-              : ""}
+            {t("sys.wh.lastError")}{" "}
+            {webhook.last_error_at ? `· ${faDateTime(webhook.last_error_at)}` : ""}
           </div>
           <code className="text-danger-700">{webhook.last_error}</code>
         </div>
@@ -63,7 +76,7 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
   );
 }
 
-function Row({ label, value, danger }: { label: string; value: string; danger?: boolean }) {
+function Row({ label, value, danger }: { label: string; value: ReactNode; danger?: boolean }) {
   return (
     <div className="flex items-center justify-between border-b border-line pb-1.5">
       <dt className="text-content-muted">{label}</dt>

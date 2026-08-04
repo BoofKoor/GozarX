@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.site_locations import reject_unknown_locations
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -80,6 +81,13 @@ async def update_settings(
 ) -> SettingsOut:
     settings = _settings(request, session)
     if body.locations is not None:
+        # Same guard the website settings and wizard use, on the BOT's own squad. A name the squad
+        # does not serve is offered in the bot's picker and then matches no remark, so the claim
+        # dead-ends — the v1 index-mismatch lesson in its original shape. Best-effort by design:
+        # with no squad set, or the panel down, the admin's value is stored rather than blocked.
+        await reject_unknown_locations(
+            request, await settings.get(SettingKey.TRIAL_SQUAD), body.locations
+        )
         await settings.set(SettingKey.LOCATIONS, json.dumps(body.locations))
     # Floor the numerics (mirrors site_settings): a negative daily_limit_mb makes compute_traffic_
     # bytes return a negative byte count, which the panel rejects — so every claim fails with a

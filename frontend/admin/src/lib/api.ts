@@ -7,6 +7,8 @@
 
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 
+import { t } from "@/i18n";
+
 import { clearAuth, getAccessToken, getRefreshToken, setTokens } from "./auth";
 
 export const api = axios.create({
@@ -118,6 +120,6 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
     const first = detail.find((d) => typeof d?.msg === "string");
     if (first) return String(first.msg);
   }
-  if (!error.response) return "ارتباط با سرور برقرار نشد.";
+  if (!error.response) return t("ui.offline");
   return fallback;
 }

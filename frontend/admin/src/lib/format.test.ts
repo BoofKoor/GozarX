@@ -4,6 +4,7 @@ import {
   faDate,
   formatMb,
   formatNumber,
+  humanBytes,
   shortDay,
   splitLocations,
   telegramPreviewHtml,
@@ -11,9 +12,16 @@ import {
 
 describe("format helpers", () => {
   it("formats MB into GB when large (Persian numerals)", () => {
-    expect(formatMb(512)).toBe("۵۱۲ MB");
-    expect(formatMb(1024)).toBe("۱ GB");
-    expect(formatMb(1536)).toBe("۱.۵ GB");
+    // Each quantity is wrapped FSI…PDI: a Latin unit beside its own Persian-numeral value reorders
+    // in an RTL sentence, and «۱ GB» rendered as «GB ۱» — the unit ahead of the number it measures.
+    expect(formatMb(512)).toBe("\u2068۵۱۲ MB\u2069");
+    expect(formatMb(1024)).toBe("\u2068۱ GB\u2069");
+    expect(formatMb(1536)).toBe("\u2068۱.۵ GB\u2069");
+  });
+
+  it("isolates every byte size the same way", () => {
+    expect(humanBytes(0)).toBe("\u2068۰ B\u2069");
+    expect(humanBytes(3_375_000_000_000)).toBe("\u2068۳.۱ TB\u2069");
   });
 
   it("groups digits with Persian numerals", () => {

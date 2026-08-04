@@ -162,6 +162,14 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 12 Panel redesign, foundation: the Nocturne palette in `tokens.css`, the icon-rail shell, the three
   hand-drawn SVG charts (`HeroSparkline`/`AreaTrend`/`RadarRates`), and the fa/en i18n layer.
   Pages keep their current markup and migrate their strings as each is rebuilt.
+13 Dashboard overview rebuilt on the new charts + fully bilingual; activation metrics WINDOWED
+  (`median_hours_to_claim` / `activation_24h` become `Metric`s with a previous-window twin, so the
+  range control moves them instead of sitting above frozen all-time figures).
+14 The remaining pages rebuilt and migrated: users (avatars + `RecordDialog`), broadcast (reach
+  breakdown, pre-flight, chat-frame preview), texts (grouped keys + per-key translation gaps),
+  buttons, settings, system, login, both wizards, and all ten website pages. Every user-facing
+  literal now lives in `messages.ts` — `i18n/no-literals.test.ts` fails the build on a new one.
+  The bot's own location writes gain the squad validation the website side already had.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -181,6 +189,21 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `sent / total` ratio or a `https://` inside a Persian sentence all reorder without it. Reach for
   `direction: ltr` only on a genuinely Latin run, and never on a block — it moves the text to the
   left edge as well.
+- **An isolate is not enough for a slash- or dot-separated PAIR.** «۱۳۸ / ۴٬۰۹۶» renders as
+  «۴٬۰۹۶ / ۱۳۸» under an RTL base direction even inside an isolate, because the two numbers are
+  separate runs reordered by the base level — the character counter read as if the message were
+  over the limit, and a `0.5 · 0.6` load average silently transposed its two figures. Such a pair
+  needs `dir="ltr"` on its own inline span. Two measurements that must not mix (a percentage beside
+  its `2.8 GB / 7.5 GB` hint) belong in separate FLEX ITEMS, not one inline run.
+- **A "<number> <LATIN UNIT>" string carries its own isolate.** `formatMb`/`humanBytes`/
+  `humanUptime` wrap their result in FSI…PDI (`\u2068`…`\u2069`), because they are plain functions
+  whose output lands inside Persian sentences at ~40 call sites — «۱ GB» rendered as «GB ۱», the
+  unit ahead of the number it measures. Wrap the value, not each call site.
+- **Tailwind opacity modifiers are multiples of 5.** `bg-brand/12` and `bg-chart-1/18` are not on
+  the scale and compile to NOTHING — silently, so a tinted badge just renders with no background.
+  Use `/15`, `/20`, or the arbitrary form `bg-brand/[0.12]`. And a colour must exist in
+  `tailwind.config.js` before a class can name it: `bg-chart-2` needs the `chart` ramp registered
+  there, not only in `tokens.css`.
 - **The three hero charts are hand-drawn SVG** (`components/charts/`), not recharts: masked fades
   and the radar's eight-point curve are not expressible there. recharts stays for ordinary bar and
   line charts. A fade means "this continues beyond the frame" — never fade a marker or a
@@ -189,15 +212,24 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   inputs through the kit (`Input`/`Textarea`/`Select`/`Switch`/`Checkbox`/`NumberInput`). Never
   hand-write an input class string — `.field-control` is the single definition.
 - **Every page starts with `<PageHeader>`**; a section's sub-navigation is `NavTabs`, a range/filter
-  choice is `Segmented`, a record detail is `Drawer`, a "nothing here" is `EmptyState` and a failed
-  query is `ErrorState` (never the empty state — the two need opposite responses).
+  choice is `Segmented`, a record detail is `RecordDialog` (a centred, backdrop-blurred modal — a
+  record is something you look AT, not a sidebar that slides out), a "nothing here" is `EmptyState`
+  and a failed query is `ErrorState` (never the empty state — the two need opposite responses).
 - **Surface the server's reason.** Mutation `onError` uses `apiErrorMessage(err, fallback)`; a 400
   naming an unserved location, a 409 and a 502 must not collapse into one generic toast.
 - **A range control drives every windowed query on its page** — not just the chart next to it.
 - **Admin-authored HTML is sanitised before preview** (`lib/sanitize`): the panel origin holds the
   JWTs, so a pasted `<img onerror=…>` must never execute there even when the row is trusted content.
-- Location writes (wizard AND settings) validate against the squad through
-  `web/routes/admin/site_locations` — matched by remark NAME, never an index.
+- **All four location writers validate against their squad** through
+  `web/routes/admin/site_locations` — matched by remark NAME, never an index. That is the website's
+  settings PUT and wizard, and the BOT's settings PUT and wizard: a name the squad does not serve is
+  offered in a picker and then matches no remark, so the claim dead-ends. Validation is best-effort
+  by design — with no squad set, or the panel unreachable, the admin's value is stored rather than
+  the admin locked out. The panel drives the same choice through the shared `<LocationPicker>`.
+- **A missing translation fails `tsc`; a literal that never reached the catalogue fails a TEST.**
+  `i18n/no-literals.test.ts` walks the source for Persian outside `messages.ts`, `lib/format` (which
+  owns the locale tables) and comments. Adding to its allowlist needs a reason that is not "this one
+  is fine".
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

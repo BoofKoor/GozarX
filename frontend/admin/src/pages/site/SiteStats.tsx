@@ -29,16 +29,17 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useIsDark } from "@/hooks/useIsDark";
 import { useSiteAnalytics, useSiteStats } from "@/hooks/useSite";
+import { useI18n, type MessageKey } from "@/i18n";
 import { chartTheme, seriesColor } from "@/lib/chartTheme";
 import { faPct, formatNumber, shortDay } from "@/lib/format";
 import type { DayPoint, SiteStats as SiteStatsData } from "@/types/api";
 
-const RANGE_OPTIONS = [7, 14, 30, 90].map((r) => ({ value: r, label: `${formatNumber(r)} روز` }));
+const RANGES = [7, 14, 30, 90];
 
-const STATUS_LABEL: Record<string, string> = {
-  available: "آزاد",
-  active_config: "دارای کانفیگ",
-  blocked: "مسدود",
+const STATUS_LABEL: Record<string, MessageKey> = {
+  available: "st.device.available",
+  active_config: "st.device.active_config",
+  blocked: "st.device.blocked",
 };
 
 /** Union the visitors and claims series onto one x-axis so the funnel gap is visible per day. */
@@ -64,6 +65,11 @@ function mergeSeries(visitors: DayPoint[], claims: DayPoint[]) {
  * card rather than posing as "visits this period".
  */
 export function SiteStats() {
+  const { t } = useI18n();
+  const RANGE_OPTIONS = RANGES.map((r) => ({
+    value: r,
+    label: t("st.range.days", { n: formatNumber(r) }),
+  }));
   const [days, setDays] = useState(14);
   const { data, isError, refetch } = useSiteStats(days);
   // Same window as the funnel above — the range control moves the WHOLE page.
@@ -72,15 +78,15 @@ export function SiteStats() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="آمار وب‌سایت"
-        sub="قیف بازدید تا دریافت کانفیگ، و تحلیل عمیق‌تر رفتار بازدیدکننده‌ها."
+        title={t("st.title")}
+        sub={t("st.sub")}
         actions={
           <Segmented
             value={days}
             onChange={setDays}
             options={RANGE_OPTIONS}
             size="sm"
-            ariaLabel="بازهٔ زمانی"
+            ariaLabel={t("st.rangeAria")}
           />
         }
       >
@@ -110,7 +116,7 @@ export function SiteStats() {
             <SiteAnalyticsSection data={analytics} />
           ) : (
             <>
-              <Section title="تحلیل عمیق وب‌سایت" />
+              <Section title={t("st.deep")} />
               <div className="grid gap-6 lg:grid-cols-2">
                 <Card>
                   <Skeleton className="h-40 w-full" />
@@ -128,45 +134,49 @@ export function SiteStats() {
 }
 
 function FunnelKpis({ data, days }: { data: SiteStatsData; days: number }) {
-  const rangeLabel = `${formatNumber(days)} روز اخیر`;
+  const { t } = useI18n();
+  const rangeLabel = t("st.rangeLabel", { n: formatNumber(days) });
   return (
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <StatCard
-        label={`بازدیدکننده (${rangeLabel})`}
+        label={t("st.kpi.visitors", { range: rangeLabel })}
         value={formatNumber(data.visitors.value)}
         icon={Globe}
         tone="brand"
         delta={data.visitors.change_pct}
-        hint={`دورهٔ قبل: ${formatNumber(data.visitors.previous)}`}
+        hint={t("st.prev", { n: formatNumber(data.visitors.previous) })}
         spark={data.visitors_series.map((p) => p.count)}
       />
       <StatCard
-        label={`بازدیدکنندهٔ تازه (${rangeLabel})`}
+        label={t("st.kpi.newVisitors", { range: rangeLabel })}
         value={formatNumber(data.new_visitors.value)}
         icon={UserPlus}
         tone="info"
         delta={data.new_visitors.change_pct}
-        hint={`دورهٔ قبل: ${formatNumber(data.new_visitors.previous)}`}
+        hint={t("st.prev", { n: formatNumber(data.new_visitors.previous) })}
       />
       <StatCard
-        label={`بازگشتی (${rangeLabel})`}
+        label={t("st.kpi.returning", { range: rangeLabel })}
         value={formatNumber(data.returning_visitors.value)}
         icon={Repeat}
         tone="neutral"
         delta={data.returning_visitors.change_pct}
-        hint="پیش از این بازه ساخته شده، در این بازه دیده شده"
+        hint={t("st.kpi.returningHint")}
       />
       <StatCard
-        label={`دریافت‌کننده (${rangeLabel})`}
+        label={t("st.kpi.claimers", { range: rangeLabel })}
         value={formatNumber(data.claimers.value)}
         icon={Download}
         tone="success"
         delta={data.claimers.change_pct}
-        hint={`نرخ تبدیل: ${faPct(data.conversion_pct)} (قبل: ${faPct(data.conversion_pct_prev)})`}
+        hint={t("st.kpi.conversionHint", {
+          now: faPct(data.conversion_pct),
+          prev: faPct(data.conversion_pct_prev),
+        })}
         spark={data.claims_series.map((p) => p.count)}
       />
       <StatCard
-        label="کانفیگ فعال (اکنون)"
+        label={t("st.kpi.activeNow")}
         value={formatNumber(data.active_configs_live)}
         icon={Zap}
         tone={data.active_configs_stale > 0 ? "warning" : "info"}
@@ -175,35 +185,36 @@ function FunnelKpis({ data, days }: { data: SiteStatsData; days: number }) {
         // stale rows turns an invisible overcount into a visible reconcile lag.
         hint={
           data.active_configs_stale > 0
-            ? `${formatNumber(data.active_configs_stale)} مورد منقضی ولی هنوز هم‌گام‌نشده`
-            : "همه هم‌گام"
+            ? t("st.kpi.stale", { n: formatNumber(data.active_configs_stale) })
+            : t("st.kpi.allSynced")
         }
       />
       <StatCard
-        label="دریافت امروز"
+        label={t("st.kpi.today")}
         value={formatNumber(data.configs_today)}
         icon={Activity}
         tone="brand"
-        hint="بر اساس روز تقویمی تهران"
+        hint={t("st.kpi.todayHint")}
       />
     </div>
   );
 }
 
 function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
+  const { t } = useI18n();
   const points = mergeSeries(data.visitors_series, data.claims_series);
-  const t = chartTheme(useIsDark());
+  const theme = chartTheme(useIsDark());
   const visitorsColor = seriesColor(1);
   const claimsColor = seriesColor(0);
   const empty = points.every((p) => p.visitors === 0 && p.claims === 0);
 
   return (
     <Card>
-      <CardHeader title="بازدید و دریافت روزانه" sub={`${formatNumber(days)} روز اخیر`} />
+      <CardHeader title={t("st.daily")} sub={t("st.rangeLabel", { n: formatNumber(days) })} />
       <ChartLegend
         items={[
-          { label: "بازدیدکننده", color: visitorsColor },
-          { label: "دریافت کانفیگ", color: claimsColor },
+          { label: t("st.daily.visitors"), color: visitorsColor },
+          { label: t("st.daily.claims"), color: claimsColor },
         ]}
       />
       <ChartFrame empty={empty}>
@@ -213,14 +224,14 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
               <AreaGradient id="g-site-visitors" color={visitorsColor} />
               <AreaGradient id="g-site-claims" color={claimsColor} />
             </defs>
-            <CartesianGrid {...gridProps(t)} />
-            <XAxis dataKey="label" {...axisProps(t)} />
-            <YAxis allowDecimals={false} width={32} {...axisProps(t)} />
-            <Tooltip {...t.tooltip} />
+            <CartesianGrid {...gridProps(theme)} />
+            <XAxis dataKey="label" {...axisProps(theme)} />
+            <YAxis allowDecimals={false} width={32} {...axisProps(theme)} />
+            <Tooltip {...theme.tooltip} />
             <Area
               type="monotone"
               dataKey="visitors"
-              name="بازدیدکننده"
+              name={t("st.daily.visitors")}
               stroke={visitorsColor}
               strokeWidth={2}
               fill="url(#g-site-visitors)"
@@ -228,7 +239,7 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
             <Area
               type="monotone"
               dataKey="claims"
-              name="دریافت کانفیگ"
+              name={t("st.daily.claims")}
               stroke={claimsColor}
               strokeWidth={2}
               fill="url(#g-site-claims)"
@@ -241,24 +252,25 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
 }
 
 function TopLocationsCard({ data, days }: { data: SiteStatsData; days: number }) {
+  const { t } = useI18n();
   const max = Math.max(1, ...data.top_locations.map((l) => l.count));
   const hidden = data.locations_total - data.top_locations.length;
 
   return (
     <Card>
       <CardHeader
-        title="پرطرفدارترین لوکیشن‌ها"
+        title={t("st.top")}
         icon={MapPin}
         // The list is capped at 10; saying so is the difference between "these are the locations"
         // and "these are the busiest ten of N".
         sub={
           hidden > 0
-            ? `${formatNumber(days)} روز اخیر · ${formatNumber(hidden)} لوکیشن دیگر نمایش داده نشده`
-            : `${formatNumber(days)} روز اخیر`
+            ? t("st.top.hidden", { n: formatNumber(days), hidden: formatNumber(hidden) })
+            : t("st.rangeLabel", { n: formatNumber(days) })
         }
       />
       {data.top_locations.length === 0 ? (
-        <p className="py-4 text-center text-sm text-content-subtle">داده‌ای نیست.</p>
+        <p className="py-4 text-center text-sm text-content-subtle">{t("st.noData")}</p>
       ) : (
         <ul className="space-y-2">
           {data.top_locations.map((l) => (
@@ -284,35 +296,38 @@ function TopLocationsCard({ data, days }: { data: SiteStatsData; days: number })
 }
 
 function LifetimeCard({ data }: { data: SiteStatsData }) {
+  const { t } = useI18n();
   return (
     <Card>
-      <CardHeader title="از ابتدا تاکنون" sub="مستقل از بازهٔ انتخابی" icon={Globe} />
+      <CardHeader title={t("st.allTime")} sub={t("st.allTime.sub")} icon={Globe} />
       <ul className="space-y-2 text-sm">
-        <Row label="شناسهٔ ساخته‌شده" value={formatNumber(data.total_devices_all_time)} />
-        <Row label="دریافت‌کننده" value={formatNumber(data.devices_claimed_all_time)} />
-        <Row label="نرخ تبدیل کل" value={faPct(data.conversion_all_time_pct)} />
-        <Row label="مشترک اعلان" value={formatNumber(data.push_subscribers)} />
-        <Row label="تعویض لوکیشن (این بازه)" value={formatNumber(data.location_changes)} />
+        <Row label={t("st.allTime.identities")} value={formatNumber(data.total_devices_all_time)} />
+        <Row label={t("st.allTime.claimers")} value={formatNumber(data.devices_claimed_all_time)} />
+        <Row label={t("st.allTime.conversion")} value={faPct(data.conversion_all_time_pct)} />
+        <Row label={t("st.allTime.subscribers")} value={formatNumber(data.push_subscribers)} />
+        <Row label={t("st.allTime.relocations")} value={formatNumber(data.location_changes)} />
       </ul>
-      <p className="mt-3 text-xs leading-relaxed text-content-subtle">
-        «شناسهٔ ساخته‌شده» تعداد بازدید نیست: مرورگری که کوکی نگه نمی‌دارد در هر درخواست یک شناسهٔ
-        تازه می‌سازد. عدد بازدید بالای صفحه از آخرین حضور واقعی دستگاه‌ها به دست می‌آید.
-      </p>
+      <p className="mt-3 text-xs leading-relaxed text-content-subtle">{t("st.allTime.note")}</p>
     </Card>
   );
 }
 
 function StatusCard({ data }: { data: SiteStatsData }) {
+  const { t } = useI18n();
   const entries = Object.entries(data.status_counts);
   return (
     <Card>
-      <CardHeader title="وضعیت دستگاه‌ها" icon={BellRing} />
+      <CardHeader title={t("st.deviceStatus")} icon={BellRing} />
       <ul className="space-y-2 text-sm">
         {entries.map(([status, count]) => (
-          <Row key={status} label={STATUS_LABEL[status] ?? status} value={formatNumber(count)} />
+          <Row
+            key={status}
+            label={STATUS_LABEL[status] ? t(STATUS_LABEL[status]) : status}
+            value={formatNumber(count)}
+          />
         ))}
         {entries.length === 0 && (
-          <li className="py-4 text-center text-content-subtle">داده‌ای نیست.</li>
+          <li className="py-4 text-center text-content-subtle">{t("st.noData")}</li>
         )}
       </ul>
     </Card>

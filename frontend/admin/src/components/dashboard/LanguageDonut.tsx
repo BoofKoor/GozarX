@@ -5,8 +5,10 @@ import { useIsDark } from "@/hooks/useIsDark";
 import { seriesColor } from "@/lib/chartTheme";
 import { formatNumber, langLabel } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 export function LanguageDonut({ data }: { data: NamedCount[] }) {
+  const { t } = useI18n();
   useIsDark(); // slice colours come from CSS tokens — re-render when the theme flips
   const total = data.reduce((s, d) => s + d.count, 0);
   const slices = data.map((d, i) => ({
@@ -17,10 +19,10 @@ export function LanguageDonut({ data }: { data: NamedCount[] }) {
 
   return (
     <Card>
-      <CardHeader title="زبان کاربران" />
+      <CardHeader title={t("d.langs")} />
       {total === 0 ? (
         <div className="flex h-40 items-center justify-center text-sm text-content-subtle">
-          هنوز کاربری نیست
+          {t("d.langs.empty")}
         </div>
       ) : (
         <div className="flex items-center gap-4">

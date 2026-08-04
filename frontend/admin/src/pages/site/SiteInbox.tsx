@@ -23,18 +23,13 @@ import {
   useMarkMessageUnread,
   useSiteMessages,
 } from "@/hooks/useSite";
+import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
-import { formatNumber, langLabel } from "@/lib/format";
+import { faDateTime, formatNumber, langLabel } from "@/lib/format";
 import type { SiteMessage } from "@/types/api";
 
-const LOCALES = [
-  { value: "", label: "همه" },
-  { value: "fa", label: "فارسی" },
-  { value: "en", label: "English" },
-];
-
 function fmtDate(s: string | null): string {
-  return s ? new Date(s).toLocaleString("fa-IR") : "";
+  return s ? faDateTime(s) : "";
 }
 
 /**
@@ -57,6 +52,12 @@ function replyLink(handle: string): { href: string; label: string } | null {
 }
 
 export function SiteInbox() {
+  const { t } = useI18n();
+  const LOCALES = [
+    { value: "", label: t("si.locale.all") },
+    { value: "fa", label: langLabel("fa") },
+    { value: "en", label: langLabel("en") },
+  ];
   const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [search, setSearch] = useState("");
@@ -92,11 +93,11 @@ export function SiteInbox() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="پیام‌های وب‌سایت"
-        sub="پیام‌های فرم تماس سایت عمومی."
+        title={t("si.title")}
+        sub={t("si.sub")}
         actions={
           data && data.unread > 0 ? (
-            <Badge tone="brand">{formatNumber(data.unread)} خوانده‌نشده</Badge>
+            <Badge tone="brand">{t("si.unread", { n: formatNumber(data.unread) })}</Badge>
           ) : undefined
         }
       >
@@ -106,9 +107,9 @@ export function SiteInbox() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[220px] flex-1">
           <Input
-            aria-label="جستجوی پیام‌ها"
+            aria-label={t("si.searchAria")}
             icon={<Search className="h-4 w-4" />}
-            placeholder="جستجو در موضوع، متن یا راه پاسخ…"
+            placeholder={t("si.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -118,9 +119,9 @@ export function SiteInbox() {
           onChange={setLocale}
           options={LOCALES}
           size="sm"
-          ariaLabel="زبان پیام"
+          ariaLabel={t("si.localeAria")}
         />
-        <Checkbox checked={unreadOnly} onChange={setUnreadOnly} label="فقط خوانده‌نشده‌ها" />
+        <Checkbox checked={unreadOnly} onChange={setUnreadOnly} label={t("si.unreadOnly")} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -134,8 +135,8 @@ export function SiteInbox() {
           ) : items.length === 0 ? (
             <EmptyState
               icon={Mail}
-              title="پیامی نیست"
-              message={search || unreadOnly || locale ? "با این فیلترها چیزی پیدا نشد." : undefined}
+              title={t("si.empty")}
+              message={search || unreadOnly || locale ? t("si.empty.filtered") : undefined}
             />
           ) : (
             <ul className="scrollbar-thin max-h-[60vh] space-y-1 overflow-y-auto">
@@ -180,7 +181,7 @@ export function SiteInbox() {
             />
           ) : (
             <Card>
-              <EmptyState icon={Mail} title="یک پیام را برای خواندن انتخاب کنید" />
+              <EmptyState icon={Mail} title={t("si.pick")} />
             </Card>
           )}
         </div>
@@ -198,6 +199,7 @@ function MessageView({
   onDeleted: () => void;
   onUnread: () => void;
 }) {
+  const { t } = useI18n();
   const markUnread = useMarkMessageUnread();
   const del = useDeleteMessage();
   const confirm = useConfirm();
@@ -205,18 +207,18 @@ function MessageView({
 
   async function remove() {
     const ok = await confirm({
-      title: "حذف پیام",
-      message: "این پیام برای همیشه حذف شود؟",
+      title: t("si.delete.title"),
+      message: t("si.delete.confirm"),
       tone: "danger",
-      confirmLabel: "حذف",
+      confirmLabel: t("si.delete.label"),
     });
     if (!ok) return;
     del.mutate(message.id, {
       onSuccess: () => {
-        toast.success("حذف شد.");
+        toast.success(t("si.deleted"));
         onDeleted();
       },
-      onError: (err) => toast.error(apiErrorMessage(err, "حذف نشد.")),
+      onError: (err) => toast.error(apiErrorMessage(err, t("si.deleteFailed"))),
     });
   }
 
@@ -234,14 +236,14 @@ function MessageView({
             onClick={() =>
               markUnread.mutate(message.id, {
                 onSuccess: () => {
-                  toast.success("به‌عنوان خوانده‌نشده علامت خورد.");
+                  toast.success(t("si.markedUnread"));
                   onUnread();
                 },
               })
             }
           >
             <Mail className="h-4 w-4" />
-            خوانده‌نشده
+            {t("si.markUnread")}
           </Button>
           <Button variant="ghost" size="sm" onClick={remove} loading={del.isPending}>
             <Trash2 className="h-4 w-4 text-danger-600" />
@@ -251,13 +253,13 @@ function MessageView({
 
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-content-subtle">
         <span>{fmtDate(message.created_at)}</span>
-        <span>زبان: {langLabel(message.locale)}</span>
+        <span>{t("si.language", { lang: langLabel(message.locale) })}</span>
         {message.device_uuid && (
           <Link
             to={`/site/devices?search=${encodeURIComponent(message.device_uuid)}`}
             className="inline-flex items-center gap-1 text-brand hover:underline"
           >
-            دستگاه فرستنده
+            {t("si.senderDevice")}
             <ExternalLink className="h-3 w-3" />
           </Link>
         )}
@@ -265,7 +267,7 @@ function MessageView({
 
       {message.reply_handle && (
         <div className="flex items-center gap-2 rounded-xl bg-surface-sunken px-3 py-2 text-sm">
-          <span className="text-content-muted">راه پاسخ:</span>
+          <span className="text-content-muted">{t("si.replyVia")}</span>
           {reply ? (
             <a
               href={reply.href}

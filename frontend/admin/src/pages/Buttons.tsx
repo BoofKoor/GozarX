@@ -23,25 +23,35 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useButtons, useReorderButtons, useResetButton } from "@/hooks/useButtons";
+import { useI18n, type MessageKey } from "@/i18n";
+import { formatNumber } from "@/lib/format";
 import type { ButtonConfig, ReorderItem } from "@/types/api";
 
-const SCREEN_NAMES: Record<string, string> = {
-  main_menu: "منوی اصلی",
-  landing: "صفحهٔ دریافت کانفیگ",
-  help: "راهنما",
-  config_delivered: "پس از تحویل کانفیگ",
-  status: "وضعیت",
-  settings: "تنظیمات",
-  reminder: "یادآور",
-  invite: "دعوت دوستان",
-  location: "انتخاب لوکیشن",
-  admin_menu: "منوی ادمین",
-  admin_user_card: "کارت کاربر (ادمین)",
-  confirm: "تأیید / لغو",
-  admin_back: "بازگشت ادمین",
-};
+/** The screens the bot renders keyboards for. An unknown screen falls back to its raw key. */
+const SCREENS = [
+  "main_menu",
+  "landing",
+  "help",
+  "config_delivered",
+  "status",
+  "settings",
+  "reminder",
+  "invite",
+  "location",
+  "admin_menu",
+  "admin_user_card",
+  "confirm",
+  "admin_back",
+] as const;
+
+function screenKey(screen: string): MessageKey | null {
+  return (SCREENS as readonly string[]).includes(screen)
+    ? (`btn.screen.${screen}` as MessageKey)
+    : null;
+}
 
 export function Buttons() {
+  const { t } = useI18n();
   const { data: buttons = [], isLoading, isError, refetch } = useButtons();
   const [editing, setEditing] = useState<ButtonConfig | null>(null);
 
@@ -57,13 +67,7 @@ export function Buttons() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <PageHeader title="دکمه‌ها" />
-        <p className="mt-1 text-sm text-content-muted">
-          متن (سه‌زبانه)، نمایش و چیدمان دکمه‌های ربات. برای جابه‌جایی، دکمه را بکش — حتی بین
-          ردیف‌ها. دکمه‌های حیاتی (بازگشت/تأیید) قابل مخفی‌سازی نیستند.
-        </p>
-      </div>
+      <PageHeader title={t("btn.title")} sub={t("btn.sub")} />
 
       {editing && <ButtonEditor button={editing} onClose={() => setEditing(null)} />}
 
@@ -91,6 +95,8 @@ function ScreenGroup({
   buttons: ButtonConfig[];
   onEdit: (b: ButtonConfig) => void;
 }) {
+  const { t, locale } = useI18n();
+  const label = screenKey(screen);
   const reorder = useReorderButtons();
   const reset = useResetButton();
   const [activeKey, setActiveKey] = useState<string | null>(null);
@@ -122,7 +128,7 @@ function ScreenGroup({
     const activeId = String(active.id);
 
     if (buttons.find((b) => b.key === activeId)?.is_critical) {
-      toast.error("دکمهٔ حیاتی قابل جابه‌جایی نیست.");
+      toast.error(t("btn.criticalDrag"));
       return;
     }
 
@@ -163,20 +169,22 @@ function ScreenGroup({
       .forEach((r, rowIdx) =>
         r.keys.forEach((key, posIdx) => updates.push({ key, row_index: rowIdx, position: posIdx })),
       );
-    reorder.mutate(updates, { onError: () => toast.error("جابه‌جایی ذخیره نشد.") });
+    reorder.mutate(updates, { onError: () => toast.error(t("btn.reorderFailed")) });
   }
 
   return (
     <Card>
       <div className="mb-3 flex items-center gap-2">
-        <h2 className="text-base font-bold">{SCREEN_NAMES[screen] ?? screen}</h2>
-        <code className="text-xs text-content-subtle" dir="ltr">
+        <h2 className="text-base font-bold">{label ? t(label) : screen}</h2>
+        <code className="font-mono text-xs text-content-subtle" dir="ltr">
           {screen}
         </code>
       </div>
 
       <div className="mb-4">
-        <TelegramPreview buttons={buttons} lang="fa" />
+        {/* Preview in the language the operator is reading the panel in — checking an English
+            label against a Persian preview is the one thing this control cannot do. */}
+        <TelegramPreview buttons={buttons} lang={locale} />
       </div>
 
       <DndContext
@@ -202,7 +210,7 @@ function ScreenGroup({
         <DragOverlay>
           {activeButton ? (
             <div className="rounded-lg border-2 border-brand bg-surface px-2 py-2 text-sm shadow-lg">
-              {activeButton.effective_label.fa}
+              {activeButton.effective_label[locale]}
             </div>
           ) : null}
         </DragOverlay>
@@ -222,16 +230,19 @@ function RowZone({
   onEdit: (b: ButtonConfig) => void;
   onReset: (key: string) => void;
 }) {
+  const { t } = useI18n();
   const { setNodeRef, isOver } = useDroppable({ id: `rowzone-${row}` });
   return (
     <div
       ref={setNodeRef}
       className={clsx(
         "rounded-lg border p-2 transition",
-        isOver ? "border-brand bg-brand/10" : "border-line bg-surface-sunken",
+        isOver ? "border-brand bg-brand/15" : "border-line bg-surface-sunken",
       )}
     >
-      <div className="mb-1.5 text-[10px] font-mono text-content-subtle">ردیف {row}</div>
+      <div className="mb-1.5 font-mono text-[10px] text-content-subtle">
+        {t("btn.row", { n: formatNumber(row + 1) })}
+      </div>
       <div className="flex flex-col gap-1.5">
         {buttons.map((b) => (
           <DraggableButton
@@ -247,6 +258,7 @@ function RowZone({
 }
 
 function NewRowZone() {
+  const { t } = useI18n();
   const { setNodeRef, isOver } = useDroppable({ id: "newrow" });
   return (
     <div
@@ -254,13 +266,13 @@ function NewRowZone() {
       className={clsx(
         "rounded-lg border-2 border-dashed p-3 text-center text-sm transition",
         isOver
-          ? "border-success-500 bg-success-500/12 text-success-700"
+          ? "border-success-500 bg-success-500/15 text-success-700"
           : "border-line-strong text-content-subtle",
       )}
     >
       <span className="inline-flex items-center gap-1.5">
         <Plus className="h-4 w-4" />
-        برای ساخت ردیف جدید، دکمه را اینجا بکش
+        {t("btn.newRow")}
       </span>
     </div>
   );
@@ -275,6 +287,7 @@ function DraggableButton({
   onEdit: () => void;
   onReset: () => void;
 }) {
+  const { t, locale } = useI18n();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: button.key,
   });
@@ -293,19 +306,24 @@ function DraggableButton({
         {...attributes}
         {...listeners}
         className="cursor-grab text-content-subtle hover:text-content-muted active:cursor-grabbing"
-        title="کشیدن برای جابه‌جایی"
+        title={t("btn.drag")}
       >
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5">
-          <span className="truncate text-sm">{button.effective_label.fa}</span>
+          <span className="truncate text-sm">{button.effective_label[locale]}</span>
           {!button.is_visible && <EyeOff className="h-3 w-3 shrink-0 text-content-subtle" />}
           {button.is_critical && (
-            <AlertCircle className="h-3 w-3 shrink-0 text-warning-600" aria-label="حیاتی" />
+            <AlertCircle
+              className="h-3 w-3 shrink-0 text-warning-600"
+              aria-label={t("btn.critical")}
+            />
           )}
           {button.customized && (
-            <span className="shrink-0 rounded bg-brand/10 px-1 text-[10px] text-brand">سفارشی</span>
+            <span className="shrink-0 rounded bg-brand/20 px-1 text-[10px] text-brand-700">
+              {t("btn.custom")}
+            </span>
           )}
         </div>
         <code className="text-[10px] text-content-subtle" dir="ltr">
@@ -315,15 +333,15 @@ function DraggableButton({
       <button
         onClick={onEdit}
         className="rounded p-1.5 text-content-subtle hover:bg-surface-hover hover:text-brand"
-        title="ویرایش"
+        title={t("btn.edit")}
       >
         <Pencil className="h-3.5 w-3.5" />
       </button>
       {button.customized && (
         <button
           onClick={onReset}
-          className="rounded p-1.5 text-content-subtle hover:bg-danger-500/12 hover:text-danger-700"
-          title="بازنشانی به پیش‌فرض"
+          className="rounded p-1.5 text-content-subtle hover:bg-danger-500/15 hover:text-danger-700"
+          title={t("btn.reset")}
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </button>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { t } from "@/i18n";
 import type { ChartTheme } from "@/lib/chartTheme";
 
 /**
@@ -37,7 +38,7 @@ export function AreaGradient({ id, color }: { id: string; color: string }) {
 export function ChartFrame({
   height = "h-64",
   empty,
-  emptyLabel = "داده‌ای برای این بازه نیست",
+  emptyLabel,
   children,
 }: {
   height?: string;
@@ -52,7 +53,7 @@ export function ChartFrame({
           className="flex h-full items-center justify-center text-sm text-content-subtle"
           dir="rtl"
         >
-          {emptyLabel}
+          {emptyLabel ?? t("d.heat.empty")}
         </div>
       ) : (
         children

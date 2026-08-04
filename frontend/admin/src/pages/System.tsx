@@ -5,25 +5,35 @@ import { HistoryChart } from "@/components/system/HistoryChart";
 import { GozarHostCard, PanelHostCard } from "@/components/system/ResourceGauges";
 import { WebhookCard } from "@/components/system/WebhookCard";
 import { Card } from "@/components/ui/Card";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { useSystemHealth, useSystemHistory } from "@/hooks/useSystem";
+import { useI18n } from "@/i18n";
 
 export function System() {
+  const { t } = useI18n();
   const [minutes, setMinutes] = useState(60);
-  const { data: health, isLoading, isError } = useSystemHealth();
+  const { data: health, isLoading, isError, refetch } = useSystemHealth();
   const { data: history = [] } = useSystemHistory(minutes);
 
   if (isLoading) {
     return <SystemSkeleton />;
   }
   if (isError || !health) {
-    return <Card>خطا در دریافت وضعیت سیستم. لطفاً بعداً تلاش کنید.</Card>;
+    return (
+      <div className="space-y-6">
+        <PageHeader title={t("sys.title")} />
+        {/* ErrorState, not an EmptyState: a probe that could not be read needs a retry, and the
+            two states call for opposite responses. */}
+        <ErrorState message={t("sys.unreachable")} onRetry={() => refetch()} />
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader title="سیستم" />
+      <PageHeader title={t("sys.title")} sub={t("sys.sub")} />
       <HealthBanner data={health} />
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <GozarHostCard host={health.host} />
@@ -36,9 +46,10 @@ export function System() {
 }
 
 function SystemSkeleton() {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
-      <PageHeader title="سیستم" />
+      <PageHeader title={t("sys.title")} sub={t("sys.sub")} />
       <Card>
         <Skeleton className="h-16 w-full" />
       </Card>

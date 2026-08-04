@@ -5,21 +5,23 @@ import { useIsDark } from "@/hooks/useIsDark";
 import { tokenColor } from "@/lib/chartTheme";
 import { formatNumber, humanBytes } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
+import { useI18n, type MessageKey } from "@/i18n";
 
 // Remnawave user statuses → Persian label + the semantic token that carries their meaning.
-const STATUS_META: Record<string, { label: string; token: string }> = {
-  ACTIVE: { label: "فعال", token: "success-500" },
-  LIMITED: { label: "محدود", token: "warning-500" },
-  EXPIRED: { label: "منقضی", token: "danger-500" },
-  DISABLED: { label: "غیرفعال", token: "text-subtle" },
+const STATUS_META: Record<string, { label: MessageKey; token: string }> = {
+  ACTIVE: { label: "d.trial.ACTIVE", token: "success-500" },
+  LIMITED: { label: "d.trial.LIMITED", token: "warning-500" },
+  EXPIRED: { label: "d.trial.EXPIRED", token: "danger-500" },
+  DISABLED: { label: "d.trial.DISABLED", token: "text-subtle" },
 };
 
 export function TrialHealthPanel({ data }: { data: DashboardStats }) {
+  const { t } = useI18n();
   useIsDark(); // slice colours come from CSS tokens — re-render when the theme flips
   const slices = Object.entries(data.panel_status_counts)
     .filter(([, n]) => n > 0)
     .map(([status, n]) => ({
-      name: STATUS_META[status]?.label ?? status,
+      name: STATUS_META[status] ? t(STATUS_META[status].label) : status,
       value: n,
       color: tokenColor(STATUS_META[status]?.token ?? "line-strong"),
     }));
@@ -27,12 +29,12 @@ export function TrialHealthPanel({ data }: { data: DashboardStats }) {
 
   return (
     <Card>
-      <CardHeader title="سلامت سرویس (پنل)" />
+      <CardHeader title={t("d.trial")} />
       <div className="flex items-center gap-4">
         <div className="h-36 w-36 shrink-0" dir="ltr">
           {total === 0 ? (
             <div className="flex h-full items-center justify-center text-xs text-content-subtle">
-              بدون داده
+              {t("d.trial.noData")}
             </div>
           ) : (
             <ResponsiveContainer width="100%" height="100%">
@@ -65,9 +67,9 @@ export function TrialHealthPanel({ data }: { data: DashboardStats }) {
         </ul>
       </div>
       <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3 text-center">
-        <Metric label="ترافیک مصرفی" value={humanBytes(data.total_traffic_bytes)} />
-        <Metric label="نودهای آنلاین" value={formatNumber(data.nodes_online)} />
-        <Metric label="کاربران پنل" value={formatNumber(data.panel_total_users)} />
+        <Metric label={t("d.trial.traffic")} value={humanBytes(data.total_traffic_bytes)} />
+        <Metric label={t("d.trial.nodes")} value={formatNumber(data.nodes_online)} />
+        <Metric label={t("d.trial.panelUsers")} value={formatNumber(data.panel_total_users)} />
       </div>
     </Card>
   );

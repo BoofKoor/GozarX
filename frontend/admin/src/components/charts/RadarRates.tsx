@@ -2,7 +2,7 @@ import { useId } from "react";
 
 import { useIsDark } from "@/hooks/useIsDark";
 import { tokenColor } from "@/lib/chartTheme";
-import { formatNumber } from "@/lib/format";
+import { faPct, formatNumber } from "@/lib/format";
 import { useI18n } from "@/i18n";
 
 import { rosePath, rosePoints, spokeAngles } from "./geometry";
@@ -119,7 +119,7 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
         const [px, py] = at(i, 1);
         return (
           <circle key={i} cx={px} cy={py} r="11" fill="transparent">
-            <title>{`${axis.title ?? axis.label} — ${formatNumber(axis.value)}${locale === "fa" ? "٪" : "%"}`}</title>
+            <title>{`${axis.title ?? axis.label} — ${faPct(axis.value)}`}</title>
           </circle>
         );
       })}

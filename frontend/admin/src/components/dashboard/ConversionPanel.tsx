@@ -1,29 +1,31 @@
 import { Card, CardHeader } from "@/components/ui/Card";
 import { formatNumber } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
+import { useI18n } from "@/i18n";
 
 export function ConversionPanel({ data }: { data: DashboardStats }) {
+  const { t } = useI18n();
   const reminderPct = data.total_users
     ? Math.round((data.reminder_enabled / data.total_users) * 100)
     : 0;
   const bars = [
     {
-      label: "نرخ تبدیل",
+      label: t("d.conv.rate"),
       pct: data.conversion_pct,
-      hint: "کاربرانی که حداقل یک کانفیگ گرفته‌اند",
+      hint: t("d.conv.rateHint"),
       color: "bg-brand",
     },
     {
-      label: "یادآور روشن",
+      label: t("d.conv.reminder"),
       pct: reminderPct,
-      hint: `${formatNumber(data.reminder_enabled)} کاربر`,
+      hint: t("d.conv.reminderHint", { n: formatNumber(data.reminder_enabled) }),
       color: "bg-info",
     },
   ];
 
   return (
     <Card>
-      <CardHeader title="تبدیل و دعوت" />
+      <CardHeader title={t("d.conv")} />
       <div className="space-y-4">
         {bars.map((b) => (
           <div key={b.label}>
@@ -41,7 +43,7 @@ export function ConversionPanel({ data }: { data: DashboardStats }) {
           </div>
         ))}
         <div className="flex items-center justify-between border-t border-line pt-3">
-          <span className="text-sm text-content-muted">میانگین دعوت به ازای کاربر</span>
+          <span className="text-sm text-content-muted">{t("d.conv.avgReferrals")}</span>
           <span className="text-lg font-bold tabular-nums">{data.avg_referrals}</span>
         </div>
       </div>

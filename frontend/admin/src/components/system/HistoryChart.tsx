@@ -19,14 +19,12 @@ import {
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Segmented } from "@/components/ui/Segmented";
 import { useIsDark } from "@/hooks/useIsDark";
+import { useI18n } from "@/i18n";
 import { chartTheme, seriesColor } from "@/lib/chartTheme";
+import { formatNumber } from "@/lib/format";
 import type { HealthSample } from "@/types/api";
 
-const RANGES = [
-  { value: 60, label: "۱ ساعت" },
-  { value: 360, label: "۶ ساعت" },
-  { value: 1440, label: "۲۴ ساعت" },
-];
+const RANGES = [60, 360, 1440];
 
 function hhmm(iso: string): string {
   const d = new Date(iso);
@@ -46,7 +44,12 @@ export function HistoryChart({
 }) {
   // Keep a failed Telegram latency probe (api_ms === null) as a GAP, not 0 — a 0 ms reading on a
   // latency axis reads as "excellent" and would hide an outage at the chart floor.
+  const { t: tr } = useI18n();
   const points = samples.map((s) => ({ t: hhmm(s.ts), api: s.api_ms, pending: s.pending }));
+  const ranges = RANGES.map((value) => ({
+    value,
+    label: tr("sys.chart.hours", { n: formatNumber(value / 60) }),
+  }));
   const t = chartTheme(useIsDark());
   const apiColor = seriesColor(0);
   const pendingColor = seriesColor(1);
@@ -54,40 +57,38 @@ export function HistoryChart({
   return (
     <Card>
       <CardHeader
-        title="پاسخگویی و تأخیر سرویس"
+        title={tr("sys.chart.title")}
         action={
           <Segmented
             value={minutes}
             onChange={onMinutesChange}
-            options={RANGES}
+            options={ranges}
             size="sm"
-            ariaLabel="بازهٔ نمودار"
+            ariaLabel={tr("sys.chart.range")}
           />
         }
       />
       <ChartLegend
         items={[
-          { label: "تأخیر API تلگرام (ms)", color: apiColor },
-          { label: "آپدیت‌های معلق", color: pendingColor },
+          { label: tr("sys.chart.api"), color: apiColor },
+          { label: tr("sys.chart.pending"), color: pendingColor },
         ]}
       />
-      <ChartFrame
-        height="h-60"
-        empty={points.length === 0}
-        emptyLabel="هنوز داده‌ای ثبت نشده (نمونه‌ها هر دقیقه جمع می‌شوند)"
-      >
+      <ChartFrame height="h-60" empty={points.length === 0} emptyLabel={tr("sys.chart.empty")}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={points} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+          {/* No negative left margin: it pulled a 3-digit localized tick off the frame and the
+              axis read "40" where the value was 140. */}
+          <ComposedChart data={points} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
             <defs>
               <AreaGradient id="g-api" color={apiColor} />
             </defs>
             <CartesianGrid {...gridProps(t)} />
             <XAxis dataKey="t" minTickGap={32} {...axisProps(t)} />
-            <YAxis yAxisId="api" width={36} {...axisProps(t)} />
+            <YAxis yAxisId="api" width={44} {...axisProps(t)} />
             <YAxis
               yAxisId="pending"
               orientation="right"
-              width={28}
+              width={34}
               allowDecimals={false}
               {...axisProps(t)}
             />
@@ -96,7 +97,7 @@ export function HistoryChart({
               yAxisId="api"
               type="monotone"
               dataKey="api"
-              name="تأخیر (ms)"
+              name={tr("sys.chart.latency")}
               stroke={apiColor}
               strokeWidth={2}
               fill="url(#g-api)"
@@ -106,7 +107,7 @@ export function HistoryChart({
               yAxisId="pending"
               type="monotone"
               dataKey="pending"
-              name="معلق"
+              name={tr("sys.chart.pendingShort")}
               stroke={pendingColor}
               strokeWidth={2}
               dot={false}

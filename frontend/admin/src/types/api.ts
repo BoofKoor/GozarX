@@ -371,6 +371,16 @@ export interface Metric {
   change_pct: number | null;
 }
 
+/** Same shape, but the figure can be genuinely ABSENT rather than zero — a median over an empty
+ *  cohort has no value, and rendering it as 0 would claim an instant activation that never
+ *  happened. Kept separate from `Metric` because a count always exists and its callers should not
+ *  have to narrow a null that can never arrive. */
+export interface NullableMetric {
+  value: number | null;
+  previous: number | null;
+  change_pct: number | null;
+}
+
 export interface SiteStats {
   range_days: number;
 
@@ -428,9 +438,13 @@ export interface DashboardAnalytics {
   wau: number;
   mau: number;
   stickiness_pct: number;
-  median_hours_to_claim: number | null;
-  activation_24h_pct: number;
-  claimers: number;
+  /** Windowed: the cohort is everyone whose FIRST claim landed in the selected range, next to the
+   *  equally long window before it. Both used to be all-time figures under a range control that
+   *  could not move them. */
+  median_hours_to_claim: NullableMetric;
+  activation_24h: Metric;
+  first_claimers_in_range: number; // the cohort size both percentages are computed over
+  claimers_all_time: number;
   referral: ReferralFunnel;
   referral_cap: ReferralCap;
   heatmap: HeatCell[];

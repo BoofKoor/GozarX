@@ -7,7 +7,7 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Drawer } from "@/components/ui/Drawer";
+import { RecordDialog } from "@/components/ui/RecordDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
@@ -23,33 +23,28 @@ import {
   useSiteDevicePeers,
   useSiteDevices,
 } from "@/hooks/useSite";
+import { useI18n, type MessageKey } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { faDate, formatNumber } from "@/lib/format";
 import type { SiteDeviceAction } from "@/types/api";
 
-const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
-  available: { label: "آزاد", tone: "neutral" },
-  active_config: { label: "دارای کانفیگ", tone: "success" },
-  blocked: { label: "مسدود", tone: "danger" },
+const STATUS: Record<string, { label: MessageKey; tone: BadgeTone }> = {
+  available: { label: "sd.status.available", tone: "neutral" },
+  active_config: { label: "sd.status.active_config", tone: "success" },
+  blocked: { label: "sd.status.blocked", tone: "danger" },
 };
 
-const FILTERS = [
-  { value: "", label: "همه" },
-  { value: "available", label: "آزاد" },
-  { value: "active_config", label: "دارای کانفیگ" },
-  { value: "blocked", label: "مسدود" },
-];
-
-const REWARD_LABEL: Record<string, string> = {
-  pwa: "نصب اپ (PWA)",
-  push: "فعال‌کردن اعلان",
+const REWARD_LABEL: Record<string, MessageKey> = {
+  pwa: "sd.reward.pwa",
+  push: "sd.reward.push",
 };
 
 const PAGE_SIZE = 25;
 
 function StatusBadge({ status }: { status: string }) {
-  const meta = STATUS[status] ?? { label: status, tone: "neutral" as BadgeTone };
-  return <Badge tone={meta.tone}>{meta.label}</Badge>;
+  const { t } = useI18n();
+  const meta = STATUS[status];
+  return <Badge tone={meta?.tone ?? "neutral"}>{meta ? t(meta.label) : status}</Badge>;
 }
 
 /**
@@ -60,6 +55,13 @@ function StatusBadge({ status }: { status: string }) {
  * an abuser. `?ip_bucket=` is what that panel deep-links into.
  */
 export function SiteDevices() {
+  const { t } = useI18n();
+  const FILTERS = [
+    { value: "", label: t("sd.filter.all") },
+    { value: "available", label: t("sd.status.available") },
+    { value: "active_config", label: t("sd.status.active_config") },
+    { value: "blocked", label: t("sd.status.blocked") },
+  ];
   const [params, setParams] = useSearchParams();
   const ipBucket = params.get("ip_bucket") ?? "";
   const [search, setSearch] = useState("");
@@ -84,8 +86,8 @@ export function SiteDevices() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="دستگاه‌های وب‌سایت"
-        sub={`${formatNumber(total)} دستگاه${ipBucket ? " در این محدودهٔ IP" : ""}`}
+        title={t("sd.title")}
+        sub={t(ipBucket ? "sd.sub.ip" : "sd.sub", { n: formatNumber(total) })}
       >
         <SiteTabs />
       </PageHeader>
@@ -95,9 +97,9 @@ export function SiteDevices() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-[240px] flex-1">
           <Input
-            aria-label="جستجوی دستگاه‌ها"
+            aria-label={t("sd.searchAria")}
             icon={<Search className="h-4 w-4" />}
-            placeholder="جستجو با شناسه (GZ-…)، uuid یا نام کاربری پنل…"
+            placeholder={t("sd.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -107,14 +109,17 @@ export function SiteDevices() {
           onChange={setStatus}
           options={FILTERS}
           size="sm"
-          ariaLabel="فیلتر وضعیت"
+          ariaLabel={t("sd.filterAria")}
         />
       </div>
 
       {ipBucket && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-warning-500/12 px-3 py-2 text-xs text-warning-700">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-warning-500/15 px-3 py-2 text-xs text-warning-700">
           <Network className="h-4 w-4 shrink-0" />
-          فقط دستگاه‌های پشت IP <span className="font-mono">{ipBucket}</span>
+          {t("sd.ipFilter")}{" "}
+          <span className="font-mono" dir="ltr">
+            {ipBucket}
+          </span>
           <Button
             variant="ghost"
             size="xs"
@@ -124,7 +129,7 @@ export function SiteDevices() {
             }}
           >
             <X className="h-3.5 w-3.5" />
-            برداشتن فیلتر
+            {t("sd.ipFilter.clear")}
           </Button>
         </div>
       )}
@@ -139,24 +144,20 @@ export function SiteDevices() {
         ) : !data || data.items.length === 0 ? (
           <EmptyState
             icon={MonitorSmartphone}
-            title="دستگاهی یافت نشد"
-            message={
-              search || status || ipBucket
-                ? "با این جستجو/فیلتر نتیجه‌ای نبود."
-                : "هنوز کسی از سایت عمومی کانفیگ نگرفته است."
-            }
+            title={t("sd.empty")}
+            message={search || status || ipBucket ? t("sd.empty.filtered") : t("sd.empty.none")}
           />
         ) : (
           <Table minWidth="min-w-[720px]">
             <THead>
               <TR>
-                <TH>شناسه</TH>
-                <TH>وضعیت</TH>
-                <TH>دعوت‌ها</TH>
-                <TH>استریک</TH>
-                <TH>آخرین دریافت</TH>
-                <TH>محدودهٔ IP</TH>
-                <TH>اولین بازدید</TH>
+                <TH>{t("sd.col.handle")}</TH>
+                <TH>{t("sd.col.status")}</TH>
+                <TH>{t("sd.col.invites")}</TH>
+                <TH>{t("sd.col.streak")}</TH>
+                <TH>{t("sd.col.lastClaim")}</TH>
+                <TH>{t("sd.col.ip")}</TH>
+                <TH>{t("sd.col.firstSeen")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -169,7 +170,7 @@ export function SiteDevices() {
                     {d.has_fingerprint && (
                       <Fingerprint
                         className="ms-1.5 inline h-3.5 w-3.5 text-content-subtle"
-                        aria-label="اثرانگشت مرورگر ثبت شده"
+                        aria-label={t("sd.fingerprint")}
                       />
                     )}
                   </TD>
@@ -210,33 +211,37 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 }
 
 function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) {
+  const { t } = useI18n();
   const { data: device, isLoading } = useSiteDevice(uuid);
   const { data: peers } = useSiteDevicePeers(uuid);
   const action = useSiteDeviceAction();
   const confirm = useConfirm();
 
   async function run(name: SiteDeviceAction, message?: string) {
-    if (message && !(await confirm({ message, tone: "danger", confirmLabel: "بله، انجام بده" }))) {
+    if (
+      message &&
+      !(await confirm({ message, tone: "danger", confirmLabel: t("sd.action.confirmLabel") }))
+    ) {
       return;
     }
     action.mutate(
       { uuid, action: name },
       {
-        onSuccess: () => toast.success("انجام شد."),
-        onError: (err) => toast.error(apiErrorMessage(err, "ناموفق بود.")),
+        onSuccess: () => toast.success(t("sd.action.done")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("sd.action.failed"))),
       },
     );
   }
 
   return (
-    <Drawer
+    <RecordDialog
       open
       onClose={onClose}
-      title={device?.handle ?? "دستگاه"}
+      title={device?.handle ?? t("sd.detail.title")}
       sub={uuid}
       footer={
         <Button variant="ghost" onClick={onClose}>
-          بستن
+          {t("ui.close")}
         </Button>
       }
     >
@@ -247,27 +252,30 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
       ) : (
         <div className="space-y-5">
           <div>
-            <Row label="وضعیت" value={<StatusBadge status={device.status} />} />
-            <Row label="کانفیگ‌های گرفته‌شده" value={formatNumber(device.claims)} />
-            <Row label="آخرین دریافت" value={faDate(device.last_claim_at)} />
-            <Row label="دعوت‌های پاداش‌گرفته" value={formatNumber(device.referral_count)} />
-            <Row label="کل دعوت‌شده‌ها" value={formatNumber(device.invited)} />
-            <Row label="استریک روزانه" value={formatNumber(device.streak_count)} />
-            <Row label="حساب پنل" value={device.site_panel_username ?? "—"} />
-            <Row label="محدودهٔ IP" value={device.ip_bucket ?? "—"} />
-            <Row label="اولین بازدید" value={faDate(device.created_at)} />
+            <Row label={t("sd.col.status")} value={<StatusBadge status={device.status} />} />
+            <Row label={t("sd.detail.claims")} value={formatNumber(device.claims)} />
+            <Row label={t("sd.col.lastClaim")} value={faDate(device.last_claim_at)} />
+            <Row
+              label={t("sd.detail.rewardedInvites")}
+              value={formatNumber(device.referral_count)}
+            />
+            <Row label={t("sd.detail.invited")} value={formatNumber(device.invited)} />
+            <Row label={t("sd.detail.streak")} value={formatNumber(device.streak_count)} />
+            <Row label={t("sd.detail.panelAccount")} value={device.site_panel_username ?? "—"} />
+            <Row label={t("sd.col.ip")} value={device.ip_bucket ?? "—"} />
+            <Row label={t("sd.col.firstSeen")} value={faDate(device.created_at)} />
           </div>
 
           {device.rewards.length > 0 && (
             <section>
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-content">
                 <Gift className="h-4 w-4 text-content-subtle" />
-                پاداش‌های یک‌باره
+                {t("sd.detail.oneOff")}
               </h3>
               <div className="flex flex-wrap gap-1.5">
                 {device.rewards.map((r) => (
                   <Badge key={r} tone="brand">
-                    {REWARD_LABEL[r] ?? r}
+                    {REWARD_LABEL[r] ? t(REWARD_LABEL[r]) : r}
                   </Badge>
                 ))}
               </div>
@@ -275,9 +283,11 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
           )}
 
           <section>
-            <h3 className="mb-2 text-sm font-semibold text-content">آخرین دریافت‌ها</h3>
+            <h3 className="mb-2 text-sm font-semibold text-content">
+              {t("sd.detail.recentClaims")}
+            </h3>
             {device.recent_claims.length === 0 ? (
-              <p className="text-xs text-content-muted">هنوز کانفیگی نگرفته است.</p>
+              <p className="text-xs text-content-muted">{t("sd.detail.noClaims")}</p>
             ) : (
               <ul className="space-y-1.5">
                 {device.recent_claims.map((c, i) => (
@@ -288,7 +298,9 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                     <span dir="auto" className="text-content">
                       {c.location}
                       {c.is_change && (
-                        <span className="ms-1.5 text-content-subtle">(تغییر لوکیشن)</span>
+                        <span className="ms-1.5 text-content-subtle">
+                          {t("sd.detail.relocated")}
+                        </span>
                       )}
                     </span>
                     <span className="text-content-muted">{faDate(c.created_at)}</span>
@@ -302,7 +314,7 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
             <section>
               <h3 className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-content">
                 <Fingerprint className="h-4 w-4 text-content-subtle" />
-                دستگاه‌های با اثرانگشت مشترک
+                {t("sd.detail.sharedFp")}
               </h3>
               <ul className="space-y-1.5">
                 {peers.map((p) => (
@@ -317,35 +329,31 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-xs text-content-muted">
-                فقط یک نشانه است، نه اثبات تقلب — چند نفر پشت یک مرورگر مشترک هم همین را می‌سازند.
-              </p>
+              <p className="mt-2 text-xs text-content-muted">{t("sd.detail.sharedFpNote")}</p>
             </section>
           )}
 
           <div className="flex flex-wrap gap-2 border-t border-line pt-4">
             {device.status === "blocked" ? (
               <Button onClick={() => run("unblock")} loading={action.isPending}>
-                رفع مسدودی
+                {t("sd.action.unblock")}
               </Button>
             ) : (
               <Button
                 variant="danger"
                 loading={action.isPending}
-                onClick={() =>
-                  run("block", "این دستگاه مسدود شود؟ کانفیگ فعالش هم همین حالا باطل می‌شود.")
-                }
+                onClick={() => run("block", t("sd.action.blockConfirm"))}
               >
                 <ShieldOff className="h-4 w-4" />
-                مسدودسازی
+                {t("sd.action.block")}
               </Button>
             )}
             <Button variant="outline" onClick={() => run("reset")} loading={action.isPending}>
-              اجازهٔ دریافت مجدد
+              {t("sd.action.reset")}
             </Button>
           </div>
         </div>
       )}
-    </Drawer>
+    </RecordDialog>
   );
 }

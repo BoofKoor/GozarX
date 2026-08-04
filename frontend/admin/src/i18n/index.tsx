@@ -43,6 +43,8 @@ function applyLocale(locale: Locale): void {
   const el = document.documentElement;
   el.lang = locale;
   el.dir = dirFor(locale);
+  // The browser TAB is user-facing too, and index.html can only ship one language.
+  document.title = translate(locale, "shell.documentTitle");
   try {
     localStorage.setItem(STORAGE_KEY, locale);
   } catch {
@@ -67,6 +69,15 @@ export function translate(
   // a hot reload can — falling back to the key beats rendering "undefined" into the page.
   const table = MESSAGES[locale] as Record<string, string>;
   return render(table[key] ?? key, tokens);
+}
+
+/**
+ * Translate OUTSIDE a component — a class error boundary, an axios interceptor, a recharts prop
+ * factory. Same escape hatch `lib/format` uses: it reads the module-level locale rather than
+ * subscribing to it, so it does not re-render on a language switch. Components use `useI18n().t`.
+ */
+export function t(key: MessageKey, tokens?: Record<string, string | number>): string {
+  return translate(getLocale(), key, tokens);
 }
 
 export interface I18n {

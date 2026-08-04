@@ -1,5 +1,6 @@
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
+import { useI18n } from "@/i18n";
 import { formatNumber } from "@/lib/format";
 
 import { Button } from "./Button";
@@ -19,6 +20,7 @@ export function Pagination({
   onChange: (next: number) => void;
   className?: string;
 }) {
+  const { t } = useI18n();
   if (totalPages <= 1) return null;
   return (
     <div className={className}>
@@ -27,20 +29,20 @@ export function Pagination({
           variant="outline"
           size="sm"
           iconOnly
-          aria-label="صفحهٔ قبل"
+          aria-label={t("ui.prevPage")}
           disabled={page <= 1}
           onClick={() => onChange(page - 1)}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
         <span className="text-xs tabular-nums text-content-muted">
-          صفحهٔ {formatNumber(page)} از {formatNumber(totalPages)}
+          {t("ui.pageOf", { n: formatNumber(page), total: formatNumber(totalPages) })}
         </span>
         <Button
           variant="outline"
           size="sm"
           iconOnly
-          aria-label="صفحهٔ بعد"
+          aria-label={t("ui.nextPage")}
           disabled={page >= totalPages}
           onClick={() => onChange(page + 1)}
         >
