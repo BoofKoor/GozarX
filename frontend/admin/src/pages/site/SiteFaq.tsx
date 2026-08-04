@@ -6,7 +6,7 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Drawer } from "@/components/ui/Drawer";
+import { RecordDialog } from "@/components/ui/RecordDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
@@ -289,7 +289,7 @@ function FaqEditor({
   }
 
   return (
-    <Drawer
+    <RecordDialog
       open
       onClose={onClose}
       title={item ? "ویرایش سوال" : "سوال تازه"}
@@ -356,6 +356,6 @@ function FaqEditor({
           hint="خاموش‌کردن، سوال را از سایت برمی‌دارد بدون اینکه حذفش کند."
         />
       </div>
-    </Drawer>
+    </RecordDialog>
   );
 }

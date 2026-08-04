@@ -7,7 +7,7 @@ import { SiteTabs } from "@/components/site/SiteTabs";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Drawer } from "@/components/ui/Drawer";
+import { RecordDialog } from "@/components/ui/RecordDialog";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
 import { Input } from "@/components/ui/Input";
@@ -229,7 +229,7 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
   }
 
   return (
-    <Drawer
+    <RecordDialog
       open
       onClose={onClose}
       title={device?.handle ?? "دستگاه"}
@@ -346,6 +346,6 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
           </div>
         </div>
       )}
-    </Drawer>
+    </RecordDialog>
   );
 }

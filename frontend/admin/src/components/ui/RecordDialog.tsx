@@ -2,6 +2,8 @@ import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { type ReactNode, useEffect, useRef } from "react";
 
+import { useI18n } from "@/i18n";
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -13,11 +15,18 @@ function focusable(container: HTMLElement | null): HTMLElement[] {
 }
 
 /**
- * Side sheet for record detail (a site device, a user). Same accessibility contract as `Modal` —
- * Esc to close, focus moved in and restored, Tab trapped, background scroll locked — but it slides
- * from the start edge (LEFT in this RTL panel) and keeps the list behind it visible.
+ * Record detail — a centred dialog over a blurred backdrop.
+ *
+ * This replaces the side sheet it grew out of. A record is something you step INTO and back out of;
+ * a panel pinned to one edge makes the reader hold two layouts at once, and on a narrow console it
+ * is the whole screen anyway with a sliver of wasted context.
+ *
+ * Accessibility contract, unchanged from the sheet: Esc closes, focus moves in and is restored on
+ * exit, Tab is trapped, background scroll is locked. The backdrop closes too — but only when the
+ * backdrop ITSELF is the target, so a drag that starts inside the dialog and releases outside does
+ * not throw the record away.
  */
-export function Drawer({
+export function RecordDialog({
   open,
   onClose,
   title,
@@ -35,6 +44,7 @@ export function Drawer({
   className?: string;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -73,15 +83,19 @@ export function Drawer({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex">
-      <div className="animate-fade-in absolute inset-0 bg-black/45" onClick={onClose} />
-      <aside
+    <div
+      className="animate-fade-in fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-md sm:p-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
         ref={panelRef}
         role="dialog"
         aria-modal="true"
         tabIndex={-1}
         className={clsx(
-          "relative ms-auto flex h-full w-full max-w-md flex-col border-e border-line bg-surface shadow-overlay outline-none",
+          "animate-scale-in flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-overlay outline-none",
           className,
         )}
       >
@@ -93,7 +107,7 @@ export function Drawer({
           <button
             type="button"
             onClick={onClose}
-            aria-label="بستن"
+            aria-label={t("ui.close")}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-content-subtle transition hover:bg-surface-hover hover:text-content"
           >
             <X className="h-5 w-5" />
@@ -101,11 +115,11 @@ export function Drawer({
         </header>
         <div className="scrollbar-thin flex-1 overflow-y-auto p-5">{children}</div>
         {footer && (
-          <footer className="flex items-center justify-end gap-2 border-t border-line px-5 py-3">
+          <footer className="flex items-center gap-2 border-t border-line px-5 py-3">
             {footer}
           </footer>
         )}
-      </aside>
+      </div>
     </div>
   );
 }
