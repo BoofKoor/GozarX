@@ -185,7 +185,7 @@ function TextEditor({ text }: { text: BotText }) {
               type="button"
               dir="ltr"
               onClick={() => insertPlaceholder(p)}
-              className="rounded border border-warning-500/40 bg-warning-500/12 px-1.5 py-0.5 font-mono text-xs text-warning-700 hover:border-warning-500"
+              className="rounded border border-warning-500/40 bg-warning-500/15 px-1.5 py-0.5 font-mono text-xs text-warning-700 hover:border-warning-500"
             >
               {`{${p}}`}
             </button>

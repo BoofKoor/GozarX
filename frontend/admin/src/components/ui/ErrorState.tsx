@@ -20,7 +20,7 @@ export function ErrorState({
 }) {
   const body = (
     <div className="flex flex-col items-center gap-3 py-8 text-center">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-500/12 text-danger-700">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-danger-500/15 text-danger-700">
         <AlertTriangle className="h-6 w-6" />
       </div>
       <p className="max-w-sm text-sm text-content-muted">{message}</p>

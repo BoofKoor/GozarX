@@ -143,7 +143,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
                     className={clsx(
                       "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
                       active
-                        ? "bg-brand/12 text-brand-700"
+                        ? "bg-brand/15 text-brand-700"
                         : "text-content-muted hover:bg-surface-hover hover:text-content",
                     )}
                   >

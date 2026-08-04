@@ -162,6 +162,9 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 12 Panel redesign, foundation: the Nocturne palette in `tokens.css`, the icon-rail shell, the three
   hand-drawn SVG charts (`HeroSparkline`/`AreaTrend`/`RadarRates`), and the fa/en i18n layer.
   Pages keep their current markup and migrate their strings as each is rebuilt.
+13 Dashboard overview rebuilt on the new charts + fully bilingual; activation metrics WINDOWED
+  (`median_hours_to_claim` / `activation_24h` become `Metric`s with a previous-window twin, so the
+  range control moves them instead of sitting above frozen all-time figures).
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -181,6 +184,11 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `sent / total` ratio or a `https://` inside a Persian sentence all reorder without it. Reach for
   `direction: ltr` only on a genuinely Latin run, and never on a block — it moves the text to the
   left edge as well.
+- **Tailwind opacity modifiers are multiples of 5.** `bg-brand/12` and `bg-chart-1/18` are not on
+  the scale and compile to NOTHING — silently, so a tinted badge just renders with no background.
+  Use `/15`, `/20`, or the arbitrary form `bg-brand/[0.12]`. And a colour must exist in
+  `tailwind.config.js` before a class can name it: `bg-chart-2` needs the `chart` ramp registered
+  there, not only in `tokens.css`.
 - **The three hero charts are hand-drawn SVG** (`components/charts/`), not recharts: masked fades
   and the radar's eight-point curve are not expressible there. recharts stays for ordinary bar and
   line charts. A fade means "this continues beyond the frame" — never fade a marker or a

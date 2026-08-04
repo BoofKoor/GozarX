@@ -32,10 +32,13 @@ export function formatNumber(n: number): string {
 }
 
 /** A percentage with the locale's numerals and percent sign (12.5 → "۱۲٫۵٪" / "12.5%"). */
-export function faPct(n: number): string {
-  const value = Number.isFinite(n)
-    ? memo("pct", () => new Intl.NumberFormat(localeTag(), { maximumFractionDigits: 1 })).format(n)
-    : localizeDigits("0");
+export function faPct(n: number | null | undefined): string {
+  const value =
+    n != null && Number.isFinite(n)
+      ? memo("pct", () => new Intl.NumberFormat(localeTag(), { maximumFractionDigits: 1 })).format(
+          n,
+        )
+      : localizeDigits("0");
   return `${value}${getLocale() === "fa" ? "٪" : "%"}`;
 }
 

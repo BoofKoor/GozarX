@@ -4,9 +4,9 @@ import { Card } from "@/components/ui/Card";
 import type { HealthStatus, Probe, SystemHealth } from "@/types/api";
 
 const STATUS_META: Record<HealthStatus, { label: string; ring: string; dot: string }> = {
-  ok: { label: "سالم", ring: "bg-success-500/12", dot: "bg-success" },
-  degraded: { label: "هشدار", ring: "bg-warning-500/12", dot: "bg-warning" },
-  down: { label: "قطع", ring: "bg-danger-500/12", dot: "bg-danger" },
+  ok: { label: "سالم", ring: "bg-success-500/15", dot: "bg-success" },
+  degraded: { label: "هشدار", ring: "bg-warning-500/15", dot: "bg-warning" },
+  down: { label: "قطع", ring: "bg-danger-500/15", dot: "bg-danger" },
 };
 
 function ProbeChip({ label, probe }: { label: string; probe: Probe }) {

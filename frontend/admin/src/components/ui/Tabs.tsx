@@ -36,7 +36,7 @@ export function NavTabs({ items, className }: { items: TabItem[]; className?: st
           {t.icon && <t.icon className="h-4 w-4" />}
           {t.label}
           {typeof t.count === "number" && t.count > 0 && (
-            <span className="rounded-full bg-brand/12 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-brand-700">
+            <span className="rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-brand-700">
               {t.count}
             </span>
           )}

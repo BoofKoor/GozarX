@@ -112,7 +112,7 @@ export function SiteDevices() {
       </div>
 
       {ipBucket && (
-        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-warning-500/12 px-3 py-2 text-xs text-warning-700">
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-warning-500/15 px-3 py-2 text-xs text-warning-700">
           <Network className="h-4 w-4 shrink-0" />
           فقط دستگاه‌های پشت IP <span className="font-mono">{ipBucket}</span>
           <Button

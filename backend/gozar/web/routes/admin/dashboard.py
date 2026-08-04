@@ -164,6 +164,18 @@ class SplitDayPoint(BaseModel):
     returning: int
 
 
+class Metric(BaseModel):
+    """A windowed figure next to the same figure over the previous, equal-length window.
+
+    ``change_pct`` is ``None`` (not ``0.0``) when the baseline is zero or missing, so a first
+    window reads as "new" rather than "flat" — the frontend renders the two cases differently.
+    """
+
+    value: float | None
+    previous: float | None
+    change_pct: float | None
+
+
 class ReferralCap(BaseModel):
     limit: int  # the configured reward cap (0 = uncapped)
     at_cap: int  # inviters who have hit it and stopped earning
@@ -181,9 +193,13 @@ class DashboardAnalyticsOut(BaseModel):
     wau: int
     mau: int
     stickiness_pct: float  # dau / mau
-    median_hours_to_claim: float | None
-    activation_24h_pct: float  # share of claimers whose first claim was within 24h of signup
-    claimers: int
+    # Activation is WINDOWED: the cohort is everyone whose first claim landed in the selected
+    # range, compared against the equally long window before it. It used to be an all-time figure
+    # sitting under a range control that could not move it.
+    median_hours_to_claim: Metric
+    activation_24h: Metric  # share of the window's cohort that claimed within 24h of signing up
+    first_claimers_in_range: int  # the cohort size both percentages are computed over
+    claimers_all_time: int
     referral: ReferralFunnel
     referral_cap: ReferralCap
     heatmap: list[HeatCell]
@@ -333,7 +349,12 @@ async def dashboard_analytics(
     dau = await log_repo.active_user_count_since(now - timedelta(days=1))
     wau = await log_repo.active_user_count_since(now - timedelta(days=7))
     mau = await log_repo.active_user_count_since(now - timedelta(days=30))
-    median_h, within_24h, claimers = await log_repo.first_claim_stats()
+    prev_since, prev_until = previous_window(window)
+    median_h, within_24h, cohort = await log_repo.first_claim_stats(since=since)
+    median_prev, within_prev, cohort_prev = await log_repo.first_claim_stats(
+        since=prev_since, until=prev_until
+    )
+    _, _, claimers_all_time = await log_repo.first_claim_stats()
     joined, joined_claimed = await user_repo.referral_funnel()
     total = await user_repo.count()
     referrals = await user_repo.sum_referrals()
@@ -353,9 +374,21 @@ async def dashboard_analytics(
         wau=wau,
         mau=mau,
         stickiness_pct=_pct(dau, mau),
-        median_hours_to_claim=median_h,
-        activation_24h_pct=_pct(within_24h, claimers),
-        claimers=claimers,
+        # Faster activation is an improvement, so the frontend has to know this metric's "good"
+        # direction is DOWN. The sign convention stays the same as everywhere else; the label
+        # carries the meaning.
+        median_hours_to_claim=Metric(
+            value=median_h,
+            previous=median_prev,
+            change_pct=pct_change(median_h, median_prev),
+        ),
+        activation_24h=Metric(
+            value=_pct(within_24h, cohort),
+            previous=_pct(within_prev, cohort_prev),
+            change_pct=pct_change(_pct(within_24h, cohort), _pct(within_prev, cohort_prev)),
+        ),
+        first_claimers_in_range=cohort,
+        claimers_all_time=claimers_all_time,
         referral=ReferralFunnel(
             joined=joined,
             joined_claimed=joined_claimed,

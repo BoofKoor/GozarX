@@ -8,11 +8,11 @@ export type BadgeTone = "neutral" | "brand" | "success" | "warning" | "danger" |
 // class plus a `dark:` twin.
 const TONES: Record<BadgeTone, string> = {
   neutral: "bg-surface-sunken text-content-muted",
-  brand: "bg-brand/12 text-brand-700",
-  success: "bg-success-500/12 text-success-700",
-  warning: "bg-warning-500/12 text-warning-700",
-  danger: "bg-danger-500/12 text-danger-700",
-  info: "bg-info-500/12 text-info-700",
+  brand: "bg-brand/15 text-brand-700",
+  success: "bg-success-500/15 text-success-700",
+  warning: "bg-warning-500/15 text-warning-700",
+  danger: "bg-danger-500/15 text-danger-700",
+  info: "bg-info-500/15 text-info-700",
 };
 
 const DOTS: Record<BadgeTone, string> = {

@@ -9,11 +9,11 @@ import { faPct } from "@/lib/format";
 type Tone = "brand" | "success" | "info" | "warning" | "danger" | "neutral";
 
 const TONE_CHIP: Record<Tone, string> = {
-  brand: "bg-brand/12 text-brand",
-  success: "bg-success-500/12 text-success-700",
-  info: "bg-info-500/12 text-info-700",
-  warning: "bg-warning-500/12 text-warning-700",
-  danger: "bg-danger-500/12 text-danger-700",
+  brand: "bg-brand/15 text-brand",
+  success: "bg-success-500/15 text-success-700",
+  info: "bg-info-500/15 text-info-700",
+  warning: "bg-warning-500/15 text-warning-700",
+  danger: "bg-danger-500/15 text-danger-700",
   neutral: "bg-surface-sunken text-content-muted",
 };
 
@@ -37,7 +37,7 @@ function DeltaChip({ value, goodWhenUp = true }: { value: number; goodWhenUp?: b
     <span
       className={clsx(
         "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium tabular-nums",
-        good ? "bg-success-500/12 text-success-700" : "bg-danger-500/12 text-danger-700",
+        good ? "bg-success-500/15 text-success-700" : "bg-danger-500/15 text-danger-700",
       )}
     >
       {up ? "▲" : "▼"} {faPct(Math.abs(value))}

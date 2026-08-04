@@ -28,6 +28,11 @@ export default {
         danger: { DEFAULT: token("danger-600"), ...ramp("danger", [400, 500, 600, 700]) },
         info: { DEFAULT: token("info-600"), ...ramp("info", [400, 500, 600, 700]) },
 
+        // The categorical series palette, so a legend swatch or a tinted glyph can name the same
+        // colour its chart uses (`bg-chart-2`) instead of re-deriving it. lib/chartTheme reads the
+        // identical custom properties for the SVG side.
+        chart: Object.fromEntries([1, 2, 3, 4, 5, 6].map((i) => [i, token(`chart-${i}`)])),
+
         // Semantic roles — the vocabulary components should reach for.
         canvas: token("bg"),
         surface: {

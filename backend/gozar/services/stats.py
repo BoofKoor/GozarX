@@ -88,12 +88,15 @@ def previous_window(days: int) -> tuple[datetime, datetime]:
     return current_start - timedelta(days=max(days, 1)), current_start
 
 
-def pct_change(current: int, previous: int) -> float | None:
+def pct_change(current: float | None, previous: float | None) -> float | None:
     """Percent change vs the prior period, or ``None`` when there's no baseline to compare against.
 
     ``None`` (not ``0.0``) on a zero baseline matters: a launch period with real activity would
     otherwise render as "0% — flat". The frontend shows a "new" badge for ``None`` instead.
+
+    ``None`` on either side is also no comparison: a median over an empty cohort is absent, not
+    zero, and treating it as zero would report a 100% swing out of nothing.
     """
-    if previous <= 0:
+    if current is None or previous is None or previous <= 0:
         return None
     return round((current - previous) / previous * 100, 1)

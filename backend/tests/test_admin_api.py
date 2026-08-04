@@ -208,12 +208,68 @@ async def test_dashboard_range_clamped(admin_client: httpx.AsyncClient) -> None:
 
 async def test_dashboard_analytics_empty(admin_client: httpx.AsyncClient) -> None:
     body = (await admin_client.get("/api/admin/dashboard/analytics")).json()
-    for key in ("dau", "wau", "mau", "claimers"):
+    for key in ("dau", "wau", "mau", "claimers_all_time", "first_claimers_in_range"):
         assert body[key] == 0
     assert body["stickiness_pct"] == 0.0
-    assert body["median_hours_to_claim"] is None
+    # An empty cohort has no median at all — absent, not zero — and no baseline to compare to.
+    assert body["median_hours_to_claim"] == {"value": None, "previous": None, "change_pct": None}
     assert body["heatmap"] == [] and body["claims_distribution"] == {}
     assert body["referral"]["k_factor"] == 0.0
+
+
+async def test_activation_metrics_follow_the_range_control(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """The range control has to MOVE these two figures, not sit above frozen all-time numbers.
+
+    Two cohorts: one that activated inside a 7-day window and one that activated in the 7 days
+    before it, each with a different signup→first-claim gap. A 7-day request must see only the
+    recent cohort as `value` and only the older one as `previous`.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                # Recent cohort: signed up 2 days ago, first claim 1 hour later → fast.
+                User(telegram_id=21, language=Language.fa, created_at=now - timedelta(days=2)),
+                # Older cohort: signed up 12 days ago, first claim 48 hours later → slow.
+                User(telegram_id=22, language=Language.fa, created_at=now - timedelta(days=12)),
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                ConfigLog(
+                    user_id=21,
+                    location="DE",
+                    created_at=now - timedelta(days=2) + timedelta(hours=1),
+                ),
+                ConfigLog(
+                    user_id=22,
+                    location="DE",
+                    created_at=now - timedelta(days=10),
+                ),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/analytics?days=7")).json()
+    assert body["first_claimers_in_range"] == 1  # only the recent activation
+    assert body["median_hours_to_claim"]["value"] == 1.0
+    assert body["median_hours_to_claim"]["previous"] == 48.0
+    # Faster is better here, so the sign is negative and the label carries the meaning.
+    assert body["median_hours_to_claim"]["change_pct"] is not None
+    assert body["median_hours_to_claim"]["change_pct"] < 0
+    # 24h activation: the recent cohort made it, the older one did not.
+    assert body["activation_24h"]["value"] == 100.0
+    assert body["activation_24h"]["previous"] == 0.0
+    # Both users have ever claimed, whatever window is asked for.
+    assert body["claimers_all_time"] == 2
+
+    # Widen the window and the two cohorts merge into one, which is the point of the control.
+    wide = (await admin_client.get("/api/admin/dashboard/analytics?days=30")).json()
+    assert wide["first_claimers_in_range"] == 2
+    assert wide["activation_24h"]["value"] == 50.0
 
 
 async def test_dashboard_analytics_aggregations(
@@ -240,8 +296,12 @@ async def test_dashboard_analytics_aggregations(
     body = (await admin_client.get("/api/admin/dashboard/analytics")).json()
     assert body["dau"] == 2 and body["wau"] == 2 and body["mau"] == 2  # users 11 & 13 claimed today
     assert body["stickiness_pct"] == 100.0
-    assert body["claimers"] == 2
-    assert body["activation_24h_pct"] == 100.0  # both first-claimed within 24h of signup
+    assert body["claimers_all_time"] == 2
+    assert body["first_claimers_in_range"] == 2  # both activated inside the window
+    assert body["activation_24h"]["value"] == 100.0  # both first-claimed within 24h of signup
+    # Nothing happened in the window before this one, so there is no comparison to draw.
+    assert body["activation_24h"]["previous"] == 0.0
+    assert body["activation_24h"]["change_pct"] is None
     assert body["claims_distribution"] == {"1": 1, "2-3": 1}  # u13 once, u11 twice
     assert body["referral"] == {
         "joined": 1,

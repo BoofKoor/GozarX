@@ -89,7 +89,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
             className={clsx(
               "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition",
               visible
-                ? "bg-success-500/12 text-success-700"
+                ? "bg-success-500/15 text-success-700"
                 : "bg-surface-sunken text-content-muted",
               button.is_critical && "cursor-not-allowed opacity-60",
             )}
@@ -98,7 +98,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
             {visible ? "نمایش داده می‌شود" : "پنهان"}
           </button>
           {button.is_critical && (
-            <p className="mt-2 rounded bg-warning-500/12 p-2 text-xs text-warning-700">
+            <p className="mt-2 rounded bg-warning-500/15 p-2 text-xs text-warning-700">
               ⚠️ دکمهٔ حیاتی (بازگشت/تأیید/ناوبری) — قابل مخفی‌سازی نیست تا کاربر در صفحه گیر نیفتد.
             </p>
           )}

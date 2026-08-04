@@ -51,7 +51,7 @@ export function LocationPicker({
   if (unavailable || !available || available.length === 0) {
     return (
       <div className="space-y-2">
-        <div className="flex items-start gap-2 rounded-xl bg-warning-500/12 p-2.5 text-xs text-warning-700">
+        <div className="flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           <span>
             لیست لوکیشن‌های اسکواد از پنل گرفته نشد. می‌توانید نام‌ها را دستی وارد کنید (با کاما جدا

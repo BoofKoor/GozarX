@@ -1,36 +1,28 @@
 import {
   Activity,
-  CheckCircle2,
-  Database,
   Download,
   Gift,
   Globe2,
   HeartPulse,
   LineChart,
-  Percent,
-  Radio,
   Repeat,
   UserPlus,
-  Users,
-  Zap,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ActivationPanel } from "@/components/dashboard/ActivationPanel";
 import { ActiveUsersPanel } from "@/components/dashboard/ActiveUsersPanel";
-import { ActivityChart } from "@/components/dashboard/ActivityChart";
 import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
 import { ClaimsDistribution } from "@/components/dashboard/ClaimsDistribution";
 import { ConversionPanel } from "@/components/dashboard/ConversionPanel";
 import { CumulativeUsersChart } from "@/components/dashboard/CumulativeUsersChart";
-import { EngagementPanel } from "@/components/dashboard/EngagementPanel";
 import { LanguageDonut } from "@/components/dashboard/LanguageDonut";
 import { NewVsReturningChart } from "@/components/dashboard/NewVsReturningChart";
 import { ReferralFunnelPanel } from "@/components/dashboard/ReferralFunnelPanel";
 import { ReminderByLanguage } from "@/components/dashboard/ReminderByLanguage";
 import { RetentionCohorts } from "@/components/dashboard/RetentionCohorts";
-import { StatCard } from "@/components/dashboard/StatCard";
+import { Overview } from "@/components/dashboard/overview/Overview";
 import { TopLocations } from "@/components/dashboard/TopLocations";
 import { TopReferrers } from "@/components/dashboard/TopReferrers";
 import { TrialHealthPanel } from "@/components/dashboard/TrialHealthPanel";
@@ -43,6 +35,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Segmented } from "@/components/ui/Segmented";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Tabs } from "@/components/ui/Tabs";
+import { useSystemHealth } from "@/hooks/useSystem";
 import {
   RANGES,
   downloadDashboardCsv,
@@ -50,21 +43,24 @@ import {
   useDashboardAnalytics,
   useRetention,
 } from "@/hooks/useDashboard";
-import { faPct, formatNumber, humanBytes } from "@/lib/format";
+import { useI18n, type MessageKey } from "@/i18n";
+import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
 
 type TabKey = "overview" | "growth" | "retention" | "referrals" | "geo" | "health";
 
-const TABS: { value: TabKey; label: string; icon: typeof LineChart }[] = [
-  { value: "overview", label: "نمای کلی", icon: LineChart },
-  { value: "growth", label: "رشد", icon: UserPlus },
-  { value: "retention", label: "نگه‌داشت", icon: Repeat },
-  { value: "referrals", label: "دعوت‌ها", icon: Gift },
-  { value: "geo", label: "جغرافیا و رفتار", icon: Globe2 },
-  { value: "health", label: "سلامت سرویس", icon: HeartPulse },
+const TAB_KEYS: { value: TabKey; labelKey: MessageKey; icon: typeof LineChart }[] = [
+  { value: "overview", labelKey: "dash.tab.overview", icon: LineChart },
+  { value: "growth", labelKey: "dash.tab.growth", icon: UserPlus },
+  { value: "retention", labelKey: "dash.tab.retention", icon: Repeat },
+  { value: "referrals", labelKey: "dash.tab.referrals", icon: Gift },
+  { value: "geo", labelKey: "dash.tab.geo", icon: Globe2 },
+  { value: "health", labelKey: "dash.tab.health", icon: HeartPulse },
 ];
 
-const RANGE_OPTIONS = RANGES.map((r) => ({ value: r as number, label: `${formatNumber(r)} روز` }));
+// Built per render rather than at module scope: the label is localized, so a constant would
+// freeze whichever language happened to load first.
+const RANGE_VALUES = RANGES as readonly number[];
 
 /** Render an analytics panel once its (separate) query has loaded, else a stable skeleton so the
  *  grid doesn't jump when the deeper stats arrive a moment after the headline. */
@@ -88,7 +84,14 @@ function Analytic({
 }
 
 export function Dashboard() {
+  const { t } = useI18n();
   const [days, setDays] = useState<number>(14);
+  const TABS = TAB_KEYS.map((x) => ({ ...x, label: t(x.labelKey) }));
+  const RANGE_OPTIONS = RANGE_VALUES.map((r) => ({
+    value: r,
+    label: t("dash.range.days", { n: formatNumber(r) }),
+  }));
+  const { data: health } = useSystemHealth();
   const [tab, setTab] = useState<TabKey>("overview");
   const [exporting, setExporting] = useState(false);
   const { data, isLoading, isError, refetch } = useDashboard(days);
@@ -115,121 +118,56 @@ export function Dashboard() {
   if (isError || !data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="داشبورد" />
+        <PageHeader title={t("dash.title")} />
         <ErrorState onRetry={() => refetch()} />
       </div>
     );
   }
 
-  const signupsSpark = data.signups_series.map((p) => p.count);
-  const claimsSpark = data.claims_series.map((p) => p.count);
-
   return (
     <div className="space-y-6">
       <PageHeader
-        title="داشبورد"
-        sub={`${formatNumber(data.range_days)} روز اخیر، در مقایسه با ${formatNumber(data.range_days)} روز پیش از آن`}
+        title={t("dash.title")}
+        sub={t("dash.sub", { days: formatNumber(data.range_days) })}
         actions={
-          <>
-            <Segmented
-              value={days}
-              onChange={setDays}
-              options={RANGE_OPTIONS}
-              size="sm"
-              ariaLabel="بازهٔ زمانی"
-            />
-            <Button variant="outline" size="sm" onClick={exportCsv} loading={exporting}>
-              <Download className="h-4 w-4" />
-              <span className="hidden sm:inline">خروجی CSV</span>
-            </Button>
-          </>
+          // The overview carries its own range control and export button, beside the chart they
+          // drive. Showing a second pair up here would be two controls for one concern.
+          tab === "overview" ? undefined : (
+            <>
+              <Segmented
+                value={days}
+                onChange={setDays}
+                options={RANGE_OPTIONS}
+                size="sm"
+                ariaLabel={t("dash.range.aria")}
+              />
+              <Button variant="outline" size="sm" onClick={exportCsv} loading={exporting}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">{t("dash.export")}</span>
+              </Button>
+            </>
+          )
         }
       >
         <Tabs value={tab} onChange={setTab} items={TABS} />
       </PageHeader>
 
+      {/* The overview is the redesigned screen: KPI band, activity trend, "top" cards and the live
+          side rail. The other tabs keep the analytics panels built in Phase 2 — the design showed
+          one screen, the product has six, and discarding five of them to match a mockup would be
+          throwing away work the operator uses. */}
       {tab === "overview" && (
-        <>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
-            <StatCard
-              label="آنلاین"
-              value={formatNumber(data.online_now)}
-              icon={Radio}
-              tone="success"
-              pulse={data.panel_online}
-              hint={
-                !data.panel_online
-                  ? "تخمین از دیتابیس"
-                  : data.online_squad_scoped
-                    ? "آنلاینِ اسکواد سرویس"
-                    : "هم‌اکنون متصل (کل پنل)"
-              }
-            />
-            <StatCard
-              label="کاربران جدید (بازه)"
-              value={formatNumber(data.signups_in_range)}
-              icon={UserPlus}
-              tone="info"
-              delta={data.signups_delta_pct}
-              spark={signupsSpark}
-              hint={`${formatNumber(data.signups_prev_range)} در بازهٔ قبل`}
-            />
-            <StatCard
-              label="کل کاربران"
-              value={formatNumber(data.total_users)}
-              icon={Users}
-              tone="brand"
-              hint={`امروز ${formatNumber(data.new_today)} نفر`}
-            />
-            <StatCard
-              label="کاربران فعال (بازه)"
-              value={formatNumber(data.claimers_in_range)}
-              icon={Activity}
-              tone="brand"
-              delta={data.claimers_delta_pct}
-              hint={`${formatNumber(data.claimers_prev_range)} در بازهٔ قبل`}
-            />
-            <StatCard
-              label="کانفیگ داده‌شده (بازه)"
-              value={formatNumber(data.claims_in_range)}
-              icon={Zap}
-              tone="warning"
-              delta={data.claims_delta_pct}
-              spark={claimsSpark}
-              hint={`امروز ${formatNumber(data.configs_today)}`}
-            />
-            <StatCard
-              label="کانفیگ فعال"
-              value={formatNumber(data.active)}
-              icon={CheckCircle2}
-              tone="info"
-            />
-            <StatCard
-              label="نرخ تبدیل"
-              value={faPct(data.conversion_pct)}
-              icon={Percent}
-              tone="brand"
-              hint="کاربرانی که کانفیگ گرفته‌اند"
-            />
-            <StatCard
-              label="ترافیک مصرفی"
-              value={humanBytes(data.total_traffic_bytes)}
-              icon={Database}
-              tone="neutral"
-              hint="کل عمر سرویس (از پنل)"
-            />
-          </div>
-
-          <ActivityChart
-            claims={data.claims_series}
-            signups={data.signups_series}
-            days={data.range_days}
-          />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Analytic data={analytics} render={(d) => <ActiveUsersPanel data={d} />} />
-            <EngagementPanel data={data} />
-          </div>
-        </>
+        <Overview
+          stats={data}
+          analytics={analytics}
+          retention={retention}
+          health={health}
+          range={data.range_days}
+          ranges={RANGES}
+          onRange={setDays}
+          onExport={exportCsv}
+          exporting={exporting}
+        />
       )}
 
       {tab === "growth" && (
@@ -396,9 +334,10 @@ function ReferralCapPanel({ data }: { data: DashboardAnalytics }) {
 }
 
 function DashboardSkeleton() {
+  const { t } = useI18n();
   return (
     <div className="space-y-6">
-      <PageHeader title="داشبورد" />
+      <PageHeader title={t("dash.title")} />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => (
           <Card key={i} className="flex items-center gap-4">

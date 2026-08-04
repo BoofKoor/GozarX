@@ -254,7 +254,7 @@ function NewRowZone() {
       className={clsx(
         "rounded-lg border-2 border-dashed p-3 text-center text-sm transition",
         isOver
-          ? "border-success-500 bg-success-500/12 text-success-700"
+          ? "border-success-500 bg-success-500/15 text-success-700"
           : "border-line-strong text-content-subtle",
       )}
     >
@@ -322,7 +322,7 @@ function DraggableButton({
       {button.customized && (
         <button
           onClick={onReset}
-          className="rounded p-1.5 text-content-subtle hover:bg-danger-500/12 hover:text-danger-700"
+          className="rounded p-1.5 text-content-subtle hover:bg-danger-500/15 hover:text-danger-700"
           title="بازنشانی به پیش‌فرض"
         >
           <RotateCcw className="h-3.5 w-3.5" />
