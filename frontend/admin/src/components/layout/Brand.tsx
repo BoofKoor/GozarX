@@ -1,5 +1,7 @@
 import { clsx } from "clsx";
 
+import { useI18n } from "@/i18n";
+
 // The real GozarX mark — paths verbatim from the shared asset (frontend/site/public/logo-mark.svg
 // and docs/website/design/assets/logo-mark.svg). The main body uses the ink colour, the trailing
 // "X" stroke uses the brand accent, exactly like the site's LogoSymbol.
@@ -8,8 +10,23 @@ const MAIN =
 const ACCENT =
   "M624.832 0H523.233C520.364 0 517.714 1.53705 516.289 4.02804L375.687 249.847C374.274 252.318 374.28 255.354 375.703 257.819L517.648 503.675C519.077 506.15 521.718 507.675 524.576 507.675H624.832C630.99 507.675 634.839 501.008 631.76 495.675L494.444 257.838C493.015 255.363 493.015 252.313 494.444 249.838L631.76 12C634.84 6.66667 630.991 0 624.832 0Z";
 
-/** The mark on a brand-blue tile (sidebar, login). Both strokes are white here, as on the favicon. */
+/**
+ * The bare mark, in the brand colour.
+ *
+ * This is what the navigation rail carries: a tile there would be a second filled square in a
+ * column of outlined ones, reading as another destination rather than as identity.
+ */
 export function BrandMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 639 508" className={clsx("text-brand", className)} fill="none" aria-hidden>
+      <path d={MAIN} fill="currentColor" />
+      <path d={ACCENT} fill="currentColor" fillOpacity={0.55} />
+    </svg>
+  );
+}
+
+/** The mark on a brand-blue tile — for the login card, where it is the page's only anchor. */
+export function BrandTile({ className }: { className?: string }) {
   return (
     <span
       className={clsx(
@@ -26,23 +43,31 @@ export function BrandMark({ className }: { className?: string }) {
   );
 }
 
-/** Sidebar/login lockup: mark + wordmark. `compact` hides the text for the collapsed icon rail. */
+/** Drawer/login lockup: tile + wordmark. `compact` hides the text. */
 export function BrandLockup({
   compact = false,
-  sub = "پنل مدیریت",
+  sub,
   className,
 }: {
   compact?: boolean;
   sub?: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   return (
     <div className={clsx("flex items-center gap-2.5", className)}>
-      <BrandMark className="h-9 w-9 shrink-0" />
+      <BrandTile className="h-9 w-9 shrink-0" />
       {!compact && (
         <div className="min-w-0 leading-tight">
-          <div className="truncate text-base font-bold text-content">GozarX</div>
-          <div className="truncate text-[11px] text-content-subtle">{sub}</div>
+          {/* The wordmark is a proper noun: it stays Latin in both languages, and is isolated so a
+              Persian subtitle beneath it cannot reorder it. */}
+          <div
+            className="truncate text-base font-bold text-content"
+            style={{ unicodeBidi: "isolate" }}
+          >
+            GozarX
+          </div>
+          <div className="truncate text-[11px] text-content-subtle">{sub ?? t("shell.title")}</div>
         </div>
       )}
     </div>

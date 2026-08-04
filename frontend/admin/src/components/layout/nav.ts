@@ -10,9 +10,12 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import type { MessageKey } from "@/i18n";
+
 export interface NavItem {
   to: string;
-  label: string;
+  /** Catalogue key — the label is resolved at render time, so it follows the language. */
+  labelKey: MessageKey;
   icon: LucideIcon;
   /** Match the whole section rather than the exact path (the Website tabs all live under /site/*). */
   match?: string;
@@ -24,69 +27,79 @@ export interface NavItem {
 
 export interface NavGroup {
   /** Undefined for the top-level items that sit above the first labelled group. */
-  label?: string;
+  labelKey?: MessageKey;
   items: NavItem[];
 }
 
-/** The panel's navigation, grouped by product surface. Shared by the sidebar, the mobile drawer and
+/** The panel's navigation, grouped by product surface. Shared by the rail, the mobile drawer and
  *  the command palette so a new destination is added in exactly one place. */
 export const NAV: NavGroup[] = [
   {
     items: [
       {
         to: "/",
-        label: "داشبورد",
+        labelKey: "nav.dashboard",
         icon: LayoutDashboard,
         end: true,
-        keywords: ["dashboard", "آمار", "خانه"],
+        keywords: ["dashboard", "داشبورد", "آمار", "خانه"],
       },
     ],
   },
   {
-    label: "ربات تلگرام",
+    labelKey: "nav.group.bot",
     items: [
-      { to: "/users", label: "کاربران", icon: UsersIcon, keywords: ["users", "کاربر", "مسدود"] },
+      {
+        to: "/users",
+        labelKey: "nav.users",
+        icon: UsersIcon,
+        keywords: ["users", "کاربران", "کاربر", "مسدود"],
+      },
       {
         to: "/broadcast",
-        label: "پیام همگانی",
+        labelKey: "nav.broadcast",
         icon: Megaphone,
-        keywords: ["broadcast", "ارسال", "فوروارد"],
+        keywords: ["broadcast", "پیام همگانی", "ارسال", "فوروارد"],
       },
-      { to: "/texts", label: "متن‌ها", icon: FileText, keywords: ["texts", "محتوا", "پیام"] },
+      {
+        to: "/texts",
+        labelKey: "nav.texts",
+        icon: FileText,
+        keywords: ["texts", "متن‌ها", "محتوا", "پیام"],
+      },
       {
         to: "/buttons",
-        label: "دکمه‌ها",
+        labelKey: "nav.buttons",
         icon: MousePointerClick,
-        keywords: ["buttons", "کیبورد", "منو"],
+        keywords: ["buttons", "دکمه‌ها", "کیبورد", "منو"],
       },
       {
         to: "/settings",
-        label: "تنظیمات ربات",
+        labelKey: "nav.settings",
         icon: SettingsIcon,
-        keywords: ["settings", "اقتصاد", "حجم", "دعوت"],
+        keywords: ["settings", "تنظیمات", "اقتصاد", "حجم", "دعوت"],
       },
     ],
   },
   {
-    label: "وب‌سایت",
+    labelKey: "nav.group.site",
     items: [
       {
         to: "/site",
-        label: "وب‌سایت",
+        labelKey: "nav.site",
         icon: Globe,
         match: "/site",
-        keywords: ["site", "سایت", "صفحه", "اعلان", "پیام‌ها"],
+        keywords: ["site", "وب‌سایت", "سایت", "صفحه", "اعلان", "پیام‌ها"],
       },
     ],
   },
   {
-    label: "سیستم",
+    labelKey: "nav.group.system",
     items: [
       {
         to: "/system",
-        label: "سلامت سرویس",
+        labelKey: "nav.system",
         icon: Activity,
-        keywords: ["system", "health", "وضعیت", "منابع", "وبهوک"],
+        keywords: ["system", "health", "سلامت", "وضعیت", "منابع", "وبهوک"],
       },
     ],
   },

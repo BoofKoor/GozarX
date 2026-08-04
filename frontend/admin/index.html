@@ -6,7 +6,9 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="color-scheme" content="light dark" />
     <script>
-      // Apply the saved theme before React mounts to avoid a flash.
+      // Apply the saved theme AND locale before React mounts, so neither flashes. The document
+      // starts fa/rtl in the markup; an English visitor would otherwise see one RTL frame and the
+      // whole layout would jump sideways.
       (function () {
         try {
           var stored = localStorage.getItem("theme");
@@ -14,6 +16,10 @@
             stored === "dark" ||
             (!stored && window.matchMedia("(prefers-color-scheme: dark)").matches);
           if (dark) document.documentElement.classList.add("dark");
+          if (localStorage.getItem("locale") === "en") {
+            document.documentElement.lang = "en";
+            document.documentElement.dir = "ltr";
+          }
         } catch (e) {
           /* ignore */
         }
