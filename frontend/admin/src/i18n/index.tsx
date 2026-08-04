@@ -43,6 +43,8 @@ function applyLocale(locale: Locale): void {
   const el = document.documentElement;
   el.lang = locale;
   el.dir = dirFor(locale);
+  // The browser TAB is user-facing too, and index.html can only ship one language.
+  document.title = translate(locale, "shell.documentTitle");
   try {
     localStorage.setItem(STORAGE_KEY, locale);
   } catch {

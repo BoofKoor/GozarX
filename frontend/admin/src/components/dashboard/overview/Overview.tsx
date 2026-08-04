@@ -5,27 +5,32 @@ import { HeroSparkline } from "@/components/charts/HeroSparkline";
 import { RadarRates } from "@/components/charts/RadarRates";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
-import { useI18n } from "@/i18n";
+import { t, useI18n } from "@/i18n";
 import { faPct, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
 import { Delta, KpiTile, TopCard } from "./tiles";
 
-// Indexed by getUTCDay(), which is 0 = SUNDAY. Written starting at شنبه (Saturday) it is off by
-// one all week — 2026-08-04 is a Tuesday and was labelling itself دوشنبه.
-const DOW: Record<string, string[]> = {
-  fa: ["ی", "د", "س", "چ", "پ", "ج", "ش"],
-  en: ["S", "M", "T", "W", "T", "F", "S"],
-};
+// Indexed by getUTCDay(), which is 0 = SUNDAY. A table written starting at Saturday is off by one
+// all week — 2026-08-04 is a Tuesday and was labelling itself دوشنبه.
+const DOW_INITIALS = [
+  "d.dowInitial.0",
+  "d.dowInitial.1",
+  "d.dowInitial.2",
+  "d.dowInitial.3",
+  "d.dowInitial.4",
+  "d.dowInitial.5",
+  "d.dowInitial.6",
+] as const;
 
 /** "YYYY-MM-DD" → the day number and, under it, the weekday initial in the active language. */
-function axisLabel(iso: string, locale: string) {
+function axisLabel(iso: string) {
   const d = new Date(`${iso}T00:00:00Z`);
   if (Number.isNaN(d.getTime())) return { primary: iso };
   return {
     primary: localizeDigits(String(d.getUTCDate())),
-    secondary: (DOW[locale] ?? DOW.fa)[d.getUTCDay()],
+    secondary: t(DOW_INITIALS[d.getUTCDay()]),
   };
 }
 
@@ -66,7 +71,7 @@ export function Overview({
   onExport: () => void;
   exporting: boolean;
 }) {
-  const { t, locale } = useI18n();
+  const { t } = useI18n();
   const claims = stats.claims_series;
   const signups = stats.signups_series;
   const maxY = Math.max(1, ...claims.map((d) => d.count), ...signups.map((d) => d.count));
@@ -118,7 +123,7 @@ export function Overview({
               <div className="mt-3">
                 <HeroSparkline
                   values={tail.map((d) => d.count)}
-                  labels={tail.map((d) => axisLabel(d.day, locale).secondary ?? "")}
+                  labels={tail.map((d) => axisLabel(d.day).secondary ?? "")}
                   highlight={peak}
                   ariaLabel={t("dash.spark.aria", {
                     days: formatNumber(tail.length),
@@ -204,7 +209,7 @@ export function Overview({
               { values: claims.map((d) => d.count) },
               { values: signups.map((d) => d.count) },
             ]}
-            labels={claims.map((d) => axisLabel(d.day, locale))}
+            labels={claims.map((d) => axisLabel(d.day))}
             ticks={ticksFor(maxY)}
             ariaLabel={t("dash.chart.sub")}
             className="h-[240px] w-full"
