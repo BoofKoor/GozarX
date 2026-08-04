@@ -38,6 +38,9 @@ class _StubPanel:
             SimpleNamespace(uuid="sq-2", name="Squad Two"),
         ]
 
+    async def squad_location_names(self, squad: str) -> list[str]:
+        return ["Germany", "Finland"]
+
     async def system_stats(self) -> SystemStats | None:
         return None  # panel unreachable in tests -> dashboard falls back to the DB active count
 
@@ -113,6 +116,41 @@ async def test_settings_put_floors_negative_numerics(admin_client: httpx.AsyncCl
     assert body["daily_limit_mb"] == 0
     assert body["referral_reward_mb"] == 0
     assert body["trial_hours"] == 1
+
+
+async def test_settings_rejects_a_location_the_bot_squad_does_not_serve(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """The website settings and wizard already refused these; the BOT's own list did not.
+
+    A name the squad doesn't serve is offered in the bot's location picker and then matches no
+    remark, so the user picks it and the claim dead-ends.
+    """
+    await admin_client.post("/api/admin/setup/", json={"trial_squad": "sq-1", "locations": []})
+    r = await admin_client.put(
+        "/api/admin/settings/", json={"locations": ["Germany", "Narnia"]}
+    )
+    assert r.status_code == 400
+    detail = r.json()["detail"]
+    assert "Narnia" in detail and "Finland" in detail  # names the bad value AND the real options
+    assert (await admin_client.get("/api/admin/settings/")).json()["locations"] == []
+
+
+async def test_settings_accepts_a_served_location(admin_client: httpx.AsyncClient) -> None:
+    await admin_client.post("/api/admin/setup/", json={"trial_squad": "sq-1", "locations": []})
+    r = await admin_client.put("/api/admin/settings/", json={"locations": ["Finland"]})
+    assert r.status_code == 200
+    assert r.json()["locations"] == ["Finland"]
+
+
+async def test_settings_stores_locations_when_no_squad_is_configured(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """Unverifiable is not invalid — with no squad set there is nothing to check against, and the
+    admin must not be blocked out of their own settings."""
+    r = await admin_client.put("/api/admin/settings/", json={"locations": ["Anywhere"]})
+    assert r.status_code == 200
+    assert r.json()["locations"] == ["Anywhere"]
 
 
 async def test_settings_ad_button_round_trip(admin_client: httpx.AsyncClient) -> None:

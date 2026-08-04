@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { Input } from "@/components/ui/Input";
 import { Spinner } from "@/components/ui/Spinner";
+import { useI18n } from "@/i18n";
 import { formatNumber } from "@/lib/format";
 
 /**
@@ -39,11 +40,12 @@ export function LocationPicker({
   onRefresh?: () => void;
   refreshing?: boolean;
 }) {
+  const { t } = useI18n();
   if (loading) {
     return (
       <div className="flex items-center gap-2 py-2 text-sm text-content-muted">
         <Spinner className="h-4 w-4" />
-        در حال گرفتن لوکیشن‌های اسکواد…
+        {t("loc.loading")}
       </div>
     );
   }
@@ -53,15 +55,12 @@ export function LocationPicker({
       <div className="space-y-2">
         <div className="flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>
-            لیست لوکیشن‌های اسکواد از پنل گرفته نشد. می‌توانید نام‌ها را دستی وارد کنید (با کاما جدا
-            کنید) — اما نام اشتباه توسط سرور رد می‌شود.
-          </span>
+          <span>{t("loc.unavailable")}</span>
         </div>
         <Input
           value={fallbackText}
           onChange={(e) => onFallbackTextChange(e.target.value)}
-          placeholder="مثال: آلمان، هلند"
+          placeholder={t("loc.placeholder")}
         />
       </div>
     );
@@ -82,12 +81,15 @@ export function LocationPicker({
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs text-content-muted">
           {allSelected
-            ? `همهٔ ${formatNumber(available.length)} لوکیشن اسکواد`
-            : `${formatNumber(selected.length)} از ${formatNumber(available.length)} انتخاب شده`}
+            ? t("loc.all", { n: formatNumber(available.length) })
+            : t("loc.some", {
+                n: formatNumber(selected.length),
+                total: formatNumber(available.length),
+              })}
         </span>
         <div className="flex items-center gap-1">
           <Button type="button" variant="ghost" size="xs" onClick={() => onChange([])}>
-            انتخاب همه
+            {t("loc.selectAll")}
           </Button>
           {onRefresh && (
             <Button
@@ -98,7 +100,7 @@ export function LocationPicker({
               loading={refreshing}
             >
               <RefreshCw className="h-3.5 w-3.5" />
-              به‌روزرسانی از اسکواد
+              {t("loc.refresh")}
             </Button>
           )}
         </div>
@@ -114,9 +116,7 @@ export function LocationPicker({
         ))}
       </div>
       {selected.length > 0 && selected.length < available.length && (
-        <p className="text-xs text-content-muted">
-          فقط لوکیشن‌های تیک‌خورده به بازدیدکننده‌ها نشان داده می‌شوند.
-        </p>
+        <p className="text-xs text-content-muted">{t("loc.subsetNote")}</p>
       )}
     </div>
   );

@@ -11,7 +11,11 @@ import { NumberInput } from "@/components/ui/NumberInput";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
+import { LocationPicker } from "@/components/site/LocationPicker";
 import { useSettings, useUpdateSettings } from "@/hooks/useSettings";
+import { useSiteDerivableLocations } from "@/hooks/useSite";
+import { useI18n } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { splitLocations } from "@/lib/format";
 import { allValidNumbers } from "@/lib/validate";
 
@@ -22,7 +26,9 @@ interface FormState {
   trial_hours: number;
   configs_per_page: number;
   ads_enabled: boolean;
-  locations: string;
+  locations: string[];
+  /** Only used when the squad list cannot be fetched. */
+  locationsText: string;
   ad_button_enabled: boolean;
   ad_button_text: string;
   ad_button_url: string;
@@ -43,7 +49,8 @@ const EMPTY: FormState = {
   trial_hours: 24,
   configs_per_page: 8,
   ads_enabled: false,
-  locations: "",
+  locations: [],
+  locationsText: "",
   ad_button_enabled: false,
   ad_button_text: "",
   ad_button_url: "",
@@ -51,9 +58,13 @@ const EMPTY: FormState = {
 };
 
 export function Settings() {
+  const { t } = useI18n();
   const { data, isError, refetch } = useSettings();
   const update = useUpdateSettings();
   const [form, setForm] = useState<FormState>(EMPTY);
+  // The bot's own trial squad decides which location names are valid here — the same endpoint the
+  // website forms use, just pointed at a different squad.
+  const derivable = useSiteDerivableLocations(data?.trial_squad ?? "");
 
   useEffect(() => {
     if (data) {
@@ -64,7 +75,8 @@ export function Settings() {
         trial_hours: data.trial_hours,
         configs_per_page: data.configs_per_page,
         ads_enabled: data.ads_enabled,
-        locations: data.locations.join("، "),
+        locations: data.locations,
+        locationsText: data.locations.join("، "),
         ad_button_enabled: data.ad_button_enabled,
         ad_button_text: data.ad_button_text,
         ad_button_url: data.ad_button_url,
@@ -79,7 +91,7 @@ export function Settings() {
   if (!data) {
     return (
       <div className="space-y-6">
-        <PageHeader title="تنظیمات ربات" />
+        <PageHeader title={t("set.title")} />
         {isError ? (
           <ErrorState onRetry={() => refetch()} />
         ) : (
@@ -92,6 +104,8 @@ export function Settings() {
   }
 
   const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
+  const picker = derivable.data;
+  const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -104,7 +118,7 @@ export function Settings() {
         { value: form.configs_per_page, min: 1 },
       ])
     ) {
-      toast.error("مقادیر عددی نامعتبرند. لطفاً همهٔ فیلدها را پر کنید.");
+      toast.error(t("set.invalidNumbers"));
       return;
     }
     update.mutate(
@@ -115,15 +129,17 @@ export function Settings() {
         trial_hours: form.trial_hours,
         configs_per_page: form.configs_per_page,
         ads_enabled: form.ads_enabled,
-        locations: splitLocations(form.locations),
+        locations: pickerUnavailable ? splitLocations(form.locationsText) : form.locations,
         ad_button_enabled: form.ad_button_enabled,
         ad_button_text: form.ad_button_text.trim(),
         ad_button_url: form.ad_button_url.trim(),
         ad_button_emoji_id: form.ad_button_emoji_id.trim(),
       },
       {
-        onSuccess: () => toast.success("تنظیمات ذخیره شد."),
-        onError: () => toast.error("ذخیره نشد."),
+        onSuccess: () => toast.success(t("set.saved")),
+        // Surface the server's own reason — a 400 naming a location the squad does not serve is
+        // actionable; one generic "could not save" is not.
+        onError: (err) => toast.error(apiErrorMessage(err, t("set.saveFailed"))),
       },
     );
   }
@@ -131,45 +147,40 @@ export function Settings() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="تنظیمات ربات"
-        sub="اقتصاد و رفتار ربات تلگرام. تغییرات بلافاصله اعمال می‌شوند و نیازی به دیپلوی ندارند."
+        title={t("set.title")}
+        sub={t("set.sub")}
         actions={
           <Button type="submit" form="bot-settings" loading={update.isPending}>
             <Save className="h-4 w-4" />
-            ذخیره
+            {t("set.save")}
           </Button>
         }
       />
 
-      <form id="bot-settings" onSubmit={submit} className="space-y-6">
-        <Card className="max-w-2xl">
-          <CardHeader
-            title="اقتصاد"
-            sub="حجم روزانه، پاداش دعوت و مدت اعتبار کانفیگ"
-            icon={Coins}
-          />
+      {/* The economy card spans, then the two behaviour cards tile: three stacked max-w-2xl cards
+          left the right half of a console screen empty. */}
+      <form id="bot-settings" onSubmit={submit} className="grid gap-4 xl:grid-cols-2">
+        <Card className="xl:col-span-2">
+          <CardHeader title={t("set.economy")} sub={t("set.economy.sub")} icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="حجم روزانه (مگابایت)">
+            <Field label={t("set.dailyLimit")}>
               <NumberInput
                 min={1}
                 value={form.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
             </Field>
-            <Field label="مدت اعتبار کانفیگ (ساعت)">
+            <Field label={t("set.trialHours")}>
               <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
             </Field>
-            <Field label="پاداش هر دعوت (مگابایت)">
+            <Field label={t("set.rewardMb")}>
               <NumberInput
                 min={0}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
-            <Field
-              label="سقف دعوت‌های پاداش‌دار"
-              hint="بعد از این تعداد، دعوت تازه پاداشی اضافه نمی‌کند."
-            >
+            <Field label={t("set.rewardLimit")} hint={t("set.rewardLimit.hint")}>
               <NumberInput
                 min={0}
                 value={form.referral_reward_limit}
@@ -179,52 +190,55 @@ export function Settings() {
           </div>
         </Card>
 
-        <Card className="max-w-2xl">
-          <CardHeader title="منو و لوکیشن‌ها" icon={MapPin} />
+        <Card>
+          <CardHeader title={t("set.menu")} icon={MapPin} />
           <div className="space-y-4">
-            <Field label="تعداد کانفیگ در هر صفحهٔ منو">
+            <Field label={t("set.perPage")}>
               <NumberInput
                 min={1}
                 value={form.configs_per_page}
                 onChange={setNum("configs_per_page")}
               />
             </Field>
-            <Field label="لوکیشن‌ها" hint="با کاما جدا کنید؛ خالی یعنی همهٔ لوکیشن‌های اسکواد.">
-              <Input
-                value={form.locations}
-                onChange={(e) => setForm((f) => ({ ...f, locations: e.target.value }))}
-                placeholder="مثال: آلمان، هلند"
+            <Field label={t("set.locations")} hint={t("set.locations.hint")}>
+              {/* The same validated picker the website forms use, pointed at the BOT's squad. A
+                  free-text box here could store a name the squad does not serve, and the bot then
+                  matches it against no remark at all. */}
+              <LocationPicker
+                available={picker}
+                loading={derivable.isLoading}
+                unavailable={pickerUnavailable}
+                selected={form.locations}
+                onChange={(next) => setForm((f) => ({ ...f, locations: next }))}
+                fallbackText={form.locationsText}
+                onFallbackTextChange={(v) => setForm((f) => ({ ...f, locationsText: v }))}
               />
             </Field>
             <Switch
               checked={form.ads_enabled}
               onChange={(v) => setForm((f) => ({ ...f, ads_enabled: v }))}
-              label="نمایش پیام تبلیغاتی پس از دریافت کانفیگ"
+              label={t("set.ads")}
             />
           </div>
         </Card>
 
-        <Card className="max-w-2xl">
-          <CardHeader
-            title="دکمهٔ تبلیغ (فقط فارسی)"
-            sub="کنار دکمهٔ «تغییر لوکیشن» در صفحهٔ کانفیگ نمایش داده می‌شود."
-            icon={Megaphone}
-          />
+        <Card>
+          <CardHeader title={t("set.adButton")} sub={t("set.adButton.sub")} icon={Megaphone} />
           <div className="space-y-4">
             <Switch
               checked={form.ad_button_enabled}
               onChange={(v) => setForm((f) => ({ ...f, ad_button_enabled: v }))}
-              label="نمایش دکمهٔ تبلیغ"
+              label={t("set.adButton.enabled")}
             />
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="متن دکمه">
+              <Field label={t("set.adButton.text")}>
                 <Input
                   value={form.ad_button_text}
                   onChange={(e) => setForm((f) => ({ ...f, ad_button_text: e.target.value }))}
-                  placeholder="مثال: کانال ما"
+                  placeholder={t("set.adButton.textPlaceholder")}
                 />
               </Field>
-              <Field label="لینک دکمه">
+              <Field label={t("set.adButton.url")}>
                 <Input
                   dir="ltr"
                   value={form.ad_button_url}
@@ -233,10 +247,7 @@ export function Settings() {
                 />
               </Field>
             </div>
-            <Field
-              label="آی‌دی ایموجی پریمیوم (اختیاری)"
-              hint="فقط وقتی نمایش داده می‌شود که مالک ربات اشتراک تلگرام پریمیوم فعال داشته باشد؛ در غیر این‌صورت دکمه بدون ایموجی نشان داده می‌شود."
-            >
+            <Field label={t("set.adButton.emoji")} hint={t("set.adButton.emojiHint")}>
               <Input
                 dir="ltr"
                 value={form.ad_button_emoji_id}

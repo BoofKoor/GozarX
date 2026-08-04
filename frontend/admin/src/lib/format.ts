@@ -90,6 +90,35 @@ export function faDate(iso: string | null | undefined): string {
   ).format(d);
 }
 
+/**
+ * ISO datetime → a clock time in the LOCAL zone, in the panel's language.
+ *
+ * Local, not UTC, unlike `faDate`/`shortDay`: those label reporting days, which are fixed Tehran
+ * days, while this stamps "when was this probe taken" for whoever is looking at the screen.
+ */
+export function faTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return memo(
+    "time",
+    () => new Intl.DateTimeFormat(localeTag(), { hour: "2-digit", minute: "2-digit" }),
+  ).format(d);
+}
+
+/** ISO datetime → date + clock time, in the panel's language. */
+export function faDateTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return memo(
+    "dateTime",
+    () =>
+      new Intl.DateTimeFormat(localeTag(), {
+        dateStyle: "short",
+        timeStyle: "short",
+      }),
+  ).format(d);
+}
+
 /** Seconds → a compact uptime string ("۳d ۴h", "۱۲m"). */
 export function humanUptime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
