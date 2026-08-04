@@ -1,133 +1,81 @@
 import { clsx } from "clsx";
-import { PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
+import { LogOut, X } from "lucide-react";
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 
-import { BrandLockup } from "./Brand";
+import { useI18n } from "@/i18n";
+import { logout } from "@/hooks/useAuth";
+
+import { BrandLockup, BrandMark } from "./Brand";
 import { NAV, isItemActive, type NavItem } from "./nav";
 
-function NavLinkItem({
-  item,
-  active,
-  collapsed,
-  onNavigate,
-}: {
-  item: NavItem;
-  active: boolean;
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+/**
+ * One rail button.
+ *
+ * The active marker sits on the rail's INLINE-START edge — right in Persian, left in English — and
+ * is a real element rather than a border, so it can be inset from the button's rounded corners.
+ */
+function RailButton({ item, active }: { item: NavItem; active: boolean }) {
+  const { t } = useI18n();
+  const label = t(item.labelKey);
   return (
     <Link
       to={item.to}
-      onClick={onNavigate}
       aria-current={active ? "page" : undefined}
-      // Collapsed rail hides the text, so the native tooltip carries the name. A custom tooltip
-      // would have to wrap the link in another focusable element — worse for keyboard users.
-      title={collapsed ? item.label : undefined}
+      title={label}
+      aria-label={label}
       className={clsx(
-        "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
-        collapsed && "justify-center px-0",
+        "relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition",
         active
-          ? "bg-brand/10 text-brand-700"
-          : "text-content-muted hover:bg-surface-hover hover:text-content",
+          ? "border-line-strong bg-surface-hover text-brand"
+          : "border-transparent text-content-muted hover:border-line hover:text-content",
       )}
     >
-      {/* RTL: the active indicator sits on the START edge, which is the right-hand side. */}
       {active && (
-        <span className="absolute inset-y-1.5 start-0 w-0.5 rounded-full bg-brand" aria-hidden />
+        <span
+          className="absolute -inset-y-0.5 -start-2.5 w-[3px] rounded-full bg-brand"
+          aria-hidden
+        />
       )}
-      <item.icon
-        className={clsx(
-          "h-5 w-5 shrink-0 transition",
-          active ? "text-brand" : "text-content-subtle",
-        )}
-      />
-      {!collapsed && <span className="truncate">{item.label}</span>}
+      <item.icon className="h-[18px] w-[18px]" />
     </Link>
   );
 }
 
-/** Shared nav body — used by both the desktop sidebar and the mobile drawer. `onNavigate` fires on
- *  a link click so the drawer can close itself. */
-function SidebarNav({
-  collapsed = false,
-  onNavigate,
-}: {
-  collapsed?: boolean;
-  onNavigate?: () => void;
-}) {
+/** Desktop rail — icons only, generously spaced, hidden below md where the drawer takes over. */
+export function Sidebar() {
   const { pathname } = useLocation();
-  return (
-    <>
-      <BrandLockup compact={collapsed} className={clsx("mb-6", collapsed && "justify-center")} />
-      <nav className="scrollbar-thin -mx-1 flex-1 space-y-5 overflow-y-auto px-1">
-        {NAV.map((group, i) => (
-          <div key={group.label ?? `top-${i}`} className="space-y-1">
-            {group.label && !collapsed && (
-              <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-content-subtle">
-                {group.label}
-              </div>
-            )}
-            {group.label && collapsed && <div className="mx-2 my-2 h-px bg-line" aria-hidden />}
-            {group.items.map((item) => (
-              <NavLinkItem
-                key={item.to}
-                item={item}
-                active={isItemActive(pathname, item)}
-                collapsed={collapsed}
-                onNavigate={onNavigate}
-              />
-            ))}
-          </div>
-        ))}
-      </nav>
-    </>
-  );
-}
+  const { t } = useI18n();
 
-/** Desktop sidebar — static rail, hidden below md (the mobile drawer takes over there). */
-export function Sidebar({
-  collapsed,
-  onToggleCollapsed,
-}: {
-  collapsed: boolean;
-  onToggleCollapsed: () => void;
-}) {
   return (
-    <aside
-      className={clsx(
-        "hidden shrink-0 flex-col border-e border-line bg-nav p-4 transition-[width] duration-200 md:flex",
-        collapsed ? "w-[76px]" : "w-60",
-      )}
+    <nav
+      aria-label={t("shell.nav")}
+      className="hidden w-[68px] shrink-0 flex-col items-center gap-3 border-e border-line bg-nav py-5 md:flex"
     >
-      <SidebarNav collapsed={collapsed} />
+      <BrandMark className="mb-4 h-8 w-8" />
+      {NAV.flatMap((group) => group.items).map((item) => (
+        <RailButton key={item.to} item={item} active={isItemActive(pathname, item)} />
+      ))}
+      <span className="flex-1" />
       <button
         type="button"
-        onClick={onToggleCollapsed}
-        aria-label={collapsed ? "باز کردن نوار کناری" : "جمع‌کردن نوار کناری"}
-        className={clsx(
-          "mt-3 flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-content-subtle transition hover:bg-surface-hover hover:text-content",
-          collapsed && "justify-center px-0",
-        )}
+        onClick={logout}
+        title={t("shell.logout")}
+        aria-label={t("shell.logout")}
+        className="grid h-10 w-10 place-items-center rounded-xl border border-line text-content-muted transition hover:border-line-strong hover:text-content"
       >
-        {collapsed ? (
-          <PanelLeftOpen className="h-4 w-4" />
-        ) : (
-          <>
-            <PanelLeftClose className="h-4 w-4" />
-            جمع‌کردن منو
-          </>
-        )}
+        <LogOut className="h-[18px] w-[18px]" />
       </button>
-    </aside>
+    </nav>
   );
 }
 
-/** Mobile navigation drawer (below md). Slides in from the right (RTL), dims the page, and closes on
- *  overlay click, Esc, or navigation — the panel below md previously had NO navigation at all (M2). */
+/** Mobile navigation drawer (below md). Slides in from the inline-end, dims the page, and closes on
+ *  overlay click, Esc, or navigation. Labels are shown here — there is room, and a bare icon strip
+ *  on a phone is a guessing game. */
 export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { pathname } = useLocation();
+  const { t } = useI18n();
 
   // Close whenever the route changes (covers programmatic navigation, not just link clicks).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,7 +102,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
     >
       <div
         className={clsx(
-          "absolute inset-0 bg-black/45 transition-opacity duration-200",
+          "absolute inset-0 bg-black/45 backdrop-blur-sm transition-opacity duration-200",
           open ? "opacity-100" : "opacity-0",
         )}
         onClick={onClose}
@@ -162,20 +110,56 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
       <aside
         role="dialog"
         aria-modal="true"
-        aria-label="ناوبری"
+        aria-label={t("shell.nav")}
         className={clsx(
           "absolute inset-y-0 end-0 flex w-64 flex-col border-s border-line bg-nav p-4 shadow-overlay transition-transform duration-200",
-          open ? "translate-x-0" : "-translate-x-full",
+          open ? "translate-x-0" : "rtl:-translate-x-full ltr:translate-x-full",
         )}
       >
         <button
           onClick={onClose}
-          aria-label="بستن منو"
+          aria-label={t("shell.closeMenu")}
           className="absolute end-3 top-3 flex h-8 w-8 items-center justify-center rounded-lg text-content-subtle transition hover:bg-surface-hover hover:text-content"
         >
           <X className="h-5 w-5" />
         </button>
-        <SidebarNav onNavigate={onClose} />
+        <BrandLockup className="mb-6" />
+        <div className="scrollbar-thin -mx-1 flex-1 space-y-5 overflow-y-auto px-1">
+          {NAV.map((group, i) => (
+            <div key={group.labelKey ?? `top-${i}`} className="space-y-1">
+              {group.labelKey && (
+                <div className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wide text-content-subtle">
+                  {t(group.labelKey)}
+                </div>
+              )}
+              {group.items.map((item) => {
+                const active = isItemActive(pathname, item);
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    onClick={onClose}
+                    aria-current={active ? "page" : undefined}
+                    className={clsx(
+                      "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition",
+                      active
+                        ? "bg-brand/12 text-brand-700"
+                        : "text-content-muted hover:bg-surface-hover hover:text-content",
+                    )}
+                  >
+                    <item.icon
+                      className={clsx(
+                        "h-5 w-5 shrink-0",
+                        active ? "text-brand" : "text-content-subtle",
+                      )}
+                    />
+                    <span className="truncate">{t(item.labelKey)}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
+        </div>
       </aside>
     </div>
   );

@@ -159,13 +159,32 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 11 Website stats made honest (`site_devices.last_seen_at` visit signal, windowed KPIs with
   previous-period deltas, local-day boundaries, live-vs-stale active configs) + editable FAQ
   (`site_faq_items`, seeded from the site's in-code list).
+12 Panel redesign, foundation: the Nocturne palette in `tokens.css`, the icon-rail shell, the three
+  hand-drawn SVG charts (`HeroSparkline`/`AreaTrend`/`RadarRates`), and the fa/en i18n layer.
+  Pages keep their current markup and migrate their strings as each is rebuilt.
 
-## Admin panel conventions (Phase 10)
-- **Colour is the GozarX brand blue**, mirroring `docs/website/design/TOKENS.css` — never invent a
-  palette. Every colour resolves through a CSS custom property in `frontend/admin/src/styles/
+## Admin panel conventions
+- **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
+  and deliberately does NOT mirror `docs/website/design/TOKENS.css`. An operator console is a dense,
+  long-session tool and wants a calmer ground than a marketing page; the site keeps its own tokens.
+  Every colour still resolves through a CSS custom property in `frontend/admin/src/styles/
   tokens.css`; components name a ROLE (`bg-surface`, `text-content-muted`, `border-line`) and the
   theme resolves it. Do not add `dark:` twins for base colours, and never hardcode a hex — charts
   read the same tokens via `lib/chartTheme`.
+- **The panel is bilingual (fa/en).** No user-facing literal lives in a component: strings go in
+  `src/i18n/messages.ts` and are read with `useI18n().t(key)`. The English map is typed against the
+  Persian one, so a missing translation fails `tsc` rather than shipping. Direction follows the
+  locale — use logical properties (`ms-`/`me-`, `start`/`end`, `border-s`), never `left`/`right`.
+  Numbers and dates go through `lib/format`, which reads the active locale; never call
+  `Intl.NumberFormat("fa-IR")` in a component.
+- **Isolate every foreign-script run** (`unicode-bidi: isolate`): a Latin handle, a `⌘K`, a
+  `sent / total` ratio or a `https://` inside a Persian sentence all reorder without it. Reach for
+  `direction: ltr` only on a genuinely Latin run, and never on a block — it moves the text to the
+  left edge as well.
+- **The three hero charts are hand-drawn SVG** (`components/charts/`), not recharts: masked fades
+  and the radar's eight-point curve are not expressible there. recharts stays for ordinary bar and
+  line charts. A fade means "this continues beyond the frame" — never fade a marker or a
+  measurement. The path maths lives in `charts/geometry.ts` and is unit-tested.
 - **One control per concern.** Form fields go through `<Field>` (label + hint + error + aria);
   inputs through the kit (`Input`/`Textarea`/`Select`/`Switch`/`Checkbox`/`NumberInput`). Never
   hand-write an input class string — `.field-control` is the single definition.

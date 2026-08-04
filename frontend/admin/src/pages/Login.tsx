@@ -4,7 +4,7 @@ import { type FormEvent, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
-import { BrandMark } from "@/components/layout/Brand";
+import { BrandTile } from "@/components/layout/Brand";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
@@ -43,7 +43,7 @@ export function Login() {
       />
       <div className="relative w-full max-w-sm">
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
-          <BrandMark className="h-14 w-14" />
+          <BrandTile className="h-14 w-14" />
           <div>
             <h1 className="text-xl font-bold text-content">GozarX</h1>
             <p className="mt-1 text-sm text-content-muted">ورود به پنل مدیریت</p>

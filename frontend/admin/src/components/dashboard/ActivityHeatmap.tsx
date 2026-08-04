@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 
 import { Card, CardHeader } from "@/components/ui/Card";
-import { formatNumber, toFaDigits } from "@/lib/format";
+import { formatNumber, localizeDigits } from "@/lib/format";
 import type { HeatCell } from "@/types/api";
 
 // Postgres dow: 0=Sunday .. 6=Saturday. Persian names indexed by that dow value.
@@ -59,7 +59,7 @@ export function ActivityHeatmap({
             <div className="mb-1 flex pl-14 text-[10px] text-content-subtle">
               {HOURS.map((h) => (
                 <div key={h} className="flex-1 text-center">
-                  {h % 3 === 0 ? toFaDigits(String(h)) : ""}
+                  {h % 3 === 0 ? localizeDigits(String(h)) : ""}
                 </div>
               ))}
             </div>
@@ -74,7 +74,7 @@ export function ActivityHeatmap({
                     return (
                       <div
                         key={h}
-                        title={`${DOW_LABEL[dow]} ${toFaDigits(String(h))}:۰۰ — ${formatNumber(c)} ${unit}`}
+                        title={`${DOW_LABEL[dow]} ${localizeDigits(String(h))}:${localizeDigits("00")} — ${formatNumber(c)} ${unit}`}
                         className={clsx("aspect-square flex-1 rounded-[3px]", cellClass(c, max))}
                       />
                     );

@@ -1,126 +1,136 @@
 /* Design tokens — the single source of truth for the panel's colour system.
  *
- * Values mirror the website's own token file (docs/website/design/TOKENS.css) so the panel and the
- * public site read as one product: GozarX blue #2563EB (light) / #3B82F6 (dark), cyan #06B6D4 as
- * the secondary accent, and the same slate neutrals. The panel previously carried a leftover green
- * (#7CB000) that matched neither the logo nor the site.
+ * The panel runs its OWN palette, "Nocturne": a deep indigo canvas with periwinkle brand blue,
+ * approved as the panel redesign. It deliberately diverges from the public site's
+ * docs/website/design/TOKENS.css — an operator console is a dense, long-session tool and wants a
+ * calmer, darker ground than a marketing page. The site keeps its own tokens; only the panel moves.
  *
- * Every value is stored as raw `R G B` channels (no `rgb()` wrapper) so tailwind.config.js can wrap
- * them as `rgb(var(--token) / <alpha-value>)` and Tailwind's opacity modifiers (`bg-surface/60`)
- * keep working. Light values live on `:root`; `.dark` re-points the SEMANTIC tokens only.
+ * The rule that has NOT changed: every colour in the panel resolves through a custom property
+ * declared here. Components name a ROLE (`bg-surface`, `text-content-muted`, `border-line`) and the
+ * theme resolves it, so a retheme is this file and nothing else. No component ever writes a hex.
  *
- * The rule this replaces: components used to hand-write `bg-white dark:bg-slate-900` on every
- * surface, so retheming meant editing dozens of files and dark mode drifted from light. Components
- * now name a role (`bg-surface`, `text-muted`, `border-line`) and the theme resolves it.
+ * Values are raw `R G B` channels (no `rgb()` wrapper) so tailwind.config.js can wrap them as
+ * `rgb(var(--token) / <alpha-value>)` and Tailwind's opacity modifiers (`bg-surface/60`) keep
+ * working. Light values live on `:root`; `.dark` re-points the SEMANTIC tokens only.
  */
 
 :root {
-  /* ── Brand ramp (GozarX blue) ─────────────────────────────────────────────
-     500 = --primary #2563EB, 600 = --primary-2/--primary-hover #1D4ED8, 400 = --ring #3B82F6. */
-  --brand-50: 239 245 255; /* --brand-tint  #EFF5FF */
-  --brand-100: 224 235 255; /* --brand-tint-2 #E0EBFF */
-  --brand-200: 191 219 254;
-  --brand-300: 147 197 253;
-  --brand-400: 59 130 246;
-  --brand-500: 37 99 235;
-  --brand-600: 29 78 216;
-  --brand-700: 30 64 175;
-  --brand-800: 30 58 138;
-  --brand-900: 23 37 84;
-  --brand-950: 12 20 46;
+  /* ── Brand ramp (Nocturne periwinkle) ─────────────────────────────────────
+     500 is the light-theme brand #4D5BDD; the dark theme lifts it to #6E7BF2 so brand-coloured
+     text keeps its contrast on the indigo canvas without changing identity. */
+  --brand-50: 240 241 253; /* #F0F1FD */
+  --brand-100: 226 229 251; /* #E2E5FB */
+  --brand-200: 199 204 248;
+  --brand-300: 163 171 244;
+  --brand-400: 126 137 240;
+  --brand-500: 77 91 221; /* #4D5BDD — light brand */
+  --brand-600: 63 75 210; /* #3F4BD2 */
+  --brand-700: 52 61 173;
+  --brand-800: 41 48 137;
+  --brand-900: 32 37 105;
+  --brand-950: 20 23 66;
 
-  /* Secondary accent (cyan) — hero gradients on the site, sparingly here for "second series". */
-  --accent-400: 34 211 238;
-  --accent-500: 6 182 212;
-  --accent-600: 14 116 144;
+  /* Secondary accent — the teal the mock's fourth card glyph uses. */
+  --accent-400: 74 178 205;
+  --accent-500: 43 135 165; /* #2B87A5 */
+  --accent-600: 32 105 130;
 
   /* ── Status ramps ─────────────────────────────────────────────────────────
-     Matched to the site's --success/--warning/--danger and their dark variants. */
-  --success-400: 52 211 153;
-  --success-500: 16 185 129;
-  --success-600: 5 150 105;
-  --success-700: 4 120 87;
+     Matched to the mock's --c-good / --c-bad, with a warning between them. */
+  --success-400: 61 214 140;
+  --success-500: 30 178 110;
+  --success-600: 22 160 106; /* #16A06A */
+  --success-700: 16 122 82;
 
-  --warning-400: 251 191 36;
-  --warning-500: 245 158 11;
-  --warning-600: 217 119 6;
-  --warning-700: 180 83 9;
+  --warning-400: 232 168 74;
+  --warning-500: 208 138 45;
+  --warning-600: 176 111 31; /* #B06F1F */
+  --warning-700: 138 85 22;
 
-  --danger-400: 248 113 113;
-  --danger-500: 239 68 68;
-  --danger-600: 220 38 38;
-  --danger-700: 185 28 28;
+  --danger-400: 255 107 107;
+  --danger-500: 235 88 88;
+  --danger-600: 220 76 76; /* #DC4C4C */
+  --danger-700: 176 54 54;
 
-  --info-400: 56 189 248;
-  --info-500: 14 165 233;
-  --info-600: 2 132 199;
-  --info-700: 3 105 161;
+  --info-400: 96 190 220;
+  --info-500: 58 169 203; /* #3AA9CB */
+  --info-600: 42 132 161;
+  --info-700: 32 100 124;
 
-  /* Chart series — 6 hues that stay distinguishable in both themes and for the common
-     colour-vision deficiencies (blue / cyan / amber / violet / emerald / rose). Series 1 is the
+  /* Chart series — the four accents the mock validated for the dashboard cards, plus two more that
+     hold the same lightness band and stay separable under deutan/protan/tritan. Series 1 is the
      brand so the primary metric always reads as "ours". */
-  --chart-1: 37 99 235;
-  --chart-2: 6 182 212;
-  --chart-3: 245 158 11;
-  --chart-4: 139 92 246;
-  --chart-5: 16 185 129;
-  --chart-6: 244 63 94;
+  --chart-1: 77 91 221; /* periwinkle — brand */
+  --chart-2: 176 111 31; /* amber      — second series */
+  --chart-3: 22 160 106; /* emerald */
+  --chart-4: 43 135 165; /* teal */
+  --chart-5: 138 92 214; /* violet */
+  --chart-6: 205 76 118; /* rose */
 
-  /* ── Semantic surfaces (LIGHT) ────────────────────────────────────────────── */
-  --bg: 246 248 252; /* --bg      #F6F8FC */
-  --surface: 255 255 255; /* --surface #FFFFFF */
-  --surface-sunken: 241 245 249; /* --sunken  #F1F5F9 */
-  --surface-hover: 238 242 248; /* --sunken-2 #EEF2F8 */
-  --nav: 255 255 255;
+  /* ── Semantic surfaces (LIGHT) ────────────────────────────────────────────
+     From the mock's [data-mock-theme="light"] block. */
+  --bg: 234 237 247; /* --c-page      #EAEDF7 — the page behind the panels */
+  --surface: 255 255 255; /* --c-surface   #FFFFFF — cards */
+  --surface-sunken: 246 248 252; /* --c-canvas    #F6F8FC — the content well */
+  --surface-hover: 241 244 251; /* --c-surface-2 #F1F4FB */
+  --nav: 255 255 255; /* --c-rail */
 
-  --line: 228 233 242; /* --border        #E4E9F2 */
-  --line-strong: 211 218 230; /* --border-strong #D3DAE6 */
+  --line: 223 228 240; /* --c-line      #DFE4F0 */
+  --line-strong: 211 218 233; /* --c-rail-line #D3DAE9 */
 
-  --text: 15 23 42; /* --text  #0F172A */
-  --text-muted: 94 107 128; /* --muted #5E6B80 — AA on bg/surface/sunken */
-  --text-subtle: 124 138 160; /* --faint #7C8AA0 — large/decorative tier */
+  --text: 20 24 58; /* --c-ink   #14183A */
+  --text-muted: 91 99 134; /* --c-muted #5B6386 */
+  --text-subtle: 139 147 178; /* --c-faint #8B93B2 */
 
-  --ring: 59 130 246; /* --ring #3B82F6 */
+  --ring: 77 91 221;
 
-  /* Elevation — tuned per theme (dark surfaces need lift from light, not shadow). */
-  --shadow-card: 0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06);
-  --shadow-raised: 0 4px 12px -2px rgb(15 23 42 / 0.1), 0 2px 6px -2px rgb(15 23 42 / 0.06);
-  --shadow-overlay: 0 20px 40px -12px rgb(15 23 42 / 0.22), 0 8px 16px -8px rgb(15 23 42 / 0.12);
-  --shadow-glow: 0 4px 14px rgb(37 99 235 / 0.28);
+  /* Elevation — tuned per theme (dark surfaces lift with light, not with shadow). */
+  --shadow-card: 0 1px 2px rgb(20 24 58 / 0.05), 0 4px 12px -8px rgb(20 24 58 / 0.12);
+  --shadow-raised: 0 4px 14px -4px rgb(20 24 58 / 0.14), 0 2px 6px -3px rgb(20 24 58 / 0.08);
+  --shadow-overlay: 0 32px 64px -28px rgb(20 24 58 / 0.42), 0 10px 24px -12px rgb(20 24 58 / 0.2);
+  --shadow-glow: 0 4px 14px rgb(77 91 221 / 0.3);
 }
 
 .dark {
-  /* ── Semantic surfaces (DARK) ─────────────────────────────────────────────── */
-  --bg: 2 6 23; /* --bg       #020617 */
-  --surface: 14 23 41; /* --surface  #0E1729 */
-  --surface-sunken: 10 17 32; /* --sunken   #0A1120 */
-  --surface-hover: 24 35 56; /* --raised   #182338 */
-  --nav: 14 23 41;
+  /* ── Semantic surfaces (DARK) ─────────────────────────────────────────────
+     From the mock's .mock block — the approved default. */
+  --bg: 30 34 73; /* --c-page      #1E2249 */
+  --surface: 48 53 106; /* --c-surface   #30356A — cards */
+  --surface-sunken: 40 44 88; /* --c-canvas    #282C58 — the content well */
+  --surface-hover: 56 61 122; /* --c-surface-2 #383D7A */
+  --nav: 35 39 80; /* --c-rail      #232750 */
 
-  --line: 41 52 71; /* rgba(148,163,184,.16) flattened on --surface */
-  --line-strong: 57 71 94; /* rgba(148,163,184,.28) flattened on --surface */
+  --line: 61 67 130; /* --c-line      #3D4382 */
+  --line-strong: 69 75 149; /* --c-rail-line #454B95 */
 
-  --text: 241 245 249; /* --text  #F1F5F9 */
-  --text-muted: 148 163 184; /* --muted #94A3B8 */
-  --text-subtle: 100 116 139; /* --faint #64748B */
+  --text: 242 243 255; /* --c-ink   #F2F3FF */
+  --text-muted: 162 168 214; /* --c-muted #A2A8D6 */
+  --text-subtle: 121 129 180; /* --c-faint #7981B4 */
 
-  --ring: 59 130 246;
+  --ring: 110 123 242;
 
-  /* On a near-black canvas the site lifts primary to #3B82F6 and hover to #60A5FA — mirror that so
-     brand-coloured text and icons keep AA contrast without changing the identity. */
-  --brand-500: 59 130 246;
-  --brand-600: 37 99 235;
-  --brand-700: 147 197 253; /* --brand-tint-ink #93C5FD — the "ink" shade on tinted chips */
+  /* The brand lifts on the dark canvas so brand-coloured text and icons keep AA contrast. */
+  --brand-500: 110 123 242; /* --c-brand  #6E7BF2 */
+  --brand-600: 95 108 243; /* --c-hero-a #5F6CF3 */
+  --brand-700: 163 171 244; /* the "ink" shade on tinted chips */
 
-  /* Same flip for the status "ink" shades (the site's --success-ink / --warning-ink / --danger-ink),
-     so a tinted badge needs ONE class (`text-success-700`) instead of a light/dark pair. */
-  --success-700: 110 231 183;
-  --warning-700: 252 211 77;
-  --danger-700: 252 165 165;
-  --info-700: 125 211 252;
+  /* Same flip for the status "ink" shades, so a tinted badge needs ONE class
+     (`text-success-700`) instead of a light/dark pair. */
+  --success-700: 61 214 140; /* --c-good    #3DD68C */
+  --warning-700: 200 126 46; /* --c-brand-2 #C87E2E */
+  --danger-700: 255 107 107; /* --c-bad     #FF6B6B */
+  --info-700: 96 190 220;
 
-  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.4), 0 1px 3px 0 rgb(0 0 0 / 0.3);
-  --shadow-raised: 0 4px 14px -2px rgb(0 0 0 / 0.55), 0 2px 6px -2px rgb(0 0 0 / 0.4);
-  --shadow-overlay: 0 24px 48px -12px rgb(0 0 0 / 0.7), 0 8px 16px -8px rgb(0 0 0 / 0.5);
-  --shadow-glow: 0 4px 16px rgb(59 130 246 / 0.36);
+  /* Charts follow the dark accents the mock uses for its card glyphs. */
+  --chart-1: 110 123 242;
+  --chart-2: 200 126 46;
+  --chart-3: 61 214 140;
+  --chart-4: 58 169 203;
+  --chart-5: 158 116 240;
+  --chart-6: 232 106 148;
+
+  --shadow-card: none;
+  --shadow-raised: 0 12px 30px -20px rgb(6 8 30 / 0.7);
+  --shadow-overlay: 0 32px 64px -28px rgb(4 6 26 / 0.85);
+  --shadow-glow: 0 4px 16px rgb(110 123 242 / 0.4);
 }

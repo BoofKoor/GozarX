@@ -1,11 +1,12 @@
 import { clsx } from "clsx";
-import { CornerDownLeft, LogOut, Moon, Search, Sun } from "lucide-react";
+import { CornerDownLeft, Languages, LogOut, Moon, Search, Sun } from "lucide-react";
 import { type ComponentType, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { Modal } from "@/components/ui/Modal";
 import { logout } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
+import { useI18n } from "@/i18n";
 
 import { NAV_ITEMS } from "./nav";
 
@@ -41,6 +42,7 @@ export function CommandPalette({
 }) {
   const navigate = useNavigate();
   const { isDark, toggle } = useTheme();
+  const { t, locale, setLocale } = useI18n();
   const [query, setQuery] = useState("");
   const [cursor, setCursor] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
@@ -48,8 +50,8 @@ export function CommandPalette({
   const commands = useMemo<Command[]>(() => {
     const nav: Command[] = NAV_ITEMS.map((item) => ({
       id: `nav:${item.to}`,
-      label: item.label,
-      group: "رفتن به",
+      label: t(item.labelKey),
+      group: t("palette.goto"),
       icon: item.icon,
       keywords: item.keywords ?? [],
       run: () => navigate(item.to),
@@ -58,22 +60,32 @@ export function CommandPalette({
       ...nav,
       {
         id: "action:theme",
-        label: isDark ? "پوستهٔ روشن" : "پوستهٔ تیره",
-        group: "کارها",
+        label: isDark ? t("palette.themeLight") : t("palette.themeDark"),
+        group: t("palette.actions"),
         icon: isDark ? Sun : Moon,
         keywords: ["theme", "dark", "light", "پوسته", "تم"],
         run: toggle,
       },
       {
         id: "action:logout",
-        label: "خروج از حساب",
-        group: "کارها",
+        label: t("palette.logout"),
+        group: t("palette.actions"),
         icon: LogOut,
         keywords: ["logout", "sign out", "خروج"],
         run: logout,
       },
+      {
+        // The palette is reachable by keyboard alone, so the language switch belongs here too —
+        // the pill in the top bar is the only other way to it.
+        id: "action:locale",
+        label: locale === "fa" ? t("palette.toEnglish") : t("palette.toPersian"),
+        group: t("palette.actions"),
+        icon: Languages,
+        keywords: ["language", "locale", "english", "فارسی", "زبان"],
+        run: () => setLocale(locale === "fa" ? "en" : "fa"),
+      },
     ];
-  }, [navigate, isDark, toggle]);
+  }, [navigate, isDark, toggle, t, locale, setLocale]);
 
   const visible = useMemo(
     () => commands.filter((c) => matches(c, query.trim())),
@@ -135,8 +147,8 @@ export function CommandPalette({
               runAt(cursor);
             }
           }}
-          placeholder="جستجو در بخش‌ها و کارها…"
-          aria-label="جستجوی فرمان"
+          placeholder={t("palette.placeholder")}
+          aria-label={t("palette.aria")}
           className="w-full bg-transparent py-3.5 text-sm text-content outline-none placeholder:text-content-subtle"
         />
         <kbd className="hidden shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-content-subtle sm:block">
@@ -145,7 +157,7 @@ export function CommandPalette({
       </div>
 
       {visible.length === 0 ? (
-        <p className="px-4 py-8 text-center text-sm text-content-muted">چیزی پیدا نشد.</p>
+        <p className="px-4 py-8 text-center text-sm text-content-muted">{t("palette.empty")}</p>
       ) : (
         <ul ref={listRef} role="listbox" className="scrollbar-thin max-h-80 overflow-y-auto p-2">
           {visible.map((cmd, i) => {

@@ -5,42 +5,26 @@ import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { MobileNav, Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
-const COLLAPSE_KEY = "sidebar-collapsed";
-
-function readCollapsed(): boolean {
-  try {
-    return localStorage.getItem(COLLAPSE_KEY) === "1";
-  } catch {
-    return false; // private mode / storage disabled — just start expanded
-  }
-}
-
+/**
+ * The console: a fixed icon rail, a top bar, and a content WELL.
+ *
+ * The well is a distinct surface (`bg-surface-sunken`) rather than the page background, so cards
+ * read as sitting ON something. The collapse toggle is gone with it — the rail is icons only now,
+ * so there is nothing left to collapse, and a control whose two states look the same is noise.
+ */
 export function AppShell() {
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(readCollapsed);
-
-  const toggleCollapsed = useCallback(() => {
-    setCollapsed((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem(COLLAPSE_KEY, next ? "1" : "0");
-      } catch {
-        /* not persisting the preference is harmless */
-      }
-      return next;
-    });
-  }, []);
 
   useCommandPaletteShortcut(useCallback(() => setPaletteOpen(true), []));
 
   return (
     <div className="flex h-screen bg-canvas">
-      <Sidebar collapsed={collapsed} onToggleCollapsed={toggleCollapsed} />
+      <Sidebar />
       <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onMenuClick={() => setNavOpen(true)} onSearchClick={() => setPaletteOpen(true)} />
-        <main className="scrollbar-thin flex-1 overflow-y-auto p-4 sm:p-6">
+        <main className="scrollbar-thin flex-1 overflow-y-auto bg-surface-sunken p-4 sm:p-6">
           <div className="animate-fade-in mx-auto w-full max-w-[1180px]">
             <Outlet />
           </div>
