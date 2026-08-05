@@ -173,6 +173,8 @@ export interface BotUser {
   configs: number | null;
   /** Where this user's LATEST claim came from — null until they have claimed once. */
   last_location: string | null;
+  /** When that claim was provisioned — the row's recency signal. Null until they have claimed. */
+  last_claim_at: string | null;
 }
 
 /** The record dialog's payload: the row, plus this user's history and live usage. */
@@ -219,6 +221,32 @@ export interface BroadcastSend {
   buttons?: BroadcastButton[];
   /** ISO instant. Absent ⇒ send now. */
   scheduled_for?: string;
+}
+
+/** A broadcast saved before it was sent. `id` present ⇒ overwrite that draft. */
+export interface BroadcastDraftSave {
+  id?: number;
+  text: string;
+  languages: Lang[];
+  only_active?: boolean;
+  only_referrers?: boolean;
+  buttons?: BroadcastButton[];
+  /** The hour of day that was chosen, not an instant — a saved instant is stale by tomorrow. */
+  send_hour?: number | null;
+}
+
+export interface BroadcastDraft {
+  id: number;
+  /** First line of the body, so a draft never had to be named to be kept. */
+  title: string;
+  body: string;
+  /** Comma-separated codes; "" ⇒ everyone. */
+  languages: string;
+  only_active: boolean;
+  only_referrers: boolean;
+  buttons: BroadcastButton[];
+  send_hour: number | null;
+  updated_at: string;
 }
 
 /** One past broadcast and how it went. */

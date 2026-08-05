@@ -27,8 +27,8 @@ function Shell() {
   useCommandPaletteShortcut(useCallback(() => setPaletteOpen(true), []));
 
   return (
-    <div className="flex h-screen gap-3 bg-canvas p-0 sm:p-3">
-      <div className="flex min-w-0 flex-1 overflow-hidden bg-nav shadow-raised sm:rounded-2xl">
+    <div className="flex h-screen gap-[0.9rem] bg-canvas p-0 sm:p-[0.9rem]">
+      <div className="flex min-w-0 flex-1 overflow-hidden bg-nav shadow-raised sm:rounded-[14px]">
         <Sidebar />
         <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col bg-surface-sunken">
@@ -50,7 +50,7 @@ function Shell() {
       <aside
         ref={chrome?.setSideHost}
         className={clsx(
-          "scrollbar-thin shrink-0 overflow-y-auto rounded-2xl bg-surface p-4 shadow-raised",
+          "scrollbar-thin shrink-0 overflow-y-auto rounded-[14px] bg-surface px-[1.05rem] pb-[1.15rem] pt-4 shadow-raised",
           SIDE_WIDTH,
           SIDE_STACK,
           chrome?.sideFilled ? "hidden xl:flex" : "hidden",

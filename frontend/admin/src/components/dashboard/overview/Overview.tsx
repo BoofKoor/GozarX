@@ -332,19 +332,21 @@ export function Overview({
           outOf={Math.max(stats.new_today, stats.new_this_week)}
           outOfLabel={t("dash.live.newTodayOf")}
         />
-        <div className="flex items-center gap-3 rounded-xl bg-surface-raised p-3">
+        <div className="flex items-center gap-3 rounded-[13px] bg-surface-raised px-[0.9rem] py-[0.8rem]">
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm text-content-muted">{t("dash.live.traffic")}</div>
+            <div className="truncate text-[0.8rem] leading-[1.4] text-content-muted">
+              {t("dash.live.traffic")}
+            </div>
             {/* Lifetime, and labelled as such — a delta on an all-time total is meaningless. */}
             <div className="text-[11px] text-content-subtle">{t("dash.live.trafficSub")}</div>
           </div>
-          <span className="shrink-0 text-lg font-bold tabular-nums text-content">
+          <span className="shrink-0 text-[1.4rem] font-bold tracking-[-0.02em] tabular-nums text-content">
             {humanBytes(stats.total_traffic_bytes)}
           </span>
         </div>
 
         <SideHead>{t("dash.side.health")}</SideHead>
-        <div className="rounded-xl bg-surface-raised px-3 py-1">
+        <div className="rounded-[13px] bg-surface-raised px-[0.9rem] py-1">
           <HealthRow
             label={t("dash.health.panel")}
             tone={health?.panel.ok ? "ok" : "bad"}

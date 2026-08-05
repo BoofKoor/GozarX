@@ -81,7 +81,7 @@ const WIDE = "(min-width: 1280px)";
  * shortfall lands on the one child that cannot object: measured on a 650px-tall window, the radar
  * rendered 280×35 against a natural 209 and the panel reported scrollHeight === clientHeight.
  */
-export const SIDE_STACK = "flex flex-col gap-2 [&>*]:shrink-0";
+export const SIDE_STACK = "flex flex-col gap-[0.7rem] [&>*]:shrink-0";
 export const SIDE_WIDTH = "w-[19.5rem]";
 
 export function useIsWide(): boolean {

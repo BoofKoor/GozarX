@@ -34,7 +34,7 @@ export function NavTabs({ items, className }: { items: TabItem[]; className?: st
           end
           className={({ isActive }) =>
             clsx(
-              "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+              "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-[0.8rem] font-medium transition",
               isActive
                 ? "border-brand text-brand"
                 : "border-transparent text-content-muted hover:border-line-strong hover:text-content",
@@ -88,7 +88,7 @@ export function Tabs<T extends string>({
               // `NavTabs`. Carried on the tab, its negative margin shortened the strip's content box
               // to 1px LESS than the tabs standing in it, which both clipped the active tab's 2px
               // underline to 1px and made the strip a vertical scroll container.
-              "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+              "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2 text-[0.8rem] font-medium transition",
               active
                 ? "border-brand text-brand"
                 : "border-transparent text-content-muted hover:border-line-strong hover:text-content",

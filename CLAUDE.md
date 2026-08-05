@@ -97,6 +97,14 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   a user is dropped ONLY on blocked/deactivated, and that distinction has to be visible to be
   trusted. Mirrors `site_push_logs` on purpose — two broadcast surfaces that report differently
   would be two things to learn.
+- `broadcast_drafts`: a broadcast written and not yet sent (title derived from the body · body ·
+  languages · the two audience refinements · buttons JSON · `send_hour` · created/updated). In the
+  DB rather than the browser because the console is SHARED — one person drafts an announcement and
+  another sends it, and a draft in `localStorage` is invisible to every tab but the one that typed
+  it. Deliberately not a `broadcast_logs` row with a `draft` status: a log records something that
+  happened and is never edited, a draft is mutable until it stops being one, and folding them
+  together would make every history query responsible for excluding the unsent. `send_hour` is an
+  hour, not an instant — an absolute time saved on Monday is in the past by Tuesday.
 - `site_devices.last_seen_at`: the site's ONLY visit signal, refreshed by `current_device` on every
   identity-bearing request (throttled to once an hour, so a page load is not a row write). Without
   it every website figure was claim-derived plus an all-time "identities minted" counter — and that
@@ -187,6 +195,12 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   scheduling and `broadcast_logs` — each needed API built rather than the design trimmed to fit.
   `docs/panel/shot.py` replaces the raw-chromium capture recipe, which could not render below
   ~500 CSS px and could not capture a recharts chart at all.
+16 The panel measured against the artifact numerically rather than by eye, and closed on the
+  remaining gap: the side panel's type hierarchy rebuilt on the design's own sizes, the console's
+  ground gap and both panel radii corrected, the sub-nav band trimmed, the broadcast page brought
+  back to the reference's density (four-line composer, chips without a reserved tick, the hour strip
+  always visible) and given `broadcast_drafts`, and the users table switched to the reference's
+  columns — lifetime claims and last-claim recency instead of panel username and signup date.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -291,6 +305,26 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `max-h-full` measuring 1557px so it never scrolled to its own footer. `Modal` and `RecordDialog`
   portal to `<body>`; anything else full-screen must too. A filter or `contain` on an ancestor does
   the same thing.
+- **Measure the artifact, do not eyeball it.** Pinning the artifact's `.mock` to the panel's viewport
+  width and probing both with ONE script is what separates a real gap from a felt one. It found the
+  panel's three dashboard bands within 1–3% of the design's (218/399/119 vs 224/401/119) and its
+  content type histogram nearly identical — so the composition was never the problem — while the
+  same run showed the console's own gap/padding at 12px against 14.4, both panels at a 16px radius
+  against 14, and the side panel with 45% of its text runs at ONE size where the design spreads nine.
+  "It doesn't feel like the reference" is a measurable claim.
+- **Size a dense panel off the DESIGN's numbers, not Tailwind's ladder.** `text-lg` over `text-sm`
+  put an 18px figure above a 14px label where the design has 1.4rem over 0.8rem over 0.585rem: the
+  number shrank and the label grew, so the hierarchy was compressed from both ends and the figure
+  stopped being the thing you read. Arbitrary values are correct here — the ladder is a convenience,
+  not the spec. Same for boxes: `SideHead` as `text-sm pt-2 pb-1` was a 32px box for the design's 23.
+- **A label wraps; a caption gives way.** The design puts `line-height: 1.4` on the gauge label
+  precisely because it can run to two lines. Truncated instead, English "Online users" lost its
+  second word to a caption beside it that was merely longer. Whatever is primary in a row must not
+  be the thing that clips.
+- **A copy string can outlive the limitation it describes.** «زمان‌بندی هنوز در سرور پیاده نشده» sat
+  under the hour strip for a whole release after scheduling shipped, telling operators the feature
+  they were using did not exist. When a phase removes a limitation, grep the catalogue for the
+  sentence that announced it.
 - **A scrollable flex COLUMN does not overflow — it SQUEEZES.** Its children keep the default
   `flex-shrink: 1`, so content taller than the box is absorbed rather than scrolled, and
   `overflow-y: auto` is then handed nothing to scroll. Text children resist (their content is their

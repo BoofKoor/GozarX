@@ -126,6 +126,22 @@ class ConfigLogRepository(BaseRepository):
         )
         return {int(uid): loc for uid, loc in rows.all()}
 
+    async def counts_for(self, user_ids: list[int]) -> dict[int, int]:
+        """Lifetime claim count per listed user, in ONE query.
+
+        Same reason as ``latest_locations``: the users table shows this for every row, and a count
+        per row is 25 round trips to paint one page. Users with no claims are simply absent from the
+        mapping — the caller reads a missing key as zero rather than paying for a LEFT JOIN.
+        """
+        if not user_ids:
+            return {}
+        rows = await self.session.execute(
+            select(ConfigLog.user_id, func.count())
+            .where(ConfigLog.user_id.in_(user_ids))
+            .group_by(ConfigLog.user_id)
+        )
+        return {int(uid): int(n) for uid, n in rows.all()}
+
     async def recent_for_user(self, user_id: int, limit: int = 6) -> list[ConfigLog]:
         """A user's most recent claims, newest first — the record dialog's timeline."""
         rows = await self.session.scalars(

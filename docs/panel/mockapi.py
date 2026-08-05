@@ -120,6 +120,10 @@ def users_page(page, size, status, search, location=None):
             "configs": (i * 3) % 19,
             # Every fifth user has never claimed, so the column has a real "—" in it.
             "last_location": None if i % 5 == 4 else CLAIM_LOCATIONS[i % len(CLAIM_LOCATIONS)],
+            # Same rule as last_location: a user who never claimed has no last claim either, so
+            # the recency column shows a real "—" rather than an invented date.
+            "last_claim_at": None if i % 5 == 4 else
+                f"2026-08-0{1 + i % 4}T{(6 + i) % 24:02d}:{i % 60:02d}:00Z",
         })
     if status:
         rows = [r for r in rows if r["status"] == status]
@@ -141,7 +145,7 @@ def user_detail(uid):
         "telegram_id": uid, "status": "active_config", "language": "fa",
         "referral_count": 27, "panel_username": "gozar_7f3a", "reminder_enabled": True,
         "referred_by": 5_000_000_000, "created_at": "2026-03-14T09:20:00Z", "configs": 11,
-        "last_location": "Germany",
+        "last_location": "Germany", "last_claim_at": "2026-08-04T18:20:00Z",
         "claims_series": [
             {"day": (today - timedelta(days=29 - i)).isoformat(),
              "count": max(0, int(2 + 2 * math.sin(i / 3.0)) + (i % 3 == 0))}
@@ -270,6 +274,16 @@ SITE_ANALYTICS = {
               "top_ip_buckets": [{"label": "185.23.44.x", "count": 9},
                                  {"label": "91.99.7.x", "count": 6}]},
 }
+BROADCAST_DRAFTS = [
+    {"id": 2, "title": "یادآوری: سقف پاداش دعوت", "body": "یادآوری: سقف پاداش دعوت …",
+     "languages": "fa", "only_active": False, "only_referrers": True,
+     "buttons": [{"text": "کانال ما", "url": "https://t.me/gozarx_channel"}],
+     "send_hour": 21, "updated_at": "2026-08-04T19:05:00Z"},
+    {"id": 1, "title": "نگهداری برنامه‌ریزی‌شده — شنبه", "body": "نگهداری برنامه‌ریزی‌شده …",
+     "languages": "", "only_active": False, "only_referrers": False,
+     "buttons": [], "send_hour": None, "updated_at": "2026-08-02T11:40:00Z"},
+]
+
 BROADCAST_HISTORY = [
     {"id": 4, "body": "دو لوکیشن تازه اضافه شد — فنلاند و ترکیه.", "languages": "fa",
      "only_active": False, "only_referrers": False,
@@ -469,6 +483,8 @@ class H(http.server.SimpleHTTPRequestHandler):
             if q.get("only_referrers", ["false"])[0] == "true":
                 n = round(n * 0.28)
             return self._json({"recipients": n})
+        if u.path == "/api/admin/broadcast/drafts":
+            return self._json(BROADCAST_DRAFTS)
         if u.path == "/api/admin/broadcast/history":
             return self._json(BROADCAST_HISTORY)
         if u.path == "/api/admin/users/":
