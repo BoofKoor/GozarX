@@ -115,8 +115,11 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
         </text>
       ))}
 
+      {/* Hit targets sit on the DATA vertex, not on the axis cap: a reading you have to hover the
+          outer ring for is a reading nobody finds when the shape stops halfway. Invisible, so the
+          chart gains no marks the design does not have. */}
       {axes.map((axis, i) => {
-        const [px, py] = at(i, 1);
+        const [px, py] = at(i, Math.max(0, Math.min(max, axis.value)) / max);
         return (
           <circle key={i} cx={px} cy={py} r="11" fill="transparent">
             <title>{`${axis.title ?? axis.label} — ${faPct(axis.value)}`}</title>

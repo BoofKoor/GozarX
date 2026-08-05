@@ -2,7 +2,7 @@ import { useId } from "react";
 
 import { useIsDark } from "@/hooks/useIsDark";
 
-import { smoothPath, type Point } from "./geometry";
+import { smoothPath, underCurve, type Point } from "./geometry";
 
 export interface HeroSparklineProps {
   /** One value per day, oldest first. */
@@ -34,9 +34,11 @@ const PAD_X = 18;
  *    inside the side padding, where there is no line to fade, and the curve would appear at half
  *    opacity and pop.
  * 2. The BAND under the highlighted day does not fade. It is a marker, not part of the series, and
- *    dimming it weakens the one thing it exists to do. It runs straight down from the marker: an
- *    earlier version clipped it to the area under the curve, which tapered it into a teardrop
- *    whenever the marked day fell at either end of the window.
+ *    dimming it weakens the one thing it exists to do. It is CLIPPED to the region under the curve,
+ *    so its top edge is the curve itself and it runs down to the frame's bottom edge — a column
+ *    growing out of the tile, which is what ties the marked day to the line. Drawing it as a plain
+ *    rounded rect from the marker down instead leaves a domed cap floating under the dot and a gap
+ *    above the day labels.
  */
 export function HeroSparkline({
   values,
@@ -61,11 +63,12 @@ export function HeroSparkline({
   const hi = Math.max(0, Math.min(values.length - 1, highlight));
   const hx = x(hi);
   const hy = y(values[hi]);
-  // The pill is measured from the string rather than laid out, so it can be centred and clamped
-  // inside the frame — an SVG has no text metrics to ask.
-  const pillW = delta ? Math.max(34, delta.length * 7.2 + 14) : 0;
-  const pillX = Math.min(Math.max(hx - pillW / 2, 4), W - pillW - 4);
-  const pillY = Math.max(hy - 30, 2);
+  // 44 wide is the design's pill; it only grows for a delta longer than "+۱۴٪" would be. The width
+  // is measured from the string rather than laid out, so the pill can be centred on the marker and
+  // clamped inside the frame — an SVG has no text metrics to ask.
+  const pillW = delta ? Math.max(44, delta.length * 7.6 + 14) : 0;
+  const pillX = Math.min(Math.max(hx - pillW / 2, 3), W - pillW - 3);
+  const pillY = Math.max(hy - 31, 2);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} className={className}>
@@ -86,19 +89,16 @@ export function HeroSparkline({
         <mask id={`${uid}-mask`}>
           <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-ends)`} />
         </mask>
+        <clipPath id={`${uid}-under`}>
+          <path d={underCurve(line, pts, W, H)} />
+        </clipPath>
       </defs>
 
-      {/* A straight bar from the marker down, NOT a shape clipped to the curve: clipped, it
-          tapered into a teardrop whenever the marked day sat at either end of the window. */}
-      <rect
-        x={hx - 13}
-        y={hy}
-        width="26"
-        height={Math.max(0, H - 26 - hy)}
-        rx="13"
-        fill="#fff"
-        opacity=".26"
-      />
+      {/* Full-height, then clipped: the curve becomes the band's top edge and it stops exactly
+          where it meets the line instead of running over it. */}
+      <g clipPath={`url(#${uid}-under)`}>
+        <rect x={hx - 13} y="0" width="26" height={H} rx="13" fill="#fff" opacity=".26" />
+      </g>
 
       <path
         d={line}
@@ -110,21 +110,23 @@ export function HeroSparkline({
         mask={`url(#${uid}-mask)`}
       />
 
-      <circle cx={hx} cy={hy} r="4.5" className="fill-brand-600" stroke="#fff" strokeWidth="2.25" />
+      {/* The dot picks up the tile gradient's START colour, so it reads as a hole in the line
+          rather than a foreign accent. */}
+      <circle cx={hx} cy={hy} r="4.5" className="fill-hero-a" stroke="#fff" strokeWidth="2.25" />
 
       {delta && (
         <g>
-          <rect x={pillX} y={pillY} width={pillW} height="19" rx="9.5" fill="#fff" />
+          <rect x={pillX} y={pillY} width={pillW} height="21" rx="7" fill="#fff" />
           {/* An SVG <text> obeys the document's direction, so a signed percentage rendered
               «۱۲٫۴٪+» with the sign trailing the number it belongs to. */}
           <text
             x={pillX + pillW / 2}
-            y={pillY + 13.5}
+            y={pillY + 14.5}
             textAnchor="middle"
-            fontSize="10.5"
+            fontSize="11.5"
             fontWeight="700"
             style={{ direction: "ltr" }}
-            className="fill-brand-600"
+            className="fill-hero-ink"
           >
             {delta}
           </text>

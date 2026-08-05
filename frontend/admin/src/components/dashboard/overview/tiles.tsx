@@ -59,7 +59,10 @@ export function KpiTile({
     <div
       className={clsx(
         "flex min-w-0 flex-col rounded-2xl p-4",
-        hero ? "bg-brand text-white shadow-glow" : "bg-surface shadow-card",
+        // The hero tile is a GRADIENT, and its bottom padding is halved so the sparkline can bleed
+        // to the tile's own edges (the design runs the curve and the marker column right out to
+        // them; inset inside the padding it reads as a small chart parked in a big empty tile).
+        hero ? "bg-hero pb-2 text-white shadow-hero" : "bg-surface shadow-card",
       )}
     >
       <div

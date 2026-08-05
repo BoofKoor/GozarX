@@ -43,6 +43,30 @@ export function areaFrom(line: string, pts: readonly Point[], baseline: number):
   return `${line}L${last},${baseline}L${first},${baseline}Z`;
 }
 
+/**
+ * The whole region below a line, out to the FRAME's edges — a clip region, not an area fill.
+ *
+ * `areaFrom` closes straight down from the first and last data points, which leaves the side
+ * padding outside the region. Anything clipped to it therefore gets sliced by that diagonal, and a
+ * marker band under the first or last day tapers into a teardrop. Here the curve is extended
+ * horizontally at its own end heights first, so the region spans `0…width` and the band keeps its
+ * full thickness wherever the marked day falls.
+ */
+export function underCurve(
+  line: string,
+  pts: readonly Point[],
+  width: number,
+  height: number,
+): string {
+  if (pts.length === 0) return "";
+  const [, firstY] = pts[0];
+  const [, lastY] = pts[pts.length - 1];
+  return (
+    `M0,${firstY.toFixed(2)}L${line.slice(1)}` +
+    `L${width},${lastY.toFixed(2)}L${width},${height}L0,${height}Z`
+  );
+}
+
 export interface RosePoint {
   /** Angle in radians, screen space (y grows downward). */
   a: number;

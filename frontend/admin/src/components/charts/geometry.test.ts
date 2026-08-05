@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { areaFrom, rosePath, rosePoints, smoothPath, spokeAngles, type Point } from "./geometry";
+import {
+  areaFrom,
+  rosePath,
+  rosePoints,
+  smoothPath,
+  spokeAngles,
+  underCurve,
+  type Point,
+} from "./geometry";
 
 describe("smoothPath", () => {
   it("starts on the first point and ends on the last", () => {
@@ -28,6 +36,27 @@ describe("areaFrom", () => {
       [10, 2],
     ];
     expect(areaFrom(smoothPath(pts), pts, 40)).toContain("L10.00,40L0.00,40Z");
+  });
+});
+
+describe("underCurve", () => {
+  // The marker band in the hero sparkline is clipped to this region. If it stopped at the first
+  // and last data points the closing diagonal would slice the band whenever the marked day sat at
+  // either end of the window, tapering it into a teardrop.
+  const pts: Point[] = [
+    [18, 40],
+    [50, 20],
+    [82, 30],
+  ];
+
+  it("extends to the frame's edges at the curve's own end heights", () => {
+    const d = underCurve(smoothPath(pts), pts, 100, 60);
+    expect(d.startsWith("M0,40.00L18.00,40.00")).toBe(true);
+    expect(d.endsWith("L100,30.00L100,60L0,60Z")).toBe(true);
+  });
+
+  it("is empty for no points rather than emitting a broken path", () => {
+    expect(underCurve("", [], 100, 60)).toBe("");
   });
 });
 

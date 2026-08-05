@@ -34,12 +34,31 @@ function axisLabel(iso: string) {
   };
 }
 
-/** Nice round ticks that reach just past the data instead of stopping under it. */
-function ticksFor(max: number): number[] {
-  if (max <= 0) return [0];
-  const step = Math.pow(10, Math.floor(Math.log10(max)));
-  const top = Math.ceil(max / step) * step;
-  return [0, top / 4, top / 2, (top * 3) / 4, top].map((n) => Math.round(n));
+/**
+ * Gridline steps that read as round numbers, at every order of magnitude.
+ *
+ * Deliberately coarse. A finer ladder (…6, 8…) frames the data more tightly, but a chart peaking
+ * at 305 then gets labelled ۸۰ / ۱۶۰ / ۲۴۰ / ۳۲۰ — arithmetically snug and useless to read a
+ * figure against. Round hundreds and a little more air is the better trade.
+ */
+const NICE_STEPS = [1, 1.5, 2, 2.5, 3, 4, 5, 10];
+
+/**
+ * Five round ticks whose TOP sits strictly above the data.
+ *
+ * The step is chosen first and the ceiling is four of them, so every gridline is a round figure —
+ * rounding the ceiling up instead and quartering it labelled a 300-high chart ۷۵ / ۱۵۰ / ۲۲۵.
+ * `AreaTrend` scales to this top, so the tallest curve always keeps headroom below the last line
+ * rather than flattening against it.
+ */
+export function ticksFor(max: number): number[] {
+  if (max <= 0) return [0, 1, 2, 3, 4];
+  const decade = Math.pow(10, Math.floor(Math.log10(max / 4)));
+  const raw = NICE_STEPS.map((n) => n * decade).find((s) => s * 4 > max) ?? decade * 10;
+  // Whole numbers: every series here is a count of users or claims.
+  let step = Math.max(1, Math.round(raw));
+  if (step * 4 <= max) step += 1;
+  return [0, step, step * 2, step * 3, step * 4];
 }
 
 /**
@@ -120,7 +139,9 @@ export function Overview({
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.22fr_repeat(3,1fr)]">
           <KpiTile hero value={formatNumber(stats.total_users)} label={t("dash.kpi.total")}>
             {tail.length >= 2 && (
-              <div className="mt-3">
+              // Pushed to the bottom of the tile and bled past its padding on three sides, so the
+              // curve runs edge to edge and the marker column reaches the tile's own floor.
+              <div className="-mx-4 -mb-2 mt-auto pt-3">
                 <HeroSparkline
                   values={tail.map((d) => d.count)}
                   labels={tail.map((d) => axisLabel(d.day).secondary ?? "")}
@@ -167,7 +188,9 @@ export function Overview({
           />
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl bg-surface p-4 shadow-card">
+        {/* No card: the trend sits directly on the well, as the design does. Boxing it made the
+            panel's largest element the only thing on the page with a frame around it. */}
+        <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0">
               <h3 className="text-base font-bold text-content">{t("dash.chart.title")}</h3>
@@ -211,11 +234,12 @@ export function Overview({
 
           <AreaTrend
             series={[
-              { values: claims.map((d) => d.count) },
-              { values: signups.map((d) => d.count) },
+              { values: claims.map((d) => d.count), label: t("dash.chart.claims") },
+              { values: signups.map((d) => d.count), label: t("dash.chart.signups") },
             ]}
             labels={claims.map((d) => axisLabel(d.day))}
             ticks={ticksFor(maxY)}
+            formatValue={formatNumber}
             ariaLabel={t("dash.chart.sub")}
             className="h-[240px] w-full"
           />
