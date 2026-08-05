@@ -1,0 +1,10 @@
+{
+  "name": "gozarx-audit-harness",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Phase 0 render harness — isolated from the audited app's dependency tree.",
+  "type": "module",
+  "dependencies": {
+    "playwright": "^1.49.0"
+  }
+}
