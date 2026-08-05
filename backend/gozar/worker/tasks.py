@@ -44,6 +44,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.site_push_log import SitePushLogRepository
+from gozar.db.repositories.usage_sample import UsageSampleRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveError
 from gozar.remnawave.schemas import PanelUser
@@ -667,6 +668,41 @@ async def backup_database(ctx: dict) -> None:
         logger.info("backup: sent gozar-%s.sql.gz (%d bytes gz)", ts, len(gz))
     except TelegramAPIError as exc:
         logger.error("backup: send_document failed: %s", exc)
+
+
+async def sample_usage(ctx: dict) -> None:
+    """Hourly snapshot of what the service is carrying → ``usage_samples``.
+
+    The panel only ever reports a cumulative lifetime byte counter and a live concurrency reading,
+    so without this row nothing anywhere records what last Tuesday looked like — and a history that
+    was never written down cannot be reconstructed afterwards.
+
+    Durable, unlike ``sample_health``, which keeps its series in a capped Redis list: this one is
+    the record, and a restart or an eviction must not be able to erase it.
+
+    The reading is stored exactly as the panel gave it. Differencing happens at read time, which is
+    what keeps a counter reset detectable rather than silently absorbed.
+
+    Best-effort, like every sampler here: an unreachable panel skips one hour, and a skipped hour
+    only widens one gap. Recording nothing is strictly better than recording a zero, which would
+    read as "we carried no traffic" and drag every average down with it.
+    """
+    stats = await ctx["panel"].system_stats()
+    if stats is None:
+        logger.warning("usage sample skipped: panel did not answer")
+        return
+    try:
+        async with ctx["sessionmaker"]() as session:
+            await UsageSampleRepository(session).record(
+                total_bytes=stats.total_traffic_bytes,
+                online_now=stats.online_now,
+                nodes_online=stats.nodes_online,
+                mem_used=stats.mem_used,
+                mem_total=stats.mem_total,
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("usage sample failed (ignored)")
 
 
 async def sample_health(ctx: dict) -> None:

@@ -18,6 +18,7 @@ from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.models.site_message import SiteMessage
 from gozar.db.models.site_push_log import SitePushLog, SitePushStatus
 from gozar.db.models.site_reward import SiteReward, SiteRewardType
+from gozar.db.models.usage_sample import UsageSample
 from gozar.db.models.user import User
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "SitePushStatus",
     "SiteReward",
     "SiteRewardType",
+    "UsageSample",
     "User",
     "UserStatus",
     "language_enum",

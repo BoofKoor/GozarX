@@ -14,6 +14,7 @@ def _table(name: str):
 def test_all_tables_registered() -> None:
     assert set(Base.metadata.tables) == {
         # bot
+        "usage_samples",
         "users",
         "config_logs",
         "content",
