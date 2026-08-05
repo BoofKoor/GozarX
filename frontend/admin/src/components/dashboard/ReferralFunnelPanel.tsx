@@ -37,6 +37,15 @@ export function ReferralFunnelPanel({ data }: { data: DashboardAnalytics }) {
         <span>{t("d.funnel.conversion", { pct: faPct(r.invitee_conversion_pct) })}</span>
         <span>{viral ? t("d.funnel.viral") : t("d.funnel.notViral")}</span>
       </div>
+      {/* The growth figure the radar used to carry. It reads against the users who COULD have been
+          referred — everyone who signed up once the programme was producing rows — not the whole
+          base, most of which predates it and can never have a referrer. */}
+      <p className="mt-1.5 text-xs text-content-muted">
+        {t("d.funnel.share", {
+          pct: faPct(r.joined_share_pct),
+          n: formatNumber(r.eligible),
+        })}
+      </p>
     </Card>
   );
 }

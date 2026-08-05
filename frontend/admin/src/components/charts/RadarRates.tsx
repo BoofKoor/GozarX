@@ -50,6 +50,7 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
   const brand = tokenColor("brand-500");
   const line = tokenColor("line");
   const faint = tokenColor("text-subtle");
+  const muted = tokenColor("text-muted");
   const canvas = tokenColor("surface");
 
   const angles = spokeAngles(axes.length);
@@ -135,17 +136,32 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
         // its cap, so the mapping has to flip with the writing direction.
         const rtl = locale === "fa";
         const away = lx > CX ? (rtl ? "end" : "start") : rtl ? "start" : "end";
+        const anchor = Math.abs(lx - CX) < 12 ? "middle" : away;
+        // The value under its own label, as a second line. Without it the only way to read a
+        // number off this chart was to hover a vertex — undiscoverable, useless on a glance, and
+        // gone entirely on a screenshot. Inline after the label was the other option and it
+        // clips: "Referral 17%" runs past the left edge of the 340-wide frame.
+        //
+        // The pair is centred on the label anchor (‑2 / +9) rather than hung below it, so the
+        // bottom axis stays inside the frame and the top one keeps its ascender.
         return (
-          <text
-            key={i}
-            x={lx}
-            y={ly + 3}
-            textAnchor={Math.abs(lx - CX) < 12 ? "middle" : away}
-            fontSize="10.5"
-            fill={faint}
-          >
-            {axis.label}
-          </text>
+          <g key={i}>
+            <text x={lx} y={ly - 2} textAnchor={anchor} fontSize="10.5" fill={faint}>
+              {axis.label}
+            </text>
+            <text
+              x={lx}
+              y={ly + 9}
+              textAnchor={anchor}
+              fontSize="9.5"
+              fill={muted}
+              // Subordinate to the label, not competing with it: one step brighter so the figure
+              // is legible, one step smaller so the chart still reads as the design drew it.
+              style={{ fontVariantNumeric: "tabular-nums" }}
+            >
+              {faPct(axis.value)}
+            </text>
+          </g>
         );
       })}
     </svg>

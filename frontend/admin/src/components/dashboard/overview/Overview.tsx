@@ -7,14 +7,7 @@ import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
 import { t, useI18n } from "@/i18n";
-import {
-  faPct,
-  formatNumber,
-  humanBytes,
-  humanHours,
-  langLabel,
-  localizeDigits,
-} from "@/lib/format";
+import { faPct, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
@@ -117,18 +110,37 @@ export function Overview({
     stats.claimers_prev_range > 0 ? stats.claims_prev_range / stats.claimers_prev_range : 0;
   const avgDelta = avgPrev > 0 ? ((avgPerClaimer - avgPrev) / avgPrev) * 100 : null;
 
-  // "Returned in week two" is the second column of every weekly cohort, averaged — the retention
-  // matrix already computes it, so the radar reuses it rather than asking for a new figure.
+  // "Returned in week two" is the second column of every weekly cohort — the retention matrix
+  // already computes it, so the radar reuses it rather than asking for a new figure.
+  //
+  // WEIGHTED by cohort size. A plain mean let a 509-user launch week count as much as the
+  // 15,757-user week beside it, which is not an average of the population — it is an average of
+  // the weeks. Rows still shorter than two columns are cohorts whose second week has not arrived;
+  // the server now sizes rows by ELAPSED weeks, so a cohort nobody returned to carries a real 0
+  // instead of being dropped for looking the same as one that is two days old.
   const weekTwo = (() => {
     const rows = (retention?.cohorts ?? []).filter((c) => c.retention.length > 1 && c.size > 0);
-    if (!rows.length) return 0;
-    return rows.reduce((a, c) => a + c.retention[1], 0) / rows.length;
+    const people = rows.reduce((a, c) => a + c.size, 0);
+    if (!people) return 0;
+    return rows.reduce((a, c) => a + c.retention[1] * c.size, 0) / people;
   })();
-  // Server-computed, over the users who COULD have been referred rather than all of them. Against
-  // the whole base this read 10.8% on a live install where the real figure was 17.0%, because
-  // 39,899 users predate the referral programme and `referred_by` is null for every imported row —
-  // so the axis was measuring how much of the service is older than the feature.
-  const referralShare = analytics?.referral.joined_share_pct ?? 0;
+  // Of everyone who has ever claimed, the share who claimed more than once. Read off the claims
+  // distribution the analytics endpoint already returns, so it costs no query.
+  //
+  // This replaced the referral share on the radar. 17% is a perfectly good referral rate for a
+  // free service, but on an axis shared with an 86% it draws as a stub, and the operator reported
+  // the chart as broken twice because of it. Repeat rate asks something no other axis asks —
+  // retention is time-bound ("did they come back next week"), this is habit ("did they come back
+  // at all") — and it lands at 52% on live data, inside the band the other three occupy.
+  //
+  // Not chosen: the reminder opt-in rate, which measures 99.7% because the setting ships on. An
+  // axis pinned to its own ceiling forever carries no information at all.
+  const repeatRate = (() => {
+    const buckets = analytics?.claims_distribution ?? {};
+    const claimers = Object.values(buckets).reduce((a, n) => a + n, 0);
+    if (!claimers) return 0;
+    return ((claimers - (buckets["1"] ?? 0)) / claimers) * 100;
+  })();
 
   const peakHour = (() => {
     const byHour = new Map<number, number>();
@@ -182,20 +194,16 @@ export function Overview({
             label={t("dash.kpi.active", { days: formatNumber(range) })}
             delta={<Delta pct={stats.claimers_delta_pct} newLabel={t("dash.delta.first")} />}
           />
+          {/* Configs delivered, not the activation median. The median is a real figure and a good
+              one — 21 seconds — but it is a property of the bot's flow, so it does not move from
+              one day to the next and a headline tile that never changes is a tile that stops being
+              read. It keeps its place on the growth tab, where a jump from 21s to four hours is
+              the kind of thing anyone would be looking for. This slot now carries what the service
+              actually did in the window. */}
           <KpiTile
-            value={
-              analytics?.median_hours_to_claim.value == null
-                ? "—"
-                : humanHours(analytics.median_hours_to_claim.value)
-            }
-            label={t("dash.kpi.median")}
-            delta={
-              <Delta
-                pct={analytics?.median_hours_to_claim.change_pct}
-                goodWhenDown
-                newLabel={t("dash.delta.noBase")}
-              />
-            }
+            value={formatNumber(stats.claims_in_range)}
+            label={t("dash.kpi.claims", { days: formatNumber(range) })}
+            delta={<Delta pct={stats.claims_delta_pct} newLabel={t("dash.delta.first")} />}
           />
           <KpiTile
             value={formatNumber(Math.round(avgPerClaimer * 10) / 10)}
@@ -303,8 +311,15 @@ export function Overview({
 
       <SidePanel>
         <SideHead>{t("dash.side.rates")}</SideHead>
-        {/* Ordered so the two extremes land ADJACENT: four axes with the big values facing each
-            other collapse into a lens, which is a shape rather than a chart. */}
+        {/* Index 0 is the TOP spoke, 1 right, 2 bottom, 3 left. The order is the funnel — reach,
+            speed, return, habit — which also happens to be what the shape needs: it puts the two
+            largest rates ADJACENT instead of facing each other. Facing, they pull the blob into a
+            symmetric lens, which is a silhouette rather than a chart, and the previous order did
+            exactly that while carrying a comment saying it did the opposite.
+
+            A funnel order rather than a sorted one on purpose: sorting by value would reshuffle
+            the axes as the data moved, and a chart whose axes change places is unreadable across
+            two visits. */}
         <RadarRates
           axes={[
             {
@@ -312,17 +327,13 @@ export function Overview({
               value: stats.conversion_pct,
               title: t("dash.rate.conversionFull"),
             },
-            { label: t("dash.rate.return"), value: weekTwo, title: t("dash.rate.returnFull") },
             {
               label: t("dash.rate.activation"),
               value: analytics?.activation_24h.value ?? 0,
               title: t("dash.rate.activationFull"),
             },
-            {
-              label: t("dash.rate.referral"),
-              value: referralShare,
-              title: t("dash.rate.referralFull"),
-            },
+            { label: t("dash.rate.return"), value: weekTwo, title: t("dash.rate.returnFull") },
+            { label: t("dash.rate.repeat"), value: repeatRate, title: t("dash.rate.repeatFull") },
           ]}
           className="w-full"
         />

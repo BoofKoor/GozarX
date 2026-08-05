@@ -12,7 +12,7 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import asdict
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import PlainTextResponse
@@ -438,8 +438,16 @@ async def dashboard_retention(
     """
     rows = await ConfigLogRepository(session).weekly_retention_cohorts(weeks)
     cohorts: list[CohortRow] = []
+    today = datetime.now(UTC).date()
     for week, size, offsets in rows:
-        span = (max(offsets) + 1) if offsets else 1
+        # A row is as long as the weeks that have ELAPSED for that cohort, not as long as the weeks
+        # somebody happened to come back in. Sized from the data, a cohort where nobody returned in
+        # week two got a one-column row — indistinguishable from a cohort two days old whose week
+        # two has not arrived — and the dashboard drops the short rows, so a 0% cohort was quietly
+        # excluded from the average instead of counted as the zero it is. Elapsed weeks separate
+        # "nobody came back" from "it has not happened yet", which are opposite facts.
+        elapsed = (today - date.fromisoformat(week)).days // 7 + 1
+        span = max(1, min(elapsed, weeks))
         cohorts.append(
             CohortRow(
                 week=week,
