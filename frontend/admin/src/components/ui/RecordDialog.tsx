@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { type ReactNode, useId, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import { useI18n } from "@/i18n";
 
@@ -17,6 +18,10 @@ import { useFocusTrap } from "./useFocusTrap";
  * exit, Tab is trapped, background scroll is locked. The backdrop closes too — but only when the
  * backdrop ITSELF is the target, so a drag that starts inside the dialog and releases outside does
  * not throw the record away.
+ *
+ * Portalled to `<body>` for the reason spelled out in `Modal`: `fixed inset-0` resolves against the
+ * nearest transformed ancestor, and the shell's entry animation leaves one behind permanently. Every
+ * record on Users and Devices opened 229px below the fold with no way to scroll to its footer.
  */
 export function RecordDialog({
   open,
@@ -44,7 +49,7 @@ export function RecordDialog({
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
       className="animate-fade-in fixed inset-0 z-50 grid place-items-center bg-black/50 p-4 backdrop-blur-md sm:p-6"
       onClick={(e) => {
@@ -58,7 +63,7 @@ export function RecordDialog({
         aria-labelledby={titleId}
         tabIndex={-1}
         className={clsx(
-          "animate-scale-in flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-overlay outline-none",
+          "animate-scale-in flex max-h-full w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-surface shadow-overlay outline-none",
           className,
         )}
       >
@@ -85,6 +90,7 @@ export function RecordDialog({
           </footer>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

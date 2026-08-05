@@ -11,7 +11,8 @@ import {
 import { AreaGradient, ChartFrame, axisProps, gridProps } from "@/components/charts/primitives";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useIsDark } from "@/hooks/useIsDark";
-import { chartTheme, seriesColor } from "@/lib/chartTheme";
+import { useSeriesAnimation } from "@/hooks/useReducedMotion";
+import { CHART_MARGIN, Y_AXIS_WIDTH, chartTheme, seriesColor } from "@/lib/chartTheme";
 import { shortDay } from "@/lib/format";
 import type { DayPoint } from "@/types/api";
 import { useI18n } from "@/i18n";
@@ -27,6 +28,7 @@ export function CumulativeUsersChart({ signups, total }: { signups: DayPoint[]; 
     return { label: shortDay(p.day), total: acc };
   });
   const theme = chartTheme(useIsDark());
+  const anim = useSeriesAnimation();
   const color = seriesColor(0);
 
   return (
@@ -34,15 +36,16 @@ export function CumulativeUsersChart({ signups, total }: { signups: DayPoint[]; 
       <CardHeader title={t("d.cumulative")} />
       <ChartFrame height="h-56" empty={points.length === 0}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={points} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+          <AreaChart data={points} margin={CHART_MARGIN}>
             <defs>
               <AreaGradient id="g-cumulative" color={color} />
             </defs>
             <CartesianGrid {...gridProps(theme)} />
             <XAxis dataKey="label" {...axisProps(theme)} />
-            <YAxis allowDecimals={false} width={36} {...axisProps(theme)} />
+            <YAxis allowDecimals={false} width={Y_AXIS_WIDTH} {...axisProps(theme)} />
             <Tooltip {...theme.tooltip} />
             <Area
+              {...anim}
               type="monotone"
               dataKey="total"
               name={t("d.cumulative.total")}

@@ -19,6 +19,7 @@ import {
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Segmented } from "@/components/ui/Segmented";
 import { useIsDark } from "@/hooks/useIsDark";
+import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { useI18n } from "@/i18n";
 import { chartTheme, seriesColor } from "@/lib/chartTheme";
 import { formatNumber } from "@/lib/format";
@@ -51,6 +52,7 @@ export function HistoryChart({
     label: tr("sys.chart.hours", { n: formatNumber(value / 60) }),
   }));
   const t = chartTheme(useIsDark());
+  const anim = useSeriesAnimation();
   const apiColor = seriesColor(0);
   const pendingColor = seriesColor(1);
 
@@ -94,6 +96,7 @@ export function HistoryChart({
             />
             <Tooltip {...t.tooltip} />
             <Area
+              {...anim}
               yAxisId="api"
               type="monotone"
               dataKey="api"
@@ -104,6 +107,7 @@ export function HistoryChart({
               connectNulls={false}
             />
             <Line
+              {...anim}
               yAxisId="pending"
               type="monotone"
               dataKey="pending"

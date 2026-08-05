@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 
 import { Card } from "@/components/ui/Card";
 import { useI18n, type MessageKey } from "@/i18n";
-import { faTime } from "@/lib/format";
+import { faTime, localizeDigits } from "@/lib/format";
 import type { HealthStatus, Probe, SystemHealth } from "@/types/api";
 
 const STATUS_META: Record<HealthStatus, { label: MessageKey; ring: string; dot: string }> = {
@@ -12,18 +12,26 @@ const STATUS_META: Record<HealthStatus, { label: MessageKey; ring: string; dot: 
 };
 
 function ProbeChip({ label, probe }: { label: string; probe: Probe }) {
+  const { t } = useI18n();
+  // The reading went out as a raw template — Latin digits, no space before the unit, no isolate —
+  // on a page whose every other latency reads «۱۲۴ ms». And the two fallbacks were English literals,
+  // which the no-literals test cannot catch because it only looks for Persian.
+  const reading = probe.ok
+    ? probe.latency_ms != null
+      ? localizeDigits(`${Math.round(probe.latency_ms)} ms`)
+      : t("sys.status.ok")
+    : (probe.detail ?? t("sys.status.down"));
   return (
     <div className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
       <span
         className={clsx("h-2.5 w-2.5 shrink-0 rounded-full", probe.ok ? "bg-success" : "bg-danger")}
       />
       <span className="text-sm text-content-muted">{label}</span>
-      <span className="ms-auto text-xs tabular-nums text-content-subtle">
-        {probe.ok
-          ? probe.latency_ms != null
-            ? `${probe.latency_ms}ms`
-            : "ok"
-          : (probe.detail ?? "down")}
+      <span
+        className="ms-auto text-xs tabular-nums text-content-subtle"
+        style={{ unicodeBidi: "isolate" }}
+      >
+        {reading}
       </span>
     </div>
   );

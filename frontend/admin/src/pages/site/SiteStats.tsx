@@ -28,9 +28,10 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Spinner } from "@/components/ui/Spinner";
 import { useIsDark } from "@/hooks/useIsDark";
+import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { useSiteAnalytics, useSiteStats } from "@/hooks/useSite";
 import { useI18n, type MessageKey } from "@/i18n";
-import { chartTheme, seriesColor } from "@/lib/chartTheme";
+import { CHART_MARGIN, Y_AXIS_WIDTH, chartTheme, seriesColor } from "@/lib/chartTheme";
 import { faPct, formatNumber, shortDay } from "@/lib/format";
 import type { DayPoint, SiteStats as SiteStatsData } from "@/types/api";
 
@@ -204,6 +205,7 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
   const { t } = useI18n();
   const points = mergeSeries(data.visitors_series, data.claims_series);
   const theme = chartTheme(useIsDark());
+  const anim = useSeriesAnimation();
   const visitorsColor = seriesColor(1);
   const claimsColor = seriesColor(0);
   const empty = points.every((p) => p.visitors === 0 && p.claims === 0);
@@ -219,16 +221,17 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
       />
       <ChartFrame empty={empty}>
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={points} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+          <AreaChart data={points} margin={CHART_MARGIN}>
             <defs>
               <AreaGradient id="g-site-visitors" color={visitorsColor} />
               <AreaGradient id="g-site-claims" color={claimsColor} />
             </defs>
             <CartesianGrid {...gridProps(theme)} />
             <XAxis dataKey="label" {...axisProps(theme)} />
-            <YAxis allowDecimals={false} width={32} {...axisProps(theme)} />
+            <YAxis allowDecimals={false} width={Y_AXIS_WIDTH} {...axisProps(theme)} />
             <Tooltip {...theme.tooltip} />
             <Area
+              {...anim}
               type="monotone"
               dataKey="visitors"
               name={t("st.daily.visitors")}
@@ -237,6 +240,7 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
               fill="url(#g-site-visitors)"
             />
             <Area
+              {...anim}
               type="monotone"
               dataKey="claims"
               name={t("st.daily.claims")}
