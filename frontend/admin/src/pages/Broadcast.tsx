@@ -1,9 +1,10 @@
 import { clsx } from "clsx";
-import { Check, Clock, Send, X } from "lucide-react";
+import { Check, Clock, Save, Send, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import { KeyboardBuilder, MAX_CHARS, MessageField } from "@/components/broadcast/Composer";
+import { DraftList } from "@/components/broadcast/DraftList";
 import { BroadcastHistory } from "@/components/broadcast/History";
 import { HourStrip } from "@/components/charts/HourStrip";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +12,13 @@ import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Switch } from "@/components/ui/Switch";
 import { useConfirm } from "@/components/ui/confirm";
-import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
+import {
+  useAudience,
+  useDeleteDraft,
+  useDrafts,
+  useSaveDraft,
+  useSendBroadcast,
+} from "@/hooks/useBroadcast";
 import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { useI18n } from "@/i18n";
@@ -22,7 +29,7 @@ import {
   localizeDigits,
   telegramPreviewHtml,
 } from "@/lib/format";
-import type { BroadcastButton, Lang } from "@/types/api";
+import type { BroadcastButton, BroadcastDraft, Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
 /** The practical broadcast ceiling the worker paces itself to stay under. */
@@ -48,7 +55,7 @@ function PreflightRow({ ok, children }: { ok: boolean; children: ReactNode }) {
   );
 }
 
-/** A filter chip. The tick, not the tint, is what says "on" at any contrast. */
+/** A filter chip: tint, border and weight all shift together, so "on" survives low contrast. */
 function Chip({
   on,
   onClick,
@@ -64,13 +71,15 @@ function Chip({
       onClick={onClick}
       aria-pressed={on}
       className={clsx(
-        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition",
+        // No check glyph: `aria-pressed` already tells a screen reader, and the fill already tells
+        // everyone else. Rendered `invisible` when off it still reserved its width, so every chip
+        // carried a permanent 14px hole and the row read as a set of dropdowns rather than toggles.
+        "inline-flex items-center rounded-full border px-[0.72rem] py-[0.3rem] text-[0.78rem] transition",
         on
-          ? "border-brand bg-brand/20 text-brand-700"
-          : "border-line text-content-muted hover:border-line-strong hover:text-content",
+          ? "border-brand/50 bg-brand/20 font-semibold text-brand"
+          : "border-line font-medium text-content-muted hover:border-line-strong hover:text-content",
       )}
     >
-      <Check className={clsx("h-3.5 w-3.5", !on && "invisible")} />
       {children}
     </button>
   );
@@ -94,6 +103,9 @@ export function Broadcast() {
   const [buttons, setButtons] = useState<BroadcastButton[]>([]);
   const [scheduled, setScheduled] = useState(false);
   const [hour, setHour] = useState<number | null>(null);
+  // Which saved draft the composer is currently holding, so saving again overwrites it rather
+  // than leaving a trail of near-identical copies behind every edit.
+  const [draftId, setDraftId] = useState<number | null>(null);
 
   const filter = { only_active: onlyActive, only_referrers: onlyReferrers };
   const { data: audience, isError: audienceError } = useAudience(langs, filter);
@@ -108,6 +120,9 @@ export function Broadcast() {
   const { data: analytics } = useDashboardAnalytics(30);
   const { data: health } = useSystemHealth();
   const send = useSendBroadcast();
+  const { data: drafts } = useDrafts();
+  const draft = useSaveDraft();
+  const removeDraft = useDeleteDraft();
   const confirm = useConfirm();
 
   const total = everyone?.recipients ?? 0;
@@ -136,6 +151,39 @@ export function Broadcast() {
   // Scheduling defaults to the hour users are most active — the whole reason the strip is here is
   // that scheduling blind is how a broadcast lands at 04:00.
   const sendHour = hour ?? (peakHour >= 0 ? peakHour : 12);
+
+  function saveDraft() {
+    if (!body) return;
+    draft.mutate(
+      {
+        id: draftId ?? undefined,
+        text: body,
+        languages: langs,
+        only_active: onlyActive,
+        only_referrers: onlyReferrers,
+        buttons: filled,
+        send_hour: scheduled ? sendHour : null,
+      },
+      {
+        onSuccess: (d) => {
+          setDraftId(d.id);
+          toast.success(t("bc.draft.saved"));
+        },
+        onError: () => toast.error(t("bc.draft.failed")),
+      },
+    );
+  }
+
+  function restore(d: BroadcastDraft) {
+    setText(d.body);
+    setLangs(d.languages ? (d.languages.split(",") as Lang[]) : ALL_LANGS);
+    setOnlyActive(d.only_active);
+    setOnlyReferrers(d.only_referrers);
+    setButtons(d.buttons);
+    setScheduled(d.send_hour !== null);
+    setHour(d.send_hour);
+    setDraftId(d.id);
+  }
 
   function toggle(code: Lang) {
     setLangs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -170,6 +218,10 @@ export function Broadcast() {
           );
           setText("");
           setButtons([]);
+          // Sending is what a draft was for; leaving the row behind would offer to restore a
+          // message that has already gone out.
+          if (draftId !== null) removeDraft.mutate(draftId);
+          setDraftId(null);
         },
         onError: () => toast.error(t("bc.send.failed")),
       },
@@ -182,7 +234,7 @@ export function Broadcast() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-4">
-          <Card className="space-y-3">
+          <Card className="space-y-2">
             <h3 className="text-sm font-bold text-content">{t("bc.audience")}</h3>
             <div className="flex flex-wrap items-center gap-2">
               {ALL_LANGS.map((code) => (
@@ -243,7 +295,7 @@ export function Broadcast() {
             )}
           </Card>
 
-          <Card className="space-y-3">
+          <Card className="space-y-2.5">
             <h3 className="text-sm font-bold text-content">{t("bc.compose")}</h3>
             <MessageField value={text} onChange={setText} placeholder={t("bc.text.placeholder")} />
             <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
@@ -257,23 +309,46 @@ export function Broadcast() {
               hint={t("bc.schedule.hint")}
             />
 
-            {scheduled && (
-              <div className="space-y-1.5">
-                <HourStrip counts={byHour} mark={sendHour} onPick={setHour} />
-                <p className="text-xs text-content-subtle">
-                  {peakHour < 0
-                    ? t("bc.timing.noData")
+            {/* Shown whether or not scheduling is on, as the design has it. Hidden behind the
+                toggle, the one fact that would make anyone reach for the toggle — that this
+                audience is awake at 21:00 — was only visible after you had already decided. It is
+                only a CONTROL while scheduling is on; otherwise it is a read-only timing chart. */}
+            <div className="space-y-1.5">
+              <HourStrip
+                counts={byHour}
+                mark={scheduled ? sendHour : peakHour}
+                onPick={scheduled ? setHour : undefined}
+              />
+              <p className="text-xs text-content-subtle">
+                {peakHour < 0
+                  ? t("bc.timing.noData")
+                  : scheduled
+                    ? t("bc.timing.at", {
+                        send: localizeDigits(`${String(sendHour).padStart(2, "0")}:00`),
+                        h: localizeDigits(`${String(peakHour).padStart(2, "0")}:00`),
+                      })
                     : t("bc.timing.hint", {
                         h: localizeDigits(`${String(peakHour).padStart(2, "0")}:00`),
                       })}
-                </p>
-              </div>
-            )}
+              </p>
+            </div>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button onClick={submit} loading={send.isPending} disabled={!canSend}>
                 <Send className="h-4 w-4" />
                 {t("bc.send")}
+              </Button>
+              {/* Saving needs a body and nothing else — a draft is by definition unfinished, so
+                  gating it on the send's conditions would refuse to keep exactly the half-written
+                  message worth keeping. */}
+              <Button
+                variant="secondary"
+                onClick={saveDraft}
+                loading={draft.isPending}
+                disabled={!body}
+              >
+                <Save className="h-4 w-4" />
+                {t("bc.draft.save")}
               </Button>
               <span className="flex-1" />
               <span className="inline-flex items-center gap-1.5 text-xs text-content-muted">
@@ -282,6 +357,16 @@ export function Broadcast() {
               </span>
             </div>
           </Card>
+
+          <DraftList
+            drafts={drafts ?? []}
+            activeId={draftId}
+            onRestore={restore}
+            onDelete={(id) => {
+              removeDraft.mutate(id);
+              if (id === draftId) setDraftId(null);
+            }}
+          />
 
           <BroadcastHistory />
         </div>

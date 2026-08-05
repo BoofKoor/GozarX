@@ -581,7 +581,9 @@ async def test_broadcast_audience_and_enqueue(db_sessions, monkeypatch) -> None:
         def __init__(self) -> None:
             self.jobs: list = []
 
-        async def enqueue_job(self, name: str, *args: object) -> None:
+        async def enqueue_job(self, name: str, *args: object, **kw: object) -> None:
+            # `**kw` catches arq's `_defer_until`, which a scheduled send passes. Without it a
+            # stub that is merely out of date reads as the route being broken.
             self.jobs.append((name, args))
 
     app.state.arq = _FakeArq()
@@ -591,11 +593,21 @@ async def test_broadcast_audience_and_enqueue(db_sessions, monkeypatch) -> None:
         base_url="http://t",
         headers={"Authorization": f"Bearer {token}"},
     ) as c:
+        # A send to nobody is refused rather than queued: it would otherwise land in the history
+        # as a "successful" broadcast that reached zero people.
         assert (await c.get("/api/admin/broadcast/")).json()["recipients"] == 0
+        assert (await c.post("/api/admin/broadcast/", json={"text": "x"})).status_code == 422
+
+        async with db_sessions() as s:
+            s.add(User(telegram_id=99, language=Language.fa))
+            await s.commit()
+        assert (await c.get("/api/admin/broadcast/")).json()["recipients"] == 1
         r = await c.post("/api/admin/broadcast/", json={"text": "<b>hi</b>"})
         assert r.status_code == 200 and r.json()["queued"] is True
     # languages defaults to [] (everyone) — the worker reads an empty list as "all users"
-    assert app.state.arq.jobs == [("broadcast_text", ("<b>hi</b>", 777, []))]
+    name, args = app.state.arq.jobs[0]
+    assert name == "broadcast_text"
+    assert args[:3] == ("<b>hi</b>", 777, [])
     get_settings.cache_clear()
 
 
@@ -634,6 +646,55 @@ async def test_broadcast_audience_language_filter(
     ).status_code == 422
 
 
+async def test_broadcast_drafts_round_trip(admin_client: httpx.AsyncClient) -> None:
+    """Save, overwrite, list, delete — the whole reason a draft is server-side rather than in the
+    browser is that it has to survive being closed, so the round trip is the feature."""
+    saved = (
+        await admin_client.post(
+            "/api/admin/broadcast/drafts",
+            json={
+                "text": "خط اول\nخط دوم",
+                "languages": ["fa"],
+                "only_referrers": True,
+                "buttons": [{"text": "کانال", "url": "https://t.me/x"}],
+                "send_hour": 21,
+            },
+        )
+    ).json()
+    # The title comes from the FIRST line, so a draft never has to be named to be kept.
+    assert saved["title"] == "خط اول"
+    assert saved["languages"] == "fa"
+    assert saved["send_hour"] == 21
+    assert saved["buttons"] == [{"text": "کانال", "url": "https://t.me/x"}]
+
+    # Saving again with the same id OVERWRITES rather than minting a second near-identical copy.
+    again = (
+        await admin_client.post(
+            "/api/admin/broadcast/drafts", json={"id": saved["id"], "text": "بازنویسی"}
+        )
+    ).json()
+    assert again["id"] == saved["id"]
+    assert again["title"] == "بازنویسی"
+    assert (await admin_client.get("/api/admin/broadcast/drafts")).json() == [again]
+
+    # A button URL Telegram would reject is refused here too — a draft restored months later
+    # should not be the first time anyone finds out.
+    bad = await admin_client.post(
+        "/api/admin/broadcast/drafts",
+        json={"text": "x", "buttons": [{"text": "y", "url": "http://insecure"}]},
+    )
+    assert bad.status_code == 422
+
+    assert (
+        await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
+    ).status_code == 204
+    assert (await admin_client.get("/api/admin/broadcast/drafts")).json() == []
+    # Deleting it twice is a 404, not a silent success.
+    assert (
+        await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
+    ).status_code == 404
+
+
 async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> None:
     monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
     monkeypatch.setenv("ADMIN_USERNAME", "root")
@@ -649,7 +710,9 @@ async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> 
         def __init__(self) -> None:
             self.jobs: list = []
 
-        async def enqueue_job(self, name: str, *args: object) -> None:
+        async def enqueue_job(self, name: str, *args: object, **kw: object) -> None:
+            # `**kw` catches arq's `_defer_until`, which a scheduled send passes. Without it a
+            # stub that is merely out of date reads as the route being broken.
             self.jobs.append((name, args))
 
     app.state.arq = _FakeArq()
@@ -665,7 +728,12 @@ async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> 
         assert (
             await c.post("/api/admin/broadcast/", json={"text": "x", "languages": ["xx"]})
         ).status_code == 422
-    assert app.state.arq.jobs == [("broadcast_text", ("سلام", 777, ["fa"]))]
+    # Positional prefix only: the job also carries the two audience refinements, the buttons and
+    # the log id, and pinning the whole tuple makes every future argument a test failure rather
+    # than a behaviour change.
+    name, args = app.state.arq.jobs[0]
+    assert name == "broadcast_text"
+    assert args[:3] == ("سلام", 777, ["fa"])
     get_settings.cache_clear()
 
 

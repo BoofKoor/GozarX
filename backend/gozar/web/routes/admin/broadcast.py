@@ -15,7 +15,9 @@ Everything the composer offers is enforced HERE as well as shown there:
   failure in a worker log;
 - an optional send time, deferred by arq rather than slept through in a request;
 - every send is recorded in ``broadcast_logs`` at enqueue time, so a job that never ran shows in the
-  history instead of vanishing.
+  history instead of vanishing;
+- and an unsent message can be kept as a DRAFT, in the database rather than the browser, because
+  the console is shared: one person drafts an announcement and another sends it.
 """
 
 from __future__ import annotations
@@ -27,6 +29,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language
+from gozar.db.repositories.broadcast_draft import BroadcastDraftRepository
 from gozar.db.repositories.broadcast_log import BroadcastLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.web.dependencies import AdminUser, DbSession
@@ -141,6 +144,86 @@ async def history(session: DbSession, admin: AdminUser) -> list[BroadcastLogOut]
         )
         for r in rows
     ]
+
+
+class DraftIn(BaseModel):
+    """A broadcast in progress. Everything is optional except the body — a draft is by definition
+    incomplete, so the send route's validation would be the wrong gate here."""
+
+    id: int | None = None  # present ⇒ overwrite that draft rather than mint a second copy
+    text: str = Field(min_length=1, max_length=4096)
+    languages: list[str] = Field(default_factory=list)
+    only_active: bool = False
+    only_referrers: bool = False
+    buttons: list[BroadcastButton] = Field(default_factory=list, max_length=_MAX_BUTTONS)
+    #: The hour of day that was chosen, not an instant: an absolute time saved on Monday is in the
+    #: past by Tuesday, and "21:00" is what the operator actually picked.
+    send_hour: int | None = Field(default=None, ge=0, le=23)
+
+
+class DraftOut(BaseModel):
+    id: int
+    title: str
+    body: str
+    languages: str
+    only_active: bool
+    only_referrers: bool
+    buttons: list[BroadcastButton] = Field(default_factory=list)
+    send_hour: int | None
+    updated_at: datetime
+
+
+def _draft_out(row: object) -> DraftOut:
+    return DraftOut(
+        id=row.id,  # type: ignore[attr-defined]
+        title=row.title,  # type: ignore[attr-defined]
+        body=row.body,  # type: ignore[attr-defined]
+        languages=row.languages,  # type: ignore[attr-defined]
+        only_active=row.only_active,  # type: ignore[attr-defined]
+        only_referrers=row.only_referrers,  # type: ignore[attr-defined]
+        buttons=[BroadcastButton(**b) for b in (row.buttons or [])],  # type: ignore[attr-defined]
+        send_hour=row.send_hour,  # type: ignore[attr-defined]
+        updated_at=row.updated_at,  # type: ignore[attr-defined]
+    )
+
+
+@router.get("/drafts", response_model=list[DraftOut])
+async def list_drafts(session: DbSession, admin: AdminUser) -> list[DraftOut]:
+    """Saved-but-unsent broadcasts, newest first."""
+    rows = await BroadcastDraftRepository(session).list()
+    return [_draft_out(r) for r in rows]
+
+
+@router.post("/drafts", response_model=DraftOut)
+async def save_draft(body: DraftIn, session: DbSession, admin: AdminUser) -> DraftOut:
+    """Create a draft, or overwrite the one named by ``id``.
+
+    Language codes are validated even here: a draft restored months later should not be the first
+    time anyone finds out its audience was nonsense.
+    """
+    _parse_langs(body.languages)
+    row = await BroadcastDraftRepository(session).save(
+        id_=body.id,
+        body=body.text,
+        languages=",".join(body.languages),
+        only_active=body.only_active,
+        only_referrers=body.only_referrers,
+        buttons=[b.model_dump() for b in body.buttons] or None,
+        send_hour=body.send_hour,
+    )
+    await session.commit()
+    # A commit expires the instance, and `updated_at` is a server default — reading it to build the
+    # response would then be a lazy load from a sync attribute access, which under asyncio raises
+    # MissingGreenlet rather than quietly issuing a query.
+    await session.refresh(row)
+    return _draft_out(row)
+
+
+@router.delete("/drafts/{draft_id}", status_code=204)
+async def delete_draft(draft_id: int, session: DbSession, admin: AdminUser) -> None:
+    if not await BroadcastDraftRepository(session).delete(draft_id):
+        raise HTTPException(404, "draft not found")
+    await session.commit()
 
 
 @router.post("/", response_model=BroadcastOut)

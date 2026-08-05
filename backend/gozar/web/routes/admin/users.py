@@ -54,9 +54,14 @@ class UserOut(BaseModel):
     reminder_enabled: bool
     referred_by: int | None
     created_at: datetime | None
-    configs: int | None = None  # lifetime claims — set on the detail card only
+    #: Lifetime claims. The design's users table leads with this and with recency, because "who is
+    #: this person to the service" is the question the row is opened to answer — a panel username
+    #: and a signup date say only that the row exists.
+    configs: int | None = None
     #: Where this user's LATEST claim came from. None until they have claimed once.
     last_location: str | None = None
+    #: When that claim was provisioned — the rolling-cooldown anchor, and the row's recency signal.
+    last_claim_at: datetime | None = None
 
 
 class UserPage(BaseModel):
@@ -100,6 +105,7 @@ def _out(user: User, configs: int | None = None, last_location: str | None = Non
         created_at=user.created_at,
         configs=configs,
         last_location=last_location,
+        last_claim_at=user.last_claim_at,
     )
 
 
@@ -120,10 +126,16 @@ async def list_users(
         limit=page_size, offset=offset, status=status, search=search, location=location
     )
     total = await repo.count_filtered(status=status, search=search, location=location)
-    # One extra query for the whole page, not one per row.
-    places = await ConfigLogRepository(session).latest_locations([u.telegram_id for u in items])
+    # Two extra queries for the whole page, not two per row.
+    ids = [u.telegram_id for u in items]
+    logs = ConfigLogRepository(session)
+    places = await logs.latest_locations(ids)
+    counts = await logs.counts_for(ids)
     return UserPage(
-        items=[_out(u, last_location=places.get(u.telegram_id)) for u in items],
+        items=[
+            _out(u, configs=counts.get(u.telegram_id, 0), last_location=places.get(u.telegram_id))
+            for u in items
+        ],
         total=total,
         page=page,
         page_size=page_size,

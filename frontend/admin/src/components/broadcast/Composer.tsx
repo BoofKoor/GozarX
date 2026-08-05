@@ -106,9 +106,13 @@ export function MessageField({
           {formatNumber(value.length)} / {formatNumber(MAX_CHARS)}
         </span>
       </div>
+      {/* Four lines at the design's 1.8 leading, not 180px. A broadcast is a paragraph; sizing the
+          field for an essay pushed the button builder, the schedule and the send button below the
+          fold and made the page 35% taller than the reference for the same content. It still grows
+          as you type — the browser scrolls it. */}
       <textarea
         ref={ref}
-        className="field-control min-h-[180px] rounded-t-none"
+        className="field-control min-h-[7rem] rounded-t-none leading-[1.8]"
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}

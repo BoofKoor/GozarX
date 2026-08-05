@@ -3,6 +3,7 @@
 ``migrations/env.py`` imports this so Alembic autogenerate sees all tables.
 """
 
+from gozar.db.models.broadcast_draft import BroadcastDraft
 from gozar.db.models.broadcast_log import BroadcastLog, BroadcastStatus
 from gozar.db.models.button_config import ButtonConfig
 from gozar.db.models.config_log import ConfigLog
@@ -21,6 +22,7 @@ from gozar.db.models.user import User
 
 __all__ = [
     "FAQ_CATEGORIES",
+    "BroadcastDraft",
     "BroadcastLog",
     "BroadcastStatus",
     "ButtonConfig",

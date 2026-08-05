@@ -3,6 +3,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
   BroadcastAudience,
+  BroadcastDraft,
+  BroadcastDraftSave,
   BroadcastLog,
   BroadcastResult,
   BroadcastSend,
@@ -51,5 +53,33 @@ export function useSendBroadcast() {
     // The new row exists the moment the request returns, so the history should show it queued
     // rather than waiting for the next poll.
     onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcast-history"] }),
+  });
+}
+
+/** Saved-but-unsent broadcasts. Server-side, not `localStorage`: the console is shared, so a draft
+ *  one admin wrote has to be there for the one who sends it — and survive a cleared cache. */
+export function useDrafts() {
+  return useQuery({
+    queryKey: ["broadcast-drafts"],
+    queryFn: async () => (await api.get<BroadcastDraft[]>("/admin/broadcast/drafts")).data,
+  });
+}
+
+export function useSaveDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: BroadcastDraftSave) =>
+      (await api.post<BroadcastDraft>("/admin/broadcast/drafts", body)).data,
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcast-drafts"] }),
+  });
+}
+
+export function useDeleteDraft() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      await api.delete(`/admin/broadcast/drafts/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["broadcast-drafts"] }),
   });
 }

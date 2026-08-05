@@ -26,7 +26,7 @@ import {
   useUsers,
 } from "@/hooks/useUsers";
 import { useI18n, type MessageKey } from "@/i18n";
-import { faDate, faRelative, formatNumber, humanBytes, langLabel } from "@/lib/format";
+import { faRelative, formatNumber, humanBytes, langLabel } from "@/lib/format";
 import type { UserAction } from "@/types/api";
 
 const STATUS: Record<string, { key: MessageKey; tone: BadgeTone }> = {
@@ -164,9 +164,12 @@ export function Users() {
                 <TH>{t("users.col.user")}</TH>
                 <TH>{t("users.col.status")}</TH>
                 <TH>{t("users.col.location")}</TH>
+                {/* Claims and recency, not panel-username and signup date: the design leads with
+                    what this person is TO the service, and the two identifiers it replaces are
+                    both on the record card a click away. */}
+                <TH>{t("users.col.claims")}</TH>
                 <TH>{t("users.col.invites")}</TH>
-                <TH>{t("users.col.panel")}</TH>
-                <TH>{t("users.col.joined")}</TH>
+                <TH>{t("users.col.lastClaim")}</TH>
               </TR>
             </THead>
             <TBody>
@@ -196,12 +199,10 @@ export function Users() {
                   <TD className="whitespace-nowrap text-sm text-content-muted">
                     {u.last_location ?? "—"}
                   </TD>
+                  <TD className="tabular-nums">{formatNumber(u.configs ?? 0)}</TD>
                   <TD className="tabular-nums">{formatNumber(u.referral_count)}</TD>
-                  <TD className="font-mono text-xs text-content-muted" dir="ltr">
-                    {u.panel_username ?? "—"}
-                  </TD>
                   <TD className="whitespace-nowrap text-xs text-content-muted">
-                    {faDate(u.created_at)}
+                    {u.last_claim_at ? faRelative(u.last_claim_at) : "—"}
                   </TD>
                 </TR>
               ))}
