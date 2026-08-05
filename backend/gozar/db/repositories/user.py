@@ -278,10 +278,19 @@ class UserRepository(BaseRepository):
         await self.session.execute(delete(User).where(User.telegram_id == telegram_id))
 
     # --- analytics (Phase B) ---------------------------------------------------------------------
-    async def referral_funnel(self) -> tuple[int, int]:
-        """``(joined_via_referral, of_those_who_claimed)`` — the invitee side of the referral funnel
-        (``referred_by`` was indexed but unused in stats). Lets the panel show invitee conversion
-        and a viral proxy, not just the top-referrer leaderboard."""
+    async def referral_funnel(self) -> tuple[int, int, int]:
+        """``(joined_via_referral, of_those_who_claimed, could_have_been_referred)``.
+
+        The third figure is the honest denominator for "what share of our users arrived via an
+        invite". ``referred_by`` is written only on a brand-new ``/start`` carrying a referral
+        payload, and the legacy import set it to NULL for every migrated row — so on a live install
+        39,899 of 108,693 users predate the referral programme entirely and could never have had
+        one. Dividing by all of them reported 10.8% where the real figure for the era in which
+        referrals existed is 17.0%, and no amount of referral growth could move it much.
+
+        The cutoff is the earliest signup that HAS a referrer, which needs no configuration and
+        corrects itself: it is by definition the moment the programme started producing rows.
+        """
         joined = int(
             await self.session.scalar(
                 select(func.count()).select_from(User).where(User.referred_by.is_not(None))
@@ -297,7 +306,19 @@ class UserRepository(BaseRepository):
             )
             or 0
         )
-        return joined, claimed
+        # Everyone who signed up at or after the first referral we ever recorded. With no referrals
+        # at all the cutoff is NULL, the comparison matches nothing, and the count is 0 — which the
+        # caller turns into a 0% share rather than a division by zero.
+        cutoff = (
+            select(func.min(User.created_at)).where(User.referred_by.is_not(None)).scalar_subquery()
+        )
+        eligible = int(
+            await self.session.scalar(
+                select(func.count()).select_from(User).where(User.created_at >= cutoff)
+            )
+            or 0
+        )
+        return joined, claimed, eligible
 
     async def reminder_by_language(self) -> list[tuple[str, int, int]]:
         """Per language → ``[(lang, reminders_on, reminders_off), …]`` — the opt-in engagement

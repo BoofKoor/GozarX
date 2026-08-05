@@ -146,9 +146,7 @@ async def test_settings_rejects_a_location_the_bot_squad_does_not_serve(
     remark, so the user picks it and the claim dead-ends.
     """
     await admin_client.post("/api/admin/setup/", json={"trial_squad": "sq-1", "locations": []})
-    r = await admin_client.put(
-        "/api/admin/settings/", json={"locations": ["Germany", "Narnia"]}
-    )
+    r = await admin_client.put("/api/admin/settings/", json={"locations": ["Germany", "Narnia"]})
     assert r.status_code == 400
     detail = r.json()["detail"]
     assert "Narnia" in detail and "Finland" in detail  # names the bad value AND the real options
@@ -365,6 +363,11 @@ async def test_dashboard_analytics_aggregations(
         "joined_claimed": 1,
         "invitee_conversion_pct": 100.0,
         "k_factor": round(1 / 3, 2),
+        # The share's denominator is everyone who signed up at or after the first referral — here
+        # all three, since they are seeded together. On a live install it excludes the legacy
+        # imported rows, for which `referred_by` is structurally null.
+        "eligible": 3,
+        "joined_share_pct": 33.3,
     }
     assert sum(cell["count"] for cell in body["heatmap"]) == 3
     fa = next(r for r in body["reminder_by_language"] if r["label"] == "fa")

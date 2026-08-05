@@ -373,7 +373,12 @@ class ConfigLogRepository(BaseRepository):
             stmt = stmt.where(firsts.c.fc < until)
         median, within, total = (await self.session.execute(stmt)).one()
         return (
-            round(float(median), 1) if median is not None else None,
+            # Four decimals, not one. The real median on a live install is 0.0058 hours — 21
+            # seconds, because the whole flow is /start → language → claim — and rounding to one
+            # decimal collapsed that to exactly 0.0, so the panel reported its best number as if
+            # the figure were missing. The unit belongs to the display layer; this returns hours
+            # with enough precision for it to choose one.
+            round(float(median), 4) if median is not None else None,
             int(within or 0),
             int(total or 0),
         )

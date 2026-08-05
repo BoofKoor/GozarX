@@ -69,6 +69,25 @@ export function formatMb(mb: number): string {
   return isolateQuantity(localizeDigits(`${mb} MB`));
 }
 
+/**
+ * Hours → a duration in the largest unit that still shows the figure.
+ *
+ * Signup→first-claim is measured in hours because that is the scale it COULD take, but on a live
+ * install the median is 0.0058 of one — 21 seconds, since the whole flow is /start, pick a
+ * language, claim. Printed as hours that is "0", which reads as a missing number rather than as
+ * the best figure the funnel has. The unit follows the value: seconds under a minute, minutes
+ * under an hour, hours above.
+ */
+export function humanHours(hours: number): string {
+  if (!Number.isFinite(hours) || hours < 0) return isolateQuantity(localizeDigits("0s"));
+  const seconds = hours * 3600;
+  if (seconds < 60) return isolateQuantity(localizeDigits(`${Math.round(seconds)}s`));
+  if (hours < 1) return isolateQuantity(localizeDigits(`${Math.round(seconds / 60)}m`));
+  // One decimal past an hour: the difference between 6.9h and 7h is what a period comparison is
+  // reading, and rounding it away would flatten the delta the tile sits above.
+  return isolateQuantity(localizeDigits(`${hours.toFixed(1)}h`));
+}
+
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
 export function humanBytes(n: number): string {
   if (!Number.isFinite(n)) return isolateQuantity(localizeDigits("0 B"));

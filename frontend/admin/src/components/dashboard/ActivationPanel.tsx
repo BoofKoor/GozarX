@@ -1,7 +1,7 @@
 import { Timer } from "lucide-react";
 
 import { Card, CardHeader } from "@/components/ui/Card";
-import { faPct, formatNumber } from "@/lib/format";
+import { faPct, formatNumber, humanHours } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
 import { useI18n } from "@/i18n";
 
@@ -20,12 +20,9 @@ export function ActivationPanel({ data }: { data: DashboardAnalytics }) {
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-surface-raised p-4">
           <div className="text-2xl font-bold tabular-nums">
-            {median == null ? "—" : formatNumber(median)}
-            {median != null && (
-              <span className="mr-1 text-sm font-normal text-content-subtle">
-                {t("d.activation.hours")}
-              </span>
-            )}
+            {/* `humanHours` carries the unit, and picks one that fits: the real median is 21
+                seconds, which as a bare "hours" figure printed as 0. */}
+            {median == null ? "—" : humanHours(median)}
           </div>
           <div className="mt-1 text-xs text-content-muted">{t("d.activation.median")}</div>
         </div>
