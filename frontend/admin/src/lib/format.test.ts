@@ -5,6 +5,7 @@ import {
   formatMb,
   formatNumber,
   humanBytes,
+  localizeDigits,
   shortDay,
   splitLocations,
   telegramPreviewHtml,
@@ -16,12 +17,17 @@ describe("format helpers", () => {
     // in an RTL sentence, and «۱ GB» rendered as «GB ۱» — the unit ahead of the number it measures.
     expect(formatMb(512)).toBe("\u2068۵۱۲ MB\u2069");
     expect(formatMb(1024)).toBe("\u2068۱ GB\u2069");
-    expect(formatMb(1536)).toBe("\u2068۱.۵ GB\u2069");
+    expect(formatMb(1536)).toBe("\u2068۱٫۵ GB\u2069"); // Persian decimal mark, not an ASCII dot
+  });
+
+  it("uses the locale's decimal mark, so ۳٫۱ TB matches the ۳۷٫۵٪ beside it", () => {
+    // Only a dot BETWEEN digits converts — a sentence's full stop is left alone.
+    expect(localizeDigits("v1.2 beta.")).toBe("v۱٫۲ beta.");
   });
 
   it("isolates every byte size the same way", () => {
     expect(humanBytes(0)).toBe("\u2068۰ B\u2069");
-    expect(humanBytes(3_375_000_000_000)).toBe("\u2068۳.۱ TB\u2069");
+    expect(humanBytes(3_375_000_000_000)).toBe("\u2068۳٫۱ TB\u2069");
   });
 
   it("groups digits with Persian numerals", () => {

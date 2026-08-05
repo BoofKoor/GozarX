@@ -26,9 +26,11 @@ function RailButton({ item, active }: { item: NavItem; active: boolean }) {
       aria-label={label}
       className={clsx(
         "relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition",
+        // Every item keeps its outline, not just the active one. Bare glyphs on the rail read as
+        // decoration; the outlined squares are what make it a control strip.
         active
           ? "border-line-strong bg-surface-hover text-brand"
-          : "border-transparent text-content-muted hover:border-line hover:text-content",
+          : "border-line text-content-muted hover:border-line-strong hover:text-content",
       )}
     >
       {active && (

@@ -39,6 +39,7 @@ export default {
           DEFAULT: token("surface"),
           sunken: token("surface-sunken"),
           hover: token("surface-hover"),
+          raised: token("surface-raised"),
         },
         nav: token("nav"),
         line: { DEFAULT: token("line"), strong: token("line-strong") },

@@ -19,7 +19,7 @@ export function TopReferrers({ data }: { data: Referrer[] }) {
         <ul className="divide-y divide-line">
           {data.map((r, i) => (
             <li key={r.telegram_id} className="flex items-center gap-3 py-2.5">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-xs font-bold text-content-muted tabular-nums">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-xs font-bold text-content-muted tabular-nums">
                 {i + 1}
               </span>
               <code className="flex-1 text-sm text-content-muted" dir="ltr">

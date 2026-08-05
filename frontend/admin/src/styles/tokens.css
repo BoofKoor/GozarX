@@ -73,6 +73,9 @@
   --surface: 255 255 255; /* --c-surface   #FFFFFF — cards */
   --surface-sunken: 246 248 252; /* --c-canvas    #F6F8FC — the content well */
   --surface-hover: 241 244 251; /* --c-surface-2 #F1F4FB */
+  /* A nested card RAISES off its panel rather than sinking into it — the mock's own depth order.
+     Same value as the hover tone; the two are different ROLES, so they get different names. */
+  --surface-raised: 255 255 255;
   --nav: 255 255 255; /* --c-rail */
 
   --line: 223 228 240; /* --c-line      #DFE4F0 */
@@ -98,6 +101,7 @@
   --surface: 48 53 106; /* --c-surface   #30356A — cards */
   --surface-sunken: 40 44 88; /* --c-canvas    #282C58 — the content well */
   --surface-hover: 56 61 122; /* --c-surface-2 #383D7A */
+  --surface-raised: 56 61 122; /* #383D7A — a nested card, lifted off its panel */
   --nav: 35 39 80; /* --c-rail      #232750 */
 
   --line: 61 67 130; /* --c-line      #3D4382 */

@@ -111,7 +111,7 @@ export function TopCard({
     4: "bg-chart-4/20 text-chart-4",
   };
   return (
-    <div className="flex min-w-0 flex-col gap-3 rounded-2xl bg-surface p-4 shadow-card">
+    <div className="flex min-w-0 flex-col gap-2 rounded-2xl bg-surface p-4 shadow-card">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1">
           <div className="truncate text-[11px] text-content-subtle">{label}</div>
@@ -127,9 +127,11 @@ export function TopCard({
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <div className="flex items-baseline gap-1.5">
-        <span className="text-xl font-bold tabular-nums text-content">{value}</span>
-        <span className="text-[11px] text-content-subtle">{unit}</span>
+      {/* A quiet third line, not a second headline. At `text-xl` it competed with the value above
+          it and made this card a head taller than the design's two-line one. */}
+      <div className="flex items-baseline gap-1.5 text-[11px] text-content-subtle">
+        <span className="font-bold tabular-nums text-content-muted">{value}</span>
+        <span>{unit}</span>
       </div>
     </div>
   );

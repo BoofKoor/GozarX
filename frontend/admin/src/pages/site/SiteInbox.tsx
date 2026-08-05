@@ -266,7 +266,7 @@ function MessageView({
       </div>
 
       {message.reply_handle && (
-        <div className="flex items-center gap-2 rounded-xl bg-surface-sunken px-3 py-2 text-sm">
+        <div className="flex items-center gap-2 rounded-xl bg-surface-raised px-3 py-2 text-sm">
           <span className="text-content-muted">{t("si.replyVia")}</span>
           {reply ? (
             <a

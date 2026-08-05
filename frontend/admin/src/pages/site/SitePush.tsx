@@ -169,7 +169,7 @@ function PushPreview({ title, body }: { title: string; body: string }) {
   return (
     <div>
       <div className="mb-1.5 text-xs font-medium text-content-muted">{t("sp.preview")}</div>
-      <div className="flex gap-3 rounded-xl border border-line bg-surface-sunken p-3">
+      <div className="flex gap-3 rounded-xl border border-line bg-surface-raised p-3">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand text-white">
           <BellRing className="h-4 w-4" />
         </div>

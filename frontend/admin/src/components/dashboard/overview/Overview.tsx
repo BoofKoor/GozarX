@@ -125,6 +125,11 @@ export function Overview({
                   values={tail.map((d) => d.count)}
                   labels={tail.map((d) => axisLabel(d.day).secondary ?? "")}
                   highlight={peak}
+                  delta={
+                    stats.growth_pct != null
+                      ? `${stats.growth_pct >= 0 ? "+" : ""}${faPct(stats.growth_pct)}`
+                      : undefined
+                  }
                   ariaLabel={t("dash.spark.aria", {
                     days: formatNumber(tail.length),
                     peak: formatNumber(tail[peak].count),
@@ -298,7 +303,7 @@ export function Overview({
           outOf={Math.max(stats.new_today, stats.new_this_week)}
           outOfLabel={t("dash.live.newTodayOf")}
         />
-        <div className="flex items-center gap-3 rounded-xl bg-surface-sunken p-3">
+        <div className="flex items-center gap-3 rounded-xl bg-surface-raised p-3">
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm text-content-muted">{t("dash.live.traffic")}</div>
             {/* Lifetime, and labelled as such — a delta on an all-time total is meaningless. */}
@@ -310,7 +315,7 @@ export function Overview({
         </div>
 
         <SideHead>{t("dash.side.health")}</SideHead>
-        <div className="rounded-xl bg-surface-sunken px-3 py-1">
+        <div className="rounded-xl bg-surface-raised px-3 py-1">
           <HealthRow
             label={t("dash.health.panel")}
             tone={health?.panel.ok ? "ok" : "bad"}

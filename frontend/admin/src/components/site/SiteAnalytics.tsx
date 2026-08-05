@@ -22,7 +22,7 @@ const STREAK_ORDER: { key: string; label: MessageKey }[] = [
 
 function Tile({ value, label, sub }: { value: number; label: string; sub?: string }) {
   return (
-    <div className="rounded-xl bg-surface-sunken p-3 text-center dark:bg-surface-sunken/50">
+    <div className="rounded-xl bg-surface-raised p-3 text-center">
       <div className="text-xl font-bold tabular-nums">{formatNumber(value)}</div>
       <div className="mt-0.5 text-xs text-content-muted">{label}</div>
       {sub && (
@@ -53,7 +53,7 @@ function RewardEconomy({ items }: { items: RewardType[] }) {
           {items.map((r) => (
             <li
               key={r.type}
-              className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-2 dark:bg-surface-sunken/50"
+              className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-2"
             >
               <span className="text-content-muted">
                 {REWARD_LABEL[r.type] ? t(REWARD_LABEL[r.type]) : r.type}
@@ -133,7 +133,7 @@ function PushHealthPanel({ push }: { push: PushHealth }) {
             {push.by_locale.map((l) => (
               <span
                 key={l.label}
-                className="rounded-full bg-surface-sunken px-2 py-0.5 text-xs text-content-muted"
+                className="rounded-full bg-surface-raised px-2 py-0.5 text-xs text-content-muted"
               >
                 {langLabel(l.label)} · {formatNumber(l.count)}
               </span>
@@ -178,7 +178,7 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
                     behind it, which is the only thing that makes the signal actionable. */}
                 <Link
                   to={`/site/devices?ip_bucket=${encodeURIComponent(b.label)}`}
-                  className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-1.5 transition hover:bg-surface-hover"
+                  className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-1.5 transition hover:bg-surface-hover"
                 >
                   <span className="font-mono text-xs text-content-muted" dir="ltr">
                     {b.label}
