@@ -307,7 +307,7 @@ FILLS = {
     # Hover the activity trend a third of the way in, so the crosshair + readout are captured.
     "trendtip": (
         "var svgs=[].slice.call(document.querySelectorAll('svg[role=img]'));"
-        "var el=svgs.filter(function(s){return s.viewBox.baseVal.width===760})[0];"
+        "var el=svgs.filter(function(s){return s.viewBox.baseVal.width===900})[0];"
         "if(!el){console.error('no AreaTrend svg');}else{"
         "var r=el.getBoundingClientRect();"
         "el.dispatchEvent(new PointerEvent('pointermove',{bubbles:true,"

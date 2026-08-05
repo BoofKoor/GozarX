@@ -27,11 +27,14 @@ export interface AreaTrendProps {
   className?: string;
 }
 
-const W = 760;
-const H = 260;
-const PAD_L = 42;
-const PAD_R = 14;
-const PAD_T = 12;
+// The design's own plot geometry. Everything inside is expressed in these units — tick text at 11,
+// day labels at 11.5, strokes at 2 and 2.25 — so the box has to keep the proportions they were
+// balanced against, and the SVG then scales to whatever width the column gives it.
+const W = 900;
+const H = 292;
+const PAD_L = 46;
+const PAD_R = 16;
+const PAD_T = 16;
 const PAD_B = 38;
 
 /**
@@ -100,7 +103,7 @@ export function AreaTrend({
         viewBox={`0 0 ${W} ${H}`}
         role="img"
         aria-label={ariaLabel}
-        className="block h-full w-full"
+        className="block h-auto w-full"
         onPointerMove={(e) => track(e.clientX)}
         onPointerLeave={() => setHover(null)}
       >

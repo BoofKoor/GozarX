@@ -47,33 +47,44 @@ export function KpiTile({
   label,
   delta,
   hero = false,
+  className,
   children,
 }: {
   value: ReactNode;
   label: string;
   delta?: ReactNode;
   hero?: boolean;
+  className?: string;
   children?: ReactNode;
 }) {
   return (
     <div
       className={clsx(
-        "flex min-w-0 flex-col rounded-2xl p-4",
+        "flex min-w-0 flex-col rounded-card p-4",
+        className,
         // The hero tile is a GRADIENT, and its bottom padding is halved so the sparkline can bleed
         // to the tile's own edges (the design runs the curve and the marker column right out to
         // them; inset inside the padding it reads as a small chart parked in a big empty tile).
-        hero ? "bg-hero pb-2 text-white shadow-hero" : "bg-surface shadow-card",
+        hero ? "bg-hero pb-2 text-white shadow-hero" : "min-h-[139px] bg-surface shadow-card",
       )}
     >
       <div
         className={clsx(
-          "text-[2rem] font-bold leading-tight tracking-tight tabular-nums",
+          "text-[2rem] font-bold leading-[1.1] tracking-[-0.025em] tabular-nums",
           !hero && "text-content",
         )}
       >
         {value}
       </div>
-      <div className={clsx("mt-1 text-xs", hero ? "text-white/75" : "text-content-muted")}>
+      {/* An eyebrow, not body text: small, tracked out and quiet, so the figure above it is the only
+          thing with weight in the tile. At `text-xs text-content-muted` the label competed with its
+          own number and the four tiles read as four paragraphs. */}
+      <div
+        className={clsx(
+          "mt-1.5 text-[10px] uppercase leading-[1.5] tracking-[0.085em]",
+          hero ? "text-white/70" : "text-content-subtle",
+        )}
+      >
         {label}
       </div>
       {/* The delta is pushed to the bottom so a two-line label never shoves it out of alignment
@@ -85,10 +96,15 @@ export function KpiTile({
 }
 
 /**
- * A "top X" card: a coloured glyph, what it is, and the figure with its unit.
+ * A "top X" card: a coloured glyph, what it is, and the FIGURE with its unit.
  *
- * Each card takes a different accent. Four identical grey glyphs carry no information and read as
- * unfinished; the colours are the same validated four the charts use.
+ * The figure is the card. It is the biggest thing in it, and the name above it is a caption — the
+ * card answers "how many claims did the top location get", and «۱٬۸۸۳» is the answer while
+ * «Germany» is the question restated. Built the other way round, with the name bold at body size
+ * and the count at 11px underneath, the row of four read as four labels and the numbers vanished.
+ *
+ * The glyph leads the line, on the reading-START edge, and the overflow dots close it. Each card
+ * takes a different accent: four identical grey glyphs carry no information and read as unfinished.
  */
 export function TopCard({
   icon: Icon,
@@ -114,27 +130,44 @@ export function TopCard({
     4: "bg-chart-4/20 text-chart-4",
   };
   return (
-    <div className="flex min-w-0 flex-col gap-2 rounded-2xl bg-surface p-4 shadow-card">
-      <div className="flex items-start gap-2">
-        <div className="min-w-0 flex-1">
-          <div className="truncate text-[11px] text-content-subtle">{label}</div>
+    <div className="flex min-w-0 flex-col rounded-card bg-surface px-[14px] pb-4 pt-[15px] shadow-card">
+      <div className="flex min-h-[41px] items-start gap-1.5">
+        <span
+          className={clsx(
+            "grid h-[26px] w-[26px] shrink-0 place-items-center rounded-lg",
+            TONE[tone],
+          )}
+        >
+          <Icon className="h-[15px] w-[15px]" />
+        </span>
+        <div className="min-w-0">
+          <div className="text-[10px] uppercase tracking-[0.085em] text-content-subtle">
+            {label}
+          </div>
           <div
-            className={clsx("mt-0.5 truncate font-bold text-content", mono && "font-mono text-sm")}
+            className={clsx(
+              "truncate text-sm font-bold text-content",
+              mono && "font-mono text-[12px] tracking-[-0.01em]",
+            )}
             style={mono ? { unicodeBidi: "isolate" } : undefined}
             dir={mono ? "ltr" : undefined}
           >
             {headline}
           </div>
         </div>
-        <span className={clsx("grid h-8 w-8 shrink-0 place-items-center rounded-xl", TONE[tone])}>
-          <Icon className="h-4 w-4" />
+        <span
+          className="ms-auto ps-1 text-base leading-none tracking-[0.1em] text-content-subtle"
+          aria-hidden
+        >
+          ⋮
         </span>
       </div>
-      {/* A quiet third line, not a second headline. At `text-xl` it competed with the value above
-          it and made this card a head taller than the design's two-line one. */}
-      <div className="flex items-baseline gap-1.5 text-[11px] text-content-subtle">
-        <span className="font-bold tabular-nums text-content-muted">{value}</span>
-        <span>{unit}</span>
+      <div className="mt-auto flex items-baseline pt-3.5 text-[22px] font-bold tracking-[-0.02em] tabular-nums text-content">
+        <span>{value}</span>
+        {/* A rule, not a gap: the unit belongs to the number but is not part of it. */}
+        <small className="ms-2 border-s border-line ps-[7px] text-[11px] font-normal text-content-subtle">
+          {unit}
+        </small>
       </div>
     </div>
   );

@@ -140,6 +140,10 @@ export function Overview({
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.22fr_repeat(3,1fr)]">
+          {/* Deliberately NOT spanning the row when there are two columns. The sparkline's height
+              follows its width, so a full-width hero at 768px draws a 650px-tall chart inside a KPI
+              tile; at half width it lands on the ~245px the design draws, and the tile beside it
+              stretches to match, which is what the design does too. */}
           <KpiTile hero value={formatNumber(stats.total_users)} label={t("dash.kpi.total")}>
             {tail.length >= 2 && (
               // Pushed to the bottom of the tile and bled past its padding on three sides, so the
@@ -158,7 +162,6 @@ export function Overview({
                     days: formatNumber(tail.length),
                     peak: formatNumber(tail[peak].count),
                   })}
-                  className="h-[104px] w-full"
                 />
               </div>
             )}
@@ -244,7 +247,6 @@ export function Overview({
             ticks={ticksFor(maxY)}
             formatValue={formatNumber}
             ariaLabel={t("dash.chart.sub")}
-            className="h-[240px] w-full"
           />
         </div>
 
