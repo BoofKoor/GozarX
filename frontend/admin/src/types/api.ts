@@ -502,6 +502,34 @@ export interface ReferralFunnel {
   k_factor: number; // avg successful invites per user (viral coefficient)
 }
 
+/** One local day of carried traffic and the concurrency during it. */
+export interface UsageDay {
+  day: string;
+  bytes: number;
+  peak_online: number;
+  avg_online: number;
+  /** The lifetime counter dropped across this day's boundary — a panel restart, a node removed and
+   *  re-added, or a traffic reset. `bytes` reads 0 because the true figure is unknowable; this is
+   *  what lets the chart say so rather than draw a silent dip. */
+  counter_reset: boolean;
+}
+
+/** The usage tab's payload. Every figure is windowed, so the range control moves all of them. */
+export interface DashboardUsage {
+  range_days: number;
+  /** When sampling began — null before the first sample. "No traffic in this window" and "we were
+   *  not recording yet" are different facts and the empty state has to tell them apart. */
+  recording_since: string | null;
+  samples: number;
+  traffic: Metric;
+  peak_online: Metric;
+  bytes_per_user: Metric;
+  nodes_online: number;
+  mem_used: number;
+  mem_total: number;
+  daily: UsageDay[];
+}
+
 export interface DashboardAnalytics {
   range_days: number;
   dau: number;

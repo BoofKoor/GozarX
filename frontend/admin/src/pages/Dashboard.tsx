@@ -1,6 +1,7 @@
 import {
   Activity,
   Download,
+  Gauge,
   Gift,
   Globe2,
   HeartPulse,
@@ -25,6 +26,7 @@ import { RetentionCohorts } from "@/components/dashboard/RetentionCohorts";
 import { Overview } from "@/components/dashboard/overview/Overview";
 import { TopLocations } from "@/components/dashboard/TopLocations";
 import { TopReferrers } from "@/components/dashboard/TopReferrers";
+import { UsagePanel } from "@/components/dashboard/UsagePanel";
 import { TrialHealthPanel } from "@/components/dashboard/TrialHealthPanel";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -41,19 +43,23 @@ import {
   downloadDashboardCsv,
   useDashboard,
   useDashboardAnalytics,
+  useDashboardUsage,
   useRetention,
 } from "@/hooks/useDashboard";
 import { useI18n, type MessageKey } from "@/i18n";
 import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
 
-type TabKey = "overview" | "growth" | "retention" | "referrals" | "geo" | "health";
+type TabKey = "overview" | "growth" | "retention" | "referrals" | "usage" | "geo" | "health";
 
 const TAB_KEYS: { value: TabKey; labelKey: MessageKey; icon: typeof LineChart }[] = [
   { value: "overview", labelKey: "dash.tab.overview", icon: LineChart },
   { value: "growth", labelKey: "dash.tab.growth", icon: UserPlus },
   { value: "retention", labelKey: "dash.tab.retention", icon: Repeat },
   { value: "referrals", labelKey: "dash.tab.referrals", icon: Gift },
+  // Between referrals and geography: the tab is about LOAD on the service, which sits
+  // naturally after the audience tabs and before the where-and-when ones.
+  { value: "usage", labelKey: "dash.tab.usage", icon: Gauge },
   { value: "geo", labelKey: "dash.tab.geo", icon: Globe2 },
   { value: "health", labelKey: "dash.tab.health", icon: HeartPulse },
 ];
@@ -62,15 +68,19 @@ const TAB_KEYS: { value: TabKey; labelKey: MessageKey; icon: typeof LineChart }[
 // freeze whichever language happened to load first.
 const RANGE_VALUES = RANGES as readonly number[];
 
-/** Render an analytics panel once its (separate) query has loaded, else a stable skeleton so the
- *  grid doesn't jump when the deeper stats arrive a moment after the headline. */
-function Analytic({
+/** Render a panel once its (separate) query has loaded, else a stable skeleton so the grid doesn't
+ *  jump when the deeper stats arrive a moment after the headline.
+ *
+ *  Generic over the payload: the analytics query is no longer the only one that lands late — the
+ *  usage series is its own request, and pinning this to one response type would mean a second copy
+ *  of the same three lines. */
+function Analytic<T>({
   data,
   render,
   height = "h-52",
 }: {
-  data: DashboardAnalytics | undefined;
-  render: (d: DashboardAnalytics) => JSX.Element;
+  data: T | undefined;
+  render: (d: T) => JSX.Element;
   height?: string;
 }) {
   if (!data) {
@@ -98,6 +108,7 @@ export function Dashboard() {
   // Every windowed panel reads from these two queries, so the range control drives the WHOLE page —
   // it used to move only the activity chart while the panels beside it stayed on their own window.
   const { data: analytics } = useDashboardAnalytics(days);
+  const { data: usage } = useDashboardUsage(days);
   // Cohorts are inherently weekly, so they keep their own axis rather than the day range.
   const { data: retention } = useRetention(8);
 
@@ -214,6 +225,10 @@ export function Dashboard() {
           </div>
           <TopReferrers data={data.top_referrers} />
         </>
+      )}
+
+      {tab === "usage" && (
+        <Analytic data={usage} height="h-64" render={(d) => <UsagePanel data={d} />} />
       )}
 
       {tab === "geo" && (

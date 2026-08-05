@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import csv
 import io
+from dataclasses import asdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query, Request
@@ -18,6 +19,7 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from gozar.db.repositories.config_log import ConfigLogRepository
+from gozar.db.repositories.usage_sample import UsageSampleRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave.schemas import SystemStats
 from gozar.services.admin import AdminService
@@ -437,6 +439,106 @@ async def dashboard_retention(
             )
         )
     return RetentionOut(weeks=weeks, cohorts=cohorts)
+
+
+class UsageDay(BaseModel):
+    """One LOCAL day of carried traffic and the concurrency during it."""
+
+    day: str
+    bytes: int
+    peak_online: int
+    avg_online: int
+    #: The lifetime counter went DOWN across this day's boundary — a panel restart, a node removed
+    #: and re-added, or a traffic reset. Traffic reads 0 for that day because the real figure is
+    #: unknowable, and the flag is what lets the chart say so instead of drawing a silent dip.
+    counter_reset: bool
+
+
+class UsageOut(BaseModel):
+    """The usage tab's whole payload.
+
+    Separate from ``/stats`` and ``/analytics`` because it answers a different question — not who
+    the users are, but what the service is carrying — and because it is the only figure set that
+    did not exist before the sampler started running.
+    """
+
+    range_days: int
+    #: When sampling began. ``None`` before the first sample. The frontend needs it to tell "no
+    #: traffic in this window" apart from "we were not recording yet", which are different facts.
+    recording_since: datetime | None
+    samples: int
+    #: Bytes carried in the window, against the same-length window before it.
+    traffic: Metric
+    #: Highest concurrent users seen in the window, against the previous window.
+    peak_online: Metric
+    #: Bytes per distinct claimer in the window — the average person's consumption.
+    bytes_per_user: Metric
+    nodes_online: int
+    mem_used: int
+    mem_total: int
+    daily: list[UsageDay]
+
+
+@router.get("/usage", response_model=UsageOut)
+async def dashboard_usage(
+    session: DbSession,
+    admin: AdminUser,
+    days: int = Query(default=_DEFAULT_RANGE),
+) -> UsageOut:
+    """Traffic and concurrency over time, from the hourly ``usage_samples`` recorder.
+
+    Every figure here is WINDOWED with a previous-window twin, because the range control above the
+    tab has to move all of them — a lifetime total sitting under a range picker is the exact thing
+    the reporting conventions exist to prevent.
+    """
+    window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
+    since = window_start(window)
+    prev_start, prev_end = previous_window(window)
+    usage = UsageSampleRepository(session)
+    logs = ConfigLogRepository(session)
+
+    now = datetime.now(UTC)
+    traffic = await usage.traffic_between(since, now)
+    traffic_prev = await usage.traffic_between(prev_start, prev_end)
+    peak = await usage.peak_online_between(since, now)
+    peak_prev = await usage.peak_online_between(prev_start, prev_end)
+
+    # Per-user consumption divides by the people who actually CLAIMED in the window, not by every
+    # registered user: a signup who never took a config carried no bytes, and counting them would
+    # make the average fall every time the bot gained a passer-by.
+    claimers = await logs.active_user_count_since(since)
+    claimers_prev = await logs.active_user_count_between(prev_start, prev_end)
+    per_user = traffic / claimers if claimers else 0
+    per_user_prev = traffic_prev / claimers_prev if claimers_prev else 0
+
+    latest = await usage.latest()
+    # The first day in the series has no predecessor to difference against, so its traffic is
+    # structurally 0 — dropped rather than charted as a day the service sat idle.
+    rows = await usage.daily(since.date())
+    daily = [UsageDay(**asdict(r)) for r in rows[1:]] if len(rows) > 1 else []
+
+    return UsageOut(
+        range_days=window,
+        recording_since=await usage.first_captured_at(),
+        samples=await usage.sample_count(),
+        traffic=Metric(
+            value=float(traffic),
+            previous=float(traffic_prev),
+            change_pct=pct_change(traffic, traffic_prev),
+        ),
+        peak_online=Metric(
+            value=float(peak), previous=float(peak_prev), change_pct=pct_change(peak, peak_prev)
+        ),
+        bytes_per_user=Metric(
+            value=per_user,
+            previous=per_user_prev,
+            change_pct=pct_change(per_user, per_user_prev),
+        ),
+        nodes_online=latest.nodes_online if latest else 0,
+        mem_used=latest.mem_used if latest else 0,
+        mem_total=latest.mem_total if latest else 0,
+        daily=daily,
+    )
 
 
 @router.get("/export.csv", response_class=PlainTextResponse)

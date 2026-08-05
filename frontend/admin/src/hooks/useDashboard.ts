@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
-import type { DashboardAnalytics, DashboardStats, Retention } from "@/types/api";
+import type { DashboardAnalytics, DashboardStats, DashboardUsage, Retention } from "@/types/api";
 
 /** The windows the backend accepts. Anything else is clamped server-side to 14. */
 export const RANGES = [7, 14, 30, 90] as const;
@@ -26,6 +26,20 @@ export function useDashboardAnalytics(days: number) {
     queryKey: ["dashboard-analytics", days],
     queryFn: async () =>
       (await api.get<DashboardAnalytics>("/admin/dashboard/analytics", { params: { days } })).data,
+    refetchInterval: 60_000,
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Traffic and concurrency over time, from the hourly usage recorder.
+ *
+ * Polled on the same cadence as the analytics: the sampler writes hourly, so anything faster is
+ * asking a question whose answer cannot have changed. */
+export function useDashboardUsage(days: number) {
+  return useQuery({
+    queryKey: ["dashboard-usage", days],
+    queryFn: async () =>
+      (await api.get<DashboardUsage>("/admin/dashboard/usage", { params: { days } })).data,
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });

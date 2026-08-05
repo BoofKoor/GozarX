@@ -105,6 +105,14 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   happened and is never edited, a draft is mutable until it stops being one, and folding them
   together would make every history query responsible for excluding the unsent. `send_hour` is an
   hour, not an instant — an absolute time saved on Monday is in the past by Tuesday.
+- `usage_samples`: an hourly snapshot of what the service carries (`captured_at` · `total_bytes` ·
+  `online_now` · `nodes_online` · `mem_used`/`mem_total`), written by the `sample_usage` arq cron.
+  The panel reports traffic as `nodes.totalBytesLifetime` — ONE cumulative counter — so "how much
+  did we carry last Tuesday" was unanswerable and, worse, unrecoverable: a history nobody wrote
+  down cannot be reconstructed. Concurrency was the same, only worse, since `sample_health` keeps
+  its series in a capped Redis list a restart erases. Readings are stored EXACTLY as the panel gave
+  them and every delta is taken at READ time, which is what keeps a counter reset detectable rather
+  than baked into a stored figure that swallowed it.
 - `site_devices.last_seen_at`: the site's ONLY visit signal, refreshed by `current_device` on every
   identity-bearing request (throttled to once an hour, so a page load is not a row write). Without
   it every website figure was claim-derived plus an all-time "identities minted" counter — and that
@@ -112,6 +120,19 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   drags the conversion rate down with it.
 
 ## Reporting conventions
+- **A cumulative counter is not a series, and it can go BACKWARDS.** `nodes.totalBytesLifetime`
+  answers "ever" and nothing else; a per-day figure only exists if something writes readings down.
+  Store the reading verbatim and difference at READ time — a stored delta has already decided what
+  a reset means, and it always decides wrong. A panel restart, a node removed and re-added, or a
+  manual traffic reset all drop the counter: report that day as 0 AND flag it, because a negative
+  bar is nonsense and a silently absorbed jump is a lie in the total.
+- **A window's traffic anchors on the reading BEFORE the window, not the first one inside it.**
+  Otherwise everything carried between the last sample of the previous window and the first of this
+  one falls down the gap between them and is never counted anywhere.
+- **"No data" and "not recording yet" are different sentences.** A recorder that starts shipping
+  today has nothing to say about last month, and an empty chart that does not distinguish the two
+  reads as "the service carried nothing". Return the first-sample timestamp and let the empty state
+  name it.
 - **Display days are LOCAL days** (`gozar/config/reporting.DISPLAY_TZ`, Asia/Tehran) — `start_of_today`,
   `window_start`, `day_keys`, and every `date(timezone(tz, …))` bucket. A UTC midnight rolled the
   operator's counters over 3.5 hours early. This is display only: the claim cooldown is a rolling
@@ -201,6 +222,10 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   back to the reference's density (four-line composer, chips without a reserved tick, the hour strip
   always visible) and given `broadcast_drafts`, and the users table switched to the reference's
   columns — lifetime claims and last-claim recency instead of panel username and signup date.
+17 A `usage` tab on the dashboard: traffic carried and peak concurrency over time, from the new
+  `usage_samples` recorder. The figures did not exist before — the panel only ever reported a
+  cumulative lifetime counter and a live concurrency reading — so the series starts at deploy and
+  the tab says so rather than drawing a line through the time before it was recording.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -244,6 +269,13 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   Use `/15`, `/20`, or the arbitrary form `bg-brand/[0.12]`. And a colour must exist in
   `tailwind.config.js` before a class can name it: `bg-chart-2` needs the `chart` ramp registered
   there, not only in `tokens.css`.
+- **A zero-valued bar cannot carry a tint.** Marking an unmeasurable day by colouring its bar
+  produces a zero-height bar — invisible, which is exactly the gap that needed explaining. A
+  `ReferenceLine` at that category marks the day without claiming a quantity for it: the point is
+  "not measurable here", not "a little here".
+- **A value axis formatted with a UNIT needs more room than one formatted with digits.**
+  `Y_AXIS_WIDTH` is sized for three Persian numerals; «۱۳۰٫۴ GB» wraps onto two lines in it. Widen
+  it at the chart that formats bytes rather than globally — no other chart pays that cost.
 - **The three hero charts are hand-drawn SVG** (`components/charts/`), not recharts: masked fades
   and the radar's eight-point curve are not expressible there. recharts stays for ordinary bar and
   line charts. A fade means "this continues beyond the frame" — never fade a marker or a

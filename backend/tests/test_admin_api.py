@@ -20,9 +20,11 @@ import pytest_asyncio
 from httpx import ASGITransport
 
 from gozar.cache.redis import HEALTH_HISTORY_KEY
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.config.settings import get_settings
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
+from gozar.db.models.usage_sample import UsageSample
 from gozar.db.models.user import User
 from gozar.remnawave.schemas import SystemStats
 from gozar.web.app import create_app
@@ -735,6 +737,57 @@ async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> 
     assert name == "broadcast_text"
     assert args[:3] == ("سلام", 777, ["fa"])
     get_settings.cache_clear()
+
+
+async def test_dashboard_usage_reports_its_own_warmup(admin_client: httpx.AsyncClient) -> None:
+    """With nothing recorded, the route must say so rather than report zero traffic.
+
+    "We carried no bytes" and "we were not recording yet" are different facts, and the panel picks
+    its empty state from `recording_since` — so a route that returned 0 samples with a timestamp,
+    or a timestamp with no samples, would put the wrong sentence on the screen.
+    """
+    body = (await admin_client.get("/api/admin/dashboard/usage")).json()
+    assert body["recording_since"] is None
+    assert body["samples"] == 0
+    assert body["daily"] == []
+    assert body["traffic"]["value"] == 0
+
+
+async def test_dashboard_usage_windows_and_flags_a_reset(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """The window figures difference the cumulative counter, and a counter that went backwards is
+    flagged rather than reported as negative traffic."""
+    gb = 1024**3
+    local_today = datetime.now(DISPLAY_TZ).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    def at(days_ago: int, hour: int) -> datetime:
+        return (local_today - timedelta(days=days_ago, hours=-hour)).astimezone(UTC)
+
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                UsageSample(captured_at=at(3, 2), total_bytes=500 * gb, online_now=40),
+                UsageSample(captured_at=at(2, 2), total_bytes=560 * gb, online_now=95),
+                # The counter drops: a panel restart, or a manual traffic reset.
+                UsageSample(captured_at=at(1, 2), total_bytes=10 * gb, online_now=70),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/usage", params={"days": 7})).json()
+    assert body["samples"] == 3
+    assert body["recording_since"] is not None
+    assert body["peak_online"]["value"] == 95
+
+    days = {d["day"]: d for d in body["daily"]}
+    reset_days = [d for d in body["daily"] if d["counter_reset"]]
+    assert len(reset_days) == 1
+    # The reset day reports zero rather than a negative half-terabyte.
+    assert reset_days[0]["bytes"] == 0
+    # The ordinary day before it still carries its real 60 GB.
+    ordinary = [d for d in body["daily"] if not d["counter_reset"]]
+    assert any(d["bytes"] == 60 * gb for d in ordinary), days
 
 
 # --- system monitoring --------------------------------------------------------------------------

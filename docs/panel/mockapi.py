@@ -137,6 +137,44 @@ def users_page(page, size, status, search, location=None):
             "page": page, "page_size": size}
 
 
+
+def usage(days):
+    """The usage tab's payload, with a counter reset planted on one day so the warning path is
+    reachable from a screenshot rather than only from a unit test."""
+    from datetime import date, timedelta
+    today = date(2026, 8, 4)
+    GB = 1024 ** 3
+    daily = []
+    for i in range(days):
+        day = today - timedelta(days=days - 1 - i)
+        reset = i == days - 4
+        peak = int(240 + 90 * math.sin(i / 2.7) + (i % 5) * 12)
+        daily.append({
+            "day": day.isoformat(),
+            "bytes": 0 if reset else int((820 + 260 * math.sin(i / 3.1) + (i % 4) * 45) * GB / 10),
+            "peak_online": peak,
+            "avg_online": int(peak * 0.62),
+            "counter_reset": reset,
+        })
+    total = sum(d["bytes"] for d in daily)
+    prev = int(total * 0.88)
+    peak_now = max(d["peak_online"] for d in daily)
+    return {
+        "range_days": days,
+        "recording_since": "2026-05-02T00:30:00Z",
+        "samples": days * 24,
+        "traffic": {"value": total, "previous": prev,
+                    "change_pct": round((total - prev) / prev * 100, 1)},
+        "peak_online": {"value": peak_now, "previous": 302, "change_pct": 9.6},
+        "bytes_per_user": {"value": total / 1228, "previous": prev / 1180,
+                           "change_pct": 6.4},
+        "nodes_online": 3,
+        "mem_used": 5_100_000_000,
+        "mem_total": 8_000_000_000,
+        "daily": daily,
+    }
+
+
 def user_detail(uid):
     """The record dialog's payload — same shape as UserDetailOut."""
     from datetime import date, timedelta
@@ -395,6 +433,9 @@ FILLS = {
     ),
     "user": "document.querySelectorAll('tbody tr')[1].click()",
     "text": "document.querySelectorAll('ul button')[0].click()",
+    # The usage tab is the 5th of seven; reaching it needs a click, and a screenshot of the
+    # dashboard's default tab proves nothing about it.
+    "usage": "document.querySelectorAll('[role=tab]')[4].click()",
     "broadcast-partial": "document.querySelectorAll('button[aria-pressed]')[2].click()",
     "hoverflow": (
         "var d=document.documentElement;var bad=[];"
@@ -492,6 +533,8 @@ class H(http.server.SimpleHTTPRequestHandler):
                                          int(q.get("page_size", ["25"])[0]),
                                          q.get("status", [""])[0], q.get("search", [""])[0],
                                          q.get("location", [""])[0]))
+        if u.path == "/api/admin/dashboard/usage":
+            return self._json(usage(int(q.get("days", ["14"])[0])))
         if u.path == "/api/admin/users/locations":
             return self._json(CLAIM_LOCATIONS)
         if u.path == "/api/admin/users/export.csv":
