@@ -10,12 +10,20 @@ export interface TabItem {
   count?: number;
 }
 
-/** Route-driven tab bar (underline style) for a section's sub-navigation. */
+/**
+ * Route-driven tab bar (underline style) for a section's sub-navigation.
+ *
+ * `overflow-y-hidden` is not redundant beside `overflow-x-auto`: when one axis is not `visible` the
+ * other computes from `visible` to `auto`, so a strip that overflows its content box by a single
+ * pixel — which this one does, by exactly the 1px the underline overlap costs — becomes a VERTICAL
+ * scroll container. Under overlay scrollbars that is invisible; on Windows it draws a stubby
+ * scrollbar with arrows beside the tabs. Naming the axis is the whole fix.
+ */
 export function NavTabs({ items, className }: { items: TabItem[]; className?: string }) {
   return (
     <div
       className={clsx(
-        "scrollbar-thin -mb-px flex gap-1 overflow-x-auto border-b border-line",
+        "scrollbar-thin -mb-px flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line",
         className,
       )}
     >
@@ -46,7 +54,7 @@ export function NavTabs({ items, className }: { items: TabItem[]; className?: st
   );
 }
 
-/** Local (non-routed) tab bar for switching panels inside one page. */
+/** Local (non-routed) tab bar for switching panels inside one page. Same axis note as `NavTabs`. */
 export function Tabs<T extends string>({
   value,
   onChange,
@@ -61,7 +69,10 @@ export function Tabs<T extends string>({
   return (
     <div
       role="tablist"
-      className={clsx("scrollbar-thin flex gap-1 overflow-x-auto border-b border-line", className)}
+      className={clsx(
+        "scrollbar-thin -mb-px flex gap-1 overflow-x-auto overflow-y-hidden border-b border-line",
+        className,
+      )}
     >
       {items.map((t) => {
         const active = t.value === value;
@@ -73,7 +84,11 @@ export function Tabs<T extends string>({
             aria-selected={active}
             onClick={() => onChange(t.value)}
             className={clsx(
-              "-mb-px flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition",
+              // The underline overlap belongs to the STRIP, not to each tab — as it already does in
+              // `NavTabs`. Carried on the tab, its negative margin shortened the strip's content box
+              // to 1px LESS than the tabs standing in it, which both clipped the active tab's 2px
+              // underline to 1px and made the strip a vertical scroll container.
+              "flex shrink-0 items-center gap-2 border-b-2 px-3 py-2.5 text-sm font-medium transition",
               active
                 ? "border-brand text-brand"
                 : "border-transparent text-content-muted hover:border-line-strong hover:text-content",

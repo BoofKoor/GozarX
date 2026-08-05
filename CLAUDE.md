@@ -291,6 +291,28 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `max-h-full` measuring 1557px so it never scrolled to its own footer. `Modal` and `RecordDialog`
   portal to `<body>`; anything else full-screen must too. A filter or `contain` on an ancestor does
   the same thing.
+- **A scrollable flex COLUMN does not overflow — it SQUEEZES.** Its children keep the default
+  `flex-shrink: 1`, so content taller than the box is absorbed rather than scrolled, and
+  `overflow-y: auto` is then handed nothing to scroll. Text children resist (their content is their
+  floor); an SVG has no floor, so the ENTIRE shortfall lands on the one child that cannot object.
+  Measured on a 650px-tall window: the side panel's radar drew 280×35 against a natural 209 while
+  `scrollHeight === clientHeight`, which is the panel reported as "static, no scroll" AND the chart
+  reported as broken — one cause, two bug reports. Any `flex-col` + `overflow-y-auto` needs
+  `[&>*]:shrink-0`. It also hides at desk height: at a 1000px viewport the same panel is perfect,
+  so verifying only at 1440×1000 proves nothing about a laptop.
+- **A panel placed twice needs its geometry defined ONCE** (`SIDE_STACK`/`SIDE_WIDTH` in
+  `layout/chrome`). The side panel's below-`xl` copy was a bare `<div>`: no gap between any of its
+  nine children, and a 340×254 chart drawn 968 wide — therefore 723 TALL, one tile higher than the
+  viewport. A width-driven SVG is safe only while its aspect is wide; a near-square one needs a
+  bound or "fill the column" and "stay a sane height" stop being the same instruction.
+- **`overflow-x: auto` makes the OTHER axis scroll too.** When one axis is not `visible` the other
+  computes from `visible` to `auto`, so a horizontal tab strip that exceeds its own content box by a
+  single pixel becomes a VERTICAL scroll container — invisible under overlay scrollbars, a stubby
+  arrowed scrollbar beside the tabs on Windows. `Tabs` earned that pixel by carrying the underline
+  overlap (`-mb-px`) on each TAB instead of on the strip, which shortened the strip's content box to
+  1px less than the tabs standing in it and clipped the active 2px underline to 1px as well.
+  `NavTabs` already put it on the strip. Name the axis you do not want (`overflow-y-hidden`) and put
+  a negative margin meant for the strip ON the strip.
 - **An SVG with a viewBox and a FIXED height letterboxes.** `preserveAspectRatio` scales uniformly
   and centres the remainder, so `viewBox="0 0 900 292"` in an 852×240 box drew 740 wide with ~56px
   of dead space on each side — the trend aligned with neither the KPI band above it nor the cards

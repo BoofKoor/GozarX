@@ -1,3 +1,4 @@
+import { clsx } from "clsx";
 import {
   createContext,
   useCallback,
@@ -69,6 +70,20 @@ export function useChrome(): Chrome | null {
  */
 const WIDE = "(min-width: 1280px)";
 
+/**
+ * The side panel's geometry, defined ONCE because it is placed twice — as the shell's `<aside>` at
+ * desktop widths and as a block in the page below that. Drifting apart is how the inline copy lost
+ * its rhythm entirely and let a near-square chart stretch to the width of the console.
+ *
+ * `[&>*]:shrink-0` is the load-bearing part. A scrollable flex COLUMN whose children may shrink does
+ * not overflow — it squeezes, and `overflow-y: auto` then has nothing to scroll. Text-bearing
+ * children resist (their content is their floor), but an SVG has no such floor, so the whole
+ * shortfall lands on the one child that cannot object: measured on a 650px-tall window, the radar
+ * rendered 280×35 against a natural 209 and the panel reported scrollHeight === clientHeight.
+ */
+export const SIDE_STACK = "flex flex-col gap-2 [&>*]:shrink-0";
+export const SIDE_WIDTH = "w-[19.5rem]";
+
 export function useIsWide(): boolean {
   const [wide, setWide] = useState(
     () => typeof window !== "undefined" && window.matchMedia?.(WIDE).matches === true,
@@ -110,7 +125,13 @@ export function SidePanel({ children }: { children: ReactNode }) {
 
   return (
     <>
-      <div ref={setInlineHost} className={wide ? "hidden" : "min-w-0"} />
+      {/* Below `xl` this is the panel's real home, so it carries the panel's own width and rhythm.
+          Left to stretch it was neither: nine cards flush against each other and a 340×254 chart
+          drawn 968 wide — and therefore 723 TALL, a single tile higher than the viewport. */}
+      <div
+        ref={setInlineHost}
+        className={wide ? "hidden" : clsx("min-w-0 max-w-full", SIDE_WIDTH, SIDE_STACK)}
+      />
       {host ? createPortal(children, host) : null}
     </>
   );
