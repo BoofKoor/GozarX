@@ -839,6 +839,9 @@ const FA = {
   "d.usage.resets": "{n} روز با ریست شمارنده",
   "d.usage.resets.note":
     "شمارندهٔ ترافیک پنل در این روزها به عقب برگشته — ری‌استارت پنل، حذف و افزودن نود، یا ریست دستی ترافیک. مقدار واقعی آن روز قابل بازیابی نیست، پس صفر گزارش شده و ستون علامت خورده است.",
+  "d.usage.gap": "نمونه‌ای در این بازه ثبت نشده",
+  "d.usage.gap.hint":
+    "ثبت مصرف از {date} فعال است، اما در این بازه هیچ نمونه‌ای نوشته نشده. معمولاً یعنی ورکر بالا نیست یا پنل به کران ساعتی جواب نمی‌دهد — صفحهٔ سیستم را ببینید.",
   "d.usage.warmup": "هنوز دادهٔ کافی نیست",
   "d.usage.warmup.notYet": "ثبت مصرف هنوز شروع نشده. اولین نمونه در ساعت آینده گرفته می‌شود.",
   "d.usage.warmup.since":
@@ -1768,6 +1771,9 @@ const EN: Record<keyof typeof FA, string> = {
   "d.usage.resets": "{n} days with a counter reset",
   "d.usage.resets.note":
     "The panel's traffic counter went backwards on these days — a panel restart, a node removed and re-added, or a manual traffic reset. The real figure for that day cannot be recovered, so it reads zero and the bar is marked.",
+  "d.usage.gap": "No samples recorded in this range",
+  "d.usage.gap.hint":
+    "Recording has been on since {date}, but nothing was written in this range. That usually means the worker is down or the panel is not answering the hourly cron — check the system page.",
   "d.usage.warmup": "Not enough data yet",
   "d.usage.warmup.notYet":
     "Usage recording has not started yet. The first sample is taken within the hour.",
