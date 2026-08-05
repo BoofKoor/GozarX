@@ -76,7 +76,9 @@ function Chip({
         // carried a permanent 14px hole and the row read as a set of dropdowns rather than toggles.
         "inline-flex items-center rounded-full border px-[0.72rem] py-[0.3rem] text-[0.78rem] transition",
         on
-          ? "border-brand/50 bg-brand/20 font-semibold text-brand"
+          ? // The INK shade, not the fill shade: `text-brand` on `bg-brand/20` measured 2.47:1 —
+            // the selected chip was the least legible thing in the row it was meant to lead.
+            "border-brand/50 bg-brand/20 font-semibold text-brand-700"
           : "border-line font-medium text-content-muted hover:border-line-strong hover:text-content",
       )}
     >
@@ -191,13 +193,20 @@ export function Broadcast() {
 
   async function submit() {
     if (!canSend) return;
+    // The dialog names the HOUR when one is set. It used to ask the identical question either way
+    // — "send this to 8,412 users?" — and the hour only appeared in the toast, i.e. after the
+    // decision. The last checkpoint before an irreversible send has to state the one thing the
+    // operator just chose.
+    const at = scheduled ? nextOccurrence(sendHour) : undefined;
+    const clock = localizeDigits(`${String(sendHour).padStart(2, "0")}:00`);
     const ok = await confirm({
       title: t("bc.send.confirmTitle"),
-      message: t("bc.send.confirm", { n: formatNumber(recipients), who: summary }),
-      confirmLabel: t("bc.send"),
+      message: at
+        ? t("bc.send.confirmAt", { n: formatNumber(recipients), who: summary, h: clock })
+        : t("bc.send.confirm", { n: formatNumber(recipients), who: summary }),
+      confirmLabel: at ? t("bc.schedule.confirm") : t("bc.send"),
     });
     if (!ok) return;
-    const at = scheduled ? nextOccurrence(sendHour) : undefined;
     send.mutate(
       {
         text: body,
@@ -371,7 +380,12 @@ export function Broadcast() {
           <BroadcastHistory />
         </div>
 
-        <div className="flex min-w-0 flex-col gap-4">
+        {/* Sticky from `xl` up, where this is a real second column: the preview and the pre-flight
+            list are what you WATCH while typing, and the composer plus the drafts table are taller
+            than both, so they scrolled out from under the cursor exactly when the message got long
+            enough to need checking. Below `xl` the two stack under the composer and stickiness
+            would just pin them over the page. */}
+        <div className="flex min-w-0 flex-col gap-4 xl:sticky xl:top-0 xl:self-start">
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-content">{t("bc.preview")}</h3>
             {/* A chat frame rather than a lone bubble: half of what lands in Telegram is the header,

@@ -158,7 +158,7 @@ export function Users() {
             />
           </div>
         ) : (
-          <Table>
+          <Table label={t("users.table.aria")}>
             <THead>
               <TR>
                 <TH>{t("users.col.user")}</TH>
@@ -184,10 +184,10 @@ export function Users() {
                     <span className="flex items-center gap-2.5">
                       {/* Seeded on the id, not the username: the panel name can change and the
                           same person would swap colour mid-list. */}
-                      <Avatar
-                        name={u.panel_username ?? String(u.telegram_id)}
-                        seed={String(u.telegram_id)}
-                      />
+                      {/* The id, not the panel username: the latter is machine-generated as
+                          `g{telegram_id}_{ts}`, so its initial is «G» for every user who has ever
+                          claimed. */}
+                      <Avatar name={String(u.telegram_id)} seed={String(u.telegram_id)} />
                       <span className="font-mono text-sm" dir="ltr">
                         {u.telegram_id}
                       </span>
@@ -298,11 +298,7 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
       onClose={onClose}
       title={
         <span className="flex items-center gap-2.5">
-          <Avatar
-            name={user?.panel_username ?? String(id)}
-            seed={String(id)}
-            className="h-9 w-9 text-xs"
-          />
+          <Avatar name={String(id)} seed={String(id)} className="h-9 w-9 text-xs" />
           {t("users.detail.title")}
         </span>
       }

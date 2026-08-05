@@ -2,6 +2,8 @@ import { clsx } from "clsx";
 import { useCallback, useState } from "react";
 import { Outlet } from "react-router-dom";
 
+import { useI18n } from "@/i18n";
+
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { ChromeProvider, SIDE_STACK, SIDE_WIDTH, useChrome } from "./chrome";
 import { MobileNav, Sidebar } from "./Sidebar";
@@ -26,14 +28,29 @@ function Shell() {
 
   useCommandPaletteShortcut(useCallback(() => setPaletteOpen(true), []));
 
+  const { t } = useI18n();
+
   return (
     <div className="flex h-screen gap-[0.9rem] bg-canvas p-0 sm:p-[0.9rem]">
+      {/* The first stop on the page, visible only when it has focus. Every route puts the rail,
+          the top bar and — on a phone — the drawer's nine links ahead of the content, so reaching
+          a page by keyboard meant tabbing past the same chrome on every navigation. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-btn focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-btn-ink"
+      >
+        {t("nav.skipToContent")}
+      </a>
       <div className="flex min-w-0 flex-1 overflow-hidden bg-nav shadow-raised sm:rounded-[14px]">
         <Sidebar />
         <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
         <div className="flex min-w-0 flex-1 flex-col bg-surface-sunken">
           <TopBar onMenuClick={() => setNavOpen(true)} onSearchClick={() => setPaletteOpen(true)} />
-          <main className="scrollbar-thin flex-1 overflow-y-auto px-4 pb-6 pt-3 sm:px-5">
+          <main
+            id="main"
+            tabIndex={-1}
+            className="scrollbar-thin flex-1 overflow-y-auto px-4 pb-6 pt-3 outline-none sm:px-5"
+          >
             <div className="animate-fade-in mx-auto w-full max-w-[1180px]">
               <Outlet />
             </div>

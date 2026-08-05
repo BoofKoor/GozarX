@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/Card";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { LanguagePill } from "@/components/layout/LanguagePill";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useLogin } from "@/hooks/useAuth";
 import { useI18n } from "@/i18n";
 
@@ -43,10 +44,12 @@ export function Login() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(60rem_40rem_at_50%_-10%,rgb(var(--brand-500)/0.14),transparent_70%)]"
       />
       <div className="relative w-full max-w-sm">
-        {/* The language control lives in the top bar, which this screen has no room for — but an
-            English-reading admin meets THIS page first, so it has to be switchable here too. */}
-        <div className="mb-4 flex justify-center">
+        {/* The language and theme controls live in the top bar, which this screen has no room for —
+            but an admin who reads English, or who works in the light theme, meets THIS page first,
+            so both have to be switchable here too. */}
+        <div className="mb-4 flex items-center justify-center gap-1">
           <LanguagePill />
+          <ThemeToggle />
         </div>
         <div className="mb-6 flex flex-col items-center gap-3 text-center">
           <BrandTile className="h-14 w-14" />

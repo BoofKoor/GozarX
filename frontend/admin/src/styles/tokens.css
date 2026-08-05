@@ -100,9 +100,14 @@
   --line: 223 228 240; /* --c-line      #DFE4F0 */
   --line-strong: 211 218 233; /* --c-rail-line #D3DAE9 */
 
+  /* The two secondary text tiers are the mock's `--c-muted` / `--c-faint` DARKENED until they clear
+     WCAG AA (4.5:1) against the darkest ground each sits on — `--bg` #EAEDF7 here. Measured before:
+     faint ran 2.76–3.04:1 across the console, and it is not decoration — the users table's column
+     headers, the page subtitle in the top bar and every KPI unit are drawn in it. Muted moved with
+     it so the two tiers stay a visible step apart rather than collapsing into one colour. */
   --text: 20 24 58; /* --c-ink   #14183A */
-  --text-muted: 91 99 134; /* --c-muted #5B6386 */
-  --text-subtle: 139 147 178; /* --c-faint #8B93B2 */
+  --text-muted: 74 81 117; /* #4A5175 — was #5B6386 */
+  --text-subtle: 95 103 140; /* #5F678C — was #8B93B2 (2.60:1) */
 
   --ring: 77 91 221;
 
@@ -128,16 +133,22 @@
   --line: 61 67 130; /* --c-line      #3D4382 */
   --line-strong: 69 75 149; /* --c-rail-line #454B95 */
 
+  /* Same lift as the light theme, measured against `--surface-raised` #383D7A — the LIGHTEST ground
+     either tier lands on, and therefore the worst case here. Faint measured 2.65:1 on it (the users
+     table header, the gauge captions) and muted 4.30:1, so both moved. */
   --text: 242 243 255; /* --c-ink   #F2F3FF */
-  --text-muted: 162 168 214; /* --c-muted #A2A8D6 */
-  --text-subtle: 121 129 180; /* --c-faint #7981B4 */
+  --text-muted: 191 197 236; /* #BFC5EC — was #A2A8D6 (4.30:1) */
+  --text-subtle: 170 176 217; /* #AAB0D9 — was #7981B4 (2.65:1) */
 
   --ring: 110 123 242;
 
   /* The brand lifts on the dark canvas so brand-coloured text and icons keep AA contrast. */
   --brand-500: 110 123 242; /* --c-brand  #6E7BF2 */
   --brand-600: 95 108 243; /* #5F6CF3 */
-  --brand-700: 163 171 244; /* the "ink" shade on tinted chips */
+  /* The "ink" shade on tinted chips — lifted from #A3ABF4, which sat at 4.40:1 on the very
+     `bg-brand/15` badges it exists to be readable on. This clears AA on all four grounds it lands
+     on (sunken 6.8, surface 5.9, raised 5.1, brand-tinted badge 4.9). */
+  --brand-700: 176 183 247; /* #B0B7F7 */
 
   --hero-a: 95 108 243; /* --c-hero-a #5F6CF3 */
   --hero-b: 74 86 220; /* --c-hero-b #4A56DC */
@@ -146,10 +157,15 @@
   --btn-primary-ink: 255 255 255;
 
   /* Same flip for the status "ink" shades, so a tinted badge needs ONE class
-     (`text-success-700`) instead of a light/dark pair. */
+     (`text-success-700`) instead of a light/dark pair.
+
+     Danger and warning are LIFTED off the mock's `--c-bad` / `--c-brand-2`, which are fill colours:
+     as ink on their own tinted badge they measured 3.58:1 and 3.52:1, so «مسدود» and every warning
+     were the least legible words on the surface that exists to make them stand out. Success and
+     info already cleared AA and are untouched. */
   --success-700: 61 214 140; /* --c-good    #3DD68C */
-  --warning-700: 200 126 46; /* --c-brand-2 #C87E2E */
-  --danger-700: 255 107 107; /* --c-bad     #FF6B6B */
+  --warning-700: 232 168 74; /* #E8A84A — was #C87E2E (3.52:1) */
+  --danger-700: 255 148 148; /* #FF9494 — was #FF6B6B (3.58:1) */
   --info-700: 96 190 220;
 
   /* Charts follow the dark accents the mock uses for its card glyphs. */
