@@ -91,20 +91,30 @@ export function UsagePanel({ data }: { data: DashboardUsage }) {
   const resets = data.daily.filter((d) => d.counter_reset).length;
   const memPct = data.mem_total > 0 ? (data.mem_used / data.mem_total) * 100 : null;
 
-  // Two samples is the floor for a single difference, so anything less has no chart to draw. The
-  // distinction that matters: "we have not recorded long enough yet" is not "the service carried
-  // no traffic", and only `recording_since` can tell them apart.
-  if (!data.recording_since || data.samples < 2) {
+  // Gate on whether there is a chartable DAY, not on the raw sample count. A day's traffic is the
+  // difference between two days' readings, so a second sample an hour after the first adds nothing
+  // to plot — and gating on `samples >= 2` would replace this one clear sentence with a KPI band
+  // above two charts saying only "no data", which is the explanation disappearing exactly when it
+  // is still needed. It also matches what the copy promises: two samples on two different days.
+  if (!data.recording_since || points.length === 0) {
+    // Recording for two days with still nothing to plot is not warming up — it is samples not
+    // landing, and telling the operator to wait 48 hours would send them away from a real problem.
+    const hoursRecording = data.recording_since
+      ? (Date.now() - Date.parse(data.recording_since)) / 3_600_000
+      : 0;
+    const stale = Boolean(data.recording_since) && hoursRecording >= 48;
     return (
       <Card>
         <CardHeader title={t("d.usage")} sub={t("d.usage.sub")} icon={Gauge} />
         <EmptyState
           icon={Gauge}
-          title={t("d.usage.warmup")}
+          title={stale ? t("d.usage.gap") : t("d.usage.warmup")}
           message={
-            data.recording_since
-              ? t("d.usage.warmup.since", { date: faDate(data.recording_since) })
-              : t("d.usage.warmup.notYet")
+            !data.recording_since
+              ? t("d.usage.warmup.notYet")
+              : stale
+                ? t("d.usage.gap.hint", { date: faDate(data.recording_since) })
+                : t("d.usage.warmup.since", { date: faDate(data.recording_since) })
           }
         />
       </Card>
