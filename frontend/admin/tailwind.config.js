@@ -23,6 +23,10 @@ export default {
           ...ramp("brand", [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 950]),
         },
         accent: { DEFAULT: token("accent-500"), ...ramp("accent", [400, 500, 600]) },
+
+        // The hero tile's gradient pair and the ink on its always-white delta pill.
+        hero: { a: token("hero-a"), b: token("hero-b"), ink: token("hero-ink") },
+
         success: { DEFAULT: token("success-600"), ...ramp("success", [400, 500, 600, 700]) },
         warning: { DEFAULT: token("warning-600"), ...ramp("warning", [400, 500, 600, 700]) },
         danger: { DEFAULT: token("danger-600"), ...ramp("danger", [400, 500, 600, 700]) },
@@ -51,11 +55,16 @@ export default {
       },
       borderColor: { DEFAULT: token("line") },
       ringColor: { DEFAULT: token("ring") },
+      backgroundImage: {
+        // The hero tile is a GRADIENT, not a flat brand wash — the mock's own fill.
+        hero: "linear-gradient(157deg, rgb(var(--hero-a)), rgb(var(--hero-b)))",
+      },
       boxShadow: {
         card: "var(--shadow-card)",
         raised: "var(--shadow-raised)",
         overlay: "var(--shadow-overlay)",
         glow: "var(--shadow-glow)",
+        hero: "var(--shadow-hero)",
       },
       borderRadius: { xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem" },
       keyframes: {

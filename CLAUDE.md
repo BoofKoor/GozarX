@@ -217,6 +217,19 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   and the radar's eight-point curve are not expressible there. recharts stays for ordinary bar and
   line charts. A fade means "this continues beyond the frame" — never fade a marker or a
   measurement. The path maths lives in `charts/geometry.ts` and is unit-tested.
+- **A plot's y-scale comes from its TICKS, not its data.** `ticksFor` rounds the ceiling UP to a
+  round number, so a chart that instead scales to `max(values)` pins the tallest curve to the top
+  edge and puts the top gridline — and its label — off the canvas entirely. Pick the STEP from a
+  round ladder and make the ceiling four of them; rounding the ceiling and quartering it labelled a
+  300-high chart ۷۵ / ۱۵۰ / ۲۲۵.
+- **A marker band is CLIPPED to the region under the curve**, so the curve is its top edge and it
+  runs to the frame's floor. Drawn as a plain rounded rect from the marker down it becomes a
+  lozenge floating under the dot. The clip region must reach the frame's SIDES too (`underCurve`,
+  not `areaFrom`) — closed at the first and last data point, its diagonal slices the band into a
+  teardrop whenever the marked day sits at either end.
+- **`inset-inline-start` resolves against the element's OWN `dir`.** A time axis is a physical LTR
+  space, so its hover readout is positioned inside an LTR wrapper and the RTL text lives one level
+  in; marking the positioned element itself `dir="rtl"` sends it to the opposite edge of the chart.
 - **One control per concern.** Form fields go through `<Field>` (label + hint + error + aria);
   inputs through the kit (`Input`/`Textarea`/`Select`/`Switch`/`Checkbox`/`NumberInput`). Never
   hand-write an input class string — `.field-control` is the single definition.

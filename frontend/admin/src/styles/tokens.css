@@ -30,6 +30,15 @@
   --brand-900: 32 37 105;
   --brand-950: 20 23 66;
 
+  /* The hero tile's own gradient pair. The mock fills the "total users" tile with
+     `linear-gradient(157deg, --c-hero-a, --c-hero-b)`, not a flat brand wash, and the sparkline's
+     marker dot picks up the gradient's START colour so it reads as part of the tile. `hero-ink` is
+     the delta pill's text: the pill is white in BOTH themes, so its ink is fixed rather than
+     semantic. */
+  --hero-a: 84 98 238; /* #5462EE */
+  --hero-b: 63 75 210; /* #3F4BD2 */
+  --hero-ink: 36 42 85; /* #242A55 */
+
   /* Secondary accent — the teal the mock's fourth card glyph uses. */
   --accent-400: 74 178 205;
   --accent-500: 43 135 165; /* #2B87A5 */
@@ -92,6 +101,8 @@
   --shadow-raised: 0 4px 14px -4px rgb(20 24 58 / 0.14), 0 2px 6px -3px rgb(20 24 58 / 0.08);
   --shadow-overlay: 0 32px 64px -28px rgb(20 24 58 / 0.42), 0 10px 24px -12px rgb(20 24 58 / 0.2);
   --shadow-glow: 0 4px 14px rgb(77 91 221 / 0.3);
+  /* The hero tile's lift — deeper and further down than `glow`, which is a chip-sized halo. */
+  --shadow-hero: 0 10px 26px -14px rgb(74 86 220 / 0.75);
 }
 
 .dark {
@@ -115,8 +126,11 @@
 
   /* The brand lifts on the dark canvas so brand-coloured text and icons keep AA contrast. */
   --brand-500: 110 123 242; /* --c-brand  #6E7BF2 */
-  --brand-600: 95 108 243; /* --c-hero-a #5F6CF3 */
+  --brand-600: 95 108 243; /* #5F6CF3 */
   --brand-700: 163 171 244; /* the "ink" shade on tinted chips */
+
+  --hero-a: 95 108 243; /* --c-hero-a #5F6CF3 */
+  --hero-b: 74 86 220; /* --c-hero-b #4A56DC */
 
   /* Same flip for the status "ink" shades, so a tinted badge needs ONE class
      (`text-success-700`) instead of a light/dark pair. */
