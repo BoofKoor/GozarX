@@ -19,6 +19,7 @@ def test_all_tables_registered() -> None:
         "content",
         "settings",
         "button_configs",
+        "broadcast_logs",
         # website (separate product, shared infra)
         "site_devices",
         "site_claims",

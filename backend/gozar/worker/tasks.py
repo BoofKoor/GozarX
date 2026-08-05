@@ -26,7 +26,12 @@ from aiogram.exceptions import (
     TelegramNotFound,
     TelegramRetryAfter,
 )
-from aiogram.types import BufferedInputFile, Message
+from aiogram.types import (
+    BufferedInputFile,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    Message,
+)
 from sqlalchemy.engine import make_url
 
 from gozar.bot.replies import preview_options
@@ -34,6 +39,7 @@ from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.site_device import SiteDeviceStatus
+from gozar.db.repositories.broadcast_log import BroadcastLogRepository
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
@@ -119,16 +125,34 @@ async def _broadcast_loop(
     admin_id: int,
     send_one: object,
     languages: list[Language] | None = None,
-) -> None:
+    *,
+    only_active: bool = False,
+    only_referrers: bool = False,
+    refine: bool = False,
+) -> tuple[int, int, int]:
     """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
     applying the strict removal allowlist + a bounded-concurrency, rate-capped throttle + progress.
     ``languages`` (empty/None ⇒ all) narrows the audience for a language-targeted panel broadcast.
     Removals are batched and committed once, after the loop, so a long send never holds a write
     transaction open. See ``_CONCURRENCY``/``_SEND_RATE`` for why this isn't a sequential loop.
+
+    Returns ``(sent, failed, removed)`` so a caller with a log row can record what happened.
+
+    ``refine`` picks the audience query: the panel's broadcast shares ``count_audience`` with the
+    endpoint that showed the operator a recipient count, so the number they read before pressing
+    send is the number of people this walks. The BOT's own fan-out keeps its historical audience —
+    literally every user — because narrowing it here would silently change what ``/admin`` does.
     """
     async with sessionmaker() as session:  # type: ignore[operator]
         repo = UserRepository(session)
-        ids = await (repo.list_ids_by_languages(languages) if languages else repo.list_all_ids())
+        if refine:
+            ids = await repo.audience_ids(
+                languages, only_active=only_active, only_referrers=only_referrers
+            )
+        else:
+            ids = await (
+                repo.list_ids_by_languages(languages) if languages else repo.list_all_ids()
+            )
 
     total = len(ids)
     sent = failed = removed = 0
@@ -197,6 +221,7 @@ async def _broadcast_loop(
         progress,
         f"✅ Done · {total} users · sent {sent} · failed {failed} · removed {removed}",
     )
+    return sent, failed, removed
 
 
 async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id: int) -> None:
@@ -215,26 +240,98 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
     await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
 
 
+def _inline_keyboard(buttons: list[dict] | None) -> InlineKeyboardMarkup | None:
+    """The composer's buttons as Telegram's own markup — one per row, which is how a call to action
+    under a broadcast reads. A malformed entry is dropped rather than failing the whole send."""
+    rows = [
+        [InlineKeyboardButton(text=b["text"], url=b["url"])]
+        for b in (buttons or [])
+        if isinstance(b, dict) and b.get("text") and b.get("url")
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows) if rows else None
+
+
 async def broadcast_text(
-    ctx: dict, text: str, admin_id: int, languages: list[str] | None = None
+    ctx: dict,
+    text: str,
+    admin_id: int,
+    languages: list[str] | None = None,
+    only_active: bool = False,
+    only_referrers: bool = False,
+    buttons: list[dict] | None = None,
+    log_id: int | None = None,
 ) -> None:
     """Send a composed HTML message to the panel's broadcast audience (it has no source message to
-    copy). ``languages`` (empty/None ⇒ everyone) targets specific language groups. Same strict
+    copy). ``languages`` (empty/None ⇒ everyone) targets specific language groups, and the two
+    ``only_*`` flags narrow it further — the same query the endpoint counted with. Same strict
     removal allowlist as ``fanout``: a user is dropped only on a permanent delivery failure.
+
+    ``log_id`` points at the ``broadcast_logs`` row written when the job was enqueued; the outcome
+    is written back into it so the history can say what happened rather than only that it started.
     """
     bot: Bot | None = ctx.get("bot")
     sessionmaker = ctx.get("sessionmaker")
     if bot is None or sessionmaker is None:
         logger.warning("broadcast_text: worker missing bot/sessionmaker; skipping")
+        await _finish_broadcast_log(sessionmaker, log_id, 0, 0, 0, ok=False)
         return
 
     valid = {lang.value for lang in Language}
     langs = [Language(c) for c in (languages or []) if c in valid] or None
+    markup = _inline_keyboard(buttons)
 
     async def send_one(uid: int) -> None:
-        await bot.send_message(uid, text, parse_mode="HTML")
+        await bot.send_message(uid, text, parse_mode="HTML", reply_markup=markup)
 
-    await _broadcast_loop(bot, sessionmaker, admin_id, send_one, langs)
+    await _mark_broadcast_sending(sessionmaker, log_id)
+    try:
+        sent, failed, removed = await _broadcast_loop(
+            bot,
+            sessionmaker,
+            admin_id,
+            send_one,
+            langs,
+            only_active=only_active,
+            only_referrers=only_referrers,
+            refine=True,
+        )
+    except Exception:
+        # The fan-out could not run at all. Recording that is the whole point of the row: without
+        # it the history would sit on "sending" forever and look like a job still in flight.
+        logger.exception("broadcast_text: fan-out failed")
+        await _finish_broadcast_log(sessionmaker, log_id, 0, 0, 0, ok=False)
+        raise
+    await _finish_broadcast_log(sessionmaker, log_id, sent, failed, removed)
+
+
+async def _mark_broadcast_sending(sessionmaker: object, log_id: int | None) -> None:
+    if sessionmaker is None or log_id is None:
+        return
+    async with sessionmaker() as session:  # type: ignore[operator]
+        await BroadcastLogRepository(session).mark_sending(log_id)
+        await session.commit()
+
+
+async def _finish_broadcast_log(
+    sessionmaker: object,
+    log_id: int | None,
+    sent: int,
+    failed: int,
+    removed: int,
+    *,
+    ok: bool = True,
+) -> None:
+    """Bookkeeping must never take the broadcast down with it — the messages already went out."""
+    if sessionmaker is None or log_id is None:
+        return
+    try:
+        async with sessionmaker() as session:  # type: ignore[operator]
+            await BroadcastLogRepository(session).complete(
+                log_id, sent=sent, failed=failed, removed=removed, ok=ok
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("broadcast_text: could not record outcome for log %s", log_id)
 
 
 async def reset_all_active(ctx: dict, admin_id: int) -> None:

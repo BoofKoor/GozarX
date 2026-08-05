@@ -41,6 +41,12 @@ describe("users + broadcast hooks", () => {
     const { result } = renderHook(() => useAudience(["fa", "en"]), { wrapper: wrapper() });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.recipients).toBe(42);
-    expect(mock.history.get[0].params).toEqual({ languages: "fa,en" }); // comma-joined param
+    // Comma-joined languages, and the two audience refinements always sent explicitly — the count
+    // has to be computed the same way the send will be, so "unset" must not mean "server default".
+    expect(mock.history.get[0].params).toEqual({
+      languages: "fa,en",
+      only_active: false,
+      only_referrers: false,
+    });
   });
 });

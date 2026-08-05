@@ -188,6 +188,55 @@ class UserRepository(BaseRepository):
         result = await self.session.scalars(select(User.telegram_id))
         return list(result.all())
 
+    @staticmethod
+    def _audience(
+        stmt: Select,
+        langs: list[Language] | None,
+        only_active: bool,
+        only_referrers: bool,
+    ) -> Select:
+        """The broadcast audience filter, shared by the id list and its count.
+
+        One function so the number the operator reads before pressing send and the number of people
+        the worker actually walks can never be computed differently. Banned users are excluded
+        unconditionally: they cannot receive anything, and counting them would inflate every
+        pre-flight figure the composer shows.
+        """
+        stmt = stmt.where(User.status != UserStatus.banned)
+        if langs:
+            stmt = stmt.where(User.language.in_(langs))
+        if only_active:
+            stmt = stmt.where(User.status == UserStatus.active_config)
+        if only_referrers:
+            stmt = stmt.where(User.referral_count > 0)
+        return stmt
+
+    async def audience_ids(
+        self,
+        langs: list[Language] | None = None,
+        *,
+        only_active: bool = False,
+        only_referrers: bool = False,
+    ) -> list[int]:
+        """telegram_ids of the broadcast audience. Materialised once, like ``list_all_ids``, so the
+        worker can throttle a minutes-long fan-out without holding a cursor open."""
+        stmt = self._audience(select(User.telegram_id), langs, only_active, only_referrers)
+        result = await self.session.scalars(stmt)
+        return list(result.all())
+
+    async def count_audience(
+        self,
+        langs: list[Language] | None = None,
+        *,
+        only_active: bool = False,
+        only_referrers: bool = False,
+    ) -> int:
+        """How many that audience contains — what the composer shows before sending."""
+        stmt = self._audience(
+            select(func.count()).select_from(User), langs, only_active, only_referrers
+        )
+        return int(await self.session.scalar(stmt) or 0)
+
     async def list_ids_by_languages(self, langs: list[Language]) -> list[int]:
         """telegram_ids of users whose language is in ``langs`` (empty ⇒ all) — the language-
         targeted broadcast audience. Materialised once, like ``list_all_ids``."""

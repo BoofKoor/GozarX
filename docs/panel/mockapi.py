@@ -270,6 +270,26 @@ SITE_ANALYTICS = {
               "top_ip_buckets": [{"label": "185.23.44.x", "count": 9},
                                  {"label": "91.99.7.x", "count": 6}]},
 }
+BROADCAST_HISTORY = [
+    {"id": 4, "body": "دو لوکیشن تازه اضافه شد — فنلاند و ترکیه.", "languages": "fa",
+     "only_active": False, "only_referrers": False,
+     "buttons": [{"text": "کانال ما", "url": "https://t.me/gozarx"}],
+     "status": "done", "recipients": 8412, "sent": 8298, "failed": 41, "removed": 73,
+     "scheduled_for": None, "created_at": "2026-08-02T18:00:00Z",
+     "finished_at": "2026-08-02T18:05:00Z"},
+    {"id": 3, "body": "یادآوری: سقف پاداش دعوت", "languages": "", "only_active": False,
+     "only_referrers": True, "buttons": None, "status": "sending", "recipients": 2355,
+     "sent": 1140, "failed": 12, "removed": 21, "scheduled_for": None,
+     "created_at": "2026-08-04T17:30:00Z", "finished_at": None},
+    {"id": 2, "body": "قطعی کوتاه پنل — عذرخواهی", "languages": "fa,en", "only_active": True,
+     "only_referrers": False, "buttons": None, "status": "done", "recipients": 3045,
+     "sent": 2904, "failed": 45, "removed": 96, "scheduled_for": None,
+     "created_at": "2026-07-26T12:00:00Z", "finished_at": "2026-07-26T12:03:00Z"},
+    {"id": 1, "body": "به‌روزرسانی شرایط استفاده", "languages": "", "only_active": False,
+     "only_referrers": False, "buttons": None, "status": "failed", "recipients": 8390,
+     "sent": 0, "failed": 0, "removed": 0, "scheduled_for": None,
+     "created_at": "2026-07-21T09:00:00Z", "finished_at": "2026-07-21T09:00:10Z"},
+]
 SITE_PUSH_HISTORY = [
     {"id": 3, "title": "سرور تازه اضافه شد", "body": "…", "url": "/status", "locale": "fa",
      "recipients": 1120, "sent": 1041, "failed": 44, "pruned": 35, "status": "done",
@@ -442,7 +462,15 @@ class H(http.server.SimpleHTTPRequestHandler):
         if u.path == "/api/admin/broadcast/":
             langs = [c for c in q.get("languages", [""])[0].split(",") if c]
             pool = langs or list(LANG_POP)
-            return self._json({"recipients": sum(LANG_POP.get(c, 0) for c in pool)})
+            n = sum(LANG_POP.get(c, 0) for c in pool)
+            # Same two refinements the endpoint applies, so the reach bar shrinks the way it will.
+            if q.get("only_active", ["false"])[0] == "true":
+                n = round(n * 0.42)
+            if q.get("only_referrers", ["false"])[0] == "true":
+                n = round(n * 0.28)
+            return self._json({"recipients": n})
+        if u.path == "/api/admin/broadcast/history":
+            return self._json(BROADCAST_HISTORY)
         if u.path == "/api/admin/users/":
             return self._json(users_page(int(q.get("page", ["1"])[0]),
                                          int(q.get("page_size", ["25"])[0]),

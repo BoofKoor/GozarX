@@ -3,10 +3,13 @@ import { Check, Clock, Send, X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
+import { KeyboardBuilder, MAX_CHARS, MessageField } from "@/components/broadcast/Composer";
+import { BroadcastHistory } from "@/components/broadcast/History";
 import { HourStrip } from "@/components/charts/HourStrip";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { Switch } from "@/components/ui/Switch";
 import { useConfirm } from "@/components/ui/confirm";
 import { useAudience, useSendBroadcast } from "@/hooks/useBroadcast";
 import { useDashboardAnalytics } from "@/hooks/useDashboard";
@@ -19,11 +22,9 @@ import {
   localizeDigits,
   telegramPreviewHtml,
 } from "@/lib/format";
-import type { Lang } from "@/types/api";
+import type { BroadcastButton, Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
-/** Telegram's own message ceiling — not a house style choice. */
-const MAX_CHARS = 4096;
 /** The practical broadcast ceiling the worker paces itself to stay under. */
 const RATE_PER_SEC = 30;
 const TONES = ["bg-chart-1", "bg-chart-3", "bg-chart-4"];
@@ -47,16 +48,63 @@ function PreflightRow({ ok, children }: { ok: boolean; children: ReactNode }) {
   );
 }
 
+/** A filter chip. The tick, not the tint, is what says "on" at any contrast. */
+function Chip({
+  on,
+  onClick,
+  children,
+}: {
+  on: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={clsx(
+        "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition",
+        on
+          ? "border-brand bg-brand/20 text-brand-700"
+          : "border-line text-content-muted hover:border-line-strong hover:text-content",
+      )}
+    >
+      <Check className={clsx("h-3.5 w-3.5", !on && "invisible")} />
+      {children}
+    </button>
+  );
+}
+
+/** The next occurrence of a given hour, as an ISO instant. */
+function nextOccurrence(hour: number): Date {
+  const at = new Date();
+  at.setMinutes(0, 0, 0);
+  at.setHours(hour);
+  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+  return at;
+}
+
 export function Broadcast() {
   const { t } = useI18n();
   const [text, setText] = useState("");
   const [langs, setLangs] = useState<Lang[]>(ALL_LANGS);
+  const [onlyActive, setOnlyActive] = useState(false);
+  const [onlyReferrers, setOnlyReferrers] = useState(false);
+  const [buttons, setButtons] = useState<BroadcastButton[]>([]);
+  const [scheduled, setScheduled] = useState(false);
+  const [hour, setHour] = useState<number | null>(null);
 
-  const { data: audience, isError: audienceError } = useAudience(langs);
+  const filter = { only_active: onlyActive, only_referrers: onlyReferrers };
+  const { data: audience, isError: audienceError } = useAudience(langs, filter);
   const { data: everyone } = useAudience(ALL_LANGS);
   // One cheap COUNT per language gives the reach bar a real breakdown, using only the endpoint the
   // page already has. Inventing the split was the alternative.
-  const perLang = [useAudience(["fa"]), useAudience(["en"]), useAudience(["ru"])];
+  const perLang = [
+    useAudience(["fa"], filter),
+    useAudience(["en"], filter),
+    useAudience(["ru"], filter),
+  ];
   const { data: analytics } = useDashboardAnalytics(30);
   const { data: health } = useSystemHealth();
   const send = useSendBroadcast();
@@ -71,10 +119,12 @@ export function Broadcast() {
 
   const body = text.trim();
   const overLimit = text.length > MAX_CHARS;
+  const filled = buttons.filter((b) => b.text.trim() && b.url.trim());
+  const buttonsOk = filled.every((b) => b.url.startsWith("https://"));
   // The broadcast is queued in Redis for the arq worker; if Redis is down it cannot be queued at
   // all, which is worth knowing BEFORE composing rather than after pressing send.
   const queueOk = health?.redis.ok !== false;
-  const canSend = Boolean(body) && langs.length > 0 && !overLimit && queueOk;
+  const canSend = Boolean(body) && langs.length > 0 && !overLimit && queueOk && buttonsOk;
   const minutes = Math.max(1, Math.round(recipients / RATE_PER_SEC / 60));
 
   const byHour = (() => {
@@ -83,6 +133,9 @@ export function Broadcast() {
     return acc;
   })();
   const peakHour = byHour.some((n) => n > 0) ? byHour.indexOf(Math.max(...byHour)) : -1;
+  // Scheduling defaults to the hour users are most active — the whole reason the strip is here is
+  // that scheduling blind is how a broadcast lands at 04:00.
+  const sendHour = hour ?? (peakHour >= 0 ? peakHour : 12);
 
   function toggle(code: Lang) {
     setLangs((prev) => (prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code]));
@@ -96,12 +149,27 @@ export function Broadcast() {
       confirmLabel: t("bc.send"),
     });
     if (!ok) return;
+    const at = scheduled ? nextOccurrence(sendHour) : undefined;
     send.mutate(
-      { text: body, languages: langs },
+      {
+        text: body,
+        languages: langs,
+        only_active: onlyActive,
+        only_referrers: onlyReferrers,
+        buttons: filled,
+        scheduled_for: at?.toISOString(),
+      },
       {
         onSuccess: (r) => {
-          toast.success(t("bc.send.queued", { n: formatNumber(r.recipients), who: summary }));
+          toast.success(
+            at
+              ? t("bc.schedule.queued", {
+                  h: localizeDigits(`${String(sendHour).padStart(2, "0")}:00`),
+                })
+              : t("bc.send.queued", { n: formatNumber(r.recipients), who: summary }),
+          );
           setText("");
+          setButtons([]);
         },
         onError: () => toast.error(t("bc.send.failed")),
       },
@@ -109,36 +177,28 @@ export function Broadcast() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title={t("bc.title")} sub={t("bc.sub")} />
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-4">
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-content">{t("bc.audience")}</h3>
-            <div className="flex flex-wrap gap-2">
-              {ALL_LANGS.map((code) => {
-                const on = langs.includes(code);
-                return (
-                  <button
-                    key={code}
-                    type="button"
-                    onClick={() => toggle(code)}
-                    aria-pressed={on}
-                    className={clsx(
-                      "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition",
-                      on
-                        ? "border-brand bg-brand/20 text-brand-700"
-                        : "border-line text-content-muted hover:border-line-strong hover:text-content",
-                    )}
-                  >
-                    {/* A tint alone is a weak signal for a state that decides who gets the message;
-                        the tick says "on" at any contrast. */}
-                    <Check className={clsx("h-3.5 w-3.5", !on && "invisible")} />
-                    {langLabel(code)}
-                  </button>
-                );
-              })}
+            <div className="flex flex-wrap items-center gap-2">
+              {ALL_LANGS.map((code) => (
+                <Chip key={code} on={langs.includes(code)} onClick={() => toggle(code)}>
+                  {langLabel(code)}
+                </Chip>
+              ))}
+              <span className="mx-1 h-5 w-px bg-line" aria-hidden />
+              {/* Two refinements the server enforces with the SAME query that produced the count
+                  above, so the number here cannot disagree with who the worker walks. */}
+              <Chip on={onlyActive} onClick={() => setOnlyActive((v) => !v)}>
+                {t("bc.only.active")}
+              </Chip>
+              <Chip on={onlyReferrers} onClick={() => setOnlyReferrers((v) => !v)}>
+                {t("bc.only.referrers")}
+              </Chip>
             </div>
 
             {/* The count says how many; the bar says how many OF WHAT — which is the question you
@@ -185,31 +245,30 @@ export function Broadcast() {
 
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-content">{t("bc.compose")}</h3>
-            <div>
-              <div className="flex items-center gap-2 rounded-t-xl border border-b-0 border-line bg-surface-sunken px-2.5 py-1.5">
-                <span className="flex-1 text-xs text-content-subtle">{t("bc.text")}</span>
-                {/* `dir` and not just an isolate: two numbers around a slash swap places under an
-                    RTL base direction, so «۱۳۸ / ۴٬۰۹۶» rendered as «۴٬۰۹۶ / ۱۳۸» — the message
-                    reading as longer than the limit. Safe on an inline run; never on a block. */}
-                <span
-                  dir="ltr"
-                  className={clsx(
-                    "text-xs tabular-nums",
-                    overLimit ? "font-bold text-danger-700" : "text-content-subtle",
-                  )}
-                >
-                  {formatNumber(text.length)} / {formatNumber(MAX_CHARS)}
-                </span>
-              </div>
-              <textarea
-                className="field-control min-h-[180px] rounded-t-none"
-                placeholder={t("bc.text.placeholder")}
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                dir="auto"
-              />
-            </div>
+            <MessageField value={text} onChange={setText} placeholder={t("bc.text.placeholder")} />
             <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
+
+            <KeyboardBuilder buttons={buttons} onChange={setButtons} />
+
+            <Switch
+              checked={scheduled}
+              onChange={setScheduled}
+              label={t("bc.schedule")}
+              hint={t("bc.schedule.hint")}
+            />
+
+            {scheduled && (
+              <div className="space-y-1.5">
+                <HourStrip counts={byHour} mark={sendHour} onPick={setHour} />
+                <p className="text-xs text-content-subtle">
+                  {peakHour < 0
+                    ? t("bc.timing.noData")
+                    : t("bc.timing.hint", {
+                        h: localizeDigits(`${String(peakHour).padStart(2, "0")}:00`),
+                      })}
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
               <Button onClick={submit} loading={send.isPending} disabled={!canSend}>
@@ -224,24 +283,14 @@ export function Broadcast() {
             </div>
           </Card>
 
-          <Card className="space-y-2">
-            <h3 className="text-sm font-bold text-content">{t("bc.timing")}</h3>
-            <HourStrip counts={byHour} mark={peakHour >= 0 ? peakHour : undefined} />
-            <p className="text-xs text-content-subtle">
-              {peakHour < 0
-                ? t("bc.timing.noData")
-                : t("bc.timing.hint", {
-                    h: localizeDigits(`${String(peakHour).padStart(2, "0")}:00`),
-                  })}
-            </p>
-          </Card>
+          <BroadcastHistory />
         </div>
 
         <div className="flex min-w-0 flex-col gap-4">
           <Card className="space-y-3">
             <h3 className="text-sm font-bold text-content">{t("bc.preview")}</h3>
-            {/* A chat frame rather than a lone bubble: half of what lands in Telegram is the header
-                and the timestamp around it. */}
+            {/* A chat frame rather than a lone bubble: half of what lands in Telegram is the header,
+                the buttons and the timestamp around it. */}
             <div className="overflow-hidden rounded-xl border border-line bg-surface-sunken">
               <div className="flex items-center gap-2 border-b border-line bg-surface-hover px-2.5 py-2">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-brand text-[10px] font-bold text-white">
@@ -254,15 +303,34 @@ export function Broadcast() {
                   </span>
                 </span>
               </div>
-              <div className="p-2.5">
+              <div className="space-y-1.5 p-2.5">
                 {body ? (
-                  <div
-                    // Sanitised: the panel origin holds the JWTs, so pasted markup must never
-                    // execute here even though an admin typed it.
-                    className="whitespace-pre-wrap rounded-xl bg-surface-hover px-3 py-2 text-[13px] leading-7"
-                    dir="auto"
-                    dangerouslySetInnerHTML={{ __html: telegramPreviewHtml(text) }}
-                  />
+                  <>
+                    <div
+                      // Sanitised: the panel origin holds the JWTs, so pasted markup must never
+                      // execute here even though an admin typed it.
+                      className="whitespace-pre-wrap rounded-xl bg-surface-hover px-3 py-2 text-[13px] leading-7"
+                      dir="auto"
+                      dangerouslySetInnerHTML={{ __html: telegramPreviewHtml(text) }}
+                    />
+                    {filled.map((b, i) => (
+                      <span
+                        key={i}
+                        className="block truncate rounded-lg bg-brand/20 px-2 py-1.5 text-center text-xs font-semibold text-brand-700"
+                      >
+                        {b.text}
+                      </span>
+                    ))}
+                    {/* The clock is what the message will carry, not what it carries now — a
+                        scheduled send lands at the hour that was chosen. */}
+                    <div className="pe-1 text-end text-[10px] text-content-subtle">
+                      {localizeDigits(
+                        scheduled
+                          ? `${String(sendHour).padStart(2, "0")}:00`
+                          : new Date().toTimeString().slice(0, 5),
+                      )}
+                    </div>
+                  </>
                 ) : (
                   <p className="py-4 text-center text-xs text-content-subtle">
                     {t("bc.preview.empty")}
@@ -284,6 +352,9 @@ export function Broadcast() {
               {overLimit
                 ? t("bc.pf.lengthBad", { max: formatNumber(MAX_CHARS) })
                 : t("bc.pf.length")}
+            </PreflightRow>
+            <PreflightRow ok={buttonsOk}>
+              {buttonsOk ? t("bc.pf.buttons") : t("bc.pf.buttonsBad")}
             </PreflightRow>
             <PreflightRow ok={queueOk}>
               {queueOk ? t("bc.pf.queue") : t("bc.pf.queueBad")}

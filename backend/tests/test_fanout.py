@@ -127,7 +127,9 @@ class _TextBot:
     def __init__(self) -> None:
         self.sent: list[tuple[int, str]] = []
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+    async def send_message(
+        self, chat_id: int, text: str, parse_mode: str | None = None, **kw: object
+    ) -> object:
         if chat_id == 2:
             raise _exc(TelegramForbiddenError, "Forbidden: bot was blocked by the user")
         self.sent.append((chat_id, text))
@@ -145,6 +147,9 @@ async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
             pass
 
         async def list_all_ids(self) -> list[int]:
+            return [1, 2, 3]
+
+        async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 2, 3]
 
         async def delete(self, telegram_id: int) -> None:
@@ -189,7 +194,9 @@ class _FloodBot:
         self.sent: list[int] = []
         self.calls: dict[int, int] = {}
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+    async def send_message(
+        self, chat_id: int, text: str, parse_mode: str | None = None, **kw: object
+    ) -> object:
         self.calls[chat_id] = self.calls.get(chat_id, 0) + 1
         if chat_id == 5 and self.calls[chat_id] == 1:
             raise _retry(1)
@@ -208,6 +215,9 @@ async def test_broadcast_flood_is_retried_not_dropped(monkeypatch) -> None:
             pass
 
         async def list_all_ids(self) -> list[int]:
+            return [1, 5, 6, 7]
+
+        async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 5, 6, 7]
 
         async def delete(self, telegram_id: int) -> None:
@@ -250,6 +260,9 @@ async def test_broadcast_delivers_whole_audience_across_chunks(monkeypatch) -> N
         async def list_all_ids(self) -> list[int]:
             return list(ids)
 
+        async def audience_ids(self, langs=None, **kw) -> list[int]:
+            return list(ids)
+
         async def delete(self, telegram_id: int) -> None:
             return None
 
@@ -283,7 +296,9 @@ class _LangBot:
     def __init__(self) -> None:
         self.sent: list[tuple[int, str]] = []
 
-    async def send_message(self, chat_id: int, text: str, parse_mode: str | None = None) -> object:
+    async def send_message(
+        self, chat_id: int, text: str, parse_mode: str | None = None, **kw: object
+    ) -> object:
         self.sent.append((chat_id, text))
         return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
 
@@ -304,7 +319,11 @@ async def test_broadcast_text_targets_only_chosen_languages(monkeypatch) -> None
             raise AssertionError("must use the language-filtered audience, not list_all_ids")
 
         async def list_ids_by_languages(self, langs: list) -> list[int]:
+            raise AssertionError("the panel broadcast goes through audience_ids")
+
+        async def audience_ids(self, langs=None, **kw) -> list[int]:
             seen_langs.append(langs)
+            seen_langs.append(kw)
             return [10, 11]
 
         async def delete(self, telegram_id: int) -> None:
@@ -330,6 +349,86 @@ async def test_broadcast_text_targets_only_chosen_languages(monkeypatch) -> None
     ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
     await broadcast_text(ctx, "سلام", admin_id=999, languages=["fa", "xx"])  # 'xx' is invalid
 
-    assert seen_langs == [[Language.fa]]  # invalid 'xx' dropped, valid 'fa' kept
+    # invalid 'xx' dropped, valid 'fa' kept — and the two audience refinements default to off.
+    assert seen_langs == [[Language.fa], {"only_active": False, "only_referrers": False}]
     # the message goes only to the filtered audience (progress pings to admin 999 carry other text)
     assert {chat for chat, text in bot.sent if text == "سلام"} == {10, 11}
+
+
+async def test_broadcast_attaches_the_inline_keyboard_and_narrows_the_audience(monkeypatch) -> None:
+    """The composer's buttons reach Telegram, and its refinements reach the audience query.
+
+    Both are things the operator was shown before pressing send. A keyboard that is composed and
+    then not attached, or a filter that narrows the displayed count but not the actual fan-out,
+    sends a different broadcast than the one on screen — and neither failure is visible from the
+    outside.
+    """
+    seen: dict = {}
+
+    class FakeRepo:
+        def __init__(self, session: object) -> None:
+            pass
+
+        async def list_all_ids(self) -> list[int]:
+            raise AssertionError("the panel broadcast must use the refined audience")
+
+        async def audience_ids(self, langs=None, **kw) -> list[int]:
+            seen["langs"] = langs
+            seen.update(kw)
+            return [21, 22]
+
+        async def delete(self, telegram_id: int) -> None:
+            return None
+
+    class FakeSession:
+        async def __aenter__(self) -> FakeSession:
+            return self
+
+        async def __aexit__(self, *exc: object) -> bool:
+            return False
+
+        async def commit(self) -> None:
+            return None
+
+    async def _noop(*args: object, **kwargs: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.UserRepository", FakeRepo)
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _noop)
+
+    markups: list = []
+
+    class _KbBot:
+        def __init__(self) -> None:
+            self.sent: list[int] = []
+
+        async def send_message(
+            self, chat_id: int, text: str, parse_mode: str | None = None, **kw: object
+        ) -> object:
+            self.sent.append(chat_id)
+            markups.append(kw.get("reply_markup"))
+            return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+
+        async def edit_message_text(self, text: str, chat_id: int = 0, message_id: int = 0) -> None:
+            return None
+
+    bot = _KbBot()
+    ctx = {"bot": bot, "sessionmaker": lambda: FakeSession()}
+    await broadcast_text(
+        ctx,
+        "hi",
+        admin_id=999,
+        languages=["fa"],
+        only_active=True,
+        only_referrers=True,
+        buttons=[
+            {"text": "Channel", "url": "https://t.me/gozarx"},
+            {"text": "broken", "url": ""},  # dropped, rather than failing the whole send
+        ],
+    )
+
+    assert seen == {"langs": [Language.fa], "only_active": True, "only_referrers": True}
+    audience = [m for chat, m in zip(bot.sent, markups, strict=True) if chat != 999]
+    assert audience and all(m is not None for m in audience)
+    rows = audience[0].inline_keyboard
+    assert [(b.text, b.url) for row in rows for b in row] == [("Channel", "https://t.me/gozarx")]

@@ -205,9 +205,39 @@ export interface BroadcastAudience {
   recipients: number;
 }
 
+export interface BroadcastButton {
+  text: string;
+  /** Telegram rejects a non-https inline URL and fails the WHOLE message. */
+  url: string;
+}
+
 export interface BroadcastSend {
   text: string;
   languages: Lang[]; // empty ⇒ everyone; a subset targets only those language groups
+  only_active?: boolean;
+  only_referrers?: boolean;
+  buttons?: BroadcastButton[];
+  /** ISO instant. Absent ⇒ send now. */
+  scheduled_for?: string;
+}
+
+/** One past broadcast and how it went. */
+export interface BroadcastLog {
+  id: number;
+  body: string;
+  languages: string;
+  only_active: boolean;
+  only_referrers: boolean;
+  buttons: BroadcastButton[];
+  status: "queued" | "scheduled" | "sending" | "done" | "failed";
+  recipients: number;
+  sent: number;
+  failed: number;
+  /** Its own figure, not folded into `failed`: a user is dropped ONLY on blocked/deactivated. */
+  removed: number;
+  scheduled_for: string | null;
+  created_at: string;
+  finished_at: string | null;
 }
 
 export interface BroadcastResult {
