@@ -197,7 +197,7 @@ function SeoChecklist({ form }: { form: SiteLandingInput }) {
     },
   ];
   return (
-    <div className="rounded-xl border border-line bg-surface-sunken p-3">
+    <div className="rounded-xl border border-line bg-surface-raised p-3">
       <div className="mb-2 text-xs font-semibold text-content-muted">{t("sl.seo")}</div>
       <ul className="space-y-1.5">
         {checks.map((c) => (

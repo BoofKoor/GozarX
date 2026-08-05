@@ -61,10 +61,7 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
         />
       </dl>
       {webhook.last_error && (
-        <div
-          className="mt-3 rounded-lg bg-surface-sunken p-3 text-xs dark:bg-surface-sunken/60"
-          dir="ltr"
-        >
+        <div className="mt-3 rounded-lg bg-surface-raised p-3 text-xs" dir="ltr">
           <div className="mb-0.5 text-content-subtle">
             {t("sys.wh.lastError")}{" "}
             {webhook.last_error_at ? `· ${faDateTime(webhook.last_error_at)}` : ""}

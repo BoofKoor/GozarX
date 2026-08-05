@@ -9,10 +9,16 @@ import { getLocale, localeTag } from "@/i18n";
 
 const _FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 
-/** Map ASCII digits in a string to the locale's own — a no-op in English, where they already are. */
+/**
+ * Map ASCII digits — and the decimal point between two of them — to the locale's own.
+ *
+ * The separator matters: `Intl` renders «۳۷٫۵٪» with the Persian decimal mark, so a hand-built
+ * «۳.۱ TB» sitting next to it used two different separators for the same idea. Only a dot BETWEEN
+ * digits is converted, so a sentence's full stop and a "v1.2" style label are left alone.
+ */
 export function localizeDigits(s: string): string {
   if (getLocale() !== "fa") return s;
-  return s.replace(/[0-9]/g, (d) => _FA_DIGITS[+d]);
+  return s.replace(/[0-9]/g, (d) => _FA_DIGITS[+d]).replace(/(?<=[۰-۹])\.(?=[۰-۹])/g, "٫");
 }
 
 // Intl formatters are expensive to construct, so keep one per locale instead of one per call.

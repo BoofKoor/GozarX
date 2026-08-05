@@ -199,6 +199,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `humanUptime` wrap their result in FSI…PDI (`\u2068`…`\u2069`), because they are plain functions
   whose output lands inside Persian sentences at ~40 call sites — «۱ GB» rendered as «GB ۱», the
   unit ahead of the number it measures. Wrap the value, not each call site.
+- **A nested card RISES off its panel, it does not sink into it.** `bg-surface-raised` (#383D7A
+  dark) is the design's own depth order: rail < content well < card < nested plate. Reserve
+  `bg-surface-sunken` for things that genuinely recede — a progress TRACK, the content well, a
+  form container, a preview frame, a zero-value heatmap cell. Inverting the two is what made the
+  console read as flatter than the design.
+- **Number glyphs stop at the digits, but the SEPARATOR counts too.** `localizeDigits` maps a
+  decimal point between two digits to «٫», because `Intl` already does and a hand-built «۳.۱ TB»
+  beside a «۳۷٫۵٪» used two marks for one idea. And recharts prints raw numbers, so `axisProps`
+  carries a `tickFormatter` — without it every value axis was Latin under a Persian page.
 - **Tailwind opacity modifiers are multiples of 5.** `bg-brand/12` and `bg-chart-1/18` are not on
   the scale and compile to NOTHING — silently, so a tinted badge just renders with no background.
   Use `/15`, `/20`, or the arbitrary form `bg-brand/[0.12]`. And a colour must exist in

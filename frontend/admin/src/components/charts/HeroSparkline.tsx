@@ -11,6 +11,8 @@ export interface HeroSparklineProps {
   labels: string[];
   /** Index of the day to mark with a band and a dot. */
   highlight: number;
+  /** Already-formatted change for the pill above the marker, e.g. "+۱۴٪". Omitted renders none. */
+  delta?: string;
   ariaLabel: string;
   className?: string;
 }
@@ -32,13 +34,15 @@ const PAD_X = 18;
  *    inside the side padding, where there is no line to fade, and the curve would appear at half
  *    opacity and pop.
  * 2. The BAND under the highlighted day does not fade. It is a marker, not part of the series, and
- *    dimming it weakens the one thing it exists to do. It is clipped to the region under the curve
- *    so it stops where it meets the line instead of running over the top of it.
+ *    dimming it weakens the one thing it exists to do. It runs straight down from the marker: an
+ *    earlier version clipped it to the area under the curve, which tapered it into a teardrop
+ *    whenever the marked day fell at either end of the window.
  */
 export function HeroSparkline({
   values,
   labels,
   highlight,
+  delta,
   ariaLabel,
   className,
 }: HeroSparklineProps) {
@@ -57,14 +61,15 @@ export function HeroSparkline({
   const hi = Math.max(0, Math.min(values.length - 1, highlight));
   const hx = x(hi);
   const hy = y(values[hi]);
-  const under = `${line}L${W},${H}L0,${H}Z`;
+  // The pill is measured from the string rather than laid out, so it can be centred and clamped
+  // inside the frame — an SVG has no text metrics to ask.
+  const pillW = delta ? Math.max(34, delta.length * 7.2 + 14) : 0;
+  const pillX = Math.min(Math.max(hx - pillW / 2, 4), W - pillW - 4);
+  const pillY = Math.max(hy - 30, 2);
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} className={className}>
       <defs>
-        <clipPath id={`${uid}-under`}>
-          <path d={under} />
-        </clipPath>
         <linearGradient
           id={`${uid}-ends`}
           gradientUnits="userSpaceOnUse"
@@ -83,9 +88,17 @@ export function HeroSparkline({
         </mask>
       </defs>
 
-      <g clipPath={`url(#${uid}-under)`}>
-        <rect x={hx - 13} y="0" width="26" height={H} rx="13" fill="#fff" opacity=".26" />
-      </g>
+      {/* A straight bar from the marker down, NOT a shape clipped to the curve: clipped, it
+          tapered into a teardrop whenever the marked day sat at either end of the window. */}
+      <rect
+        x={hx - 13}
+        y={hy}
+        width="26"
+        height={Math.max(0, H - 26 - hy)}
+        rx="13"
+        fill="#fff"
+        opacity=".26"
+      />
 
       <path
         d={line}
@@ -98,6 +111,25 @@ export function HeroSparkline({
       />
 
       <circle cx={hx} cy={hy} r="4.5" className="fill-brand-600" stroke="#fff" strokeWidth="2.25" />
+
+      {delta && (
+        <g>
+          <rect x={pillX} y={pillY} width={pillW} height="19" rx="9.5" fill="#fff" />
+          {/* An SVG <text> obeys the document's direction, so a signed percentage rendered
+              «۱۲٫۴٪+» with the sign trailing the number it belongs to. */}
+          <text
+            x={pillX + pillW / 2}
+            y={pillY + 13.5}
+            textAnchor="middle"
+            fontSize="10.5"
+            fontWeight="700"
+            style={{ direction: "ltr" }}
+            className="fill-brand-600"
+          >
+            {delta}
+          </text>
+        </g>
+      )}
 
       {labels.map((label, i) => (
         <text

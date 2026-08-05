@@ -66,7 +66,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           {t("btn.editor.title")}
         </h2>
         <code
-          className="rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-xs text-content-muted"
+          className="rounded bg-surface-raised px-1.5 py-0.5 font-mono text-xs text-content-muted"
           dir="ltr"
         >
           {button.key}

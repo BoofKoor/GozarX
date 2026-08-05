@@ -181,7 +181,7 @@ function StatTile({
   label: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5 rounded-xl bg-surface-sunken p-3">
+    <div className="flex flex-col gap-1.5 rounded-xl bg-surface-raised p-3">
       <span className={`grid h-7 w-7 place-items-center rounded-lg ${tone}`}>
         <Icon className="h-3.5 w-3.5" />
       </span>

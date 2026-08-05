@@ -69,8 +69,10 @@ export function TopBar({
         >
           <Menu className="h-5 w-5" />
         </button>
-        {/* Section name — orients you after a deep link or a browser back. */}
-        <span className="truncate text-sm font-semibold text-content">
+        {/* Section name, on NARROW screens only. Every page opens with a <PageHeader> carrying the
+            same title one line below, so on a desktop this was the word "داشبورد" twice in a
+            column. On a phone the header scrolls away under a sticky bar, so it earns its place. */}
+        <span className="truncate text-sm font-semibold text-content md:hidden">
           {current ? t(current.labelKey) : t("shell.title")}
         </span>
       </div>

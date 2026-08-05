@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { t } from "@/i18n";
 import type { ChartTheme } from "@/lib/chartTheme";
+import { localizeDigits } from "@/lib/format";
 
 /**
  * Shared recharts building blocks so every chart in the panel has the same axes, grid, tooltip and
@@ -14,6 +15,10 @@ export function axisProps(t: ChartTheme) {
     tick: { fontSize: 11, fill: t.axis },
     tickLine: false,
     axisLine: false,
+    // Recharts prints raw numbers, so every value axis in the panel read "300 / 225 / 150" in
+    // Latin digits while the rest of the page — including the axis right below it — was Persian.
+    // A no-op in English, and on a tick that is already a formatted string.
+    tickFormatter: (v: unknown) => localizeDigits(String(v)),
   } as const;
 }
 

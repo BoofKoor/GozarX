@@ -305,13 +305,13 @@ function ReferralCapPanel({ data }: { data: DashboardAnalytics }) {
       ) : (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-xl bg-surface-sunken p-3 text-center">
+            <div className="rounded-xl bg-surface-raised p-3 text-center">
               <div className="text-xl font-bold tabular-nums text-content">
                 {formatNumber(with_referrals)}
               </div>
               <div className="mt-0.5 text-xs text-content-muted">{t("d.cap.active")}</div>
             </div>
-            <div className="rounded-xl bg-surface-sunken p-3 text-center">
+            <div className="rounded-xl bg-surface-raised p-3 text-center">
               <div className="text-xl font-bold tabular-nums text-content">
                 {formatNumber(at_cap)}
               </div>

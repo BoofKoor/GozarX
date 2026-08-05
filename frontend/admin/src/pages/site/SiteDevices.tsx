@@ -298,7 +298,7 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                 {device.recent_claims.map((c, i) => (
                   <li
                     key={`${c.created_at}-${i}`}
-                    className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-1.5 text-xs"
+                    className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-1.5 text-xs"
                   >
                     <span dir="auto" className="text-content">
                       {c.location}
@@ -325,7 +325,7 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                 {peers.map((p) => (
                   <li
                     key={p.uuid}
-                    className="flex items-center justify-between rounded-lg bg-surface-sunken px-3 py-1.5 text-xs"
+                    className="flex items-center justify-between rounded-lg bg-surface-raised px-3 py-1.5 text-xs"
                   >
                     <span className="font-mono" dir="ltr">
                       {p.handle ?? p.uuid.slice(0, 8)}

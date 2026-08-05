@@ -43,7 +43,7 @@ export function GaugeCard({
   const c = 2 * Math.PI * r;
   const frac = outOf > 0 ? Math.min(1, value / outOf) : 0;
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-surface-sunken p-3">
+    <div className="flex items-center gap-3 rounded-xl bg-surface-raised p-3">
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm text-content-muted">{label}</div>
       </div>

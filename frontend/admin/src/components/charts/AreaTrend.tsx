@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { useIsDark } from "@/hooks/useIsDark";
 import { seriesColor, tokenColor } from "@/lib/chartTheme";
+import { localizeDigits } from "@/lib/format";
 
 import { areaFrom, smoothPath, type Point } from "./geometry";
 
@@ -74,7 +75,7 @@ export function AreaTrend({ series, labels, ticks, ariaLabel, className }: AreaT
             x2="0"
             y2={baseline}
           >
-            <stop offset="0%" stopColor={s.color} stopOpacity={i === 0 ? 0.26 : 0.18} />
+            <stop offset="0%" stopColor={s.color} stopOpacity={i === 0 ? 0.1 : 0.07} />
             <stop offset="100%" stopColor={s.color} stopOpacity="0" />
           </linearGradient>
         ))}
@@ -115,7 +116,7 @@ export function AreaTrend({ series, labels, ticks, ariaLabel, className }: AreaT
         <g key={t}>
           <line x1={PAD_L} y1={py(t)} x2={W - PAD_R} y2={py(t)} stroke={grid} strokeWidth="1" />
           <text x={PAD_L - 8} y={py(t) + 4} textAnchor="end" fontSize="11" fill={faint}>
-            {t}
+            {localizeDigits(String(t))}
           </text>
         </g>
       ))}
@@ -133,7 +134,7 @@ export function AreaTrend({ series, labels, ticks, ariaLabel, className }: AreaT
             d={s.line}
             fill="none"
             stroke={s.color}
-            strokeWidth={i === 0 ? 2.25 : 2}
+            strokeWidth={i === 0 ? 2.75 : 2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />

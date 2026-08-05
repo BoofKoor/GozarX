@@ -18,7 +18,7 @@ export function ActivationPanel({ data }: { data: DashboardAnalytics }) {
     <Card>
       <CardHeader title={t("d.activation")} icon={Timer} />
       <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-xl bg-surface-sunken p-4">
+        <div className="rounded-xl bg-surface-raised p-4">
           <div className="text-2xl font-bold tabular-nums">
             {median == null ? "—" : formatNumber(median)}
             {median != null && (
@@ -29,7 +29,7 @@ export function ActivationPanel({ data }: { data: DashboardAnalytics }) {
           </div>
           <div className="mt-1 text-xs text-content-muted">{t("d.activation.median")}</div>
         </div>
-        <div className="rounded-xl bg-surface-sunken p-4">
+        <div className="rounded-xl bg-surface-raised p-4">
           <div className="text-2xl font-bold tabular-nums text-brand">
             {faPct(data.activation_24h.value)}
           </div>

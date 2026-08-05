@@ -33,7 +33,9 @@ export function Segmented<T extends string | number>({
       role="radiogroup"
       aria-label={ariaLabel}
       className={clsx(
-        "inline-flex items-center gap-0.5 rounded-xl border border-line bg-surface-sunken p-0.5",
+        // No container: the design lets the options sit on the page and rings only the active
+        // one. A bordered tray around all of them read as a second card competing with the chart.
+        "inline-flex items-center gap-1",
         className,
       )}
     >
@@ -50,9 +52,10 @@ export function Segmented<T extends string | number>({
             className={clsx(
               "rounded-[10px] font-medium transition",
               size === "sm" ? "px-2.5 py-1 text-xs" : "px-3 py-1.5 text-sm",
+              "border",
               active
-                ? "bg-surface text-content shadow-card"
-                : "text-content-muted hover:text-content",
+                ? "border-line-strong text-content"
+                : "border-transparent text-content-muted hover:text-content",
             )}
           >
             {opt.label}
