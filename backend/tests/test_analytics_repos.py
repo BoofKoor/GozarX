@@ -77,9 +77,44 @@ async def test_hourly_weekday_counts_sum(session):
 
 async def test_referral_funnel(session):
     await _seed(session)
-    joined, claimed = await UserRepository(session).referral_funnel()
+    joined, claimed, eligible = await UserRepository(session).referral_funnel()
     assert joined == 2  # u3, u4 have referred_by set
     assert claimed == 1  # of those, only u3 ever claimed
+    # The denominator is everyone who signed up at or after the FIRST referral, not everyone.
+    # u1 (40 days ago) and u2 (6 days ago) predate u3/u4 (2 days ago), so only u3, u4 and u5
+    # could have arrived via an invite. Measured against all five the share would be 40%; against
+    # the three who could have been referred it is 67%, which is the figure that can move.
+    assert eligible == 3
+
+
+async def test_referral_denominator_excludes_the_era_before_referrals(session):
+    """On the live install `referred_by` is NULL for every legacy-imported row, so dividing by all
+    users reported 10.8% where the honest figure was 17.0% — the axis was measuring how much of the
+    service predates the feature rather than how well the feature works."""
+    now = datetime.now(UTC)
+    session.add_all(
+        [
+            # Five users from before the referral programme existed. None can have a referrer.
+            *[User(telegram_id=100 + i, created_at=now - timedelta(days=90)) for i in range(5)],
+            User(telegram_id=200, created_at=now - timedelta(days=1)),
+            User(telegram_id=201, created_at=now - timedelta(days=1), referred_by=200),
+        ]
+    )
+    await session.flush()
+
+    joined, _claimed, eligible = await UserRepository(session).referral_funnel()
+    assert joined == 1
+    # Only the two users from the referral era, not all seven.
+    assert eligible == 2
+
+
+async def test_referral_denominator_is_zero_before_any_referral(session):
+    """With no referrals recorded there is no cutoff, so the count is 0 — which the route turns
+    into a 0% share rather than dividing by zero."""
+    session.add(User(telegram_id=300))
+    await session.flush()
+    joined, _claimed, eligible = await UserRepository(session).referral_funnel()
+    assert (joined, eligible) == (0, 0)
 
 
 async def test_reminder_by_language(session):

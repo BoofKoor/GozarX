@@ -124,8 +124,11 @@ export function Overview({
     if (!rows.length) return 0;
     return rows.reduce((a, c) => a + c.retention[1], 0) / rows.length;
   })();
-  const referralShare =
-    stats.total_users > 0 && analytics ? (analytics.referral.joined / stats.total_users) * 100 : 0;
+  // Server-computed, over the users who COULD have been referred rather than all of them. Against
+  // the whole base this read 10.8% on a live install where the real figure was 17.0%, because
+  // 39,899 users predate the referral programme and `referred_by` is null for every imported row —
+  // so the axis was measuring how much of the service is older than the feature.
+  const referralShare = analytics?.referral.joined_share_pct ?? 0;
 
   const peakHour = (() => {
     const byHour = new Map<number, number>();

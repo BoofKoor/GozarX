@@ -68,8 +68,10 @@ def analytics(n):
         "median_hours_to_claim": {"value": 6.92, "previous": 7.85, "change_pct": -11.8},
         "activation_24h": {"value": 74.0, "previous": 71.2, "change_pct": 3.9},
         "first_claimers_in_range": 1180, "claimers_all_time": 7231,
+        # `eligible` is the users who COULD have been referred, not every user — see the route.
         "referral": {"joined": 3449, "joined_claimed": 2610,
-                     "invitee_conversion_pct": 75.7, "k_factor": 0.42},
+                     "invitee_conversion_pct": 75.7, "k_factor": 0.42,
+                     "eligible": 20288, "joined_share_pct": 17.0},
         "referral_cap": {"limit": 10, "at_cap": 210, "with_referrals": 1840},
         "heatmap": heat, "signup_heatmap": heat,
         "claims_distribution": {"1": 2100, "2-3": 3010, "4-6": 1420, "7+": 701},

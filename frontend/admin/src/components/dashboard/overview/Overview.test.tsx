@@ -77,6 +77,8 @@ const analytics = (over: Partial<DashboardAnalytics> = {}): DashboardAnalytics =
       joined_claimed: 2610,
       invitee_conversion_pct: 62,
       k_factor: 0.42,
+      eligible: 6800,
+      joined_share_pct: 61.9,
     },
     referral_cap: { limit: 10, at_cap: 210, with_referrals: 1840 },
     heatmap: [

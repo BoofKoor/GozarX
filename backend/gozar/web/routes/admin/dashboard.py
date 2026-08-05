@@ -155,6 +155,13 @@ class ReferralFunnel(BaseModel):
     joined_claimed: int  # of those, how many ever claimed a config
     invitee_conversion_pct: float
     k_factor: float  # avg successful invites per user (viral coefficient); >1 ⇒ self-sustaining
+    #: Users who signed up at or after the first referral was ever recorded — everyone who COULD
+    #: have arrived via an invite. Not the whole user base: `referred_by` is NULL for every row the
+    #: legacy import brought over, so dividing by all users measures how much of the service
+    #: predates the referral programme rather than how well the programme works.
+    eligible: int
+    #: `joined / eligible`. The figure the dashboard's radar reads, so the axis can actually move.
+    joined_share_pct: float
 
 
 class SplitDayPoint(BaseModel):
@@ -357,7 +364,7 @@ async def dashboard_analytics(
         since=prev_since, until=prev_until
     )
     _, _, claimers_all_time = await log_repo.first_claim_stats()
-    joined, joined_claimed = await user_repo.referral_funnel()
+    joined, joined_claimed, referral_eligible = await user_repo.referral_funnel()
     total = await user_repo.count()
     referrals = await user_repo.sum_referrals()
     heatmap = await log_repo.hourly_weekday_counts(since)
@@ -396,6 +403,8 @@ async def dashboard_analytics(
             joined_claimed=joined_claimed,
             invitee_conversion_pct=_pct(joined_claimed, joined),
             k_factor=round(referrals / total, 2) if total else 0.0,
+            eligible=referral_eligible,
+            joined_share_pct=_pct(joined, referral_eligible),
         ),
         referral_cap=ReferralCap(limit=cap, at_cap=at_cap, with_referrals=with_referrals),
         heatmap=[HeatCell(dow=d, hour=h, count=c) for d, h, c in heatmap],

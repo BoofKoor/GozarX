@@ -500,6 +500,12 @@ export interface ReferralFunnel {
   joined_claimed: number;
   invitee_conversion_pct: number;
   k_factor: number; // avg successful invites per user (viral coefficient)
+  /** Users who signed up at or after the first referral was recorded — everyone who COULD have
+   *  arrived via an invite. The whole user base is the wrong denominator: `referred_by` is null for
+   *  every legacy-imported row. */
+  eligible: number;
+  /** `joined / eligible`. Computed server-side so the panel cannot pick a different denominator. */
+  joined_share_pct: number;
 }
 
 /** One local day of carried traffic and the concurrency during it. */
