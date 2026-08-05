@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
-import { I18nProvider, t } from "@/i18n";
+import { I18nProvider } from "@/i18n";
 import type { DashboardAnalytics, DashboardStats, Retention } from "@/types/api";
 
 import { Overview } from "./Overview";
@@ -141,32 +141,35 @@ describe("Overview", () => {
     expect(chart.querySelectorAll("text")[day4 + 1].textContent).toBe("س");
   });
 
-  it("averages week-two retention over the cohorts that HAVE a week two", () => {
+  it("weights week-two retention by cohort size, over the cohorts that HAVE a week two", () => {
     // The youngest cohort has no second column yet; counting it as 0% would drag the rate down
-    // purely because the week has not happened.
+    // purely because the week has not happened. And the average is of PEOPLE, not of weeks: a
+    // 400-person cohort must not count the same as a 500-person one.
     renderOverview();
     const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
-    expect(radar.textContent).toContain("بازگشت"); // (60 + 70) / 2, not (60 + 70 + 0) / 3
+    expect(radar.textContent).toContain("بازگشت");
+    // (60×400 + 70×500) / 900 = 65.6 — not the unweighted 65, and not 43.3 with the young cohort.
+    expect(radar.textContent).toContain("۶۵٫۶٪");
+  });
+
+  it("prints each rate beside its own axis", () => {
+    // Hovering a vertex was the only way to read a value off this chart: undiscoverable, useless
+    // at a glance, and absent from a screenshot.
+    renderOverview();
+    const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
+    expect(radar.textContent).toContain("۸۶٪"); // conversion_pct
+  });
+
+  it("leads with what the service delivered, not a median that never moves", () => {
+    renderOverview();
+    // claims_in_range, with its own previous-window delta.
+    expect(screen.getByText("۲٬۸۴۱")).toBeInTheDocument();
   });
 
   it("reports the peak claim hour summed across weekdays", () => {
     renderOverview();
     expect(screen.getByText("۲۱:۰۰")).toBeInTheDocument();
     expect(screen.getByText("۶۶۵")).toBeInTheDocument(); // 400 + 265
-  });
-
-  it("shows an em dash rather than a zero when a median cannot exist", () => {
-    // An empty cohort has no median. Rendering it as 0 would claim instant activation.
-    renderOverview({
-      analytics: analytics({
-        median_hours_to_claim: { value: null, previous: null, change_pct: null },
-      }),
-    });
-    // Scoped to the tile that owns the figure — "—" is a common placeholder elsewhere on the page.
-    // Read from the catalogue, not hardcoded: this test is about the em dash, and a copy edit
-    // should not be able to fail it.
-    const tile = screen.getByText(t("dash.kpi.median")).closest("div");
-    expect(tile?.parentElement?.textContent).toContain("—");
   });
 
   it("says so when the panel is unreachable instead of showing a silent flat line", () => {

@@ -955,6 +955,46 @@ async def test_dashboard_retention_cohorts(admin_client: httpx.AsyncClient, db_s
     assert cohort["retention"][-1] == 50.0  # one of two returned in the latest week
 
 
+async def test_cohort_row_is_as_long_as_the_weeks_that_elapsed(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """A cohort nobody returned to must report 0%, not a short row.
+
+    Sized from the data — `max(offset) + 1` — a cohort where nobody came back after week one got a
+    one-column row, which is exactly what a cohort two days old looks like. The dashboard drops
+    short rows because their second week has not happened, so a genuine 0% was silently excluded
+    from the retention average instead of dragging it down as it should.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                # Three weeks old, claimed once on day one and never again.
+                User(telegram_id=71, created_at=now - timedelta(weeks=3)),
+                # Two days old — its second week genuinely has not arrived.
+                User(telegram_id=72, created_at=now - timedelta(days=2)),
+            ]
+        )
+        await s.flush()
+        s.add_all(
+            [
+                ConfigLog(user_id=71, location="DE", created_at=now - timedelta(weeks=3)),
+                ConfigLog(user_id=72, location="DE", created_at=now - timedelta(days=2)),
+            ]
+        )
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/retention?weeks=8")).json()
+    rows = {c["week"]: c["retention"] for c in body["cohorts"]}
+    old = next(r for w, r in rows.items() if len(r) >= 4)
+    # Four elapsed weeks, so four columns — and the three after signup are real zeros.
+    assert old[0] == 100.0
+    assert old[1:4] == [0.0, 0.0, 0.0]
+    # The young cohort still reports one column, so the dashboard keeps excluding it.
+    young = min(rows.values(), key=len)
+    assert len(young) == 1
+
+
 async def test_dashboard_retention_weeks_is_bounded(admin_client: httpx.AsyncClient) -> None:
     assert (await admin_client.get("/api/admin/dashboard/retention?weeks=1")).status_code == 422
     assert (await admin_client.get("/api/admin/dashboard/retention?weeks=99")).status_code == 422

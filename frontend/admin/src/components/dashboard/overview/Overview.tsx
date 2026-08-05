@@ -7,14 +7,7 @@ import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
 import { t, useI18n } from "@/i18n";
-import {
-  faPct,
-  formatNumber,
-  humanBytes,
-  humanHours,
-  langLabel,
-  localizeDigits,
-} from "@/lib/format";
+import { faPct, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
@@ -117,12 +110,19 @@ export function Overview({
     stats.claimers_prev_range > 0 ? stats.claims_prev_range / stats.claimers_prev_range : 0;
   const avgDelta = avgPrev > 0 ? ((avgPerClaimer - avgPrev) / avgPrev) * 100 : null;
 
-  // "Returned in week two" is the second column of every weekly cohort, averaged — the retention
-  // matrix already computes it, so the radar reuses it rather than asking for a new figure.
+  // "Returned in week two" is the second column of every weekly cohort — the retention matrix
+  // already computes it, so the radar reuses it rather than asking for a new figure.
+  //
+  // WEIGHTED by cohort size. A plain mean let a 509-user launch week count as much as the
+  // 15,757-user week beside it, which is not an average of the population — it is an average of
+  // the weeks. Rows still shorter than two columns are cohorts whose second week has not arrived;
+  // the server now sizes rows by ELAPSED weeks, so a cohort nobody returned to carries a real 0
+  // instead of being dropped for looking the same as one that is two days old.
   const weekTwo = (() => {
     const rows = (retention?.cohorts ?? []).filter((c) => c.retention.length > 1 && c.size > 0);
-    if (!rows.length) return 0;
-    return rows.reduce((a, c) => a + c.retention[1], 0) / rows.length;
+    const people = rows.reduce((a, c) => a + c.size, 0);
+    if (!people) return 0;
+    return rows.reduce((a, c) => a + c.retention[1] * c.size, 0) / people;
   })();
   // Server-computed, over the users who COULD have been referred rather than all of them. Against
   // the whole base this read 10.8% on a live install where the real figure was 17.0%, because
@@ -182,20 +182,16 @@ export function Overview({
             label={t("dash.kpi.active", { days: formatNumber(range) })}
             delta={<Delta pct={stats.claimers_delta_pct} newLabel={t("dash.delta.first")} />}
           />
+          {/* Configs delivered, not the activation median. The median is a real figure and a good
+              one — 21 seconds — but it is a property of the bot's flow, so it does not move from
+              one day to the next and a headline tile that never changes is a tile that stops being
+              read. It keeps its place on the growth tab, where a jump from 21s to four hours is
+              the kind of thing anyone would be looking for. This slot now carries what the service
+              actually did in the window. */}
           <KpiTile
-            value={
-              analytics?.median_hours_to_claim.value == null
-                ? "—"
-                : humanHours(analytics.median_hours_to_claim.value)
-            }
-            label={t("dash.kpi.median")}
-            delta={
-              <Delta
-                pct={analytics?.median_hours_to_claim.change_pct}
-                goodWhenDown
-                newLabel={t("dash.delta.noBase")}
-              />
-            }
+            value={formatNumber(stats.claims_in_range)}
+            label={t("dash.kpi.claims", { days: formatNumber(range) })}
+            delta={<Delta pct={stats.claims_delta_pct} newLabel={t("dash.delta.first")} />}
           />
           <KpiTile
             value={formatNumber(Math.round(avgPerClaimer * 10) / 10)}
