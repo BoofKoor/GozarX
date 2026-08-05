@@ -15,7 +15,10 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand text-white shadow-sm hover:bg-brand-600 active:bg-brand-700",
+  // `bg-btn`, not `bg-brand`: the design's primary action is periwinkle on the dark console and
+  // charcoal on the light one, and a component naming the brand ramp cannot express that.
+  // `brightness` rather than a second shade, so the hover follows whichever fill the theme picked.
+  primary: "bg-btn text-btn-ink shadow-sm hover:brightness-110 active:brightness-95",
   secondary: "bg-surface-sunken text-content hover:bg-surface-hover",
   ghost: "text-content-muted hover:bg-surface-hover hover:text-content",
   outline: "border border-line-strong bg-surface text-content hover:bg-surface-hover",

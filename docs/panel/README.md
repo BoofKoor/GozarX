@@ -56,8 +56,35 @@ screenshot:
 - A chart's top gridline and its label drawn above the canvas, because the plot scaled to the data
   while the ticks were rounded up.
 
-So: render it, read the PNG back, and compare against the artifact rendered the same way. Chromium
-is enough —
+So: render it, read the PNG back, and compare against the artifact rendered the same way.
+
+## `shot.py` — capturing the panel
+
+```bash
+python3 docs/panel/shot.py out/ --width 1440 --theme dark --locale fa / users broadcast
+python3 docs/panel/shot.py out/ --width 360                            /        # narrow
+```
+
+Use it rather than a raw `chromium --headless --screenshot`, which gets **two** things wrong:
+
+- **It cannot go narrow.** This Chromium refuses a window under ~500 CSS px. `--window-size=360,800`
+  lays the page out at `innerWidth = 500` and then crops the capture to 360 — so a page that reflows
+  correctly at 360 screenshots as though it were overflowing, and you go fix a defect that does not
+  exist. (Measured: 360 → 500, 420 → 500, 500 → 500. The same page in a real 360-wide browser
+  context reports `document.scrollWidth === 360`.)
+- **It cannot capture a recharts chart.** recharts animates each series through react-smooth, growing
+  a clip rect from zero width with `requestAnimationFrame`. Under `--virtual-time-budget` that never
+  ticks: the `<path>` sits in the DOM with correct geometry and nothing is painted, so every recharts
+  chart comes out an empty grid. `shot.py` renders with `prefers-reduced-motion`, which the panel now
+  honours by drawing those series without animation at all.
+
+The hand-drawn SVG charts (`HeroSparkline` / `AreaTrend` / `RadarRates`) are immune to the second
+problem — they have no animation — which is why the dashboard captured fine while every other chart
+in the panel did not.
+
+`shot.py` needs `pip install playwright` and reuses the Chromium already on the box; it prints a
+warning next to any capture whose document is wider than its viewport. The raw invocation is still
+fine for a quick desktop look:
 
 ```bash
 chromium --headless --disable-gpu --no-sandbox --hide-scrollbars \

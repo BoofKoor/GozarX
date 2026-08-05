@@ -6,9 +6,13 @@ panel and the in-bot ``/admin`` never drift. GozarX is a free tool — there is 
 
 from __future__ import annotations
 
+import csv
+import io
+import logging
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
 from gozar.db.models.enums import UserStatus
@@ -17,9 +21,17 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingsService
+from gozar.services.stats import window_start, zero_filled_daily
 from gozar.web.dependencies import AdminUser, DbSession
 
+log = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/users", tags=["users"])
+
+#: How far back the record dialog's mini chart looks.
+_DETAIL_DAYS = 30
+#: A ceiling on the export, so one click can never stream the whole table into a request thread.
+_EXPORT_LIMIT = 50_000
 
 
 def _admin_service(request: Request, session: object) -> AdminService:
@@ -43,6 +55,8 @@ class UserOut(BaseModel):
     referred_by: int | None
     created_at: datetime | None
     configs: int | None = None  # lifetime claims — set on the detail card only
+    #: Where this user's LATEST claim came from. None until they have claimed once.
+    last_location: str | None = None
 
 
 class UserPage(BaseModel):
@@ -52,7 +66,29 @@ class UserPage(BaseModel):
     page_size: int
 
 
-def _out(user: User, configs: int | None = None) -> UserOut:
+class ClaimOut(BaseModel):
+    location: str
+    created_at: datetime
+
+
+class DayCount(BaseModel):
+    day: str
+    count: int
+
+
+class UserDetailOut(UserOut):
+    """Everything the record dialog shows beyond the row it was opened from."""
+
+    #: One entry per day in the window, zero-filled, so the chart has no gaps to interpolate over.
+    claims_series: list[DayCount] = []
+    recent_claims: list[ClaimOut] = []
+    #: Live usage, read from the panel. NULL when the user has no panel account or the panel did not
+    #: answer — a single bounded attempt, never a retry loop, and never a zero standing in for
+    #: "unknown".
+    traffic_bytes: int | None = None
+
+
+def _out(user: User, configs: int | None = None, last_location: str | None = None) -> UserOut:
     return UserOut(
         telegram_id=user.telegram_id,
         status=user.status.value,
@@ -63,6 +99,7 @@ def _out(user: User, configs: int | None = None) -> UserOut:
         referred_by=user.referred_by,
         created_at=user.created_at,
         configs=configs,
+        last_location=last_location,
     )
 
 
@@ -75,12 +112,112 @@ async def list_users(
     page_size: int = Query(25, ge=1, le=100),
     status: UserStatus | None = None,
     search: str | None = None,
+    location: str | None = None,
 ) -> UserPage:
     repo = UserRepository(session)
     offset = (page - 1) * page_size
-    items = await repo.list_page(limit=page_size, offset=offset, status=status, search=search)
-    total = await repo.count_filtered(status=status, search=search)
-    return UserPage(items=[_out(u) for u in items], total=total, page=page, page_size=page_size)
+    items = await repo.list_page(
+        limit=page_size, offset=offset, status=status, search=search, location=location
+    )
+    total = await repo.count_filtered(status=status, search=search, location=location)
+    # One extra query for the whole page, not one per row.
+    places = await ConfigLogRepository(session).latest_locations([u.telegram_id for u in items])
+    return UserPage(
+        items=[_out(u, last_location=places.get(u.telegram_id)) for u in items],
+        total=total,
+        page=page,
+        page_size=page_size,
+    )
+
+
+# Declared BEFORE `/{telegram_id}`: FastAPI matches in declaration order, and an int-typed path
+# parameter would otherwise swallow "locations" and "export.csv" and answer 422.
+@router.get("/locations", response_model=list[str])
+async def claimed_locations(session: DbSession, admin: AdminUser) -> list[str]:
+    """Locations the users list can be filtered by — every one a config was ever claimed from."""
+    return await ConfigLogRepository(session).distinct_locations()
+
+
+@router.get("/export.csv", response_class=PlainTextResponse)
+async def export_users(
+    session: DbSession,
+    admin: AdminUser,
+    status: UserStatus | None = None,
+    search: str | None = None,
+    location: str | None = None,
+) -> PlainTextResponse:
+    """The CURRENT filter's users as CSV.
+
+    It exports what the table is showing, not the whole table: an operator filters to a case and
+    then wants that case out, and an export that silently ignores the filters is a different
+    question's answer. Written with `csv` rather than string joins so a location containing a comma
+    can never shift the columns.
+    """
+    repo = UserRepository(session)
+    rows = await repo.list_page(
+        limit=_EXPORT_LIMIT, offset=0, status=status, search=search, location=location
+    )
+    places = await ConfigLogRepository(session).latest_locations([u.telegram_id for u in rows])
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer)
+    writer.writerow(
+        ["telegram_id", "status", "language", "referrals", "panel_username", "location", "joined"]
+    )
+    for user in rows:
+        writer.writerow(
+            [
+                user.telegram_id,
+                user.status.value,
+                user.language.value,
+                user.referral_count,
+                user.panel_username or "",
+                places.get(user.telegram_id, ""),
+                user.created_at.isoformat() if user.created_at else "",
+            ]
+        )
+    return PlainTextResponse(
+        buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": 'attachment; filename="gozar-users.csv"'},
+    )
+
+
+@router.get("/{telegram_id}/detail", response_model=UserDetailOut)
+async def get_user_detail(
+    telegram_id: int, request: Request, session: DbSession, admin: AdminUser
+) -> UserDetailOut:
+    """The record dialog: the row, plus this user's claim history and live traffic."""
+    card = await _admin_service(request, session).lookup(telegram_id)
+    if card is None:
+        raise HTTPException(404, "user not found")
+
+    logs = ConfigLogRepository(session)
+    since = window_start(_DETAIL_DAYS)
+    counts = dict(await logs.daily_counts_for_user(telegram_id, since))
+    recent = await logs.recent_for_user(telegram_id)
+    places = await logs.latest_locations([telegram_id])
+
+    traffic: int | None = None
+    if card.user.panel_username:
+        # One bounded attempt. The panel being down must not make a record unopenable, so a failure
+        # leaves the figure NULL and the dialog says so.
+        try:
+            panel_user = await request.app.state.panel.get_user(card.user.panel_username)
+            traffic = panel_user.traffic.used_bytes if panel_user else None
+        except Exception:  # noqa: BLE001 — any panel failure is the same answer here
+            log.warning("panel lookup failed for user %s", telegram_id)
+
+    base = _out(card.user, configs=card.configs, last_location=places.get(telegram_id))
+    return UserDetailOut(
+        **base.model_dump(),
+        claims_series=[
+            DayCount(day=day, count=n)
+            for day, n in zero_filled_daily(list(counts.items()), since=since, days=_DETAIL_DAYS)
+        ],
+        recent_claims=[ClaimOut(location=r.location, created_at=r.created_at) for r in recent],
+        traffic_bytes=traffic,
+    )
 
 
 @router.get("/{telegram_id}", response_model=UserOut)

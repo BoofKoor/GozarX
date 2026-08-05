@@ -12,8 +12,14 @@ import { NAV, isItemActive, type NavItem } from "./nav";
 /**
  * One rail button.
  *
- * The active marker sits on the rail's INLINE-START edge — right in Persian, left in English — and
- * is a real element rather than a border, so it can be inset from the button's rounded corners.
+ * The active state is a BRAND TINT with no outline, not a neutral plate: the design marks the
+ * current destination in the brand colour, and `bg-surface-hover` gave it the same grey a hover
+ * produces, so the rail said "you are hovering here" where it meant "you are here".
+ *
+ * The marker beside it is a real element rather than a border, so it can sit clear of the button's
+ * rounded corners. It is the height of the GLYPH, not of the button plus its outline, and it is
+ * flush with the rail's inline-start edge — right in Persian, left in English. Floated a few pixels
+ * inside the edge and stretched past the button it reads as a stray line rather than a tab marker.
  */
 function RailButton({ item, active }: { item: NavItem; active: boolean }) {
   const { t } = useI18n();
@@ -25,17 +31,17 @@ function RailButton({ item, active }: { item: NavItem; active: boolean }) {
       title={label}
       aria-label={label}
       className={clsx(
-        "relative grid h-10 w-10 shrink-0 place-items-center rounded-xl border transition",
+        "relative grid h-10 w-10 shrink-0 place-items-center rounded-[13px] border transition",
         // Every item keeps its outline, not just the active one. Bare glyphs on the rail read as
         // decoration; the outlined squares are what make it a control strip.
         active
-          ? "border-line-strong bg-surface-hover text-brand"
-          : "border-line text-content-muted hover:border-line-strong hover:text-content",
+          ? "border-transparent bg-brand/15 text-brand"
+          : "border-line text-content-muted hover:border-brand/40 hover:text-brand",
       )}
     >
       {active && (
         <span
-          className="absolute -inset-y-0.5 -start-2.5 w-[3px] rounded-full bg-brand"
+          className="absolute -start-[14px] top-1/2 h-[26px] w-[3px] -translate-y-1/2 rounded-s-[3px] bg-brand"
           aria-hidden
         />
       )}
@@ -52,9 +58,11 @@ export function Sidebar() {
   return (
     <nav
       aria-label={t("shell.nav")}
-      className="hidden w-[68px] shrink-0 flex-col items-center gap-3 border-e border-line bg-nav py-5 md:flex"
+      // No divider. The rail and the well are different SURFACES, and that tone change is the seam
+      // — a line on top of it draws the eye to the joint instead of to the two planes.
+      className="hidden w-[68px] shrink-0 flex-col items-center gap-3 bg-nav pb-[22px] pt-[18px] md:flex"
     >
-      <BrandMark className="mb-4 h-8 w-8" />
+      <BrandMark className="mb-6 h-8 w-8" />
       {NAV.flatMap((group) => group.items).map((item) => (
         <RailButton key={item.to} item={item} active={isItemActive(pathname, item)} />
       ))}
@@ -64,7 +72,7 @@ export function Sidebar() {
         onClick={logout}
         title={t("shell.logout")}
         aria-label={t("shell.logout")}
-        className="grid h-10 w-10 place-items-center rounded-xl border border-line text-content-muted transition hover:border-line-strong hover:text-content"
+        className="grid h-10 w-10 place-items-center rounded-[13px] border border-line text-content-muted transition hover:border-brand/40 hover:text-brand"
       >
         <LogOut className="h-[18px] w-[18px]" />
       </button>

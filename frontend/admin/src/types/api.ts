@@ -171,6 +171,17 @@ export interface BotUser {
   referred_by: number | null;
   created_at: string | null;
   configs: number | null;
+  /** Where this user's LATEST claim came from — null until they have claimed once. */
+  last_location: string | null;
+}
+
+/** The record dialog's payload: the row, plus this user's history and live usage. */
+export interface BotUserDetail extends BotUser {
+  claims_series: DayPoint[];
+  recent_claims: { location: string; created_at: string }[];
+  /** Read live from the panel. NULL when there is no panel account or the panel did not answer —
+   *  never a zero standing in for "unknown". */
+  traffic_bytes: number | null;
 }
 
 export interface UserPage {
@@ -185,6 +196,7 @@ export interface UserListParams {
   page_size?: number;
   status?: string;
   search?: string;
+  location?: string;
 }
 
 export type UserAction = "ban" | "unban" | "reclaim" | "zero_referrals";
@@ -193,9 +205,39 @@ export interface BroadcastAudience {
   recipients: number;
 }
 
+export interface BroadcastButton {
+  text: string;
+  /** Telegram rejects a non-https inline URL and fails the WHOLE message. */
+  url: string;
+}
+
 export interface BroadcastSend {
   text: string;
   languages: Lang[]; // empty ⇒ everyone; a subset targets only those language groups
+  only_active?: boolean;
+  only_referrers?: boolean;
+  buttons?: BroadcastButton[];
+  /** ISO instant. Absent ⇒ send now. */
+  scheduled_for?: string;
+}
+
+/** One past broadcast and how it went. */
+export interface BroadcastLog {
+  id: number;
+  body: string;
+  languages: string;
+  only_active: boolean;
+  only_referrers: boolean;
+  buttons: BroadcastButton[];
+  status: "queued" | "scheduled" | "sending" | "done" | "failed";
+  recipients: number;
+  sent: number;
+  failed: number;
+  /** Its own figure, not folded into `failed`: a user is dropped ONLY on blocked/deactivated. */
+  removed: number;
+  scheduled_for: string | null;
+  created_at: string;
+  finished_at: string | null;
 }
 
 export interface BroadcastResult {

@@ -1,36 +1,66 @@
+import { clsx } from "clsx";
 import { useCallback, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
+import { ChromeProvider, useChrome } from "./chrome";
 import { MobileNav, Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
 /**
- * The console: a fixed icon rail, a top bar, and a content WELL.
+ * The console: an icon rail and a content WELL inside ONE rounded panel, with the dashboard's live
+ * figures in a second panel beside it, both floating on the page ground.
  *
- * The well is a distinct surface (`bg-surface-sunken`) rather than the page background, so cards
- * read as sitting ON something. The collapse toggle is gone with it — the rail is icons only now,
- * so there is nothing left to collapse, and a control whose two states look the same is noise.
+ * That framing is the design's, and it is doing work: the rail and the well are two surfaces of a
+ * single object, so the seam between them is a tone change rather than a rule, and the gutter around
+ * the whole thing is what stops a dense operator console from reading as a wall. Edge to edge with a
+ * bordered rail, the same components read flat.
+ *
+ * `overflow-hidden` on the panel is what lets the rail and the well share its rounded corners
+ * without either of them repeating the radius.
  */
-export function AppShell() {
+function Shell() {
   const [navOpen, setNavOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const chrome = useChrome();
 
   useCommandPaletteShortcut(useCallback(() => setPaletteOpen(true), []));
 
   return (
-    <div className="flex h-screen bg-canvas">
-      <Sidebar />
-      <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopBar onMenuClick={() => setNavOpen(true)} onSearchClick={() => setPaletteOpen(true)} />
-        <main className="scrollbar-thin flex-1 overflow-y-auto bg-surface-sunken p-4 sm:p-6">
-          <div className="animate-fade-in mx-auto w-full max-w-[1180px]">
-            <Outlet />
-          </div>
-        </main>
+    <div className="flex h-screen gap-3 bg-canvas p-0 sm:p-3">
+      <div className="flex min-w-0 flex-1 overflow-hidden bg-nav shadow-raised sm:rounded-2xl">
+        <Sidebar />
+        <MobileNav open={navOpen} onClose={() => setNavOpen(false)} />
+        <div className="flex min-w-0 flex-1 flex-col bg-surface-sunken">
+          <TopBar onMenuClick={() => setNavOpen(true)} onSearchClick={() => setPaletteOpen(true)} />
+          <main className="scrollbar-thin flex-1 overflow-y-auto px-4 pb-6 pt-3 sm:px-5">
+            <div className="animate-fade-in mx-auto w-full max-w-[1180px]">
+              <Outlet />
+            </div>
+          </main>
+        </div>
       </div>
+
+      {/* The second panel. Always MOUNTED so a page has somewhere to portal to, but it only takes
+          up space once a page has claimed it — and never below the width where it would steal the
+          console's height instead of sitting beside it. */}
+      <aside
+        ref={chrome?.setSideHost}
+        className={clsx(
+          "scrollbar-thin w-[19.5rem] shrink-0 flex-col gap-2 overflow-y-auto rounded-2xl bg-surface p-4 shadow-raised",
+          chrome?.sideFilled ? "hidden xl:flex" : "hidden",
+        )}
+      />
+
       <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </div>
+  );
+}
+
+export function AppShell() {
+  return (
+    <ChromeProvider>
+      <Shell />
+    </ChromeProvider>
   );
 }

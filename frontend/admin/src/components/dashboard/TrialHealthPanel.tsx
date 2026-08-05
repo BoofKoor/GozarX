@@ -2,6 +2,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useIsDark } from "@/hooks/useIsDark";
+import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { tokenColor } from "@/lib/chartTheme";
 import { formatNumber, humanBytes } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
@@ -17,7 +18,8 @@ const STATUS_META: Record<string, { label: MessageKey; token: string }> = {
 
 export function TrialHealthPanel({ data }: { data: DashboardStats }) {
   const { t } = useI18n();
-  useIsDark(); // slice colours come from CSS tokens — re-render when the theme flips
+  useIsDark();
+  const anim = useSeriesAnimation(); // slice colours come from CSS tokens — re-render when the theme flips
   const slices = Object.entries(data.panel_status_counts)
     .filter(([, n]) => n > 0)
     .map(([status, n]) => ({
@@ -40,6 +42,7 @@ export function TrialHealthPanel({ data }: { data: DashboardStats }) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
+                  {...anim}
                   data={slices}
                   dataKey="value"
                   nameKey="name"

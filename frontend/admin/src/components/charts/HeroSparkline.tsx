@@ -71,7 +71,14 @@ export function HeroSparkline({
   const pillY = Math.max(hy - 31, 2);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={ariaLabel} className={className}>
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      role="img"
+      aria-label={ariaLabel}
+      // Width-driven, height following: given a fixed height the drawing letterboxes inside it and
+      // the curve stops 15px short of the tile edges the negative margins exist to reach.
+      className={`block h-auto w-full ${className ?? ""}`}
+    >
       <defs>
         <linearGradient
           id={`${uid}-ends`}

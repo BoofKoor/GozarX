@@ -9,6 +9,8 @@ vi.mock("@/hooks/useUsers", () => ({
   useUsers: vi.fn(),
   useUser: vi.fn(() => ({ data: undefined, isLoading: false })),
   useUserAction: vi.fn(() => ({ mutate: vi.fn(), isPending: false })),
+  useClaimedLocations: vi.fn(() => ({ data: ["Germany", "Finland"] })),
+  downloadUsersCsv: vi.fn(),
 }));
 
 describe("Users", () => {
@@ -26,6 +28,7 @@ describe("Users", () => {
             referred_by: null,
             created_at: "2026-06-01T00:00:00Z",
             configs: null,
+            last_location: "Germany",
           },
         ],
         total: 1,
@@ -39,5 +42,8 @@ describe("Users", () => {
     expect(screen.getByText("1001")).toBeInTheDocument();
     // The badge is a <span> (the "مسدود" filter chip is a <button>).
     expect(screen.getByText("مسدود", { selector: "span" })).toBeInTheDocument();
+    // The location column shows the user's LATEST claim, and the filter offers what was claimed.
+    expect(screen.getByText("Germany", { selector: "td" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Finland" })).toBeInTheDocument();
   });
 });

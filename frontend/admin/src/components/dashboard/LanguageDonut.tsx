@@ -2,6 +2,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts";
 
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useIsDark } from "@/hooks/useIsDark";
+import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { seriesColor } from "@/lib/chartTheme";
 import { formatNumber, langLabel } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
@@ -9,7 +10,8 @@ import { useI18n } from "@/i18n";
 
 export function LanguageDonut({ data }: { data: NamedCount[] }) {
   const { t } = useI18n();
-  useIsDark(); // slice colours come from CSS tokens — re-render when the theme flips
+  useIsDark();
+  const anim = useSeriesAnimation(); // slice colours come from CSS tokens — re-render when the theme flips
   const total = data.reduce((s, d) => s + d.count, 0);
   const slices = data.map((d, i) => ({
     name: langLabel(d.label),
@@ -30,6 +32,7 @@ export function LanguageDonut({ data }: { data: NamedCount[] }) {
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
+                  {...anim}
                   data={slices}
                   dataKey="value"
                   nameKey="name"

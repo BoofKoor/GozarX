@@ -1,13 +1,13 @@
 import { clsx } from "clsx";
 import { Menu, Search } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { useI18n, type MessageKey } from "@/i18n";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { getUsername } from "@/lib/auth";
 
+import { useChrome } from "./chrome";
 import { LanguagePill } from "./LanguagePill";
-import { NAV_ITEMS, isItemActive } from "./nav";
 import { ThemeToggle } from "./ThemeToggle";
 
 const STATUS: Record<string, { tone: string; key: MessageKey }> = {
@@ -56,26 +56,24 @@ export function TopBar({
   const { t } = useI18n();
   const username = getUsername() ?? "admin";
   const initial = username.charAt(0).toUpperCase();
-  const { pathname } = useLocation();
-  const current = NAV_ITEMS.find((item) => isItemActive(pathname, item));
+  const chrome = useChrome();
 
   return (
-    <header className="sticky top-0 z-30 flex items-center justify-between gap-3 border-b border-line bg-nav/85 px-4 py-2.5 backdrop-blur sm:px-6">
-      <div className="flex min-w-0 items-center gap-2">
-        <button
-          onClick={onMenuClick}
-          aria-label={t("shell.openMenu")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-content-muted transition hover:bg-surface-hover hover:text-content md:hidden"
-        >
-          <Menu className="h-5 w-5" />
-        </button>
-        {/* Section name, on NARROW screens only. Every page opens with a <PageHeader> carrying the
-            same title one line below, so on a desktop this was the word "داشبورد" twice in a
-            column. On a phone the header scrolls away under a sticky bar, so it earns its place. */}
-        <span className="truncate text-sm font-semibold text-content md:hidden">
-          {current ? t(current.labelKey) : t("shell.title")}
-        </span>
-      </div>
+    // On the well, not on its own surface: the design's top bar is the first row INSIDE the content
+    // column, so the page starts where the well starts. As a separate `bg-nav` strip with a rule
+    // under it, the console spent two horizontal bands and ~105px saying its own name — once here
+    // and once again in the page header a line below.
+    <header className="sticky top-0 z-30 flex items-center gap-3 bg-surface-sunken px-4 pb-2 pt-3 sm:px-5">
+      <button
+        onClick={onMenuClick}
+        aria-label={t("shell.openMenu")}
+        className="-ms-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-content-muted transition hover:bg-surface-hover hover:text-content md:hidden"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Filled by whichever page is mounted, through <PageHeader>. */}
+      <div ref={chrome?.setTitleHost} className="min-w-0 flex-1" />
 
       <div className="flex shrink-0 items-center gap-1.5">
         <button

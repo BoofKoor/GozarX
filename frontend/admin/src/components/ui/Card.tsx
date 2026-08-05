@@ -14,10 +14,15 @@ export function Card({ className, children, padded = true, interactive = false }
   return (
     <div
       className={clsx(
-        "rounded-2xl border border-line bg-surface shadow-card",
-        padded && "p-5",
+        // No border. A card is separated from the well by its own SURFACE, which is what the design
+        // does everywhere — nothing in the reference carries an outline, and the dashboard's tiles
+        // (which never used this component) had none either, so the panel was drawing two different
+        // kinds of card. The 1px `--line` ring around every panel is most of why the console read
+        // boxier and flatter than the design it was built from.
+        "rounded-card bg-surface shadow-card",
+        padded && "p-card",
         interactive &&
-          "cursor-pointer transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-raised",
+          "cursor-pointer transition hover:-translate-y-0.5 hover:shadow-raised hover:ring-1 hover:ring-brand/40",
         className,
       )}
     >
@@ -59,7 +64,7 @@ export function CardFooter({ className, children }: { className?: string; childr
   return (
     <div
       className={clsx(
-        "-mx-5 -mb-5 mt-5 flex items-center justify-end gap-2 border-t border-line px-5 py-3",
+        "-mx-card -mb-card mt-card flex items-center justify-end gap-2 border-t border-line px-card py-3",
         className,
       )}
     >

@@ -31,6 +31,19 @@ export function seriesColor(i: number, alpha = 1): string {
   return tokenColor(CHART_TOKENS[idx], alpha);
 }
 
+/**
+ * Room for a value-axis tick label, in px.
+ *
+ * A three-digit Persian tick («۴۰۰») is ~24px at 11px, and the panel's charts routinely reach four
+ * digits. `width={32}` paired with `margin.left: -16` left 16px, so the LEADING digit of every label
+ * was sliced off by the axis clip — «۴۰۰» read as «۰۰», silently, on every recharts chart in the
+ * panel. Widen the axis and stop clawing the space back with a negative margin.
+ */
+export const Y_AXIS_WIDTH = 46;
+
+/** Chart margins that leave `Y_AXIS_WIDTH` intact. */
+export const CHART_MARGIN = { top: 8, right: 8, left: -4, bottom: 0 } as const;
+
 export interface ChartTheme {
   grid: string;
   axis: string;

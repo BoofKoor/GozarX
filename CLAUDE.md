@@ -89,6 +89,14 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   bundle, so a new recurring question cost a redeploy. Defaults are seeded from `seed_faq` on boot
   (`add_default`, never clobbering an edit) so the panel opens showing exactly what the site shows;
   the site keeps its in-code `FAQ_ITEMS` as the fallback for an empty/unreachable response.
+- `broadcast_logs`: one row per panel-composed Telegram broadcast (body · languages · the two
+  audience refinements · buttons JSON · status · recipients/sent/failed/**removed** ·
+  scheduled_for/created_at/finished_at). Written at ENQUEUE time by the route and completed by the
+  arq worker — the fan-out is async, so without the row a broadcast that never ran would vanish
+  instead of showing as stuck on `queued`. `removed` is its own column, never folded into `failed`:
+  a user is dropped ONLY on blocked/deactivated, and that distinction has to be visible to be
+  trusted. Mirrors `site_push_logs` on purpose — two broadcast surfaces that report differently
+  would be two things to learn.
 - `site_devices.last_seen_at`: the site's ONLY visit signal, refreshed by `current_device` on every
   identity-bearing request (throttled to once an hour, so a page load is not a row write). Without
   it every website figure was claim-derived plus an all-time "identities minted" counter — and that
@@ -170,6 +178,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   buttons, settings, system, login, both wizards, and all ten website pages. Every user-facing
   literal now lives in `messages.ts` — `i18n/no-literals.test.ts` fails the build on a new one.
   The bot's own location writes gain the squad validation the website side already had.
+15 The panel measured against the approved artifact (`docs/panel/panel-redesign.html`) and closed
+  to it. The console becomes two panels on a tinted ground with the page title in the top bar;
+  dialogs portal out of the shell's containing block; both hand-drawn charts fill their column;
+  cards drop their border and tables sit flush; `--surface-raised` and the primary button get
+  per-theme values. Users gains a location filter, a filtered CSV export and a record card carrying
+  the person's claim history and live traffic; broadcast gains audience refinements, inline buttons,
+  scheduling and `broadcast_logs` — each needed API built rather than the design trimmed to fit.
+  `docs/panel/shot.py` replaces the raw-chromium capture recipe, which could not render below
+  ~500 CSS px and could not capture a recharts chart at all.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -263,7 +280,55 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **A missing translation fails `tsc`; a literal that never reached the catalogue fails a TEST.**
   `i18n/no-literals.test.ts` walks the source for Persian outside `messages.ts`, `lib/format` (which
   owns the locale tables) and comments. Adding to its allowlist needs a reason that is not "this one
-  is fine".
+  is fine". It only looks for PERSIAN, so an English literal (`"ok"`, `"down"`) slips past it — the
+  English map being typed against the Persian one is what catches those, but only once the string
+  is a key at all.
+- **`fixed inset-0` means the viewport only until an ancestor has a transform.** The shell's entry
+  animation ends on `transform: translateY(0)` with `animation-fill-mode: both`, so it keeps a
+  computed `matrix(1,0,0,1,0,0)` forever and becomes the containing block for every fixed
+  descendant. Measured: a record dialog centred inside the 1180px content column instead of the
+  window, its backdrop stopping at that column's edges, its panel 229px below the fold, and
+  `max-h-full` measuring 1557px so it never scrolled to its own footer. `Modal` and `RecordDialog`
+  portal to `<body>`; anything else full-screen must too. A filter or `contain` on an ancestor does
+  the same thing.
+- **An SVG with a viewBox and a FIXED height letterboxes.** `preserveAspectRatio` scales uniformly
+  and centres the remainder, so `viewBox="0 0 900 292"` in an 852×240 box drew 740 wide with ~56px
+  of dead space on each side — the trend aligned with neither the KPI band above it nor the cards
+  below, and the hero sparkline stopped short of the tile edges its negative margins exist to
+  reach. Charts are width-driven with `h-auto`. `preserveAspectRatio="none"` is only safe where
+  there is no text and no round marker to distort (`MiniTrend`).
+- **A value axis needs room for the LOCALE's digits.** `YAxis width={32}` with `margin.left:-16`
+  leaves 16px; a three-digit Persian tick needs ~24, so «۴۰۰» rendered as «۰۰» on every recharts
+  chart — silently. `Y_AXIS_WIDTH` and `CHART_MARGIN` live in `lib/chartTheme` so the next chart
+  inherits the room.
+- **recharts animates in JAVASCRIPT, so `prefers-reduced-motion` never reaches it.** `index.css`
+  honours the query for CSS only; react-smooth grows a clip rect from zero width with
+  `requestAnimationFrame`. Two consequences: a console full of moving charts for an operator who
+  asked for stillness, and — because that animation only advances on real frames — a chart that
+  screenshots as an EMPTY GRID, geometry present in the DOM and nothing painted. Spread
+  `useSeriesAnimation()` onto every `<Area>`/`<Line>`/`<Bar>`/`<Pie>`.
+- **A card has no border**, and a table is FLUSH in an unpadded card. The design separates a card
+  from the well by its own SURFACE; a 1px `--line` ring around every panel is most of why the
+  console read boxier and flatter than the design. And the table's header is a tinted band running
+  the card's full width, which an inset table cannot draw — it floats with a gutter on each side and
+  stops reading as the table's top edge. `<Card padded={false} className="overflow-hidden">`, and
+  `rounded-card`/`p-card` so the table and the card footer bleed back by the same named amount.
+- **`--surface-raised` must differ from `--surface` in BOTH themes.** It was `#FFFFFF` in light —
+  byte-identical — so every nested plate in the light theme was invisible: both dashboard gauges,
+  the traffic card, the whole service-health list and eighteen other sites.
+- **The primary button is its own token (`bg-btn`), not the brand ramp.** The design keeps it
+  periwinkle on the dark console and CHARCOAL on the light one, where a saturated blue button beside
+  blue-tinted cards and a blue chart reads as one more chart element rather than the page's action.
+- **The page title lives in the TOP BAR**, portalled there by `<PageHeader>`, which keeps only its
+  actions in the page. Rendered in both places the console said its own name twice in a column and
+  spent two horizontal bands before any content. A page with no shell around it (login, the wizards)
+  falls back to drawing them in place.
+- **A chevron that means "previous"/"next" mirrors with the reading direction** (`rtl:-scale-x-100`).
+  Hardcoded for RTL, the English pager pointed "previous" forward and "next" back.
+- **The count shown before a send and the list the worker walks are ONE query.** `count_audience` and
+  `audience_ids` share `_audience`, so a filter cannot narrow the displayed figure without narrowing
+  the fan-out. Banned users are excluded unconditionally — they can receive nothing, and counting
+  them inflated every pre-flight number.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.
