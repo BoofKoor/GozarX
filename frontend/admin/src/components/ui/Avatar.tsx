@@ -31,6 +31,10 @@ function toneFor(seed: string): string {
 export function initialsFor(name: string): string {
   const trimmed = name.trim();
   if (!trimmed) return "?";
+  // An all-digit identity gets its LAST two digits. Telegram issues ids in order, so they share
+  // their leading digits — and the panel usernames derived from them all start `g`, which made
+  // every circle in a 200-row table read «G» while only the colour carried anything.
+  if (/^\d+$/.test(trimmed)) return trimmed.slice(-2);
   if (/[؀-ۿ]/.test(trimmed)) return trimmed[0];
   return trimmed
     .split(/\s+/)

@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 
 import { Card } from "@/components/ui/Card";
 import { useI18n, type MessageKey } from "@/i18n";
-import { faTime, localizeDigits } from "@/lib/format";
+import { faTime, formatMs } from "@/lib/format";
 import type { HealthStatus, Probe, SystemHealth } from "@/types/api";
 
 const STATUS_META: Record<HealthStatus, { label: MessageKey; ring: string; dot: string }> = {
@@ -16,9 +16,13 @@ function ProbeChip({ label, probe }: { label: string; probe: Probe }) {
   // The reading went out as a raw template — Latin digits, no space before the unit, no isolate —
   // on a page whose every other latency reads «۱۲۴ ms». And the two fallbacks were English literals,
   // which the no-literals test cannot catch because it only looks for Persian.
+  //
+  // `formatMs` rather than a template plus an isolate on the span below: the isolate stops this run
+  // reordering against its neighbours, but inside it the base direction is still RTL, so the digits
+  // and the Latin `ms` swapped and all four chips read «ms ۱۲۴».
   const reading = probe.ok
     ? probe.latency_ms != null
-      ? localizeDigits(`${Math.round(probe.latency_ms)} ms`)
+      ? formatMs(probe.latency_ms)
       : t("sys.status.ok")
     : (probe.detail ?? t("sys.status.down"));
   return (

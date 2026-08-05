@@ -40,13 +40,17 @@ function UsageStat({
   const { t } = useI18n();
   const change = metric?.change_pct ?? null;
   return (
+    // Same reading order as the overview tab's KPI band: the FIGURE first, its label as an eyebrow
+    // underneath, the delta at the floor. Built the other way round — label and icon on top, number
+    // in the middle — the two tabs taught opposite hierarchies one click apart, and the eye had to
+    // relearn where the answer was.
     <Card className="flex flex-col">
-      <div className="flex items-center gap-2 text-content-subtle">
-        <Icon className="h-4 w-4" />
-        <span className="text-[10px] uppercase leading-[1.5] tracking-[0.085em]">{label}</span>
-      </div>
-      <div className="mt-1.5 text-[1.6rem] font-bold leading-tight tracking-[-0.02em] tabular-nums text-content">
+      <div className="text-[1.6rem] font-bold leading-tight tracking-[-0.02em] tabular-nums text-content">
         {value}
+      </div>
+      <div className="mt-1.5 flex items-center gap-1.5 text-content-subtle">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="text-[10px] uppercase leading-[1.5] tracking-[0.085em]">{label}</span>
       </div>
       <div className="mt-auto pt-2.5 text-xs">
         {change === null ? (

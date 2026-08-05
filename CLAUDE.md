@@ -226,6 +226,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `usage_samples` recorder. The figures did not exist before — the panel only ever reported a
   cumulative lifetime counter and a live concurrency reading — so the series starts at deploy and
   the tab says so rather than drawing a line through the time before it was recording.
+18 The panel audited by RENDERING it and probing the result, not by reading it. Seventeen findings,
+  each with a measurement: three bugs («ms ۱۲۴» reading backwards wherever an isolate stood in for
+  `dir`; the website stats page sliding 85px sideways on a phone; the buttons page reorderable only
+  by mouse), one divergence from the artifact (KPI tiles stretching to the hero's height, 98px of
+  nothing in each), the ink tiers lifted to AA, `role="tablist"` made to keep its promise, an edge
+  fade on the scrolling tab strips, the send confirmation made to name the hour it will send at,
+  and every route split so `/login` stops downloading 1.09 MB. `docs/panel/shot.py` plus a handful
+  of `page.evaluate` probes is the loop; the report of the whole pass is the artifact this phase
+  was reviewed against.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -235,6 +244,19 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   tokens.css`; components name a ROLE (`bg-surface`, `text-content-muted`, `border-line`) and the
   theme resolves it. Do not add `dark:` twins for base colours, and never hardcode a hex — charts
   read the same tokens via `lib/chartTheme`.
+- **The ink tiers clear WCAG AA (4.5:1), and that OUTRANKS the mock where the two disagree.** The
+  artifact's `--c-faint`, `--c-muted`, `--c-bad` and `--c-brand-2` are fill colours; used as text
+  they measured 2.65–3.58:1 across the console, on things that are not decoration — the users
+  table's column headers, the page subtitle, every KPI unit, and the word «مسدود» on its own badge.
+  `--text-subtle`, `--text-muted`, `--danger-700`, `--warning-700` and `--brand-700` are therefore
+  LIFTED off the mock's values, measured against the LIGHTEST ground each lands on
+  (`--surface-raised` in dark, `--bg` in light). Two knowingly stay below: the primary button's
+  white-on-periwinkle (3.63:1 — the design's single most identity-carrying colour, and moving it
+  is the owner's call, not a bug fix) and an avatar's decorative initial, whose text is repeated
+  beside it. **Brand-coloured TEXT uses `text-brand-700`, the ramp's ink shade — `text-brand` is
+  the FILL shade** and reads 2.5–3.6:1 as type; the 2px underline on an active tab keeps the fill.
+  Re-measure with a real browser rather than by eye: a probe that walks every visible text run
+  against its computed background is the only thing that finds these.
 - **The panel is bilingual (fa/en).** No user-facing literal lives in a component: strings go in
   `src/i18n/messages.ts` and are read with `useI18n().t(key)`. The English map is typed against the
   Persian one, so a missing translation fails `tsc` rather than shipping. Direction follows the
@@ -251,6 +273,16 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   over the limit, and a `0.5 · 0.6` load average silently transposed its two figures. Such a pair
   needs `dir="ltr"` on its own inline span. Two measurements that must not mix (a percentage beside
   its `2.8 GB / 7.5 GB` hint) belong in separate FLEX ITEMS, not one inline run.
+- **A "<number> <LATIN UNIT>" string carries its own isolate — and an isolate on the ELEMENT is not
+  a substitute.** `unicode-bidi: isolate` stops a run reordering against its neighbours, but INSIDE
+  it the base direction is still RTL, so «۱۲۴ ms» kept rendering as «ms ۱۲۴» in the dashboard's
+  health list and all four of the system page's probe chips — a latency the same page printed
+  correctly one card away, because that card used `dir="ltr"`. Build the string with a formatter
+  (`formatMs`); there is no third place to put the fix.
+- **A unit is copy, so it follows the LOCALE.** `humanUptime` returned `${d}d ${h}h` — «۳d ۴h» in a
+  Persian console — and `no-literals` cannot catch it, because it only looks for Persian and
+  `d`/`h`/`m` are not. `lib/format` owns the locale tables, which is why those words live there
+  rather than in `messages.ts`.
 - **A "<number> <LATIN UNIT>" string carries its own isolate.** `formatMb`/`humanBytes`/
   `humanUptime` wrap their result in FSI…PDI (`\u2068`…`\u2069`), because they are plain functions
   whose output lands inside Persian sentences at ~40 call sites — «۱ GB» rendered as «GB ۱», the
@@ -319,7 +351,33 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   link inside in the tab order (nine of them, on a phone, before the page).
 - **A row that opens something is a control.** `<TR onClick>` gives it `tabIndex`, `role="button"`,
   Enter/Space and a `label` naming the record — without them the whole table is mouse-only, which
-  on Users and Devices meant no record could be opened by keyboard at all.
+  on Users and Devices meant no record could be opened by keyboard at all. A `<Table>` also takes a
+  `label`: without one the browser's table list says «جدول» and nothing else.
+- **`role="tablist"` is a PROMISE**, and `Tabs` keeps all of it: roving tabindex (one stop for the
+  strip), arrows that swap with the reading direction, Home/End, and `aria-controls` pointing at a
+  real `role="tabpanel"`. Half-kept — the roles and `aria-selected` without the behaviour — is worse
+  than not claiming the role: a screen reader announces "tab, 1 of 7" and tells the operator to
+  press an arrow key that does nothing, and the seventh tab still costs seven presses of Tab.
+- **Passing an explicit sensor list to dnd-kit REPLACES the defaults.** `useSensors(useSensor(
+  PointerSensor))` silently dropped `KeyboardSensor`, so the buttons page — whose entire job is
+  reordering — was mouse-only while its handles kept announcing themselves as sortable. A sortable
+  list needs `KeyboardSensor` with `sortableKeyboardCoordinates`, or the arrows nudge by pixels
+  instead of stepping between items.
+- **A scrolling strip says that it scrolls.** `Tabs`/`NavTabs` fade the edge that still has content
+  behind it (a `mask-image`, measured from `scrollLeft` physically — RTL Chromium counts DOWN from
+  0, so one "distance from the start" number fades the wrong edge in one of the two directions).
+  `scrollbar-thin` is invisible under the overlay scrollbars every touch device uses: on a phone
+  345px of the dashboard's tab strip and 588px of the website's were simply gone, with three and
+  five tabs behind them.
+- **Every route is `React.lazy`.** `manualChunks` splits the vendors, not the pages, so the console
+  shipped as one module — and because the dashboard imports recharts at the top level, the 434 KB
+  charts chunk came with it: 1.09 MB of JavaScript before the LOGIN form could draw two inputs and
+  a button. The shell stays eager, since it renders the Suspense fallback.
+- **A flex row that must not overflow needs `min-w-0`, not `shrink-0`.** `<Section>`'s title block
+  could not give way, so a long title plus a badge measured 460px in a 358px column — and because
+  `<main>` scrolls vertically, the browser computes the other axis from `visible` to `auto` too and
+  the whole page slid sideways. `document.scrollWidth` stays at the viewport width the entire time,
+  so a document-level overflow probe reports nothing: measure the SCROLLER.
 - **Don't gate focusability on layout.** `offsetParent` is null for any `position: fixed` element —
   which every dialog panel is — and for everything under jsdom, where it silently empties the
   focusable list and makes the trap untestable. Read hidden-ness from attributes.

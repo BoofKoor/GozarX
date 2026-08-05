@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useI18n } from "@/i18n";
-import { faDateTime, formatNumber, localizeDigits } from "@/lib/format";
+import { faDateTime, formatMs, formatNumber } from "@/lib/format";
 import type { Probe, WebhookHealth } from "@/types/api";
 
 export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; telegram: Probe }) {
@@ -43,11 +43,11 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
         <Row
           label={t("sys.wh.latency")}
           value={
+            // `88 ms` reordered to `ms 88` beside Persian — a unit belongs after its number.
+            // The isolate now travels with the string (`formatMs`), so this is the same reading
+            // the dashboard's health list and the probe chips print, formatted in one place.
             telegram.latency_ms != null ? (
-              // `88 ms` reordered to `ms 88` beside Persian — a unit belongs after its number.
-              <span dir="ltr" className="tabular-nums">
-                {localizeDigits(String(telegram.latency_ms))} ms
-              </span>
+              <span className="tabular-nums">{formatMs(telegram.latency_ms)}</span>
             ) : (
               "—"
             )

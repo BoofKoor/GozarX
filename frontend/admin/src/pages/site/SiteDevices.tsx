@@ -154,7 +154,7 @@ export function SiteDevices() {
             />
           </div>
         ) : (
-          <Table minWidth="min-w-[720px]">
+          <Table label={t("sd.table.aria")} minWidth="min-w-[720px]">
             <THead>
               <TR>
                 <TH>{t("sd.col.handle")}</TH>

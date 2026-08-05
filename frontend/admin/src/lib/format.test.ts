@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 
 import {
   faDate,
+  faRelative,
   formatMb,
+  formatMs,
   formatNumber,
   humanBytes,
   humanHours,
+  humanUptime,
   localizeDigits,
   shortDay,
   splitLocations,
@@ -19,6 +22,31 @@ describe("format helpers", () => {
     expect(formatMb(512)).toBe("\u2068۵۱۲ MB\u2069");
     expect(formatMb(1024)).toBe("\u2068۱ GB\u2069");
     expect(formatMb(1536)).toBe("\u2068۱٫۵ GB\u2069"); // Persian decimal mark, not an ASCII dot
+  });
+
+  it("isolates a latency the same way, so «۱۲۴ ms» stops rendering as «ms ۱۲۴»", () => {
+    // The three call sites used to build this string by hand and put `unicode-bidi: isolate` on the
+    // element instead. An isolate does not change the base direction INSIDE itself, so the digits
+    // and the Latin unit still swapped — on the dashboard's health list and all four probe chips.
+    expect(formatMs(124)).toBe("⁨۱۲۴ ms⁩");
+    expect(formatMs(87.6)).toBe("⁨۸۸ ms⁩");
+  });
+
+  it("says the uptime unit in the panel's own language", () => {
+    // `${d}d ${h}h` put Latin letters in a Persian console, and `no-literals` cannot catch it —
+    // it only looks for Persian, and `d`/`h`/`m` are not.
+    expect(humanUptime(3 * 86400 + 4 * 3600)).toBe("⁨۳ روز ۴ ساعت⁩");
+    expect(humanUptime(5 * 3600 + 12 * 60)).toBe("⁨۵ ساعت ۱۲ دقیقه⁩");
+    expect(humanUptime(90)).toBe("⁨۱ دقیقه⁩");
+  });
+
+  it("carries a rounded-up relative time into the next unit", () => {
+    // 23.6 hours is under a day, so it fell into the hour bucket and rounded to 24 — «۲۴ ساعت پیش»
+    // in the same column as «دیروز», two sentences for one distance.
+    const ago = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+    expect(faRelative(ago(23.6))).toBe("دیروز");
+    expect(faRelative(ago(24))).toBe("دیروز");
+    expect(faRelative(ago(20))).toBe("۲۰ ساعت پیش");
   });
 
   it("uses the locale's decimal mark, so ۳٫۱ TB matches the ۳۷٫۵٪ beside it", () => {

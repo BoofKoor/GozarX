@@ -16,16 +16,21 @@ import type { ReactNode, ThHTMLAttributes, TdHTMLAttributes } from "react";
 export function Table({
   children,
   className,
+  label,
   minWidth = "min-w-[640px]",
 }: {
   children: ReactNode;
   className?: string;
+  /** What the table LISTS. Without it a screen reader's table list says only "table". */
+  label?: string;
   /** Below this width the wrapper scrolls instead of squashing columns. */
   minWidth?: string;
 }) {
   return (
     <div className={clsx("scrollbar-thin overflow-x-auto", className)}>
-      <table className={clsx("w-full border-collapse text-sm", minWidth)}>{children}</table>
+      <table aria-label={label} className={clsx("w-full border-collapse text-sm", minWidth)}>
+        {children}
+      </table>
     </div>
   );
 }
@@ -91,13 +96,13 @@ export function TH({
   className,
   ...rest
 }: ThHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
+  // `content-muted`, not `content-subtle`: a column header explains the table's structure, so it
+  // belongs a tier above the quietest one. Drawn in `subtle` on the header's own tinted band it
+  // measured 2.65:1 — fainter than the data it labels.
   return (
     <th
       scope="col"
-      className={clsx(
-        "px-4 py-2.5 text-start text-xs font-semibold text-content-subtle",
-        className,
-      )}
+      className={clsx("px-4 py-2.5 text-start text-xs font-semibold text-content-muted", className)}
       {...rest}
     >
       {children}
