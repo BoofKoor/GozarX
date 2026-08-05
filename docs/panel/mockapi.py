@@ -346,7 +346,7 @@ SITE_MESSAGES = {
          "created_at": "2026-08-02T11:00:00Z"}
         for i in range(1, 7)
     ],
-    "total": 6, "page": 1, "page_size": 20, "unread": 3,
+    "total": 6, "matching": 6, "page": 1, "page_size": 20, "unread": 3,
 }
 
 # Snippets the shell can run once the app has mounted, to reach a state a screenshot needs.
