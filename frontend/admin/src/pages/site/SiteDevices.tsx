@@ -134,19 +134,25 @@ export function SiteDevices() {
         </div>
       )}
 
-      <Card>
+      {/* Unpadded and clipped: the table is flush with the card so its header band can run the
+          full width, exactly as on Users. */}
+      <Card padded={false} className="overflow-hidden">
         {isError && !data ? (
-          <ErrorState compact onRetry={() => refetch()} />
+          <div className="p-card">
+            <ErrorState compact onRetry={() => refetch()} />
+          </div>
         ) : isLoading ? (
           <div className="flex justify-center py-12">
             <Spinner className="h-7 w-7 text-brand" />
           </div>
         ) : !data || data.items.length === 0 ? (
-          <EmptyState
-            icon={MonitorSmartphone}
-            title={t("sd.empty")}
-            message={search || status || ipBucket ? t("sd.empty.filtered") : t("sd.empty.none")}
-          />
+          <div className="p-card">
+            <EmptyState
+              icon={MonitorSmartphone}
+              title={t("sd.empty")}
+              message={search || status || ipBucket ? t("sd.empty.filtered") : t("sd.empty.none")}
+            />
+          </div>
         ) : (
           <Table minWidth="min-w-[720px]">
             <THead>
@@ -198,7 +204,9 @@ export function SiteDevices() {
             </TBody>
           </Table>
         )}
-        <Pagination page={page} totalPages={pages} onChange={setPage} className="mt-4" />
+        <div className="border-t border-line px-card py-2">
+          <Pagination page={page} totalPages={pages} onChange={setPage} />
+        </div>
       </Card>
     </div>
   );

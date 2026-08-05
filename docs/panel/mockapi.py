@@ -100,11 +100,12 @@ HEALTH = {
 }
 
 LANG_POP = {"fa": 5240, "en": 2010, "ru": 1162}
+CLAIM_LOCATIONS = ["Finland", "France", "Germany", "Netherlands", "Sweden"]
 NAMES = ["gozar_7f3a", "gozar_91be", "gozar_c4d2", "gozar_5a10", "gozar_ee77",
          "gozar_2b93", "gozar_84fc", "gozar_16d5", None, "gozar_a0b1"]
 STATUSES = ["available", "active_config", "banned", "available", "active_config"]
 
-def users_page(page, size, status, search):
+def users_page(page, size, status, search, location=None):
     rows = []
     for i in range(200):
         rows.append({
@@ -117,15 +118,43 @@ def users_page(page, size, status, search):
             "referred_by": 5_000_000_000 if i % 4 == 0 else None,
             "created_at": f"2026-0{1 + i % 7}-{1 + i % 27:02d}T09:{i % 60:02d}:00Z",
             "configs": (i * 3) % 19,
+            # Every fifth user has never claimed, so the column has a real "—" in it.
+            "last_location": None if i % 5 == 4 else CLAIM_LOCATIONS[i % len(CLAIM_LOCATIONS)],
         })
     if status:
         rows = [r for r in rows if r["status"] == status]
     if search:
         rows = [r for r in rows if search in str(r["telegram_id"])
                 or (r["panel_username"] or "").find(search) >= 0]
+    if location:
+        rows = [r for r in rows if r["last_location"] == location]
     start = (page - 1) * size
     return {"items": rows[start:start + size], "total": len(rows),
             "page": page, "page_size": size}
+
+
+def user_detail(uid):
+    """The record dialog's payload — same shape as UserDetailOut."""
+    from datetime import date, timedelta
+    today = date(2026, 8, 4)
+    return {
+        "telegram_id": uid, "status": "active_config", "language": "fa",
+        "referral_count": 27, "panel_username": "gozar_7f3a", "reminder_enabled": True,
+        "referred_by": 5_000_000_000, "created_at": "2026-03-14T09:20:00Z", "configs": 11,
+        "last_location": "Germany",
+        "claims_series": [
+            {"day": (today - timedelta(days=29 - i)).isoformat(),
+             "count": max(0, int(2 + 2 * math.sin(i / 3.0)) + (i % 3 == 0))}
+            for i in range(30)
+        ],
+        "recent_claims": [
+            {"location": "Finland", "created_at": "2026-08-04T16:10:00Z"},
+            {"location": "Germany", "created_at": "2026-08-03T19:40:00Z"},
+            {"location": "Germany", "created_at": "2026-08-02T20:05:00Z"},
+            {"location": "Netherlands", "created_at": "2026-07-31T18:20:00Z"},
+        ],
+        "traffic_bytes": 9_400_000_000,
+    }
 
 
 TEXT_KEYS = [
@@ -417,7 +446,19 @@ class H(http.server.SimpleHTTPRequestHandler):
         if u.path == "/api/admin/users/":
             return self._json(users_page(int(q.get("page", ["1"])[0]),
                                          int(q.get("page_size", ["25"])[0]),
-                                         q.get("status", [""])[0], q.get("search", [""])[0]))
+                                         q.get("status", [""])[0], q.get("search", [""])[0],
+                                         q.get("location", [""])[0]))
+        if u.path == "/api/admin/users/locations":
+            return self._json(CLAIM_LOCATIONS)
+        if u.path == "/api/admin/users/export.csv":
+            body = "telegram_id,status,language,referrals,panel_username,location,joined\n"
+            self.send_response(200)
+            self.send_header("Content-Type", "text/csv; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers(); self.wfile.write(body.encode()); return
+        if u.path.startswith("/api/admin/users/") and u.path.endswith("/detail"):
+            uid = int(u.path.split("/")[-2])
+            return self._json(user_detail(uid))
         if u.path.startswith("/api/admin/users/"):
             uid = int(u.path.rsplit("/", 1)[-1])
             return self._json({"telegram_id": uid, "status": "active_config", "language": "fa",

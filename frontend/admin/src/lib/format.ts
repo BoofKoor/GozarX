@@ -127,6 +127,44 @@ export function faTime(iso: string): string {
   ).format(d);
 }
 
+/**
+ * ISO datetime → how long ago, in the panel's language ("۲ ساعت پیش" / "2 hours ago").
+ *
+ * `Intl.RelativeTimeFormat` rather than a hand-built table: it already knows Persian's plural rules
+ * and its own numerals, so the string never has a Latin digit in it and never has to be pluralised
+ * by hand. The unit is the largest one the gap fills, because "۹۰ دقیقه پیش" is a worse answer than
+ * "۲ ساعت پیش" to the question the timeline is asking.
+ */
+const _UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ["year", 365 * 24 * 3600],
+  ["month", 30 * 24 * 3600],
+  ["day", 24 * 3600],
+  ["hour", 3600],
+  ["minute", 60],
+];
+
+export function faRelative(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const seconds = (d.getTime() - Date.now()) / 1000;
+  const fmt = memoRelative();
+  for (const [unit, span] of _UNITS) {
+    if (Math.abs(seconds) >= span) return fmt.format(Math.round(seconds / span), unit);
+  }
+  return fmt.format(Math.round(seconds), "second");
+}
+
+const _relCache = new Map<string, Intl.RelativeTimeFormat>();
+function memoRelative(): Intl.RelativeTimeFormat {
+  const tag = localeTag();
+  const hit = _relCache.get(tag);
+  if (hit) return hit;
+  const made = new Intl.RelativeTimeFormat(tag, { numeric: "auto" });
+  _relCache.set(tag, made);
+  return made;
+}
+
 /** ISO datetime → date + clock time, in the panel's language. */
 export function faDateTime(iso: string): string {
   const d = new Date(iso);

@@ -2,9 +2,16 @@ import { clsx } from "clsx";
 import type { ReactNode, ThHTMLAttributes, TdHTMLAttributes } from "react";
 
 /**
- * Table primitives. The wrapper owns the horizontal scroll so a wide table never forces the whole
- * page to scroll sideways (which it did on mobile), and the header stays put while long lists
- * scroll inside their own container.
+ * Table primitives.
+ *
+ * The wrapper owns the horizontal scroll so a wide table never forces the whole page to scroll
+ * sideways (which it did on mobile), and the header stays put while long lists scroll inside their
+ * own container.
+ *
+ * A table is FLUSH with its card: the design gives the header its own tinted band running the full
+ * width, which an inset table cannot draw — the band would float with a gutter on each side and
+ * stop reading as the table's own top edge. So the card holds no padding and the table's own cell
+ * padding is the inset. Put a table in `<Card padded={false} className="overflow-hidden">`.
  */
 export function Table({
   children,
@@ -17,14 +24,16 @@ export function Table({
   minWidth?: string;
 }) {
   return (
-    <div className={clsx("scrollbar-thin -mx-card overflow-x-auto px-card", className)}>
+    <div className={clsx("scrollbar-thin overflow-x-auto", className)}>
       <table className={clsx("w-full border-collapse text-sm", minWidth)}>{children}</table>
     </div>
   );
 }
 
 export function THead({ children }: { children: ReactNode }) {
-  return <thead className="sticky top-0 z-10 bg-surface">{children}</thead>;
+  // A band, not a bare row. `bg-surface` is the CARD's colour, so the header was invisible and the
+  // first data row read as the header.
+  return <thead className="sticky top-0 z-10 bg-surface-raised">{children}</thead>;
 }
 
 export function TBody({ children }: { children: ReactNode }) {
@@ -67,7 +76,7 @@ export function TR({
       aria-label={activatable ? label : undefined}
       className={clsx(
         activatable && "cursor-pointer focus-visible:relative focus-visible:z-10",
-        selected ? "bg-brand/[0.07]" : activatable && "hover:bg-surface-hover",
+        selected ? "bg-brand/15" : activatable && "hover:bg-surface-hover",
         "transition-colors",
         className,
       )}
@@ -86,7 +95,7 @@ export function TH({
     <th
       scope="col"
       className={clsx(
-        "border-b border-line px-3 py-2.5 text-start text-xs font-semibold text-content-muted",
+        "px-4 py-2.5 text-start text-xs font-semibold text-content-subtle",
         className,
       )}
       {...rest}
@@ -102,7 +111,7 @@ export function TD({
   ...rest
 }: TdHTMLAttributes<HTMLTableCellElement> & { children?: ReactNode }) {
   return (
-    <td className={clsx("px-3 py-2.5 align-middle text-content", className)} {...rest}>
+    <td className={clsx("px-4 py-2.5 align-middle text-content", className)} {...rest}>
       {children}
     </td>
   );

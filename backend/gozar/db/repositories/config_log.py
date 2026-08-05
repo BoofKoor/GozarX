@@ -86,6 +86,68 @@ class ConfigLogRepository(BaseRepository):
         )
         return [(loc, int(n)) for loc, n in rows.all()]
 
+    async def distinct_locations(self, limit: int = 100) -> list[str]:
+        """Every location a config has ever been claimed from, alphabetically.
+
+        Drawn from `config_logs`, not from the configured location list: the filter must offer what
+        the data actually contains, or picking a freshly-configured location returns an empty table
+        and picking a retired one is impossible.
+        """
+        rows = await self.session.execute(
+            select(ConfigLog.location).distinct().order_by(ConfigLog.location).limit(limit)
+        )
+        return [loc for (loc,) in rows.all() if loc]
+
+    async def latest_locations(self, user_ids: list[int]) -> dict[int, str]:
+        """The location of each listed user's most recent claim, in ONE query.
+
+        The alternative — a query per row — is 25 round trips to paint one page of the users table.
+        """
+        if not user_ids:
+            return {}
+        latest = (
+            select(
+                ConfigLog.user_id.label("user_id"),
+                ConfigLog.location.label("location"),
+                func.row_number()
+                .over(
+                    partition_by=ConfigLog.user_id,
+                    # id breaks the tie: two claims can share a timestamp to the microsecond after a
+                    # reclaim, and an unstable pick would make the column flicker between reloads.
+                    order_by=(ConfigLog.created_at.desc(), ConfigLog.id.desc()),
+                )
+                .label("rn"),
+            )
+            .where(ConfigLog.user_id.in_(user_ids))
+            .subquery()
+        )
+        rows = await self.session.execute(
+            select(latest.c.user_id, latest.c.location).where(latest.c.rn == 1)
+        )
+        return {int(uid): loc for uid, loc in rows.all()}
+
+    async def recent_for_user(self, user_id: int, limit: int = 6) -> list[ConfigLog]:
+        """A user's most recent claims, newest first — the record dialog's timeline."""
+        rows = await self.session.scalars(
+            select(ConfigLog)
+            .where(ConfigLog.user_id == user_id)
+            .order_by(ConfigLog.created_at.desc(), ConfigLog.id.desc())
+            .limit(limit)
+        )
+        return list(rows.all())
+
+    async def daily_counts_for_user(self, user_id: int, since: datetime) -> list[tuple[str, int]]:
+        """One user's claims per LOCAL day — the record dialog's mini chart. Same day boundary as
+        every other reported day, so the row and the dashboard cannot disagree about a date."""
+        day = func.date(func.timezone(DISPLAY_TZ_NAME, ConfigLog.created_at)).label("day")
+        rows = await self.session.execute(
+            select(day, func.count())
+            .where(ConfigLog.user_id == user_id, ConfigLog.created_at >= since)
+            .group_by(day)
+            .order_by(day)
+        )
+        return [(d.isoformat(), int(n)) for d, n in rows.all()]
+
     async def delete_for_user_since(self, user_id: int, since: datetime) -> int:
         """Drop a user's claims at or after ``since`` — the admin 'reclaim' action clears today's
         guard so the user can claim again. Returns the number of rows removed."""

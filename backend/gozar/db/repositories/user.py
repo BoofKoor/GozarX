@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy import String, bindparam, cast, delete, func, or_, select
 from sqlalchemy.sql import Select
 
 from gozar.config.reporting import DISPLAY_TZ_NAME
@@ -14,15 +14,41 @@ from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
 
 
-def _filtered(stmt: Select, status: UserStatus | None, search: str | None) -> Select:
-    """Apply the admin user-list filters: optional status + a substring search over telegram_id
-    (matched as text) or panel_username. Shared by the page query and its count."""
+def _latest_claim_location() -> Select:
+    """`(user_id, location)` for every user's MOST RECENT claim.
+
+    "Which location is this user on" is the latest claim, not any claim: a user who tried Germany
+    once and has been on Finland ever since must not appear under Germany.
+    """
+    ranked = select(
+        ConfigLog.user_id.label("user_id"),
+        ConfigLog.location.label("location"),
+        func.row_number()
+        .over(
+            partition_by=ConfigLog.user_id,
+            order_by=(ConfigLog.created_at.desc(), ConfigLog.id.desc()),
+        )
+        .label("rn"),
+    ).subquery()
+    return select(ranked.c.user_id).where(ranked.c.rn == 1, ranked.c.location == bindparam("loc"))
+
+
+def _filtered(
+    stmt: Select, status: UserStatus | None, search: str | None, location: str | None = None
+) -> Select:
+    """Apply the admin user-list filters: optional status, a substring search over telegram_id
+    (matched as text) or panel_username, and the user's current location. Shared by the page query,
+    its count and the CSV export, so the three can never disagree about what "matching" means."""
     if status is not None:
         stmt = stmt.where(User.status == status)
     if search and search.strip():
         like = f"%{search.strip()}%"
         stmt = stmt.where(
             or_(cast(User.telegram_id, String).ilike(like), User.panel_username.ilike(like))
+        )
+    if location and location.strip():
+        stmt = stmt.where(
+            User.telegram_id.in_(_latest_claim_location().params(loc=location.strip()))
         )
     return stmt
 
@@ -80,9 +106,10 @@ class UserRepository(BaseRepository):
         offset: int,
         status: UserStatus | None = None,
         search: str | None = None,
+        location: str | None = None,
     ) -> list[User]:
-        """A page of users (newest first) for the admin panel, with optional status + search."""
-        stmt = _filtered(select(User), status, search)
+        """A page of users (newest first), with optional status / search / location filters."""
+        stmt = _filtered(select(User), status, search, location)
         # telegram_id (PK) tiebreak: created_at can tie for users who ran /start in the same second,
         # and without a unique tiebreak LIMIT/OFFSET paging would drop/duplicate them across pages.
         stmt = stmt.order_by(User.created_at.desc(), User.telegram_id.desc())
@@ -91,10 +118,14 @@ class UserRepository(BaseRepository):
         return list(result.all())
 
     async def count_filtered(
-        self, *, status: UserStatus | None = None, search: str | None = None
+        self,
+        *,
+        status: UserStatus | None = None,
+        search: str | None = None,
+        location: str | None = None,
     ) -> int:
-        """Total rows matching the same status + search filter — drives the page count."""
-        stmt = _filtered(select(func.count()).select_from(User), status, search)
+        """Total rows matching the same filter — drives the page count."""
+        stmt = _filtered(select(func.count()).select_from(User), status, search, location)
         return int(await self.session.scalar(stmt) or 0)
 
     async def count_created_since(self, since: datetime) -> int:

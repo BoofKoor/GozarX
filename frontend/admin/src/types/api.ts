@@ -171,6 +171,17 @@ export interface BotUser {
   referred_by: number | null;
   created_at: string | null;
   configs: number | null;
+  /** Where this user's LATEST claim came from — null until they have claimed once. */
+  last_location: string | null;
+}
+
+/** The record dialog's payload: the row, plus this user's history and live usage. */
+export interface BotUserDetail extends BotUser {
+  claims_series: DayPoint[];
+  recent_claims: { location: string; created_at: string }[];
+  /** Read live from the panel. NULL when there is no panel account or the panel did not answer —
+   *  never a zero standing in for "unknown". */
+  traffic_bytes: number | null;
 }
 
 export interface UserPage {
@@ -185,6 +196,7 @@ export interface UserListParams {
   page_size?: number;
   status?: string;
   search?: string;
+  location?: string;
 }
 
 export type UserAction = "ban" | "unban" | "reclaim" | "zero_referrals";

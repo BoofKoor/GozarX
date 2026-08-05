@@ -1,7 +1,8 @@
-import { Gift, Search, Ticket, UserX } from "lucide-react";
+import { Database, Download, Gift, MapPin, Search, Ticket, UserX } from "lucide-react";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { MiniTrend } from "@/components/charts/MiniTrend";
 import { Avatar } from "@/components/ui/Avatar";
 import { Badge, type BadgeTone } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -13,12 +14,19 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { RecordDialog } from "@/components/ui/RecordDialog";
 import { Segmented } from "@/components/ui/Segmented";
+import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import { useConfirm } from "@/components/ui/confirm";
-import { useUser, useUserAction, useUsers } from "@/hooks/useUsers";
+import {
+  downloadUsersCsv,
+  useClaimedLocations,
+  useUser,
+  useUserAction,
+  useUsers,
+} from "@/hooks/useUsers";
 import { useI18n, type MessageKey } from "@/i18n";
-import { faDate, formatNumber, langLabel } from "@/lib/format";
+import { faDate, faRelative, formatNumber, humanBytes, langLabel } from "@/lib/format";
 import type { UserAction } from "@/types/api";
 
 const STATUS: Record<string, { key: MessageKey; tone: BadgeTone }> = {
@@ -39,18 +47,25 @@ export function Users() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
+  const [location, setLocation] = useState("");
   const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<number | null>(null);
+  const [exporting, setExporting] = useState(false);
   const deferredSearch = useDeferredValue(search);
 
-  useEffect(() => setPage(1), [status, deferredSearch]);
+  useEffect(() => setPage(1), [status, location, deferredSearch]);
 
+  const query = {
+    status: status || undefined,
+    search: deferredSearch || undefined,
+    location: location || undefined,
+  };
   const { data, isLoading, isError, refetch } = useUsers({
     page,
     page_size: PAGE_SIZE,
-    status: status || undefined,
-    search: deferredSearch || undefined,
+    ...query,
   });
+  const { data: locations } = useClaimedLocations();
 
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
@@ -61,11 +76,24 @@ export function Users() {
     { value: "banned", label: t("users.status.banned") },
   ];
 
+  async function exportCsv() {
+    setExporting(true);
+    try {
+      // The CURRENT filter, not the whole table: an operator narrows to a case and then wants that
+      // case out, and an export that ignored the filters answers a different question.
+      await downloadUsersCsv(query);
+    } catch {
+      toast.error(t("users.export.failed"));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader title={t("users.title")} sub={t("users.sub", { n: formatNumber(total) })}>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-[240px] flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-[220px] flex-1">
             <Input
               aria-label={t("users.searchAria")}
               icon={<Search className="h-4 w-4" />}
@@ -81,6 +109,26 @@ export function Users() {
             size="sm"
             ariaLabel={t("users.filterAria")}
           />
+          {/* A select, not a segmented control: the location set is however many the squad serves,
+              and it comes from the CLAIMS — offering a location nobody has ever claimed from would
+              hand back an empty table. */}
+          <Select
+            aria-label={t("users.filter.location")}
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="h-9 w-auto min-w-[9rem] py-0 text-xs"
+          >
+            <option value="">{t("users.filter.locationAll")}</option>
+            {(locations ?? []).map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </Select>
+          <Button size="sm" onClick={exportCsv} loading={exporting}>
+            <Download className="h-4 w-4" />
+            {t("users.export")}
+          </Button>
         </div>
       </PageHeader>
 
@@ -88,25 +136,34 @@ export function Users() {
           have no reason to run on a closed panel. */}
       {detailId != null && <UserDetail id={detailId} onClose={() => setDetailId(null)} />}
 
-      <Card padded={false} className="p-5">
+      {/* Unpadded and clipped, so the header band runs the full width of the card and the table's
+          own cell padding is the inset. */}
+      <Card padded={false} className="overflow-hidden">
         {isError && !data ? (
-          <ErrorState compact onRetry={() => refetch()} />
+          <div className="p-card">
+            <ErrorState compact onRetry={() => refetch()} />
+          </div>
         ) : isLoading ? (
           <div className="flex justify-center py-12">
             <Spinner className="h-7 w-7 text-brand" />
           </div>
         ) : !data || data.items.length === 0 ? (
-          <EmptyState
-            icon={UserX}
-            title={t("users.empty.title")}
-            message={search || status ? t("users.empty.filtered") : t("users.empty.none")}
-          />
+          <div className="p-card">
+            <EmptyState
+              icon={UserX}
+              title={t("users.empty.title")}
+              message={
+                search || status || location ? t("users.empty.filtered") : t("users.empty.none")
+              }
+            />
+          </div>
         ) : (
           <Table>
             <THead>
               <TR>
                 <TH>{t("users.col.user")}</TH>
                 <TH>{t("users.col.status")}</TH>
+                <TH>{t("users.col.location")}</TH>
                 <TH>{t("users.col.invites")}</TH>
                 <TH>{t("users.col.panel")}</TH>
                 <TH>{t("users.col.joined")}</TH>
@@ -136,6 +193,9 @@ export function Users() {
                   <TD>
                     <StatusBadge status={u.status} />
                   </TD>
+                  <TD className="whitespace-nowrap text-sm text-content-muted">
+                    {u.last_location ?? "—"}
+                  </TD>
                   <TD className="tabular-nums">{formatNumber(u.referral_count)}</TD>
                   <TD className="font-mono text-xs text-content-muted" dir="ltr">
                     {u.panel_username ?? "—"}
@@ -149,7 +209,9 @@ export function Users() {
           </Table>
         )}
 
-        <Pagination page={page} totalPages={pages} onChange={setPage} className="mt-4" />
+        <div className="border-t border-line px-card py-2">
+          <Pagination page={page} totalPages={pages} onChange={setPage} />
+        </div>
       </Card>
     </div>
   );
@@ -191,6 +253,16 @@ function StatTile({
   );
 }
 
+/** A titled block inside the dialog — the label the design puts above each section. */
+function Section({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs font-semibold text-content-subtle">{title}</div>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
+}
+
 function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const { t } = useI18n();
   const { data: user, isLoading } = useUser(id);
@@ -216,6 +288,8 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
       },
     );
   }
+
+  const series = user?.claims_series ?? [];
 
   return (
     <RecordDialog
@@ -278,13 +352,46 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
               value={formatNumber(user.referral_count)}
               label={t("users.stat.invites")}
             />
+            {/* NULL is not zero. The panel not answering is a different fact from "used nothing",
+                and a 0 GB here would be read as the second. */}
             <StatTile
-              icon={UserX}
+              icon={Database}
               tone="bg-chart-4/20 text-chart-4"
-              value={<span className="text-sm">{faDate(user.created_at)}</span>}
-              label={t("users.stat.joined")}
+              value={
+                user.traffic_bytes == null ? (
+                  <span className="text-xs font-normal text-content-subtle">
+                    {t("users.stat.trafficUnknown")}
+                  </span>
+                ) : (
+                  <span className="text-base">{humanBytes(user.traffic_bytes)}</span>
+                )
+              }
+              label={t("users.stat.traffic")}
             />
           </div>
+
+          {series.length > 1 && (
+            <Section title={t("users.detail.claims30")}>
+              <MiniTrend values={series.map((d) => d.count)} ariaLabel={t("users.detail.spark")} />
+            </Section>
+          )}
+
+          <Section title={t("users.detail.recent")}>
+            {user.recent_claims.length === 0 ? (
+              <p className="text-sm text-content-subtle">{t("users.detail.noClaims")}</p>
+            ) : (
+              <ul className="flex flex-col gap-1.5">
+                {user.recent_claims.map((c, i) => (
+                  <li key={i} className="flex items-center gap-2.5 text-sm">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-brand" aria-hidden />
+                    <span className="text-content">{c.location}</span>
+                    <span className="flex-1" />
+                    <time className="text-xs text-content-subtle">{faRelative(c.created_at)}</time>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Section>
 
           <div>
             <DetailRow

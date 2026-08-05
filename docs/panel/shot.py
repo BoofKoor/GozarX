@@ -97,7 +97,10 @@ def main() -> int:
             url = f"{args.base}/{path}?{query}{sep}theme={args.theme}&locale={args.locale}"
             page.goto(url, wait_until="networkidle")
             page.wait_for_timeout(args.settle_ms)
-            name = (path or "index").replace("/", "-").replace("?", "-")
+            # The fill is part of the NAME, not just the URL: `users` and `users?fill=user` are two
+            # different captures, and without it the second silently overwrote the first.
+            fill = dict(p.split("=", 1) for p in query.split("&") if "=" in p).get("fill", "")
+            name = (path or "index").replace("/", "-") + (f"-{fill}" if fill else "")
             dest = out / f"{name}-{args.theme}-{args.locale}-{args.width}.png"
             page.screenshot(path=str(dest), full_page=args.full_page)
             overflow = page.evaluate("document.documentElement.scrollWidth - innerWidth")
