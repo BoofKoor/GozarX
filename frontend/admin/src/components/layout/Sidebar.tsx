@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { LogOut, X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
@@ -76,6 +76,19 @@ export function Sidebar() {
 export function MobileNav({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { pathname } = useLocation();
   const { t } = useI18n();
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  // `inert`, not just `aria-hidden`. The closed drawer stays mounted so it can slide, and
+  // `pointer-events-none` only stops the MOUSE — every link inside remained in the tab order, so on
+  // a phone Tab walked through ten invisible nav items before reaching the page. (An `aria-hidden`
+  // subtree containing focusables is an ARIA violation for exactly this reason: focus lands on
+  // something the screen reader announces as nothing.) `inert` removes both at once.
+  useEffect(() => {
+    const el = shellRef.current;
+    if (!el) return;
+    if (open) el.removeAttribute("inert");
+    else el.setAttribute("inert", "");
+  }, [open]);
 
   // Close whenever the route changes (covers programmatic navigation, not just link clicks).
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -97,6 +110,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
 
   return (
     <div
+      ref={shellRef}
       className={clsx("fixed inset-0 z-50 md:hidden", !open && "pointer-events-none")}
       aria-hidden={!open}
     >
