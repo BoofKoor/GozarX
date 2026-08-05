@@ -7,7 +7,14 @@ import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
 import { t, useI18n } from "@/i18n";
-import { faPct, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
+import {
+  faPct,
+  formatNumber,
+  humanBytes,
+  humanHours,
+  langLabel,
+  localizeDigits,
+} from "@/lib/format";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
@@ -176,7 +183,7 @@ export function Overview({
             value={
               analytics?.median_hours_to_claim.value == null
                 ? "—"
-                : formatNumber(analytics.median_hours_to_claim.value)
+                : humanHours(analytics.median_hours_to_claim.value)
             }
             label={t("dash.kpi.median")}
             delta={

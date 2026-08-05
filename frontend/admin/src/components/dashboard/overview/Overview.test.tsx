@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 
-import { I18nProvider } from "@/i18n";
+import { I18nProvider, t } from "@/i18n";
 import type { DashboardAnalytics, DashboardStats, Retention } from "@/types/api";
 
 import { Overview } from "./Overview";
@@ -161,7 +161,9 @@ describe("Overview", () => {
       }),
     });
     // Scoped to the tile that owns the figure — "—" is a common placeholder elsewhere on the page.
-    const tile = screen.getByText("میانه تا اولین دریافت (ساعت)").closest("div");
+    // Read from the catalogue, not hardcoded: this test is about the em dash, and a copy edit
+    // should not be able to fail it.
+    const tile = screen.getByText(t("dash.kpi.median")).closest("div");
     expect(tile?.parentElement?.textContent).toContain("—");
   });
 
