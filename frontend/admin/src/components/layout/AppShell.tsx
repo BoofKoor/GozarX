@@ -3,7 +3,7 @@ import { useCallback, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
-import { ChromeProvider, useChrome } from "./chrome";
+import { ChromeProvider, SIDE_STACK, SIDE_WIDTH, useChrome } from "./chrome";
 import { MobileNav, Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -43,11 +43,16 @@ function Shell() {
 
       {/* The second panel. Always MOUNTED so a page has somewhere to portal to, but it only takes
           up space once a page has claimed it — and never below the width where it would steal the
-          console's height instead of sitting beside it. */}
+          console's height instead of sitting beside it.
+
+          `SIDE_STACK` brings the `[&>*]:shrink-0` this needs to overflow rather than squeeze; the
+          `hidden`/`flex` pair below still decides whether it lays out at all. */}
       <aside
         ref={chrome?.setSideHost}
         className={clsx(
-          "scrollbar-thin w-[19.5rem] shrink-0 flex-col gap-2 overflow-y-auto rounded-2xl bg-surface p-4 shadow-raised",
+          "scrollbar-thin shrink-0 overflow-y-auto rounded-2xl bg-surface p-4 shadow-raised",
+          SIDE_WIDTH,
+          SIDE_STACK,
           chrome?.sideFilled ? "hidden xl:flex" : "hidden",
         )}
       />
