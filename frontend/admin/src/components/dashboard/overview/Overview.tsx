@@ -124,11 +124,23 @@ export function Overview({
     if (!people) return 0;
     return rows.reduce((a, c) => a + c.retention[1] * c.size, 0) / people;
   })();
-  // Server-computed, over the users who COULD have been referred rather than all of them. Against
-  // the whole base this read 10.8% on a live install where the real figure was 17.0%, because
-  // 39,899 users predate the referral programme and `referred_by` is null for every imported row —
-  // so the axis was measuring how much of the service is older than the feature.
-  const referralShare = analytics?.referral.joined_share_pct ?? 0;
+  // Of everyone who has ever claimed, the share who claimed more than once. Read off the claims
+  // distribution the analytics endpoint already returns, so it costs no query.
+  //
+  // This replaced the referral share on the radar. 17% is a perfectly good referral rate for a
+  // free service, but on an axis shared with an 86% it draws as a stub, and the operator reported
+  // the chart as broken twice because of it. Repeat rate asks something no other axis asks —
+  // retention is time-bound ("did they come back next week"), this is habit ("did they come back
+  // at all") — and it lands at 52% on live data, inside the band the other three occupy.
+  //
+  // Not chosen: the reminder opt-in rate, which measures 99.7% because the setting ships on. An
+  // axis pinned to its own ceiling forever carries no information at all.
+  const repeatRate = (() => {
+    const buckets = analytics?.claims_distribution ?? {};
+    const claimers = Object.values(buckets).reduce((a, n) => a + n, 0);
+    if (!claimers) return 0;
+    return ((claimers - (buckets["1"] ?? 0)) / claimers) * 100;
+  })();
 
   const peakHour = (() => {
     const byHour = new Map<number, number>();
@@ -299,8 +311,15 @@ export function Overview({
 
       <SidePanel>
         <SideHead>{t("dash.side.rates")}</SideHead>
-        {/* Ordered so the two extremes land ADJACENT: four axes with the big values facing each
-            other collapse into a lens, which is a shape rather than a chart. */}
+        {/* Index 0 is the TOP spoke, 1 right, 2 bottom, 3 left. The order is the funnel — reach,
+            speed, return, habit — which also happens to be what the shape needs: it puts the two
+            largest rates ADJACENT instead of facing each other. Facing, they pull the blob into a
+            symmetric lens, which is a silhouette rather than a chart, and the previous order did
+            exactly that while carrying a comment saying it did the opposite.
+
+            A funnel order rather than a sorted one on purpose: sorting by value would reshuffle
+            the axes as the data moved, and a chart whose axes change places is unreadable across
+            two visits. */}
         <RadarRates
           axes={[
             {
@@ -308,17 +327,13 @@ export function Overview({
               value: stats.conversion_pct,
               title: t("dash.rate.conversionFull"),
             },
-            { label: t("dash.rate.return"), value: weekTwo, title: t("dash.rate.returnFull") },
             {
               label: t("dash.rate.activation"),
               value: analytics?.activation_24h.value ?? 0,
               title: t("dash.rate.activationFull"),
             },
-            {
-              label: t("dash.rate.referral"),
-              value: referralShare,
-              title: t("dash.rate.referralFull"),
-            },
+            { label: t("dash.rate.return"), value: weekTwo, title: t("dash.rate.returnFull") },
+            { label: t("dash.rate.repeat"), value: repeatRate, title: t("dash.rate.repeatFull") },
           ]}
           className="w-full"
         />

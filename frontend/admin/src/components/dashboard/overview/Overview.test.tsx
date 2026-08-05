@@ -87,7 +87,8 @@ const analytics = (over: Partial<DashboardAnalytics> = {}): DashboardAnalytics =
       { dow: 2, hour: 21, count: 265 },
     ],
     signup_heatmap: [],
-    claims_distribution: {},
+    // Backs the repeat-rate axis: 300 claimers, 120 of them once-only → 60%.
+    claims_distribution: { "1": 120, "2-3": 100, "4-6": 50, "7+": 30 },
     reminder_by_language: [],
     active_users_series: [],
     new_vs_returning: [],
@@ -158,6 +159,27 @@ describe("Overview", () => {
     renderOverview();
     const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
     expect(radar.textContent).toContain("۸۶٪"); // conversion_pct
+  });
+
+  it("puts the two largest rates ADJACENT, not facing each other", () => {
+    // Index 0 is the top spoke, 1 right, 2 bottom, 3 left. Facing, the two big values pull the
+    // blob into a symmetric lens — which is what the previous order did while its comment claimed
+    // the opposite.
+    renderOverview();
+    const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
+    const labels = [...radar.querySelectorAll("text")].map((n) => n.textContent);
+    const order = labels.filter((l) => ["تبدیل", "فعال‌سازی", "بازگشت", "تکرار"].includes(l!));
+    // conversion (86) and activation (74) are neighbours; the two smaller rates take the far side.
+    expect(order.slice(0, 2)).toEqual(["تبدیل", "فعال‌سازی"]);
+  });
+
+  it("carries repeat rate rather than the referral stub", () => {
+    // 17% is a fine referral rate; on an axis shared with an 86% it draws as a stub and the chart
+    // got reported as broken. Repeat rate asks something no other axis asks and sits in the band.
+    renderOverview();
+    const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
+    expect(radar.textContent).toContain("۶۰٪"); // (300 - 120) / 300
+    expect(radar.textContent).not.toContain("دعوت");
   });
 
   it("leads with what the service delivered, not a median that never moves", () => {
