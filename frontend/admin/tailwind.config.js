@@ -6,8 +6,7 @@
 // need a `dark:` twin for their base colours.
 const token = (name) => `rgb(var(--${name}) / <alpha-value>)`;
 
-const ramp = (prefix, stops) =>
-  Object.fromEntries(stops.map((s) => [s, token(`${prefix}-${s}`)]));
+const ramp = (prefix, stops) => Object.fromEntries(stops.map((s) => [s, token(`${prefix}-${s}`)]));
 
 export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
@@ -26,6 +25,10 @@ export default {
 
         // The hero tile's gradient pair and the ink on its always-white delta pill.
         hero: { a: token("hero-a"), b: token("hero-b"), ink: token("hero-ink") },
+
+        // The primary button is its own role, not "the brand colour": the mock keeps it periwinkle
+        // in dark and charcoal in light, so a component that wrote `bg-brand` could not follow.
+        btn: { DEFAULT: token("btn-primary"), ink: token("btn-primary-ink") },
 
         success: { DEFAULT: token("success-600"), ...ramp("success", [400, 500, 600, 700]) },
         warning: { DEFAULT: token("warning-600"), ...ramp("warning", [400, 500, 600, 700]) },
@@ -66,7 +69,12 @@ export default {
         glow: "var(--shadow-glow)",
         hero: "var(--shadow-hero)",
       },
-      borderRadius: { xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem" },
+      // `card` is the design's own card geometry — 14px corners and a 17.6px inset. Named rather
+      // than written as arbitrary values, because the table and the card footer have to bleed back
+      // out by exactly the same amount (`-mx-card px-card`) and an arbitrary value in three files
+      // is three chances for them to drift apart.
+      spacing: { card: "18px" },
+      borderRadius: { card: "14px", xl: "0.75rem", "2xl": "1rem", "3xl": "1.5rem" },
       keyframes: {
         "fade-in": {
           "0%": { opacity: "0", transform: "translateY(4px)" },

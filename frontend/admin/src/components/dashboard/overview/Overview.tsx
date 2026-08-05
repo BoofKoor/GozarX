@@ -3,6 +3,7 @@ import { Clock, Download, Globe2, Languages, MapPin, Radio, UserPlus } from "luc
 import { AreaTrend } from "@/components/charts/AreaTrend";
 import { HeroSparkline } from "@/components/charts/HeroSparkline";
 import { RadarRates } from "@/components/charts/RadarRates";
+import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
 import { t, useI18n } from "@/i18n";
@@ -134,7 +135,9 @@ export function Overview({
   const topLanguage = stats.languages[0];
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_19.5rem]">
+    // No side column here any more: the live figures are their own PANEL beside the console, which
+    // is where the design puts them, so the trend and the tiles get the console's full width.
+    <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.22fr_repeat(3,1fr)]">
           <KpiTile hero value={formatNumber(stats.total_users)} label={t("dash.kpi.total")}>
@@ -286,7 +289,7 @@ export function Overview({
         </div>
       </div>
 
-      <aside className="flex min-w-0 flex-col gap-2 rounded-2xl bg-surface p-4 shadow-card">
+      <SidePanel>
         <SideHead>{t("dash.side.rates")}</SideHead>
         {/* Ordered so the two extremes land ADJACENT: four axes with the big values facing each
             other collapse into a lens, which is a shape rather than a chart. */}
@@ -380,7 +383,7 @@ export function Overview({
           <Globe2 className="h-3.5 w-3.5" />
           {t("dash.health.more")}
         </a>
-      </aside>
+      </SidePanel>
     </div>
   );
 }

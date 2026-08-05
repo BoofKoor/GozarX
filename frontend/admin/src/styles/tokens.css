@@ -82,10 +82,20 @@
   --surface: 255 255 255; /* --c-surface   #FFFFFF — cards */
   --surface-sunken: 246 248 252; /* --c-canvas    #F6F8FC — the content well */
   --surface-hover: 241 244 251; /* --c-surface-2 #F1F4FB */
-  /* A nested card RAISES off its panel rather than sinking into it — the mock's own depth order.
-     Same value as the hover tone; the two are different ROLES, so they get different names. */
-  --surface-raised: 255 255 255;
+  /* A nested card SEPARATES from its panel — lifted in dark, tinted in light. This was #FFFFFF,
+     byte-identical to `--surface`, which meant every nested plate in the LIGHT theme was invisible:
+     the dashboard's two gauge cards, the traffic card and the whole service-health list rendered as
+     white on white, and twenty other sites across the panel with them. The mock's light theme uses
+     its `--c-surface-2` here, the same value `--surface-hover` carries; they stay separate names
+     because they are separate roles, and one of them may need to move without the other. */
+  --surface-raised: 241 244 251; /* --c-surface-2 #F1F4FB */
   --nav: 255 255 255; /* --c-rail */
+
+  /* The primary button. The mock deliberately does NOT use brand blue in both themes: periwinkle on
+     the dark console, charcoal on the light one, where a saturated blue button next to blue-tinted
+     cards and a blue chart reads as one more chart element instead of the page's one action. */
+  --btn-primary: 43 47 82; /* --c-btn-bg #2B2F52 */
+  --btn-primary-ink: 255 255 255;
 
   --line: 223 228 240; /* --c-line      #DFE4F0 */
   --line-strong: 211 218 233; /* --c-rail-line #D3DAE9 */
@@ -131,6 +141,9 @@
 
   --hero-a: 95 108 243; /* --c-hero-a #5F6CF3 */
   --hero-b: 74 86 220; /* --c-hero-b #4A56DC */
+
+  --btn-primary: 110 123 242; /* --c-btn-bg #6E7BF2 — periwinkle on the dark console */
+  --btn-primary-ink: 255 255 255;
 
   /* Same flip for the status "ink" shades, so a tinted badge needs ONE class
      (`text-success-700`) instead of a light/dark pair. */

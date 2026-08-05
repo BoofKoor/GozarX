@@ -17,7 +17,7 @@ export function Table({
   minWidth?: string;
 }) {
   return (
-    <div className={clsx("scrollbar-thin -mx-5 overflow-x-auto px-5", className)}>
+    <div className={clsx("scrollbar-thin -mx-card overflow-x-auto px-card", className)}>
       <table className={clsx("w-full border-collapse text-sm", minWidth)}>{children}</table>
     </div>
   );
