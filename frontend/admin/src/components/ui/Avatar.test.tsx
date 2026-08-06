@@ -16,6 +16,14 @@ describe("initialsFor", () => {
     expect(initialsFor("dmitri volkov")).toBe("DV");
   });
 
+  it("gives a numeric identity its LAST two digits", () => {
+    // Telegram ids are issued in order, so they agree on their leading digits: a first-character
+    // initial painted the same letter on every row of the users table.
+    expect(initialsFor("5000137951")).toBe("51");
+    expect(initialsFor("5000275902")).toBe("02");
+    expect(initialsFor("7")).toBe("7");
+  });
+
   it("survives an empty or whitespace name", () => {
     expect(initialsFor("")).toBe("?");
     expect(initialsFor("   ")).toBe("?");

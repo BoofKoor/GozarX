@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { NavTabs, Tabs } from "@/components/ui/Tabs";
 
@@ -38,6 +39,11 @@ describe("tab strips", () => {
     { to: "/b", label: "B" },
   ];
 
+  // The strip is the scrolling child; the wrapper around it carries the bottom rule, which is kept
+  // out of the mask that fades an overflowing edge.
+  const stripOf = (container: HTMLElement) =>
+    container.querySelector<HTMLElement>(".overflow-x-auto")!;
+
   it("never becomes a vertical scroll container", () => {
     // `overflow-x: auto` computes the other axis from `visible` to `auto`, so the axis we do not
     // want has to be named.
@@ -46,7 +52,7 @@ describe("tab strips", () => {
         <NavTabs items={items} />
       </MemoryRouter>,
     );
-    expect(container.querySelector("div")!.className).toContain("overflow-y-hidden");
+    expect(stripOf(container).className).toContain("overflow-y-hidden");
 
     rerender(
       <Tabs
@@ -58,12 +64,48 @@ describe("tab strips", () => {
         ]}
       />,
     );
-    const strip = container.firstElementChild!;
+    const strip = stripOf(container);
     expect(strip.className).toContain("overflow-y-hidden");
     // The underline overlap belongs to the strip. On the tab it shortened the strip's content box
     // to 1px less than the tabs standing in it — a scrollbar, and a clipped 2px underline.
     expect(strip.className).toContain("-mb-px");
     for (const tab of strip.querySelectorAll("button"))
       expect(tab.className).not.toContain("-mb-px");
+  });
+
+  it("keeps one tab stop for the whole tablist and moves with the arrows", async () => {
+    // `role="tablist"` promises this. Without it the seventh dashboard tab took seven Tab presses
+    // and the arrow keys — the ones a screen reader tells you to use — did nothing at all.
+    const onChange = vi.fn();
+    const { container } = render(
+      <Tabs
+        value="b"
+        onChange={onChange}
+        items={[
+          { value: "a", label: "A" },
+          { value: "b", label: "B" },
+          { value: "c", label: "C" },
+        ]}
+      />,
+    );
+    const tabs = [...container.querySelectorAll<HTMLElement>('[role="tab"]')];
+    expect(tabs.map((t) => t.tabIndex)).toEqual([-1, 0, -1]);
+
+    // LTR under jsdom, so ArrowRight is forward.
+    await userEvent.type(tabs[1], "{ArrowRight}");
+    expect(onChange).toHaveBeenCalledWith("c");
+    await userEvent.type(tabs[1], "{Home}");
+    expect(onChange).toHaveBeenCalledWith("a");
+    await userEvent.type(tabs[1], "{End}");
+    expect(onChange).toHaveBeenCalledWith("c");
+  });
+
+  it("points every tab at the panel it controls", () => {
+    const { container } = render(
+      <Tabs value="a" onChange={() => {}} panelId="panel-1" items={[{ value: "a", label: "A" }]} />,
+    );
+    const tab = container.querySelector<HTMLElement>('[role="tab"]')!;
+    expect(tab.getAttribute("aria-controls")).toBe("panel-1");
+    expect(tab.getAttribute("aria-selected")).toBe("true");
   });
 });

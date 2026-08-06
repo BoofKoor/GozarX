@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { Bold, Italic, Link2, Plus, Trash2 } from "lucide-react";
-import { useRef, type ReactNode, type RefObject } from "react";
+import { useId, useRef, type ReactNode, type RefObject } from "react";
 
 import { Input } from "@/components/ui/Input";
 import { useI18n } from "@/i18n";
@@ -77,6 +77,7 @@ export function MessageField({
 }) {
   const { t } = useI18n();
   const ref = useRef<HTMLTextAreaElement>(null);
+  const counterId = useId();
   const over = value.length > MAX_CHARS;
   const wrap = (open: string, close: string) => wrapSelection(ref, value, onChange, open, close);
 
@@ -97,6 +98,7 @@ export function MessageField({
             direction, so «۱۳۸ / ۴٬۰۹۶» rendered as «۴٬۰۹۶ / ۱۳۸» — the message reading as longer
             than the limit. Safe on an inline run; never on a block. */}
         <span
+          id={counterId}
           dir="ltr"
           className={clsx(
             "px-1 text-xs tabular-nums",
@@ -110,9 +112,15 @@ export function MessageField({
           field for an essay pushed the button builder, the schedule and the send button below the
           fold and made the page 35% taller than the reference for the same content. It still grows
           as you type — the browser scrolls it. */}
+      {/* Named, and pointed at its own counter. The only thing naming this field was the
+          placeholder — which is the first thing to disappear when you start typing, so the most
+          consequential control in the console announced itself as an unlabelled text box, and
+          crossing Telegram's limit was never announced at all. */}
       <textarea
         ref={ref}
         className="field-control min-h-[7rem] rounded-t-none leading-[1.8]"
+        aria-label={t("bc.text")}
+        aria-describedby={counterId}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -181,7 +189,7 @@ export function KeyboardBuilder({
         <button
           type="button"
           onClick={() => onChange([...buttons, { text: "", url: "" }])}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline"
+          className="inline-flex items-center gap-1.5 py-1 text-xs font-semibold text-brand-700 hover:underline"
         >
           <Plus className="h-3.5 w-3.5" />
           {t("bc.kb.add")}

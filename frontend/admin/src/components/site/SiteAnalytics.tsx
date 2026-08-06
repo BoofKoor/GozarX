@@ -62,7 +62,10 @@ function RewardEconomy({ items }: { items: RewardType[] }) {
                 <span className="text-content-subtle">
                   {t("sa.rewards.people", { n: formatNumber(r.grants) })}
                 </span>
-                <span className="font-medium tabular-nums text-brand">{formatMb(r.total_mb)}</span>
+                {/* The ink shade: `text-brand` is the fill shade and read 2.73:1 on this plate. */}
+                <span className="font-medium tabular-nums text-brand-700">
+                  {formatMb(r.total_mb)}
+                </span>
               </span>
             </li>
           ))}

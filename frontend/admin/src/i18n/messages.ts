@@ -27,6 +27,7 @@ const FA = {
   "nav.group.bot": "ربات تلگرام",
   "nav.group.site": "وب‌سایت",
   "nav.group.system": "سیستم",
+  "nav.skipToContent": "پرش به محتوا",
 
   // ── shell chrome ────────────────────────────────────────────────────────
   "shell.title": "پنل مدیریت",
@@ -64,6 +65,7 @@ const FA = {
   // ── users ───────────────────────────────────────────────────────────────
   "users.title": "کاربران",
   "users.sub": "{n} کاربر ثبت‌شده در ربات",
+  "users.table.aria": "فهرست کاربران ربات",
   "users.search": "جستجو با آیدی تلگرام یا یوزرنیم پنل…",
   "users.searchAria": "جستجوی کاربران",
   "users.filterAria": "فیلتر وضعیت",
@@ -134,7 +136,8 @@ const FA = {
   "bc.preview.bot": "ربات — {n} عضو",
   "bc.send": "ارسال",
   "bc.send.confirmTitle": "ارسال پیام همگانی",
-  "bc.send.confirm": "این پیام به {n} کاربر ({who}) ارسال شود؟",
+  "bc.send.confirm": "این پیام به {n} کاربر ({who}) همین حالا ارسال شود؟",
+  "bc.send.confirmAt": "این پیام ساعت {h} به {n} کاربر ({who}) ارسال شود؟",
   "bc.send.queued": "در صف ارسال به {n} کاربر ({who}) قرار گرفت.",
   "bc.send.failed": "ارسال نشد.",
   "bc.eta": "حدود {m} دقیقه با نرخ {rate} پیام در ثانیه",
@@ -168,6 +171,7 @@ const FA = {
   "bc.schedule.at": "ساعت ارسال",
   "hours.pick": "ارسال در ساعت {h}",
   "bc.schedule.queued": "برای ساعت {h} زمان‌بندی شد.",
+  "bc.schedule.confirm": "زمان‌بندی",
   "bc.pf.buttons": "لینک دکمه‌ها معتبر است",
   "bc.pf.buttonsBad": "لینک یکی از دکمه‌ها معتبر نیست",
   "bc.history": "تاریخچه",
@@ -520,6 +524,7 @@ const FA = {
   // ── website: devices ────────────────────────────────────────────────────
   "sd.title": "دستگاه‌های وب‌سایت",
   "sd.sub": "{n} دستگاه",
+  "sd.table.aria": "فهرست دستگاه‌های وب‌سایت",
   "sd.sub.ip": "{n} دستگاه در این محدودهٔ IP",
   "sd.search": "جستجو با شناسه (GZ-…)، uuid یا نام کاربری پنل…",
   "sd.searchAria": "جستجوی دستگاه‌ها",
@@ -965,6 +970,7 @@ const EN: Record<keyof typeof FA, string> = {
   "nav.group.bot": "Telegram bot",
   "nav.group.site": "Website",
   "nav.group.system": "System",
+  "nav.skipToContent": "Skip to content",
 
   "shell.title": "Admin panel",
   "shell.documentTitle": "GozarX admin",
@@ -998,6 +1004,7 @@ const EN: Record<keyof typeof FA, string> = {
 
   "users.title": "Users",
   "users.sub": "{n} people have started the bot",
+  "users.table.aria": "Bot users",
   "users.search": "Search by Telegram ID or panel username…",
   "users.searchAria": "Search users",
   "users.filterAria": "Filter by status",
@@ -1067,7 +1074,8 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.preview.bot": "bot — {n} members",
   "bc.send": "Send",
   "bc.send.confirmTitle": "Send broadcast",
-  "bc.send.confirm": "Send this to {n} users ({who})?",
+  "bc.send.confirm": "Send this to {n} users ({who}) right now?",
+  "bc.send.confirmAt": "Send this to {n} users ({who}) at {h}?",
   "bc.send.queued": "Queued for {n} users ({who}).",
   "bc.send.failed": "That did not send.",
   "bc.eta": "about {m} min at {rate} messages per second",
@@ -1102,6 +1110,7 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.schedule.at": "Send at",
   "hours.pick": "Send at {h}",
   "bc.schedule.queued": "Scheduled for {h}.",
+  "bc.schedule.confirm": "Schedule",
   "bc.pf.buttons": "Button links are valid",
   "bc.pf.buttonsBad": "One of the button links is invalid",
   "bc.history": "History",
@@ -1458,6 +1467,7 @@ const EN: Record<keyof typeof FA, string> = {
   // ── website: devices ────────────────────────────────────────────────────
   "sd.title": "Website devices",
   "sd.sub": "{n} devices",
+  "sd.table.aria": "Website devices",
   "sd.sub.ip": "{n} devices behind this IP range",
   "sd.search": "Search a handle (GZ-…), uuid or panel username…",
   "sd.searchAria": "Search devices",

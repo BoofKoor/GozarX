@@ -18,10 +18,41 @@ export default defineConfig({
     rollupOptions: {
       // Smaller initial chunks (panel is used over slow connections).
       output: {
-        manualChunks: {
-          react: ["react", "react-dom", "react-router-dom"],
-          charts: ["recharts"],
-          query: ["@tanstack/react-query", "axios"],
+        // A function, not the object form. `{ charts: ["recharts"] }` gave recharts its own chunk
+        // but left `components/charts/primitives` — a recharts wrapper shared by the dashboard, the
+        // system page and the website stats — to Rollup's shared-code hoisting, which put it in the
+        // ENTRY. So `index.html` carried a `modulepreload` for the 424 KB charts chunk and every
+        // route paid for it, including `/login`. Naming the wrappers keeps the whole recharts graph
+        // behind the lazy routes that use it.
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            // `clsx` before `charts`: recharts depends on it too, and left unpinned Rollup
+            // deduplicated the single copy INTO the recharts chunk — so the entry, which uses
+            // `clsx` in almost every component, imported 434 KB of charting to get a 400-byte
+            // string joiner. That one edge is what kept `/login` paying for recharts.
+            if (/node_modules\/(clsx|sonner)\//.test(id)) return "core";
+            if (/node_modules\/(recharts|victory-vendor|d3-)/.test(id)) return "charts";
+            if (/node_modules\/(react|react-dom|react-router|react-router-dom|scheduler)\//.test(id))
+              return "react";
+            if (/node_modules\/(@tanstack|axios)\//.test(id)) return "query";
+            return undefined;
+          }
+          // Our own recharts-facing modules get their OWN name rather than joining the vendor
+          // chunk. Merged into `charts`, Rollup followed `primitives`' own `@/i18n` import and
+          // pulled the whole message catalogue in after it — so every route, `/login` included,
+          // needed the 511 KB chart bundle to render a single string. Named separately, the
+          // catalogue stays in the entry (which also needs it) and this chunk imports both.
+          //
+          // The hand-drawn SVG charts are deliberately NOT here: they have no recharts dependency,
+          // and pulling them in would drag it back to the dashboard overview — the one screen that
+          // never renders a recharts chart.
+          if (/src\/components\/charts\/primitives|src\/lib\/chartTheme/.test(id)) return "chartkit";
+          // Pin the core every chunk needs. Left unnamed, Rollup is free to park the message
+          // catalogue inside whichever chunk happens to import it — it chose `chartkit`, which put
+          // the entry back on a static path to recharts and undid the split. Named, it is its own
+          // chunk and both the entry and the chart code import it.
+          if (/src\/(i18n|lib\/format|lib\/api|lib\/auth)/.test(id)) return "core";
+          return undefined;
         },
       },
     },

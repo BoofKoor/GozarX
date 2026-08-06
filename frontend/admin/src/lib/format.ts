@@ -103,6 +103,20 @@ export function humanBytes(n: number): string {
   return isolateQuantity(localizeDigits(`${v.toFixed(1)} PB`));
 }
 
+/**
+ * A latency reading with its unit ("۱۲۴ ms" / "124 ms").
+ *
+ * The three call sites built this string by hand and put `unicode-bidi: isolate` on the ELEMENT
+ * around it. An isolate stops the run from reordering the text around it; it does not change the
+ * base direction INSIDE itself, which stays RTL — so the Persian digits (AN) and the Latin `ms`
+ * (L) still swapped, and every latency in the console read «ms ۱۲۴», the unit ahead of the number
+ * it measures. Same lesson as `formatMb`/`humanBytes`: the isolate belongs in the STRING, so a
+ * caller cannot forget it.
+ */
+export function formatMs(ms: number): string {
+  return isolateQuantity(localizeDigits(`${Math.round(ms)} ms`));
+}
+
 /** "YYYY-MM-DD" → a compact "MM/DD" in the locale's calendar, for chart axis labels. */
 export function shortDay(iso: string): string {
   const d = new Date(iso);
@@ -169,10 +183,27 @@ export function faRelative(iso: string | null | undefined): string {
   const seconds = (d.getTime() - Date.now()) / 1000;
   const fmt = memoRelative();
   for (const [unit, span] of _UNITS) {
-    if (Math.abs(seconds) >= span) return fmt.format(Math.round(seconds / span), unit);
+    if (Math.abs(seconds) < span) continue;
+    const value = Math.round(seconds / span);
+    // Carry a rounded-up value into the NEXT unit. 23.6 hours is still under a day, so it fell to
+    // the hour bucket and rounded to 24 — «۲۴ ساعت پیش» sitting in the same column as «دیروز»,
+    // two sentences for one distance. `numeric: "auto"` then gives the day bucket its word.
+    const carry = _CARRY[unit];
+    if (carry && Math.abs(value) >= carry.at) return fmt.format(Math.sign(value), carry.unit);
+    return fmt.format(value, unit);
   }
   return fmt.format(Math.round(seconds), "second");
 }
+
+/** Where a rounded-up value stops belonging to its own unit. */
+const _CARRY: Partial<
+  Record<Intl.RelativeTimeFormatUnit, { at: number; unit: Intl.RelativeTimeFormatUnit }>
+> = {
+  month: { at: 12, unit: "year" },
+  day: { at: 30, unit: "month" },
+  hour: { at: 24, unit: "day" },
+  minute: { at: 60, unit: "hour" },
+};
 
 const _relCache = new Map<string, Intl.RelativeTimeFormat>();
 function memoRelative(): Intl.RelativeTimeFormat {
@@ -198,15 +229,29 @@ export function faDateTime(iso: string): string {
   ).format(d);
 }
 
-/** Seconds → a compact uptime string ("۳d ۴h", "۱۲m"). */
+/**
+ * Seconds → a compact uptime string ("۳ روز ۴ ساعت", "3d 4h").
+ *
+ * The units follow the LOCALE. Built as `${d}d ${h}h` they were Latin letters in a Persian
+ * console — «۳d ۴h» — and the no-literals test could not catch it, because it only looks for
+ * Persian and `d`/`h`/`m` are not. `Intl.NumberFormat`'s `unit` style would say «۳ روز و ۴ ساعت»
+ * with a conjunction; this is a gauge caption, so the parts stay side by side.
+ */
+const _UPTIME_UNITS: Record<string, { d: string; h: string; m: string }> = {
+  fa: { d: "روز", h: "ساعت", m: "دقیقه" },
+  en: { d: "d", h: "h", m: "m" },
+};
+
 export function humanUptime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   const d = Math.floor(s / 86400);
   const h = Math.floor((s % 86400) / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (d) return isolateQuantity(localizeDigits(`${d}d ${h}h`));
-  if (h) return isolateQuantity(localizeDigits(`${h}h ${m}m`));
-  return isolateQuantity(localizeDigits(`${m}m`));
+  const u = _UPTIME_UNITS[getLocale()] ?? _UPTIME_UNITS.en;
+  const sep = getLocale() === "fa" ? " " : "";
+  if (d) return isolateQuantity(localizeDigits(`${d}${sep}${u.d} ${h}${sep}${u.h}`));
+  if (h) return isolateQuantity(localizeDigits(`${h}${sep}${u.h} ${m}${sep}${u.m}`));
+  return isolateQuantity(localizeDigits(`${m}${sep}${u.m}`));
 }
 
 /** Bot language code → its display name, in the panel's own language. */

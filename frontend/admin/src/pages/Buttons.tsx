@@ -4,12 +4,18 @@ import {
   type DragEndEvent,
   type DragStartEvent,
   DragOverlay,
+  KeyboardSensor,
   PointerSensor,
   useDroppable,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { clsx } from "clsx";
 import { AlertCircle, EyeOff, GripVertical, Pencil, Plus, RotateCcw } from "lucide-react";
@@ -117,7 +123,16 @@ function ScreenGroup({
   }, [buttons]);
 
   const maxRow = rows.length ? Math.max(...rows.map((r) => r.row)) : -1;
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+  // Passing an explicit list REPLACES dnd-kit's defaults rather than adding to them, so naming only
+  // the pointer sensor dropped the keyboard one — and reordering is the entire job of this page.
+  // The handle already announced itself as sortable (`aria-roledescription` comes from dnd-kit's
+  // `attributes`), so a keyboard operator was told the row could be moved and then found that
+  // nothing moved it. `sortableKeyboardCoordinates` is what makes the arrows step between ITEMS
+  // instead of nudging by a fixed pixel amount.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const activeButton = activeKey ? buttons.find((b) => b.key === activeKey) : null;
 
   function handleDragEnd(event: DragEndEvent) {
@@ -181,7 +196,7 @@ function ScreenGroup({
         </code>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 max-w-3xl">
         {/* Preview in the language the operator is reading the panel in — checking an English
             label against a Persian preview is the one thing this control cannot do. */}
         <TelegramPreview buttons={buttons} lang={locale} />
@@ -193,8 +208,12 @@ function ScreenGroup({
         onDragStart={(e: DragStartEvent) => setActiveKey(String(e.active.id))}
         onDragEnd={handleDragEnd}
       >
+        {/* Capped, not full-bleed. A row puts its name at the start edge and its edit/reset icons
+            at the end, so on a 1440 screen the control for a row sat ~1400px from the row it acted
+            on — a full horizontal traverse per edit, with only vertical alignment saying which
+            pencil belonged to which button. */}
         <SortableContext items={buttons.map((b) => b.key)} strategy={verticalListSortingStrategy}>
-          <div className="space-y-2">
+          <div className="max-w-3xl space-y-2">
             {rows.map((r) => (
               <RowZone
                 key={r.row}

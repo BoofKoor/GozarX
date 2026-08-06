@@ -7,7 +7,7 @@ import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
 import { t, useI18n } from "@/i18n";
-import { faPct, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
+import { faPct, formatMs, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
@@ -161,7 +161,12 @@ export function Overview({
     // is where the design puts them, so the trend and the tiles get the console's full width.
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-col gap-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1.22fr_repeat(3,1fr)]">
+        {/* `items-start`, not the grid default: the design's `.kpis` is `align-items: start` and
+            keeps a plain tile at its own `min-height: 8.7rem` while the hero runs taller for its
+            sparkline. Stretched to the hero's height instead, each plain tile measured 222px
+            against the design's 139 — 98px of nothing between its label and the delta pinned to
+            the floor by `mt-auto`, three times across the band. */}
+        <div className="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-[1.22fr_repeat(3,1fr)]">
           {/* Deliberately NOT spanning the row when there are two columns. The sparkline's height
               follows its width, so a full-width hero at 768px draws a 650px-tall chart inside a KPI
               tile; at half width it lands on the ~245px the design draws, and the tile beside it
@@ -371,11 +376,7 @@ export function Overview({
           <HealthRow
             label={t("dash.health.panel")}
             tone={health?.panel.ok ? "ok" : "bad"}
-            value={
-              health?.panel.latency_ms != null
-                ? localizeDigits(`${Math.round(health.panel.latency_ms)} ms`)
-                : "—"
-            }
+            value={health?.panel.latency_ms != null ? formatMs(health.panel.latency_ms) : "—"}
           />
           <HealthRow
             label={t("dash.health.webhook")}
@@ -401,9 +402,12 @@ export function Overview({
           />
         </div>
 
+        {/* `py-1.5` takes the link from a 16px-tall target to 24 (WCAG 2.5.8's floor), and
+            `text-brand-700` is the ramp's ink shade — `text-brand` is the FILL shade and measured
+            3.14:1 here. */}
         <a
           href="/admin/system"
-          className="mt-1 inline-flex items-center gap-1.5 px-1 text-xs font-medium text-brand hover:underline"
+          className="mt-1 inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-medium text-brand-700 hover:underline"
         >
           <Globe2 className="h-3.5 w-3.5" />
           {t("dash.health.more")}

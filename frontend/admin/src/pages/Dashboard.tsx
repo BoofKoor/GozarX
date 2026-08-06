@@ -36,7 +36,7 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Segmented } from "@/components/ui/Segmented";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { Tabs } from "@/components/ui/Tabs";
+import { Tabs, tabId } from "@/components/ui/Tabs";
 import { useSystemHealth } from "@/hooks/useSystem";
 import {
   RANGES,
@@ -51,6 +51,9 @@ import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
 
 type TabKey = "overview" | "growth" | "retention" | "referrals" | "usage" | "geo" | "health";
+
+const TAB_ID_BASE = "dash-tab";
+const TAB_PANEL_ID = "dash-panel";
 
 const TAB_KEYS: { value: TabKey; labelKey: MessageKey; icon: typeof LineChart }[] = [
   { value: "overview", labelKey: "dash.tab.overview", icon: LineChart },
@@ -160,113 +163,132 @@ export function Dashboard() {
           )
         }
       >
-        <Tabs value={tab} onChange={setTab} items={TABS} />
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          items={TABS}
+          idBase={TAB_ID_BASE}
+          panelId={TAB_PANEL_ID}
+        />
       </PageHeader>
 
-      {/* The overview is the redesigned screen: KPI band, activity trend, "top" cards and the live
+      {/* One panel for all seven tabs, named by whichever tab is selected — `role="tablist"` is a
+          promise that something is being controlled, and until this existed nothing was. */}
+      <div
+        id={TAB_PANEL_ID}
+        role="tabpanel"
+        aria-labelledby={tabId(TAB_ID_BASE, tab)}
+        className="space-y-4"
+      >
+        {/* The overview is the redesigned screen: KPI band, activity trend, "top" cards and the live
           side rail. The other tabs keep the analytics panels built in Phase 2 — the design showed
           one screen, the product has six, and discarding five of them to match a mockup would be
           throwing away work the operator uses. */}
-      {tab === "overview" && (
-        <Overview
-          stats={data}
-          analytics={analytics}
-          retention={retention}
-          health={health}
-          range={data.range_days}
-          ranges={RANGES}
-          onRange={setDays}
-          onExport={exportCsv}
-          exporting={exporting}
-        />
-      )}
+        {tab === "overview" && (
+          <Overview
+            stats={data}
+            analytics={analytics}
+            retention={retention}
+            health={health}
+            range={data.range_days}
+            ranges={RANGES}
+            onRange={setDays}
+            onExport={exportCsv}
+            exporting={exporting}
+          />
+        )}
 
-      {tab === "growth" && (
-        <>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <CumulativeUsersChart signups={data.signups_series} total={data.total_users} />
+        {tab === "growth" && (
+          <>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <CumulativeUsersChart signups={data.signups_series} total={data.total_users} />
+              <Analytic
+                data={analytics}
+                render={(d) => <NewVsReturningChart data={d.new_vs_returning} />}
+              />
+            </div>
             <Analytic
               data={analytics}
-              render={(d) => <NewVsReturningChart data={d.new_vs_returning} />}
+              height="h-56"
+              render={(d) => <ActiveUsersSeries data={d} />}
             />
-          </div>
-          <Analytic data={analytics} height="h-56" render={(d) => <ActiveUsersSeries data={d} />} />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Analytic data={analytics} render={(d) => <ActivationPanel data={d} />} />
+              <ConversionPanel data={data} />
+            </div>
+          </>
+        )}
+
+        {tab === "retention" && (
+          <>
+            {retention ? (
+              <RetentionCohorts data={retention} />
+            ) : (
+              <Card>
+                <Skeleton className="h-64 w-full" />
+              </Card>
+            )}
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Analytic data={analytics} render={(d) => <ActiveUsersPanel data={d} />} />
+              <Analytic
+                data={analytics}
+                render={(d) => <ClaimsDistribution data={d.claims_distribution} />}
+              />
+            </div>
+          </>
+        )}
+
+        {tab === "referrals" && (
+          <>
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <Analytic data={analytics} render={(d) => <ReferralFunnelPanel data={d} />} />
+              <Analytic data={analytics} render={(d) => <ReferralCapPanel data={d} />} />
+            </div>
+            <TopReferrers data={data.top_referrers} />
+          </>
+        )}
+
+        {tab === "usage" && (
+          <Analytic data={usage} height="h-64" render={(d) => <UsagePanel data={d} />} />
+        )}
+
+        {tab === "geo" && (
+          <>
+            <Analytic
+              data={analytics}
+              height="h-64"
+              render={(d) => <ActivityHeatmap cells={d.heatmap} />}
+            />
+            <Analytic
+              data={analytics}
+              height="h-64"
+              render={(d) => (
+                <ActivityHeatmap
+                  cells={d.signup_heatmap}
+                  title={t("d.heat.signups")}
+                  unit={t("d.heat.signupsUnit")}
+                  axisNote={t("d.heat.signupsAxis")}
+                />
+              )}
+            />
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <TopLocations data={data.top_locations} />
+              <LanguageDonut data={data.languages} />
+            </div>
+            <Analytic
+              data={analytics}
+              render={(d) => <ReminderByLanguage data={d.reminder_by_language} />}
+            />
+          </>
+        )}
+
+        {tab === "health" && (
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Analytic data={analytics} render={(d) => <ActivationPanel data={d} />} />
+            <TrialHealthPanel data={data} />
             <ConversionPanel data={data} />
           </div>
-        </>
-      )}
-
-      {tab === "retention" && (
-        <>
-          {retention ? (
-            <RetentionCohorts data={retention} />
-          ) : (
-            <Card>
-              <Skeleton className="h-64 w-full" />
-            </Card>
-          )}
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Analytic data={analytics} render={(d) => <ActiveUsersPanel data={d} />} />
-            <Analytic
-              data={analytics}
-              render={(d) => <ClaimsDistribution data={d.claims_distribution} />}
-            />
-          </div>
-        </>
-      )}
-
-      {tab === "referrals" && (
-        <>
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <Analytic data={analytics} render={(d) => <ReferralFunnelPanel data={d} />} />
-            <Analytic data={analytics} render={(d) => <ReferralCapPanel data={d} />} />
-          </div>
-          <TopReferrers data={data.top_referrers} />
-        </>
-      )}
-
-      {tab === "usage" && (
-        <Analytic data={usage} height="h-64" render={(d) => <UsagePanel data={d} />} />
-      )}
-
-      {tab === "geo" && (
-        <>
-          <Analytic
-            data={analytics}
-            height="h-64"
-            render={(d) => <ActivityHeatmap cells={d.heatmap} />}
-          />
-          <Analytic
-            data={analytics}
-            height="h-64"
-            render={(d) => (
-              <ActivityHeatmap
-                cells={d.signup_heatmap}
-                title={t("d.heat.signups")}
-                unit={t("d.heat.signupsUnit")}
-                axisNote={t("d.heat.signupsAxis")}
-              />
-            )}
-          />
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <TopLocations data={data.top_locations} />
-            <LanguageDonut data={data.languages} />
-          </div>
-          <Analytic
-            data={analytics}
-            render={(d) => <ReminderByLanguage data={d.reminder_by_language} />}
-          />
-        </>
-      )}
-
-      {tab === "health" && (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <TrialHealthPanel data={data} />
-          <ConversionPanel data={data} />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
