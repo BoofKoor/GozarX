@@ -1,0 +1,110 @@
+{
+  "probes": [
+    {
+      "what": "config-card",
+      "locale": "fa",
+      "file": "w-cu2-config-fa.png",
+      "w": 320,
+      "h": 695
+    },
+    {
+      "what": "config-card",
+      "locale": "en",
+      "file": "w-cu2-config-en.png",
+      "w": 320,
+      "h": 661
+    },
+    {
+      "what": "idle-picker",
+      "file": "w-cu2-picker-fa.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "hero",
+      "file": "w-cu2-hero-fa.png",
+      "w": 320,
+      "h": 294
+    },
+    {
+      "what": "cooldown",
+      "file": "w-cu2-cooldown.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "exhausted",
+      "file": "w-cu2-exhausted.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "panel_error",
+      "file": "w-cu2-panel-error.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "no_locations",
+      "file": "w-cu2-no-locations.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "rate_limited",
+      "file": "w-cu2-rate-limited.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "location_unavailable",
+      "file": "w-cu2-loc-unavailable.png",
+      "w": 320,
+      "h": 610
+    },
+    {
+      "what": "drawer"
+    },
+    {
+      "what": "footer",
+      "file": "w-cu2-footer.png",
+      "w": 360,
+      "h": 935
+    },
+    {
+      "what": "status-cards",
+      "cards": [
+        {
+          "cls": "sec status-sec",
+          "h": 2897,
+          "y": 63,
+          "t": "حساب کاربری GZ-7QK2M4 انتقال شناسهٔ عمومی تو · روی این مرورگر ذخیره می‌شود کانفیگ شما فعال است می‌توانی کپی کنی یا لوکیشن را عوض کنی. German"
+        },
+        {
+          "cls": "card rewards-card rw2",
+          "h": 602,
+          "y": 984,
+          "t": "حجم بیشتری می‌خواهی؟ ماموریت‌ها را کامل کن و حجم روزانه‌ات را بیشتر کن. روز ۲ از ۵ استریکت را ادامه بده! ۳ ۴ امروز گرفتی — فردا: روز ۳ دعوت "
+        },
+        {
+          "cls": "card settings",
+          "h": 330,
+          "y": 1602,
+          "t": "تنظیمات زبان فا EN تم روشن تاریک اعلان‌ها از آماده‌شدن کانفیگ و کم‌شدن حجم باخبر شو"
+        },
+        {
+          "cls": "card hist",
+          "h": 301,
+          "y": 1948,
+          "t": "تاریخچهٔ دریافت Germany ۳ ساعت پیش Netherlands دیروز Sweden پریروز"
+        },
+        {
+          "cls": "card transfer-card",
+          "h": 453,
+          "y": 2265,
+          "t": "انتقال به دستگاه دیگر این کد را روی دستگاه جدید وارد کن تا سوابق، حجم و دعوت‌هایت منتقل شود. کد یک‌بارمصرف است. ساخت کد انتقال قبلاً از Goza"
+        }
+      ]
+    }
+  ]
+}

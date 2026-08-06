@@ -1,0 +1,110 @@
+{
+  "probes": [
+    {
+      "what": "hung-status",
+      "timeline": [
+        {
+          "atMs": 1000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        },
+        {
+          "atMs": 3000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        },
+        {
+          "atMs": 5000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        },
+        {
+          "atMs": 10000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        },
+        {
+          "atMs": 20000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        },
+        {
+          "atMs": 30000,
+          "skeleton": true,
+          "widgetText": "",
+          "anyError": false,
+          "ariaBusy": true
+        }
+      ]
+    },
+    {
+      "what": "slow-network",
+      "firstInteractivePickerMs": 14724,
+      "note": "400kbps/400ms + the mock's 3s per API call"
+    },
+    {
+      "what": "offline-reload",
+      "url": "/",
+      "text": "GozarX کانفیگ رایگان و پرسرعت، در چند ثانیه هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود. بدون ثبت‌نام همیشه رایگان هر ۲۴ ساعت تازه +۱۲٬۰۰۰ کاربر یک وقفهٔ کوتاه پیش آمد نگران نباش، دریافت تو دست‌نخورده مانده. یک",
+      "hasConfigLink": false,
+      "hasWidget": true
+    },
+    {
+      "what": "turnstile",
+      "ctaDisabled": true,
+      "ctaText": "دریافت کانفیگ",
+      "failNotice": "بررسی امنیتی بارگذاری نشد — اتصالت را بررسی کن. تلاش دوباره",
+      "bodyMentions": true
+    },
+    {
+      "what": "contact-form",
+      "fields": [
+        {
+          "name": "c-topic",
+          "type": "select-one",
+          "required": false,
+          "placeholder": null,
+          "label": "موضوع",
+          "h": 50
+        },
+        {
+          "name": "c-msg",
+          "type": "textarea",
+          "required": false,
+          "placeholder": "مشکل یا سوالت را بنویس…",
+          "label": "پیام",
+          "h": 120
+        },
+        {
+          "name": "c-handle",
+          "type": "text",
+          "required": false,
+          "placeholder": "مثلاً ایمیل یا هر راه دلخواه برای پاسخ",
+          "label": "راه پاسخ (اختیاری)",
+          "h": 50
+        }
+      ],
+      "submit": [
+        "ارسال پیام"
+      ],
+      "text": "GozarX تماس دربارهٔ ما و تماس GozarX یک ابزار رایگان است که هر روز به همه یک کانفیگ آزمایشی می‌دهد. هدف ما ساده است: دسترسی آزاد و بی‌دردسر، بدون ثبت‌نام و بدون هزینه. تیم کوچک ما روی سرعت، پایداری و حریم خصوصی تمرکز دارد. شاید جوابت این‌جا باشد: سوالات راهنمای اتصال موضوع یک موضوع انتخاب کن مشکل در اتصال سوال دربارهٔ حجم/دعوت گزارش باگ پیشنهاد یا سایر پیام راه پاسخ (اختیاری) ارسال پیام معمولاً کم"
+    },
+    {
+      "what": "contact-empty-submit",
+      "alerts": [
+        "پیام\nلطفاً پیام را بنویس."
+      ],
+      "invalid": []
+    }
+  ]
+}

@@ -1,0 +1,367 @@
+{
+  "probes": [
+    {
+      "file": "w-cu-config-card-fa.png",
+      "box": {
+        "w": 320,
+        "h": 695
+      },
+      "locale": "fa",
+      "what": "delivered config card"
+    },
+    {
+      "what": "config-card-labels",
+      "locale": "fa",
+      "labels": [
+        "کانفیگ شما فعال است",
+        "می‌توانی کپی کنی یا لوکیشن را عوض کنی.",
+        "Germany",
+        "آماده",
+        "لینک کانفیگ",
+        "vless://8f3c1d2e-9a4b-4c7d-b1e6-2f5a8c9d0e13@de-01.gozarx-edge.net:443?type=ws&security=tls&sni=cdn.gozarx-edge.net&host=cdn.gozarx-edge.net&path=%2Fws%3Fed%3D2048&fp=chrome&alpn=h2%2Chttp%2F1.1#GozarX-DE-01",
+        "کپی",
+        "برای افزودن سریع کانفیگ روی برنامه مد نظر کلیک کنید.",
+        "v2rayNG",
+        "Happ",
+        "مصرف امروز",
+        "۲۵٪",
+        "۲۵۶ MB",
+        "از",
+        "۱ GB",
+        "مانده:",
+        "۷۶۸ MB",
+        "زمان باقی‌مانده",
+        "۰۰",
+        "ساعت",
+        ":",
+        "۰۰",
+        "دقیقه",
+        ":",
+        "۰۰",
+        "ثانیه",
+        "تغییر لوکیشن",
+        "۱۱ لوکیشن دیگر در دسترس"
+      ]
+    },
+    {
+      "file": "w-cu-config-card-en.png",
+      "box": {
+        "w": 320,
+        "h": 661
+      },
+      "locale": "en",
+      "what": "delivered config card"
+    },
+    {
+      "what": "config-card-labels",
+      "locale": "en",
+      "labels": [
+        "Your config is active",
+        "Copy it, or switch its location.",
+        "Germany",
+        "Ready",
+        "Config link",
+        "vless://8f3c1d2e-9a4b-4c7d-b1e6-2f5a8c9d0e13@de-01.gozarx-edge.net:443?type=ws&security=tls&sni=cdn.gozarx-edge.net&host=cdn.gozarx-edge.net&path=%2Fws%3Fed%3D2048&fp=chrome&alpn=h2%2Chttp%2F1.1#GozarX-DE-01",
+        "Copy",
+        "Tap an app to add the config to it instantly.",
+        "v2rayNG",
+        "Happ",
+        "Today's usage",
+        "25%",
+        "256 MB",
+        "of",
+        "1 GB",
+        "Left:",
+        "768 MB",
+        "Time left",
+        "00",
+        "hours",
+        ":",
+        "00",
+        "min",
+        ":",
+        "00",
+        "sec",
+        "Change location",
+        "11 more locations available"
+      ]
+    },
+    {
+      "file": "w-cu-picker-fa.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "idle picker"
+    },
+    {
+      "what": "home-geometry",
+      "fold": 640,
+      "heroH1": 95,
+      "widget": 417,
+      "pickLabel": 553,
+      "firstCard": 599,
+      "cta": 875,
+      "reassure": 946,
+      "widgetH": 610,
+      "gridH": 268,
+      "gridScrollH": 431,
+      "gridOverflows": true,
+      "cardsVisibleInGrid": 6,
+      "cardsTotal": 12,
+      "trustScrollW": 529,
+      "trustClientW": 320,
+      "trustOverflows": true,
+      "trustOverflowX": "auto",
+      "trustPills": [
+        {
+          "t": "بدون ثبت‌نام",
+          "fullyVisible": true
+        },
+        {
+          "t": "همیشه رایگان",
+          "fullyVisible": true
+        },
+        {
+          "t": "هر ۲۴ ساعت تازه",
+          "fullyVisible": false
+        },
+        {
+          "t": "+۱۲٬۰۰۰ کاربر",
+          "fullyVisible": false
+        }
+      ]
+    },
+    {
+      "file": "w-cu-trust-row.png",
+      "box": {
+        "w": 320,
+        "h": 36
+      },
+      "what": "hero trust pills"
+    },
+    {
+      "file": "w-cu-cooldown.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "cooldown"
+    },
+    {
+      "file": "w-cu-exhausted.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "exhausted"
+    },
+    {
+      "file": "w-cu-panel-error.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "panel_error"
+    },
+    {
+      "file": "w-cu-no-locations.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "no_locations"
+    },
+    {
+      "file": "w-cu-rate-limited.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "rate_limited"
+    },
+    {
+      "file": "w-cu-location-unavailable.png",
+      "box": {
+        "w": 320,
+        "h": 610
+      },
+      "what": "location_unavailable"
+    },
+    {
+      "what": "header-nav",
+      "headerControls": [
+        {
+          "t": "GozarX",
+          "href": "/",
+          "display": "flex",
+          "vis": "visible",
+          "w": 99,
+          "h": 31,
+          "rendered": true
+        },
+        {
+          "t": "لوکیشن‌ها",
+          "href": "/locations",
+          "display": "inline",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "راهنما",
+          "href": "/guides",
+          "display": "inline",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "سوالات",
+          "href": "/faq",
+          "display": "inline",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "تماس",
+          "href": "/contact",
+          "display": "inline",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "فا",
+          "href": null,
+          "display": "inline-block",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "EN",
+          "href": null,
+          "display": "inline-block",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "تم",
+          "href": null,
+          "display": "none",
+          "vis": "visible",
+          "w": 0,
+          "h": 0,
+          "rendered": false
+        },
+        {
+          "t": "حساب کاربری",
+          "href": "/status",
+          "display": "flex",
+          "vis": "visible",
+          "w": 36,
+          "h": 36,
+          "rendered": true
+        },
+        {
+          "t": "menu",
+          "href": null,
+          "display": "grid",
+          "vis": "visible",
+          "w": 38,
+          "h": 38,
+          "rendered": true
+        }
+      ],
+      "drawerHTML": "mainnav",
+      "drawerLinks": [
+        {
+          "t": "لوکیشن‌ها",
+          "h": "/locations"
+        },
+        {
+          "t": "راهنما",
+          "h": "/guides"
+        },
+        {
+          "t": "سوالات",
+          "h": "/faq"
+        },
+        {
+          "t": "تماس",
+          "h": "/contact"
+        }
+      ]
+    },
+    {
+      "file": "w-cu-footer.png",
+      "box": {
+        "w": 360,
+        "h": 935
+      },
+      "what": "footer (language + theme controls)",
+      "docH": 7159,
+      "y": 7101
+    },
+    {
+      "file": "w-cu-guide-android-steps.png",
+      "box": {
+        "w": 320,
+        "h": 844
+      },
+      "what": "android guide steps"
+    },
+    {
+      "what": "guide-android-copy",
+      "steps": [
+        "1 Happ را نصب کن روی دکمهٔ پایین بزن تا Happ را دریافت و نصب کنی، سپس اپ را باز کن. دریافت از Google Play",
+        "2 لینک کانفیگ را کپی کن به صفحهٔ دریافت برو، لوکیشن دلخواهت را بگیر و روی دکمهٔ «کپی» بزن تا لینک کانفیگ در کلیپ‌بورد قرار گیرد.",
+        "3 کانفیگ را از کلیپ‌بورد اضافه کن در Happ روی دکمهٔ + (افزودن) بزن و «Add from clipboard» را انتخاب کن؛ کانفیگ از کلیپ‌بورد شناسایی و اضافه می‌شود.",
+        "4 وصل شو لوکیشن را انتخاب کن و روی دکمهٔ بزرگ اتصال بزن؛ اگر اجازهٔ VPN خواسته شد آن را تأیید کن. چند لحظه بعد وصل می‌شوی."
+      ],
+      "trouble": [
+        "وصل نمی‌شود، چه کنم؟",
+        "سرعت پایین است"
+      ]
+    },
+    {
+      "what": "status-sections",
+      "sections": [
+        {
+          "cls": "sec status-sec",
+          "t": "حساب کاربری GZ-7QK2M4 انتقال شناسهٔ عمومی تو · روی این مرورگر ذخیره می‌شود کانفیگ شما فعال است می‌تو",
+          "y": 63
+        },
+        {
+          "cls": "card rewards-card rw2",
+          "t": "حجم بیشتری می‌خواهی؟ ماموریت‌ها را کامل کن و حجم روزانه‌ات را بیشتر کن. روز ۲ از ۵ استریکت را ادامه ",
+          "y": 984
+        },
+        {
+          "cls": "card settings",
+          "t": "تنظیمات زبان فا EN تم روشن تاریک اعلان‌ها از آماده‌شدن کانفیگ و کم‌شدن حجم باخبر شو",
+          "y": 1602
+        },
+        {
+          "cls": "card hist",
+          "t": "تاریخچهٔ دریافت Germany ۳ ساعت پیش Netherlands دیروز Sweden پریروز",
+          "y": 1948
+        },
+        {
+          "cls": "card transfer-card",
+          "t": "انتقال به دستگاه دیگر این کد را روی دستگاه جدید وارد کن تا سوابق، حجم و دعوت‌هایت منتقل شود. کد یک‌ب",
+          "y": 2265
+        }
+      ]
+    }
+  ]
+}
