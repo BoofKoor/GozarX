@@ -1,0 +1,171 @@
+{
+  "360": {
+    "doc": 6590,
+    "ctaTop": 881.3,
+    "ctaBottom": 938.3,
+    "ctaH": 57.1,
+    "sections": 8,
+    "sectionPadding": "28px",
+    "homepageArtChips": 0,
+    "footerKeywordLinks": 13,
+    "footerLinkHeight": 24.5,
+    "footerSeparator": "\"\"",
+    "footerHeadingOwnLine": true,
+    "burger": [
+      44,
+      44
+    ],
+    "acct": [
+      44,
+      44
+    ],
+    "antibotColor": "rgb(148, 163, 184)",
+    "headerBg": "color(srgb 0.00784314 0.0235294 0.0901961 / 0.94)",
+    "stepIconSharesRowWithTitle": true,
+    "stepHeight": 149.6,
+    "flagstripLines": 2,
+    "flagstripPerLine": [
+      5,
+      1
+    ],
+    "trustBadgeLines": 3,
+    "trustBadgePerLine": [
+      1,
+      1,
+      1
+    ],
+    "secSubTextWrap": "pretty",
+    "horizontalOverflow": false,
+    "hoverRules": {
+      "total": 89,
+      "guardedBlocks": 42,
+      "unguarded": 0
+    }
+  },
+  "390": {
+    "doc": 6427,
+    "ctaTop": 881.3,
+    "ctaBottom": 938.3,
+    "ctaH": 57.1,
+    "sections": 8,
+    "sectionPadding": "28px",
+    "homepageArtChips": 0,
+    "footerKeywordLinks": 13,
+    "footerLinkHeight": 24.5,
+    "footerSeparator": "\"\"",
+    "footerHeadingOwnLine": true,
+    "burger": [
+      44,
+      44
+    ],
+    "acct": [
+      44,
+      44
+    ],
+    "antibotColor": "rgb(148, 163, 184)",
+    "headerBg": "color(srgb 0.00784314 0.0235294 0.0901961 / 0.94)",
+    "stepIconSharesRowWithTitle": true,
+    "stepHeight": 149.6,
+    "flagstripLines": 1,
+    "flagstripPerLine": [
+      6
+    ],
+    "trustBadgeLines": 3,
+    "trustBadgePerLine": [
+      1,
+      1,
+      1
+    ],
+    "secSubTextWrap": "pretty",
+    "horizontalOverflow": false,
+    "hoverRules": {
+      "total": 89,
+      "guardedBlocks": 42,
+      "unguarded": 0
+    }
+  },
+  "393": {
+    "doc": 6400,
+    "ctaTop": 881.3,
+    "ctaBottom": 938.3,
+    "ctaH": 57.1,
+    "sections": 8,
+    "sectionPadding": "28px",
+    "homepageArtChips": 0,
+    "footerKeywordLinks": 13,
+    "footerLinkHeight": 24.5,
+    "footerSeparator": "\"\"",
+    "footerHeadingOwnLine": true,
+    "burger": [
+      44,
+      44
+    ],
+    "acct": [
+      44,
+      44
+    ],
+    "antibotColor": "rgb(148, 163, 184)",
+    "headerBg": "color(srgb 0.00784314 0.0235294 0.0901961 / 0.94)",
+    "stepIconSharesRowWithTitle": true,
+    "stepHeight": 149.6,
+    "flagstripLines": 1,
+    "flagstripPerLine": [
+      6
+    ],
+    "trustBadgeLines": 3,
+    "trustBadgePerLine": [
+      1,
+      1,
+      1
+    ],
+    "secSubTextWrap": "pretty",
+    "horizontalOverflow": false,
+    "hoverRules": {
+      "total": 89,
+      "guardedBlocks": 42,
+      "unguarded": 0
+    }
+  },
+  "412": {
+    "doc": 6335,
+    "ctaTop": 850.7,
+    "ctaBottom": 907.8,
+    "ctaH": 57.1,
+    "sections": 8,
+    "sectionPadding": "28px",
+    "homepageArtChips": 0,
+    "footerKeywordLinks": 13,
+    "footerLinkHeight": 24.5,
+    "footerSeparator": "\"\"",
+    "footerHeadingOwnLine": true,
+    "burger": [
+      44,
+      44
+    ],
+    "acct": [
+      44,
+      44
+    ],
+    "antibotColor": "rgb(148, 163, 184)",
+    "headerBg": "color(srgb 0.00784314 0.0235294 0.0901961 / 0.94)",
+    "stepIconSharesRowWithTitle": true,
+    "stepHeight": 149.6,
+    "flagstripLines": 1,
+    "flagstripPerLine": [
+      6
+    ],
+    "trustBadgeLines": 3,
+    "trustBadgePerLine": [
+      1,
+      1,
+      1
+    ],
+    "secSubTextWrap": "pretty",
+    "horizontalOverflow": false,
+    "hoverRules": {
+      "total": 89,
+      "guardedBlocks": 42,
+      "unguarded": 0
+    }
+  }
+}

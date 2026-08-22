@@ -1,0 +1,182 @@
+{
+  "baseline": {
+    "360": {
+      "top": 875.3,
+      "bottom": 932.3,
+      "doc": 8049,
+      "trustTop": 348.4,
+      "trustVisible": true
+    },
+    "390": {
+      "top": 875.3,
+      "bottom": 932.3,
+      "doc": 7908,
+      "trustTop": 348.4,
+      "trustVisible": true
+    },
+    "393": {
+      "top": 875.3,
+      "bottom": 932.3,
+      "doc": 7881,
+      "trustTop": 348.4,
+      "trustVisible": true
+    },
+    "412": {
+      "top": 844.7,
+      "bottom": 901.8,
+      "doc": 7786,
+      "trustTop": 317.8,
+      "trustVisible": true
+    }
+  },
+  "1 · chrome only (7 changes, keeps everything)": {
+    "360": {
+      "top": 753.3,
+      "bottom": 810.3,
+      "doc": 8015,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "390": {
+      "top": 753.3,
+      "bottom": 810.3,
+      "doc": 7874,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "393": {
+      "top": 753.3,
+      "bottom": 810.3,
+      "doc": 7847,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "412": {
+      "top": 722.7,
+      "bottom": 779.8,
+      "doc": 7752,
+      "trustTop": 283.8,
+      "trustVisible": true
+    }
+  },
+  "2 · chrome + picker to one row + peek": {
+    "360": {
+      "top": 717.3,
+      "bottom": 774.3,
+      "doc": 8015,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "390": {
+      "top": 717.3,
+      "bottom": 774.3,
+      "doc": 7874,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "393": {
+      "top": 717.3,
+      "bottom": 774.3,
+      "doc": 7847,
+      "trustTop": 314.4,
+      "trustVisible": true
+    },
+    "412": {
+      "top": 686.7,
+      "bottom": 743.8,
+      "doc": 7752,
+      "trustTop": 283.8,
+      "trustVisible": true
+    }
+  },
+  "3 · #2 + hero sub 17→15.5px": {
+    "360": {
+      "top": 706.4,
+      "bottom": 763.5,
+      "doc": 8004,
+      "trustTop": 303.6,
+      "trustVisible": true
+    },
+    "390": {
+      "top": 678.5,
+      "bottom": 735.6,
+      "doc": 7835,
+      "trustTop": 275.7,
+      "trustVisible": true
+    },
+    "393": {
+      "top": 678.5,
+      "bottom": 735.6,
+      "doc": 7808,
+      "trustTop": 275.7,
+      "trustVisible": true
+    },
+    "412": {
+      "top": 678.5,
+      "bottom": 735.6,
+      "doc": 7744,
+      "trustTop": 275.7,
+      "trustVisible": true
+    }
+  },
+  "4 · #3 + trust row moved below the widget": {
+    "360": {
+      "top": 702.3,
+      "bottom": 759.3,
+      "doc": 8082,
+      "trustTop": 1023.6,
+      "trustVisible": true
+    },
+    "390": {
+      "top": 674.4,
+      "bottom": 731.5,
+      "doc": 7913,
+      "trustTop": 995.7,
+      "trustVisible": true
+    },
+    "393": {
+      "top": 674.4,
+      "bottom": 731.5,
+      "doc": 7886,
+      "trustTop": 995.7,
+      "trustVisible": true
+    },
+    "412": {
+      "top": 674.4,
+      "bottom": 731.5,
+      "doc": 7822,
+      "trustTop": 995.7,
+      "trustVisible": true
+    }
+  },
+  "5 · #3 + trust row hidden on mobile": {
+    "360": {
+      "top": 670.3,
+      "bottom": 727.3,
+      "doc": 7968,
+      "trustTop": 0,
+      "trustVisible": false
+    },
+    "390": {
+      "top": 642.4,
+      "bottom": 699.5,
+      "doc": 7799,
+      "trustTop": 0,
+      "trustVisible": false
+    },
+    "393": {
+      "top": 642.4,
+      "bottom": 699.5,
+      "doc": 7772,
+      "trustTop": 0,
+      "trustVisible": false
+    },
+    "412": {
+      "top": 642.4,
+      "bottom": 699.5,
+      "doc": 7708,
+      "trustTop": 0,
+      "trustVisible": false
+    }
+  }
+}

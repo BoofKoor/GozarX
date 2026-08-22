@@ -1,0 +1,349 @@
+{
+  "primary": {
+    "360": {
+      "docHeight": 8049,
+      "viewport": {
+        "w": 360,
+        "h": 780
+      },
+      "langBannerPresent": false,
+      "langBannerHeight": 0,
+      "header": {
+        "top": 0,
+        "bottom": 63,
+        "h": 63,
+        "w": 360
+      },
+      "hero": {
+        "top": 63,
+        "bottom": 1070.6,
+        "h": 1007.6,
+        "w": 360
+      },
+      "h1": {
+        "top": 95,
+        "bottom": 188,
+        "h": 93,
+        "w": 320
+      },
+      "sub": {
+        "top": 204,
+        "bottom": 326.4,
+        "h": 122.4,
+        "w": 320
+      },
+      "trustRow": {
+        "top": 348.4,
+        "bottom": 384.6,
+        "h": 36.2,
+        "w": 320
+      },
+      "widget": {
+        "top": 416.6,
+        "bottom": 1026.6,
+        "h": 610,
+        "w": 320,
+        "minBlockSize": "610px",
+        "naturalContent": 608
+      },
+      "wHead": {
+        "top": 437.6,
+        "bottom": 532.9,
+        "h": 95.3,
+        "w": 278
+      },
+      "pickLabel": {
+        "top": 552.9,
+        "bottom": 576.3,
+        "h": 23.4,
+        "w": 278
+      },
+      "picker": {
+        "top": 587.3,
+        "bottom": 855.3,
+        "h": 268,
+        "w": 278,
+        "maxH": "268px",
+        "scrollH": 1072
+      },
+      "cta": {
+        "top": 875.3,
+        "bottom": 932.3,
+        "h": 57.1,
+        "w": 278,
+        "marginTop": "20px",
+        "paddingBlock": "16px/16px",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px"
+      }
+    },
+    "390": {
+      "docHeight": 7908,
+      "viewport": {
+        "w": 390,
+        "h": 780
+      },
+      "langBannerPresent": false,
+      "langBannerHeight": 0,
+      "header": {
+        "top": 0,
+        "bottom": 63,
+        "h": 63,
+        "w": 390
+      },
+      "hero": {
+        "top": 63,
+        "bottom": 1070.6,
+        "h": 1007.6,
+        "w": 390
+      },
+      "h1": {
+        "top": 95,
+        "bottom": 188,
+        "h": 93,
+        "w": 350
+      },
+      "sub": {
+        "top": 204,
+        "bottom": 326.4,
+        "h": 122.4,
+        "w": 350
+      },
+      "trustRow": {
+        "top": 348.4,
+        "bottom": 384.6,
+        "h": 36.2,
+        "w": 350
+      },
+      "widget": {
+        "top": 416.6,
+        "bottom": 1026.6,
+        "h": 610,
+        "w": 350,
+        "minBlockSize": "610px",
+        "naturalContent": 608
+      },
+      "wHead": {
+        "top": 437.6,
+        "bottom": 532.9,
+        "h": 95.3,
+        "w": 308
+      },
+      "pickLabel": {
+        "top": 552.9,
+        "bottom": 576.3,
+        "h": 23.4,
+        "w": 308
+      },
+      "picker": {
+        "top": 587.3,
+        "bottom": 855.3,
+        "h": 268,
+        "w": 308,
+        "maxH": "268px",
+        "scrollH": 1072
+      },
+      "cta": {
+        "top": 875.3,
+        "bottom": 932.3,
+        "h": 57.1,
+        "w": 308,
+        "marginTop": "20px",
+        "paddingBlock": "16px/16px",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px"
+      }
+    },
+    "393": {
+      "docHeight": 7881,
+      "viewport": {
+        "w": 393,
+        "h": 780
+      },
+      "langBannerPresent": false,
+      "langBannerHeight": 0,
+      "header": {
+        "top": 0,
+        "bottom": 63,
+        "h": 63,
+        "w": 393
+      },
+      "hero": {
+        "top": 63,
+        "bottom": 1070.6,
+        "h": 1007.6,
+        "w": 393
+      },
+      "h1": {
+        "top": 95,
+        "bottom": 188,
+        "h": 93,
+        "w": 353
+      },
+      "sub": {
+        "top": 204,
+        "bottom": 326.4,
+        "h": 122.4,
+        "w": 353
+      },
+      "trustRow": {
+        "top": 348.4,
+        "bottom": 384.6,
+        "h": 36.2,
+        "w": 353
+      },
+      "widget": {
+        "top": 416.6,
+        "bottom": 1026.6,
+        "h": 610,
+        "w": 353,
+        "minBlockSize": "610px",
+        "naturalContent": 608
+      },
+      "wHead": {
+        "top": 437.6,
+        "bottom": 532.9,
+        "h": 95.3,
+        "w": 311
+      },
+      "pickLabel": {
+        "top": 552.9,
+        "bottom": 576.3,
+        "h": 23.4,
+        "w": 311
+      },
+      "picker": {
+        "top": 587.3,
+        "bottom": 855.3,
+        "h": 268,
+        "w": 311,
+        "maxH": "268px",
+        "scrollH": 1072
+      },
+      "cta": {
+        "top": 875.3,
+        "bottom": 932.3,
+        "h": 57.1,
+        "w": 311,
+        "marginTop": "20px",
+        "paddingBlock": "16px/16px",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px"
+      }
+    },
+    "412": {
+      "docHeight": 7786,
+      "viewport": {
+        "w": 412,
+        "h": 780
+      },
+      "langBannerPresent": false,
+      "langBannerHeight": 0,
+      "header": {
+        "top": 0,
+        "bottom": 63,
+        "h": 63,
+        "w": 412
+      },
+      "hero": {
+        "top": 63,
+        "bottom": 1040,
+        "h": 977,
+        "w": 412
+      },
+      "h1": {
+        "top": 95,
+        "bottom": 188,
+        "h": 93,
+        "w": 372
+      },
+      "sub": {
+        "top": 204,
+        "bottom": 295.8,
+        "h": 91.8,
+        "w": 372
+      },
+      "trustRow": {
+        "top": 317.8,
+        "bottom": 354,
+        "h": 36.2,
+        "w": 372
+      },
+      "widget": {
+        "top": 386,
+        "bottom": 996,
+        "h": 610,
+        "w": 372,
+        "minBlockSize": "610px",
+        "naturalContent": 608
+      },
+      "wHead": {
+        "top": 407,
+        "bottom": 502.3,
+        "h": 95.3,
+        "w": 330
+      },
+      "pickLabel": {
+        "top": 522.3,
+        "bottom": 545.7,
+        "h": 23.4,
+        "w": 330
+      },
+      "picker": {
+        "top": 556.7,
+        "bottom": 824.7,
+        "h": 268,
+        "w": 330,
+        "maxH": "268px",
+        "scrollH": 1072
+      },
+      "cta": {
+        "top": 844.7,
+        "bottom": 901.8,
+        "h": 57.1,
+        "w": 330,
+        "marginTop": "20px",
+        "paddingBlock": "16px/16px",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px"
+      }
+    }
+  },
+  "hypotheses": {
+    "dark, no cookies at all (banner may show)": {
+      "docHeight": 7908,
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "langBanner": 0,
+      "headerH": 63
+    },
+    "LIGHT theme": {
+      "docHeight": 7908,
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "langBanner": 0,
+      "headerH": 63
+    },
+    "en locale": {
+      "docHeight": 7674,
+      "ctaTop": 808.5,
+      "ctaBottom": 868.8,
+      "langBanner": 0,
+      "headerH": 63
+    },
+    "no scroll-settle (reveal not fired)": {
+      "docHeight": 7908,
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "langBanner": 0,
+      "headerH": 63
+    },
+    "desktop UA (isMobile false)": {
+      "docHeight": 7908,
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "langBanner": 0,
+      "headerH": 63
+    }
+  }
+}
