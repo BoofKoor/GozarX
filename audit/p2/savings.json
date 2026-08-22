@@ -1,0 +1,116 @@
+{
+  "360": {
+    "baseline": {
+      "height": 8049,
+      "ctaTop": 875
+    },
+    "A1  .sec padding-block 56→32": {
+      "height": 7665,
+      "ctaTop": 875
+    },
+    "A1  .sec padding-block 56→28 + sec-head mb 40→24": {
+      "height": 7505,
+      "ctaTop": 875
+    },
+    "H1  drop the footer keyword row": {
+      "height": 7628,
+      "ctaTop": 875
+    },
+    "H1' drop the homepage article band instead": {
+      "height": 7149,
+      "ctaTop": 875
+    },
+    "D6  step icon inline with the title": {
+      "height": 7952,
+      "ctaTop": 875
+    },
+    "B2  picker 268→196px (1.5 rows)": {
+      "height": 8049,
+      "ctaTop": 803
+    },
+    "hero widget min-height 610→520": {
+      "height": 8045,
+      "ctaTop": 875
+    },
+    "ALL of the above together": {
+      "height": 6082,
+      "ctaTop": 803
+    }
+  },
+  "390": {
+    "baseline": {
+      "height": 7908,
+      "ctaTop": 875
+    },
+    "A1  .sec padding-block 56→32": {
+      "height": 7524,
+      "ctaTop": 875
+    },
+    "A1  .sec padding-block 56→28 + sec-head mb 40→24": {
+      "height": 7364,
+      "ctaTop": 875
+    },
+    "H1  drop the footer keyword row": {
+      "height": 7548,
+      "ctaTop": 875
+    },
+    "H1' drop the homepage article band instead": {
+      "height": 7008,
+      "ctaTop": 875
+    },
+    "D6  step icon inline with the title": {
+      "height": 7763,
+      "ctaTop": 875
+    },
+    "B2  picker 268→196px (1.5 rows)": {
+      "height": 7908,
+      "ctaTop": 803
+    },
+    "hero widget min-height 610→520": {
+      "height": 7904,
+      "ctaTop": 875
+    },
+    "ALL of the above together": {
+      "height": 5955,
+      "ctaTop": 803
+    }
+  },
+  "412": {
+    "baseline": {
+      "height": 7786,
+      "ctaTop": 845
+    },
+    "A1  .sec padding-block 56→32": {
+      "height": 7402,
+      "ctaTop": 845
+    },
+    "A1  .sec padding-block 56→28 + sec-head mb 40→24": {
+      "height": 7242,
+      "ctaTop": 845
+    },
+    "H1  drop the footer keyword row": {
+      "height": 7425,
+      "ctaTop": 845
+    },
+    "H1' drop the homepage article band instead": {
+      "height": 6886,
+      "ctaTop": 845
+    },
+    "D6  step icon inline with the title": {
+      "height": 7641,
+      "ctaTop": 845
+    },
+    "B2  picker 268→196px (1.5 rows)": {
+      "height": 7786,
+      "ctaTop": 773
+    },
+    "hero widget min-height 610→520": {
+      "height": 7782,
+      "ctaTop": 845
+    },
+    "ALL of the above together": {
+      "height": 5832,
+      "ctaTop": 773
+    }
+  }
+}

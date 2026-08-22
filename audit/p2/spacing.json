@@ -1,0 +1,942 @@
+{
+  "360": {
+    "rows": [
+      {
+        "boundary": "hero→how",
+        "prevLastInk": 1658.8,
+        "prevLastInkEl": "BUTTON.loc-card",
+        "curBoxTop": 1070.6,
+        "headTop": 1126.6,
+        "headHeight": 128.7,
+        "headMarginBottom": "40px",
+        "bodyTop": 1295.3,
+        "inkToHead": -532.2,
+        "inkToBody": -363.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "how→locations",
+        "prevLastInk": 1909.2,
+        "prevLastInkEl": "DIV.step",
+        "curBoxTop": 1965.2,
+        "headTop": 2021.2,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2218.7,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "locations→rewards",
+        "prevLastInk": 2699.1,
+        "prevLastInkEl": "DIV.loccard reveal in",
+        "curBoxTop": 2755.1,
+        "headTop": 2811.1,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 3008.6,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "rewards→apps-sec",
+        "prevLastInk": 3536.7,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 3594.4,
+        "headTop": 3650.4,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 3847.8,
+        "inkToHead": 113.7,
+        "inkToBody": 311.1,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "apps-sec→sec",
+        "prevLastInk": 4152.7,
+        "prevLastInkEl": "A.appcard",
+        "curBoxTop": 4208.7,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 4264.7,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      },
+      {
+        "boundary": "sec→faq",
+        "prevLastInk": 4440.9,
+        "prevLastInkEl": "DIV.statband reveal in",
+        "curBoxTop": 4496.9,
+        "headTop": 4552.9,
+        "headHeight": 87.9,
+        "headMarginBottom": "40px",
+        "bodyTop": 4680.8,
+        "inkToHead": 112,
+        "inkToBody": 239.9,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "faq→articles",
+        "prevLastInk": 5155.7,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 5213.4,
+        "headTop": 5269.4,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 5466.9,
+        "inkToHead": 113.7,
+        "inkToBody": 311.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "articles→sec",
+        "prevLastInk": 6057.4,
+        "prevLastInkEl": "A.chip",
+        "curBoxTop": 6113.4,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 6169.4,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      }
+    ],
+    "viewport": 360,
+    "doc": 8049
+  },
+  "390": {
+    "rows": [
+      {
+        "boundary": "hero→how",
+        "prevLastInk": 1658.8,
+        "prevLastInkEl": "BUTTON.loc-card",
+        "curBoxTop": 1070.6,
+        "headTop": 1126.6,
+        "headHeight": 128.7,
+        "headMarginBottom": "40px",
+        "bodyTop": 1295.3,
+        "inkToHead": -532.2,
+        "inkToBody": -363.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "how→locations",
+        "prevLastInk": 1909.2,
+        "prevLastInkEl": "DIV.step",
+        "curBoxTop": 1965.2,
+        "headTop": 2021.2,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2218.7,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "locations→rewards",
+        "prevLastInk": 2717,
+        "prevLastInkEl": "DIV.loccard reveal in",
+        "curBoxTop": 2773,
+        "headTop": 2829,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 3026.5,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "rewards→apps-sec",
+        "prevLastInk": 3554.6,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 3612.3,
+        "headTop": 3668.3,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 3865.8,
+        "inkToHead": 113.7,
+        "inkToBody": 311.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "apps-sec→sec",
+        "prevLastInk": 4170.6,
+        "prevLastInkEl": "A.appcard",
+        "curBoxTop": 4226.6,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 4282.6,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      },
+      {
+        "boundary": "sec→faq",
+        "prevLastInk": 4437.2,
+        "prevLastInkEl": "DIV.statband reveal in",
+        "curBoxTop": 4493.2,
+        "headTop": 4549.2,
+        "headHeight": 87.9,
+        "headMarginBottom": "40px",
+        "bodyTop": 4677.1,
+        "inkToHead": 112,
+        "inkToBody": 239.9,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "faq→articles",
+        "prevLastInk": 5152,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 5209.8,
+        "headTop": 5265.8,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 5463.2,
+        "inkToHead": 113.8,
+        "inkToBody": 311.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "articles→sec",
+        "prevLastInk": 6053.7,
+        "prevLastInkEl": "A.chip",
+        "curBoxTop": 6109.7,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 6165.7,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      }
+    ],
+    "viewport": 390,
+    "doc": 7908
+  },
+  "412": {
+    "rows": [
+      {
+        "boundary": "hero→how",
+        "prevLastInk": 1628.2,
+        "prevLastInkEl": "BUTTON.loc-card",
+        "curBoxTop": 1040,
+        "headTop": 1096,
+        "headHeight": 128.7,
+        "headMarginBottom": "40px",
+        "bodyTop": 1264.7,
+        "inkToHead": -532.2,
+        "inkToBody": -363.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "how→locations",
+        "prevLastInk": 1878.6,
+        "prevLastInkEl": "DIV.step",
+        "curBoxTop": 1934.6,
+        "headTop": 1990.6,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2188.1,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "locations→rewards",
+        "prevLastInk": 2643.5,
+        "prevLastInkEl": "DIV.loccard reveal in",
+        "curBoxTop": 2699.5,
+        "headTop": 2755.5,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2953,
+        "inkToHead": 112,
+        "inkToBody": 309.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "rewards→apps-sec",
+        "prevLastInk": 3461.1,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 3518.8,
+        "headTop": 3574.8,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 3772.3,
+        "inkToHead": 113.7,
+        "inkToBody": 311.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "apps-sec→sec",
+        "prevLastInk": 4077.2,
+        "prevLastInkEl": "A.appcard",
+        "curBoxTop": 4133.2,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 4189.2,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      },
+      {
+        "boundary": "sec→faq",
+        "prevLastInk": 4343.8,
+        "prevLastInkEl": "DIV.statband reveal in",
+        "curBoxTop": 4399.8,
+        "headTop": 4455.8,
+        "headHeight": 87.9,
+        "headMarginBottom": "40px",
+        "bodyTop": 4583.7,
+        "inkToHead": 112,
+        "inkToBody": 239.9,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "faq→articles",
+        "prevLastInk": 5058.6,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 5116.3,
+        "headTop": 5172.3,
+        "headHeight": 157.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 5369.8,
+        "inkToHead": 113.7,
+        "inkToBody": 311.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 40.3,
+            "mb": "12px",
+            "fs": "26px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "articles→sec",
+        "prevLastInk": 5960.2,
+        "prevLastInkEl": "A.chip",
+        "curBoxTop": 6016.2,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 6072.2,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      }
+    ],
+    "viewport": 412,
+    "doc": 7786
+  },
+  "591": {
+    "rows": [
+      {
+        "boundary": "hero→how",
+        "prevLastInk": 1299.5,
+        "prevLastInkEl": "BUTTON.loc-card",
+        "curBoxTop": 971.3,
+        "headTop": 1027.3,
+        "headHeight": 130.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 1197.8,
+        "inkToHead": -272.2,
+        "inkToBody": -101.7,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "how→locations",
+        "prevLastInk": 1740.4,
+        "prevLastInkEl": "DIV.step",
+        "curBoxTop": 1796.4,
+        "headTop": 1852.4,
+        "headHeight": 130.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2022.9,
+        "inkToHead": 112,
+        "inkToBody": 282.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "locations→rewards",
+        "prevLastInk": 2540.1,
+        "prevLastInkEl": "DIV.loccard reveal in",
+        "curBoxTop": 2596.1,
+        "headTop": 2652.1,
+        "headHeight": 130.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 2822.6,
+        "inkToHead": 112,
+        "inkToBody": 282.5,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "rewards→apps-sec",
+        "prevLastInk": 3298.7,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 3356.4,
+        "headTop": 3412.4,
+        "headHeight": 159.3,
+        "headMarginBottom": "40px",
+        "bodyTop": 3611.8,
+        "inkToHead": 113.7,
+        "inkToBody": 313.1,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 57.6,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 2
+          }
+        ]
+      },
+      {
+        "boundary": "apps-sec→sec",
+        "prevLastInk": 3916.7,
+        "prevLastInkEl": "A.appcard",
+        "curBoxTop": 3972.7,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 4028.7,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      },
+      {
+        "boundary": "sec→faq",
+        "prevLastInk": 4183.3,
+        "prevLastInkEl": "DIV.statband reveal in",
+        "curBoxTop": 4239.3,
+        "headTop": 4295.3,
+        "headHeight": 89.7,
+        "headMarginBottom": "40px",
+        "bodyTop": 4425,
+        "inkToHead": 112,
+        "inkToBody": 241.7,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "faq→articles",
+        "prevLastInk": 4899.9,
+        "prevLastInkEl": "A.link-more",
+        "curBoxTop": 4957.6,
+        "headTop": 5013.6,
+        "headHeight": 130.5,
+        "headMarginBottom": "40px",
+        "bodyTop": 5184.1,
+        "inkToHead": 113.7,
+        "inkToBody": 284.2,
+        "headParts": [
+          {
+            "cls": "eyebrow",
+            "h": 33.6,
+            "mb": "14px",
+            "fs": "12px",
+            "lines": 2
+          },
+          {
+            "cls": "sec-title",
+            "h": 42.1,
+            "mb": "12px",
+            "fs": "27.186px",
+            "lines": 1
+          },
+          {
+            "cls": "sec-sub",
+            "h": 28.8,
+            "mb": "0px",
+            "fs": "16px",
+            "lines": 1
+          }
+        ]
+      },
+      {
+        "boundary": "articles→sec",
+        "prevLastInk": 5497.5,
+        "prevLastInkEl": "A.chip",
+        "curBoxTop": 5553.5,
+        "headTop": null,
+        "headHeight": null,
+        "headMarginBottom": null,
+        "bodyTop": 5609.5,
+        "inkToHead": null,
+        "inkToBody": 112,
+        "headParts": null
+      }
+    ],
+    "viewport": 591,
+    "doc": 7030
+  }
+}

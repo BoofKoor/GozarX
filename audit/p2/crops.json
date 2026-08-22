@@ -1,0 +1,132 @@
+{
+  "appTiles": [
+    {
+      "name": "Happپیشنهادی",
+      "src": "/icons/happ.webp",
+      "natural": "240x240",
+      "rendered": "52x52",
+      "objectFit": "cover",
+      "filter": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "mixBlendMode": "normal",
+      "boxShadow": "rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset, rgba(2, 6, ",
+      "tile": {
+        "meanLuma": 0.23,
+        "meanColor": "#58595a",
+        "px": 10816
+      },
+      "cardSurface": {
+        "meanLuma": 0.014,
+        "meanColor": "#0f1c2c",
+        "px": 3200
+      }
+    },
+    {
+      "name": "v2rayNG",
+      "src": "/icons/v2rayng.webp",
+      "natural": "256x256",
+      "rendered": "52x52",
+      "objectFit": "cover",
+      "filter": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "mixBlendMode": "normal",
+      "boxShadow": "rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset, rgba(2, 6, ",
+      "tile": {
+        "meanLuma": 0.711,
+        "meanColor": "#b9babb",
+        "px": 10816
+      },
+      "cardSurface": {
+        "meanLuma": 0.009,
+        "meanColor": "#0e1729",
+        "px": 3200
+      }
+    },
+    {
+      "name": "Streisand",
+      "src": "/icons/streisand.webp",
+      "natural": "400x400",
+      "rendered": "52x52",
+      "objectFit": "cover",
+      "filter": "none",
+      "background": "rgba(0, 0, 0, 0)",
+      "mixBlendMode": "normal",
+      "boxShadow": "rgba(255, 255, 255, 0.12) 0px 0px 0px 1px inset, rgba(2, 6, ",
+      "tile": {
+        "meanLuma": 0.084,
+        "meanColor": "#372e56",
+        "px": 10816
+      },
+      "cardSurface": {
+        "meanLuma": 0.012,
+        "meanColor": "#0f182a",
+        "px": 3200
+      }
+    }
+  ],
+  "appTitleLuma": {
+    "meanLuma": 0.094,
+    "meanColor": "#203a43",
+    "px": 12544
+  },
+  "statDot": {
+    "dot": {
+      "w": 15,
+      "h": 15
+    },
+    "tile": {
+      "w": 44,
+      "h": 44
+    },
+    "tileRadius": "13px",
+    "tileRadiusStart": "13px",
+    "insetBlockEnd": "-3px",
+    "insetInlineEnd": "-3px",
+    "overhangBottomPx": 3,
+    "overhangInlineEndPx": 3,
+    "outsideFraction": 36
+  },
+  "locDots": {
+    "cards": 29,
+    "withDot": 29,
+    "dotColors": [
+      "rgb(52, 211, 153)"
+    ],
+    "dotBorderColors": [
+      "rgba(59, 130, 246, 0.14)",
+      "rgb(14, 23, 41)"
+    ]
+  },
+  "trustRow": {
+    "scrollWidth": 529,
+    "clientWidth": 350,
+    "scrollLeft": 0,
+    "mask": "linear-gradient(90deg, rgba(0, 0, 0, 0), rgb(0, 0, 0) 18px, rgb(0, 0, 0) calc(100% - 18px), rgba(0, 0, 0, 0))",
+    "pills": [
+      {
+        "text": "بدون ثبت‌نام",
+        "width": 119,
+        "visiblePx": 119,
+        "visiblePct": 100
+      },
+      {
+        "text": "همیشه رایگان",
+        "width": 127,
+        "visiblePx": 127,
+        "visiblePct": 100
+      },
+      {
+        "text": "هر ۲۴ ساعت تازه",
+        "width": 140,
+        "visiblePx": 87,
+        "visiblePct": 62
+      },
+      {
+        "text": "+۱۲٬۰۰۰ کاربر",
+        "width": 118,
+        "visiblePx": 0,
+        "visiblePct": 0
+      }
+    ]
+  }
+}

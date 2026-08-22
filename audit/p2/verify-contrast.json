@@ -1,0 +1,134 @@
+{
+  "dark": {
+    "gradientStops": [
+      "#1e40af",
+      "#0e7490"
+    ],
+    "gradientSamples": [
+      {
+        "atFractionOfSpan": 0.05,
+        "glyphColor": "#1d43ad",
+        "groundHere": "#05132f",
+        "ratio": 2.15
+      },
+      {
+        "atFractionOfSpan": 0.3,
+        "glyphColor": "#1950a6",
+        "groundHere": "#061430",
+        "ratio": 2.37
+      },
+      {
+        "atFractionOfSpan": 0.5,
+        "glyphColor": "#165aa0",
+        "groundHere": "#061532",
+        "ratio": 2.58
+      },
+      {
+        "atFractionOfSpan": 0.7,
+        "glyphColor": "#136499",
+        "groundHere": "#061533",
+        "ratio": 2.86
+      },
+      {
+        "atFractionOfSpan": 0.95,
+        "glyphColor": "#0f7192",
+        "groundHere": "#071635",
+        "ratio": 3.24
+      }
+    ],
+    "ctaLabel": "#eaf2ff",
+    "ctaSamples": [
+      {
+        "f": 0.03,
+        "ground": "#1754a3",
+        "ratio": 6.58
+      },
+      {
+        "f": 0.25,
+        "ground": "#184fa6",
+        "ratio": 6.88
+      },
+      {
+        "f": 0.5,
+        "ground": "#1b4baa",
+        "ratio": 7.08
+      },
+      {
+        "f": 0.75,
+        "ground": "#1c45ac",
+        "ratio": 7.47
+      },
+      {
+        "f": 0.97,
+        "ground": "#1d40ae",
+        "ratio": 7.78
+      }
+    ]
+  },
+  "light": {
+    "gradientStops": [
+      "#2563eb",
+      "#06b6d4"
+    ],
+    "gradientSamples": [
+      {
+        "atFractionOfSpan": 0.05,
+        "glyphColor": "#2367ea",
+        "groundHere": "#cfe5f7",
+        "ratio": 3.85
+      },
+      {
+        "atFractionOfSpan": 0.3,
+        "glyphColor": "#1c7ce4",
+        "groundHere": "#cce3f6",
+        "ratio": 3.15
+      },
+      {
+        "atFractionOfSpan": 0.5,
+        "glyphColor": "#168de0",
+        "groundHere": "#cae1f6",
+        "ratio": 2.65
+      },
+      {
+        "atFractionOfSpan": 0.7,
+        "glyphColor": "#0f9ddb",
+        "groundHere": "#c9dff6",
+        "ratio": 2.24
+      },
+      {
+        "atFractionOfSpan": 0.95,
+        "glyphColor": "#08b2d5",
+        "groundHere": "#c9dff7",
+        "ratio": 1.85
+      }
+    ],
+    "ctaLabel": "#ffffff",
+    "ctaSamples": [
+      {
+        "f": 0.03,
+        "ground": "#1982e2",
+        "ratio": 3.94
+      },
+      {
+        "f": 0.25,
+        "ground": "#1b7be4",
+        "ratio": 4.2
+      },
+      {
+        "f": 0.5,
+        "ground": "#1f74e7",
+        "ratio": 4.46
+      },
+      {
+        "f": 0.75,
+        "ground": "#216be9",
+        "ratio": 4.83
+      },
+      {
+        "f": 0.97,
+        "ground": "#2464ea",
+        "ratio": 5.14
+      }
+    ]
+  }
+}

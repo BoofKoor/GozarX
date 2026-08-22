@@ -1,0 +1,6778 @@
+{
+  "360": {
+    "rows": [
+      {
+        "el": "div.container.hd-row",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 186.8,
+        "boxWidth": 360,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.hd-ctrls",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 82,
+        "boxWidth": 82,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.sheet-controls",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 211.3,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.seg",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 127.3,
+        "boxWidth": 135.3,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-row",
+        "wrap": "nowrap",
+        "overflowX": "auto",
+        "justify": "normal",
+        "kids": 4,
+        "lines": 1,
+        "perLine": [
+          4
+        ],
+        "orphan": false,
+        "naturalWidth": 528.8,
+        "boxWidth": 320,
+        "wouldOverflow": true,
+        "clipped": true,
+        "hiddenPx": 209,
+        "mask": true,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.pick-label",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 185.8,
+        "boxWidth": 278,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "button.btn.cta",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "center",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 47,
+        "boxWidth": 278,
+        "wouldOverflow": false,
+        "clipped": true,
+        "hiddenPx": 331,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.reassure",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 272.9,
+        "boxWidth": 278,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "span.livepill",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 29.6,
+        "boxWidth": 136.6,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.flagstrip",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 6,
+        "lines": 2,
+        "perLine": [
+          5,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 324,
+        "boxWidth": 318,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 286,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 286,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 286,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 286,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 282,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 282,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 282,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.statband",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 318,
+        "boxWidth": 320,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.8,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 233.8,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 230.1,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 247.9,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.3,
+        "boxWidth": 318,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.art-chips",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 13,
+        "lines": 13,
+        "perLine": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 3111.2,
+        "boxWidth": 320,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-badges",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 2,
+        "perLine": [
+          2,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 408.3,
+        "boxWidth": 270,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-cta",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 475.9,
+        "boxWidth": 320,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "nav.ft-more",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 14,
+        "lines": 13,
+        "perLine": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 2770.2,
+        "boxWidth": 320,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-bottom",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 389.2,
+        "boxWidth": 320,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-langs",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 136.4,
+        "boxWidth": 144.4,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      }
+    ],
+    "targets": {
+      "C1 article chip (.art-chips .chip)": {
+        "count": 13,
+        "h": {
+          "min": 36.2,
+          "max": 36.2
+        },
+        "w": {
+          "min": 162.4,
+          "max": 301.4
+        },
+        "display": "flex",
+        "fontSize": "13px",
+        "lineHeight": "18.2px",
+        "paddingBlock": "8px/8px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 46.2,
+        "verticalGap": 10
+      },
+      "C2 footer column link (.ft-col a)": {
+        "count": 10,
+        "h": {
+          "min": 37.3,
+          "max": 37.3
+        },
+        "w": {
+          "min": 144,
+          "max": 144
+        },
+        "display": "block",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "6.5px/6.5px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 10,
+        "pitch": 37.3,
+        "verticalGap": 0
+      },
+      "C2 footer keyword link (.ft-more a)": {
+        "count": 13,
+        "h": {
+          "min": 22.5,
+          "max": 22.5
+        },
+        "w": {
+          "min": 124.8,
+          "max": 258.6
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 30.5,
+        "verticalGap": 8
+      },
+      "C2 footer bottom link (.ft-bottom a)": null,
+      "C3 flag card (.loc-card)": {
+        "count": 29,
+        "h": {
+          "min": 98.8,
+          "max": 98.8
+        },
+        "w": {
+          "min": 87.3,
+          "max": 87.3
+        },
+        "display": "flex",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "13px/11px",
+        "paddingInline": "6px/6px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C3 big flag (.flagstrip .fbig)": {
+        "count": 5,
+        "h": {
+          "min": 44,
+          "max": 44
+        },
+        "w": {
+          "min": 44,
+          "max": 44
+        },
+        "display": "block",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C4 burger (.burger)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "grid",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C4 account (.acct-btn)": {
+        "count": 1,
+        "h": {
+          "min": 36,
+          "max": 36
+        },
+        "w": {
+          "min": 36,
+          "max": 36
+        },
+        "display": "flex",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C5 accordion row (.acc-head)": {
+        "count": 5,
+        "h": {
+          "min": 59.9,
+          "max": 59.9
+        },
+        "w": {
+          "min": 318,
+          "max": 318
+        },
+        "display": "flex",
+        "fontSize": "15.5px",
+        "lineHeight": "27.9px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "18px/18px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": 138.3,
+        "verticalGap": 78.4
+      },
+      "CTA (.cta)": {
+        "count": 1,
+        "h": {
+          "min": 57.1,
+          "max": 57.1
+        },
+        "w": {
+          "min": 278,
+          "max": 278
+        },
+        "display": "inline-flex",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "22px/22px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "footer CTA (.ft-cta-btn)": {
+        "count": 1,
+        "h": {
+          "min": 50.1,
+          "max": 50.1
+        },
+        "w": {
+          "min": 195.9,
+          "max": 195.9
+        },
+        "display": "flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "12px/12px",
+        "paddingInline": "20px/20px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "loccta (.loccta)": {
+        "count": 1,
+        "h": {
+          "min": 54.2,
+          "max": 54.2
+        },
+        "w": {
+          "min": 318,
+          "max": 318
+        },
+        "display": "flex",
+        "fontSize": "14px",
+        "lineHeight": "25.2px",
+        "paddingBlock": "14px/14px",
+        "paddingInline": "14px/14px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "link-more (.link-more)": {
+        "count": 3,
+        "h": {
+          "min": 26.1,
+          "max": 26.1
+        },
+        "w": {
+          "min": 129.8,
+          "max": 164.3
+        },
+        "display": "inline-flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 3,
+        "pitch": 1619.1,
+        "verticalGap": 1593
+      },
+      "appcard (.appcard)": {
+        "count": 3,
+        "h": {
+          "min": 92.3,
+          "max": 92.3
+        },
+        "w": {
+          "min": 320,
+          "max": 320
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "18px/18px",
+        "paddingInline": "18px/18px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 106.3,
+        "verticalGap": 14
+      },
+      "mvrow (.mvrow)": {
+        "count": 4,
+        "h": {
+          "min": 104,
+          "max": 124
+        },
+        "w": {
+          "min": 320,
+          "max": 320
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "16px/16px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 135,
+        "verticalGap": 11
+      },
+      "lang button (.ft-langs button)": {
+        "count": 2,
+        "h": {
+          "min": 34.5,
+          "max": 34.5
+        },
+        "w": {
+          "min": 64.6,
+          "max": 69.7
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "6px/6px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 2,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "theme switch (.theme-switch)": {
+        "count": 1,
+        "h": {
+          "min": 34,
+          "max": 34
+        },
+        "w": {
+          "min": 66,
+          "max": 66
+        },
+        "display": "block",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "sheet navlink (.sheet .navlink)": {
+        "count": 6,
+        "h": {
+          "min": 48.4,
+          "max": 48.4
+        },
+        "w": {
+          "min": 318,
+          "max": 318
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "22.4px",
+        "paddingBlock": "13px/13px",
+        "paddingInline": "14px/14px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 50.4,
+        "verticalGap": 2
+      }
+    },
+    "tinyTargets": [
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 98.8,
+        "h": 30.6
+      },
+      {
+        "el": "a.acct-btn.status-btn",
+        "t": "حساب کاربری",
+        "w": 36,
+        "h": 36
+      },
+      {
+        "el": "button.icon-only.burger",
+        "t": "",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 60,
+        "h": 28.2
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 65.3,
+        "h": 28.2
+      },
+      {
+        "el": "button.theme-switch.is-dark",
+        "t": "",
+        "w": 66,
+        "h": 34
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ ماموریت‌ها",
+        "w": 152.1,
+        "h": 26.1
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ سوالات",
+        "w": 129.8,
+        "h": 26.1
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 259.1,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 217.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 231.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 259.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 301.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 256.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 192.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 254.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 182.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 217.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 243.7,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 212.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش Streisand آیفون",
+        "w": 162.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.link-more",
+        "t": "دربارهٔ حریم خصوصی بخوان",
+        "w": 164.3,
+        "h": 26.1
+      },
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 144,
+        "h": 30.6
+      },
+      {
+        "el": "a",
+        "t": "دریافت کانفیگ",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "لوکیشن‌ها",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حجم بیشتر",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حساب کاربری",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "راهنمای اتصال",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "سوالات متداول",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "دربارهٔ ما",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "قوانین استفاده",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حریم خصوصی",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "تماس با ما",
+        "w": 144,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 217.9,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 178.2,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 191.4,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 218,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 258.6,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 215.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 154.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 213.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 145.1,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 178.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 202.8,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 173.7,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش Streisand آیفون",
+        "w": 124.8,
+        "h": 22.5
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 64.6,
+        "h": 34.5
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 69.7,
+        "h": 34.5
+      }
+    ],
+    "subtitles": [
+      {
+        "el": "h1",
+        "text": "کانفیگ رایگان و پرسرعت، در چند ثانیه",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "30px",
+        "lineHeight": "46.5px",
+        "boxWidth": 320,
+        "lineCount": 5,
+        "lineWidths": [
+          196,
+          107,
+          6,
+          142,
+          142
+        ],
+        "linesText": [
+          "کانفیگ رایگان و",
+          "پرسرعت، در چند ثانیه"
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 72
+      },
+      {
+        "el": "p.sub",
+        "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "17px",
+        "lineHeight": "30.6px",
+        "boxWidth": 320,
+        "lineCount": 4,
+        "lineWidths": [
+          279,
+          277,
+          316,
+          169
+        ],
+        "linesText": [
+          "هر روز یک کانفیگ آزمایشی رایگان بگیر؛",
+          "لوکیشن دلخواهت را انتخاب کن و بدون",
+          "ثبت‌نام وصل شو. با دعوت دوستان هم حجم",
+          "روزانه‌ات بیشتر می‌شود."
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": 54
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "چطور کار می‌کند؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          182
+        ],
+        "linesText": [
+          "چطور کار می‌کند؟"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "از ورود تا اتصال، کمتر از یک دقیقه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          232
+        ],
+        "linesText": [
+          "از ورود تا اتصال، کمتر از یک دقیقه."
+        ],
+        "lastLineWords": 8,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "از هر کشوری که بخواهی",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          259
+        ],
+        "linesText": [
+          "از هر کشوری که بخواهی"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 320,
+        "lineCount": 2,
+        "lineWidths": [
+          308,
+          100
+        ],
+        "linesText": [
+          "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه",
+          "رایگان و روزانه."
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": 32
+      },
+      {
+        "el": "p.loccap",
+        "text": "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "14px",
+        "lineHeight": "26.6px",
+        "boxWidth": 318,
+        "lineCount": 2,
+        "lineWidths": [
+          239,
+          137
+        ],
+        "linesText": [
+          "سرورهای فعال در نقاط مختلف جهان برای",
+          "اینترنت آزاد و بدون مرز."
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": 57
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "حجم روزانه‌ات را بیشتر کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          269
+        ],
+        "linesText": [
+          "حجم روزانه‌ات را بیشتر کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 320,
+        "lineCount": 2,
+        "lineWidths": [
+          304,
+          205
+        ],
+        "linesText": [
+          "چند کار ساده انجام بده و حجم روزانه‌ات را چند",
+          "برابر کن — همه بدون پرداخت."
+        ],
+        "lastLineWords": 6,
+        "lastLineRatio": 67
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "در اپ دلخواهت باز کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          233
+        ],
+        "linesText": [
+          "در اپ دلخواهت باز کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 320,
+        "lineCount": 2,
+        "lineWidths": [
+          302,
+          255
+        ],
+        "linesText": [
+          "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند.",
+          "اپِ متناسب با دستگاهت را انتخاب کن."
+        ],
+        "lastLineWords": 7,
+        "lastLineRatio": 84
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "سوالی داری؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          139
+        ],
+        "linesText": [
+          "سوالی داری؟"
+        ],
+        "lastLineWords": 2,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "راهنماها و مقالات",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 320,
+        "lineCount": 1,
+        "lineWidths": [
+          188
+        ],
+        "linesText": [
+          "راهنماها و مقالات"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 320,
+        "lineCount": 2,
+        "lineWidths": [
+          276,
+          252
+        ],
+        "linesText": [
+          "آموزش اتصال با برنامه‌های مختلف و پاسخ",
+          "پرسش‌های رایج دربارهٔ کانفیگ رایگان."
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": 91
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "بدون ثبت‌نام. بدون ردگیری.",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 270,
+        "lineCount": 2,
+        "lineWidths": [
+          144,
+          145
+        ],
+        "linesText": [
+          "بدون ثبت‌نام.",
+          "بدون ردگیری."
+        ],
+        "lastLineWords": 2,
+        "lastLineRatio": 100
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "برای دریافت کانفیگ هیچ حساب، ایمیل یا شماره‌ای لازم نیست. هویت فقط با یک شناسهٔ سبک روی همین مرورگر ساخته می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 270,
+        "lineCount": 4,
+        "lineWidths": [
+          260,
+          266,
+          255,
+          58
+        ],
+        "linesText": [
+          "برای دریافت کانفیگ هیچ حساب، ایمیل",
+          "یا شماره‌ای لازم نیست. هویت فقط با یک",
+          "شناسهٔ سبک روی همین مرورگر ساخته",
+          "می‌شود."
+        ],
+        "lastLineWords": 1,
+        "lastLineRatio": 22
+      }
+    ],
+    "locNames": [
+      {
+        "text": "United States",
+        "scrollW": 77,
+        "clientW": 73,
+        "truncated": true,
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+        "direction": "rtl"
+      },
+      {
+        "text": "United Kingdom",
+        "scrollW": 90,
+        "clientW": 73,
+        "truncated": true,
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+        "direction": "rtl"
+      }
+    ]
+  },
+  "390": {
+    "rows": [
+      {
+        "el": "div.container.hd-row",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 198.8,
+        "boxWidth": 390,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.hd-ctrls",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 84,
+        "boxWidth": 84,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.sheet-controls",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 211.3,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.seg",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 127.3,
+        "boxWidth": 135.3,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-row",
+        "wrap": "nowrap",
+        "overflowX": "auto",
+        "justify": "normal",
+        "kids": 4,
+        "lines": 1,
+        "perLine": [
+          4
+        ],
+        "orphan": false,
+        "naturalWidth": 528.8,
+        "boxWidth": 350,
+        "wouldOverflow": true,
+        "clipped": true,
+        "hiddenPx": 179,
+        "mask": true,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.pick-label",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 185.8,
+        "boxWidth": 308,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "button.btn.cta",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "center",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 47,
+        "boxWidth": 308,
+        "wouldOverflow": false,
+        "clipped": true,
+        "hiddenPx": 367,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.reassure",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 272.9,
+        "boxWidth": 308,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "span.livepill",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 29.6,
+        "boxWidth": 136.6,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.flagstrip",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 6,
+        "lines": 2,
+        "perLine": [
+          5,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 324,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 316,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 316,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 316,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 316,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 312,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 312,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 312,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.statband",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 348,
+        "boxWidth": 350,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.8,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 233.8,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 230.1,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 247.9,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.3,
+        "boxWidth": 348,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.art-chips",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 13,
+        "lines": 13,
+        "perLine": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 3111.2,
+        "boxWidth": 350,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-badges",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 2,
+        "perLine": [
+          2,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 408.3,
+        "boxWidth": 300,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-cta",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 505.9,
+        "boxWidth": 350,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "nav.ft-more",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 14,
+        "lines": 11,
+        "perLine": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 2770.2,
+        "boxWidth": 350,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-bottom",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 389.2,
+        "boxWidth": 350,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-langs",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 136.4,
+        "boxWidth": 144.4,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      }
+    ],
+    "targets": {
+      "C1 article chip (.art-chips .chip)": {
+        "count": 13,
+        "h": {
+          "min": 36.2,
+          "max": 36.2
+        },
+        "w": {
+          "min": 162.4,
+          "max": 301.4
+        },
+        "display": "flex",
+        "fontSize": "13px",
+        "lineHeight": "18.2px",
+        "paddingBlock": "8px/8px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 46.2,
+        "verticalGap": 10
+      },
+      "C2 footer column link (.ft-col a)": {
+        "count": 10,
+        "h": {
+          "min": 37.3,
+          "max": 37.3
+        },
+        "w": {
+          "min": 159,
+          "max": 159
+        },
+        "display": "block",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "6.5px/6.5px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 10,
+        "pitch": 37.3,
+        "verticalGap": 0
+      },
+      "C2 footer keyword link (.ft-more a)": {
+        "count": 13,
+        "h": {
+          "min": 22.5,
+          "max": 22.5
+        },
+        "w": {
+          "min": 124.8,
+          "max": 258.6
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 30.5,
+        "verticalGap": 8
+      },
+      "C2 footer bottom link (.ft-bottom a)": null,
+      "C3 flag card (.loc-card)": {
+        "count": 29,
+        "h": {
+          "min": 98.8,
+          "max": 98.8
+        },
+        "w": {
+          "min": 97.3,
+          "max": 97.3
+        },
+        "display": "flex",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "13px/11px",
+        "paddingInline": "6px/6px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C3 big flag (.flagstrip .fbig)": {
+        "count": 5,
+        "h": {
+          "min": 44,
+          "max": 44
+        },
+        "w": {
+          "min": 44,
+          "max": 44
+        },
+        "display": "block",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C4 burger (.burger)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "grid",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C4 account (.acct-btn)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "flex",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C5 accordion row (.acc-head)": {
+        "count": 5,
+        "h": {
+          "min": 59.9,
+          "max": 59.9
+        },
+        "w": {
+          "min": 348,
+          "max": 348
+        },
+        "display": "flex",
+        "fontSize": "15.5px",
+        "lineHeight": "27.9px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "18px/18px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": 138.3,
+        "verticalGap": 78.4
+      },
+      "CTA (.cta)": {
+        "count": 1,
+        "h": {
+          "min": 57.1,
+          "max": 57.1
+        },
+        "w": {
+          "min": 308,
+          "max": 308
+        },
+        "display": "inline-flex",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "22px/22px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "footer CTA (.ft-cta-btn)": {
+        "count": 1,
+        "h": {
+          "min": 50.1,
+          "max": 50.1
+        },
+        "w": {
+          "min": 195.9,
+          "max": 195.9
+        },
+        "display": "flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "12px/12px",
+        "paddingInline": "20px/20px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "loccta (.loccta)": {
+        "count": 1,
+        "h": {
+          "min": 54.2,
+          "max": 54.2
+        },
+        "w": {
+          "min": 348,
+          "max": 348
+        },
+        "display": "flex",
+        "fontSize": "14px",
+        "lineHeight": "25.2px",
+        "paddingBlock": "14px/14px",
+        "paddingInline": "14px/14px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "link-more (.link-more)": {
+        "count": 3,
+        "h": {
+          "min": 26.1,
+          "max": 26.1
+        },
+        "w": {
+          "min": 129.8,
+          "max": 164.3
+        },
+        "display": "inline-flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 3,
+        "pitch": 1597.5,
+        "verticalGap": 1571.4
+      },
+      "appcard (.appcard)": {
+        "count": 3,
+        "h": {
+          "min": 92.3,
+          "max": 92.3
+        },
+        "w": {
+          "min": 350,
+          "max": 350
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "18px/18px",
+        "paddingInline": "18px/18px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 106.3,
+        "verticalGap": 14
+      },
+      "mvrow (.mvrow)": {
+        "count": 4,
+        "h": {
+          "min": 104,
+          "max": 124
+        },
+        "w": {
+          "min": 350,
+          "max": 350
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "16px/16px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 135,
+        "verticalGap": 11
+      },
+      "lang button (.ft-langs button)": {
+        "count": 2,
+        "h": {
+          "min": 34.5,
+          "max": 34.5
+        },
+        "w": {
+          "min": 64.6,
+          "max": 69.7
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "6px/6px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 2,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "theme switch (.theme-switch)": {
+        "count": 1,
+        "h": {
+          "min": 34,
+          "max": 34
+        },
+        "w": {
+          "min": 66,
+          "max": 66
+        },
+        "display": "block",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "sheet navlink (.sheet .navlink)": {
+        "count": 6,
+        "h": {
+          "min": 48.4,
+          "max": 48.4
+        },
+        "w": {
+          "min": 348,
+          "max": 348
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "22.4px",
+        "paddingBlock": "13px/13px",
+        "paddingInline": "14px/14px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 50.4,
+        "verticalGap": 2
+      }
+    },
+    "tinyTargets": [
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 98.8,
+        "h": 30.6
+      },
+      {
+        "el": "a.acct-btn.status-btn",
+        "t": "حساب کاربری",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button.icon-only.burger",
+        "t": "",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 60,
+        "h": 28.2
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 65.3,
+        "h": 28.2
+      },
+      {
+        "el": "button.theme-switch.is-dark",
+        "t": "",
+        "w": 66,
+        "h": 34
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ ماموریت‌ها",
+        "w": 152.1,
+        "h": 26.1
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ سوالات",
+        "w": 129.8,
+        "h": 26.1
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 259.1,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 217.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 231.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 259.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 301.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 256.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 192.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 254.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 182.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 217.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 243.7,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 212.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش Streisand آیفون",
+        "w": 162.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.link-more",
+        "t": "دربارهٔ حریم خصوصی بخوان",
+        "w": 164.3,
+        "h": 26.1
+      },
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 159,
+        "h": 30.6
+      },
+      {
+        "el": "a",
+        "t": "دریافت کانفیگ",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "لوکیشن‌ها",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حجم بیشتر",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حساب کاربری",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "راهنمای اتصال",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "سوالات متداول",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "دربارهٔ ما",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "قوانین استفاده",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حریم خصوصی",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "تماس با ما",
+        "w": 159,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 217.9,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 178.2,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 191.4,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 218,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 258.6,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 215.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 154.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 213.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 145.1,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 178.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 202.8,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 173.7,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش Streisand آیفون",
+        "w": 124.8,
+        "h": 22.5
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 64.6,
+        "h": 34.5
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 69.7,
+        "h": 34.5
+      }
+    ],
+    "subtitles": [
+      {
+        "el": "h1",
+        "text": "کانفیگ رایگان و پرسرعت، در چند ثانیه",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "30px",
+        "lineHeight": "46.5px",
+        "boxWidth": 350,
+        "lineCount": 5,
+        "lineWidths": [
+          196,
+          107,
+          6,
+          142,
+          142
+        ],
+        "linesText": [
+          "کانفیگ رایگان و",
+          "پرسرعت، در چند ثانیه"
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 72
+      },
+      {
+        "el": "p.sub",
+        "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "17px",
+        "lineHeight": "30.6px",
+        "boxWidth": 350,
+        "lineCount": 4,
+        "lineWidths": [
+          341,
+          343,
+          296,
+          61
+        ],
+        "linesText": [
+          "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن",
+          "دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو.",
+          "با دعوت دوستان هم حجم روزانه‌ات بیشتر",
+          "می‌شود."
+        ],
+        "lastLineWords": 1,
+        "lastLineRatio": 18
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "چطور کار می‌کند؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          182
+        ],
+        "linesText": [
+          "چطور کار می‌کند؟"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "از ورود تا اتصال، کمتر از یک دقیقه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          232
+        ],
+        "linesText": [
+          "از ورود تا اتصال، کمتر از یک دقیقه."
+        ],
+        "lastLineWords": 8,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "از هر کشوری که بخواهی",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          259
+        ],
+        "linesText": [
+          "از هر کشوری که بخواهی"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 350,
+        "lineCount": 2,
+        "lineWidths": [
+          308,
+          100
+        ],
+        "linesText": [
+          "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه",
+          "رایگان و روزانه."
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": 32
+      },
+      {
+        "el": "p.loccap",
+        "text": "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "14px",
+        "lineHeight": "26.6px",
+        "boxWidth": 348,
+        "lineCount": 2,
+        "lineWidths": [
+          286,
+          90
+        ],
+        "linesText": [
+          "سرورهای فعال در نقاط مختلف جهان برای اینترنت",
+          "آزاد و بدون مرز."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 32
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "حجم روزانه‌ات را بیشتر کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          269
+        ],
+        "linesText": [
+          "حجم روزانه‌ات را بیشتر کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 350,
+        "lineCount": 2,
+        "lineWidths": [
+          335,
+          175
+        ],
+        "linesText": [
+          "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر",
+          "کن — همه بدون پرداخت."
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": 52
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "در اپ دلخواهت باز کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          233
+        ],
+        "linesText": [
+          "در اپ دلخواهت باز کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 350,
+        "lineCount": 2,
+        "lineWidths": [
+          324,
+          233
+        ],
+        "linesText": [
+          "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ",
+          "متناسب با دستگاهت را انتخاب کن."
+        ],
+        "lastLineWords": 6,
+        "lastLineRatio": 72
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "سوالی داری؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          139
+        ],
+        "linesText": [
+          "سوالی داری؟"
+        ],
+        "lastLineWords": 2,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "راهنماها و مقالات",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 350,
+        "lineCount": 1,
+        "lineWidths": [
+          188
+        ],
+        "linesText": [
+          "راهنماها و مقالات"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 350,
+        "lineCount": 2,
+        "lineWidths": [
+          276,
+          252
+        ],
+        "linesText": [
+          "آموزش اتصال با برنامه‌های مختلف و پاسخ",
+          "پرسش‌های رایج دربارهٔ کانفیگ رایگان."
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": 91
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "بدون ثبت‌نام. بدون ردگیری.",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 300,
+        "lineCount": 1,
+        "lineWidths": [
+          294
+        ],
+        "linesText": [
+          "بدون ثبت‌نام. بدون ردگیری."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "برای دریافت کانفیگ هیچ حساب، ایمیل یا شماره‌ای لازم نیست. هویت فقط با یک شناسهٔ سبک روی همین مرورگر ساخته می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 300,
+        "lineCount": 4,
+        "lineWidths": [
+          274,
+          252,
+          255,
+          58
+        ],
+        "linesText": [
+          "برای دریافت کانفیگ هیچ حساب، ایمیل یا",
+          "شماره‌ای لازم نیست. هویت فقط با یک",
+          "شناسهٔ سبک روی همین مرورگر ساخته",
+          "می‌شود."
+        ],
+        "lastLineWords": 1,
+        "lastLineRatio": 21
+      }
+    ],
+    "locNames": [
+      {
+        "text": "United Kingdom",
+        "scrollW": 90,
+        "clientW": 83,
+        "truncated": true,
+        "overflow": "hidden",
+        "textOverflow": "ellipsis",
+        "direction": "rtl"
+      }
+    ]
+  },
+  "412": {
+    "rows": [
+      {
+        "el": "div.container.hd-row",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 198.8,
+        "boxWidth": 412,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.hd-ctrls",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 84,
+        "boxWidth": 84,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.sheet-controls",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 211.3,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.seg",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 127.3,
+        "boxWidth": 135.3,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-row",
+        "wrap": "nowrap",
+        "overflowX": "auto",
+        "justify": "normal",
+        "kids": 4,
+        "lines": 1,
+        "perLine": [
+          4
+        ],
+        "orphan": false,
+        "naturalWidth": 528.8,
+        "boxWidth": 372,
+        "wouldOverflow": true,
+        "clipped": true,
+        "hiddenPx": 157,
+        "mask": true,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.pick-label",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 185.8,
+        "boxWidth": 330,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "button.btn.cta",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "center",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 47,
+        "boxWidth": 330,
+        "wouldOverflow": false,
+        "clipped": true,
+        "hiddenPx": 394,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.reassure",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 272.9,
+        "boxWidth": 330,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "span.livepill",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 29.6,
+        "boxWidth": 136.6,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.flagstrip",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 6,
+        "lines": 1,
+        "perLine": [
+          6
+        ],
+        "orphan": false,
+        "naturalWidth": 324,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 338,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 338,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 338,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 338,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 334,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 334,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 334,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.statband",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 370,
+        "boxWidth": 372,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.8,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 233.8,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 230.1,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 247.9,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.3,
+        "boxWidth": 370,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.art-chips",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 13,
+        "lines": 13,
+        "perLine": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 3111.2,
+        "boxWidth": 372,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-badges",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 2,
+        "perLine": [
+          2,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 408.3,
+        "boxWidth": 322,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-cta",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 527.9,
+        "boxWidth": 372,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "nav.ft-more",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 14,
+        "lines": 11,
+        "perLine": [
+          2,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 2770.2,
+        "boxWidth": 372,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-bottom",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 389.2,
+        "boxWidth": 372,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-langs",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 136.4,
+        "boxWidth": 144.4,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      }
+    ],
+    "targets": {
+      "C1 article chip (.art-chips .chip)": {
+        "count": 13,
+        "h": {
+          "min": 36.2,
+          "max": 36.2
+        },
+        "w": {
+          "min": 162.4,
+          "max": 301.4
+        },
+        "display": "flex",
+        "fontSize": "13px",
+        "lineHeight": "18.2px",
+        "paddingBlock": "8px/8px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 46.2,
+        "verticalGap": 10
+      },
+      "C2 footer column link (.ft-col a)": {
+        "count": 10,
+        "h": {
+          "min": 37.3,
+          "max": 37.3
+        },
+        "w": {
+          "min": 170,
+          "max": 170
+        },
+        "display": "block",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "6.5px/6.5px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 10,
+        "pitch": 37.3,
+        "verticalGap": 0
+      },
+      "C2 footer keyword link (.ft-more a)": {
+        "count": 13,
+        "h": {
+          "min": 22.5,
+          "max": 22.5
+        },
+        "w": {
+          "min": 124.8,
+          "max": 258.6
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 30.5,
+        "verticalGap": 8
+      },
+      "C2 footer bottom link (.ft-bottom a)": null,
+      "C3 flag card (.loc-card)": {
+        "count": 29,
+        "h": {
+          "min": 98.8,
+          "max": 98.8
+        },
+        "w": {
+          "min": 104.7,
+          "max": 104.7
+        },
+        "display": "flex",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "13px/11px",
+        "paddingInline": "6px/6px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C3 big flag (.flagstrip .fbig)": {
+        "count": 5,
+        "h": {
+          "min": 44,
+          "max": 44
+        },
+        "w": {
+          "min": 44,
+          "max": 44
+        },
+        "display": "block",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C4 burger (.burger)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "grid",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C4 account (.acct-btn)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "flex",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C5 accordion row (.acc-head)": {
+        "count": 5,
+        "h": {
+          "min": 59.9,
+          "max": 59.9
+        },
+        "w": {
+          "min": 370,
+          "max": 370
+        },
+        "display": "flex",
+        "fontSize": "15.5px",
+        "lineHeight": "27.9px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "18px/18px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": 138.3,
+        "verticalGap": 78.4
+      },
+      "CTA (.cta)": {
+        "count": 1,
+        "h": {
+          "min": 57.1,
+          "max": 57.1
+        },
+        "w": {
+          "min": 330,
+          "max": 330
+        },
+        "display": "inline-flex",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "22px/22px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "footer CTA (.ft-cta-btn)": {
+        "count": 1,
+        "h": {
+          "min": 50.1,
+          "max": 50.1
+        },
+        "w": {
+          "min": 195.9,
+          "max": 195.9
+        },
+        "display": "flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "12px/12px",
+        "paddingInline": "20px/20px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "loccta (.loccta)": {
+        "count": 1,
+        "h": {
+          "min": 54.2,
+          "max": 54.2
+        },
+        "w": {
+          "min": 370,
+          "max": 370
+        },
+        "display": "flex",
+        "fontSize": "14px",
+        "lineHeight": "25.2px",
+        "paddingBlock": "14px/14px",
+        "paddingInline": "14px/14px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "link-more (.link-more)": {
+        "count": 3,
+        "h": {
+          "min": 26.1,
+          "max": 26.1
+        },
+        "w": {
+          "min": 129.8,
+          "max": 164.3
+        },
+        "display": "inline-flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 3,
+        "pitch": 1597.5,
+        "verticalGap": 1571.4
+      },
+      "appcard (.appcard)": {
+        "count": 3,
+        "h": {
+          "min": 92.3,
+          "max": 92.3
+        },
+        "w": {
+          "min": 372,
+          "max": 372
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "18px/18px",
+        "paddingInline": "18px/18px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 106.3,
+        "verticalGap": 14
+      },
+      "mvrow (.mvrow)": {
+        "count": 4,
+        "h": {
+          "min": 104,
+          "max": 104
+        },
+        "w": {
+          "min": 372,
+          "max": 372
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "16px/16px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 115,
+        "verticalGap": 11
+      },
+      "lang button (.ft-langs button)": {
+        "count": 2,
+        "h": {
+          "min": 34.5,
+          "max": 34.5
+        },
+        "w": {
+          "min": 64.6,
+          "max": 69.7
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "6px/6px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 2,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "theme switch (.theme-switch)": {
+        "count": 1,
+        "h": {
+          "min": 34,
+          "max": 34
+        },
+        "w": {
+          "min": 66,
+          "max": 66
+        },
+        "display": "block",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "sheet navlink (.sheet .navlink)": {
+        "count": 6,
+        "h": {
+          "min": 48.4,
+          "max": 48.4
+        },
+        "w": {
+          "min": 370,
+          "max": 370
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "22.4px",
+        "paddingBlock": "13px/13px",
+        "paddingInline": "14px/14px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 50.4,
+        "verticalGap": 2
+      }
+    },
+    "tinyTargets": [
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 98.8,
+        "h": 30.6
+      },
+      {
+        "el": "a.acct-btn.status-btn",
+        "t": "حساب کاربری",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button.icon-only.burger",
+        "t": "",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 60,
+        "h": 28.2
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 65.3,
+        "h": 28.2
+      },
+      {
+        "el": "button.theme-switch.is-dark",
+        "t": "",
+        "w": 66,
+        "h": 34
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ ماموریت‌ها",
+        "w": 152.1,
+        "h": 26.1
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ سوالات",
+        "w": 129.8,
+        "h": 26.1
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 259.1,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 217.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 231.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 259.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 301.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 256.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 192.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 254.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 182.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 217.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 243.7,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 212.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش Streisand آیفون",
+        "w": 162.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.link-more",
+        "t": "دربارهٔ حریم خصوصی بخوان",
+        "w": 164.3,
+        "h": 26.1
+      },
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 170,
+        "h": 30.6
+      },
+      {
+        "el": "a",
+        "t": "دریافت کانفیگ",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "لوکیشن‌ها",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حجم بیشتر",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حساب کاربری",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "راهنمای اتصال",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "سوالات متداول",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "دربارهٔ ما",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "قوانین استفاده",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حریم خصوصی",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "تماس با ما",
+        "w": 170,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 217.9,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 178.2,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 191.4,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 218,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 258.6,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 215.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 154.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 213.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 145.1,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 178.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 202.8,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 173.7,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش Streisand آیفون",
+        "w": 124.8,
+        "h": 22.5
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 64.6,
+        "h": 34.5
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 69.7,
+        "h": 34.5
+      }
+    ],
+    "subtitles": [
+      {
+        "el": "h1",
+        "text": "کانفیگ رایگان و پرسرعت، در چند ثانیه",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "30px",
+        "lineHeight": "46.5px",
+        "boxWidth": 372,
+        "lineCount": 5,
+        "lineWidths": [
+          196,
+          107,
+          6,
+          142,
+          142
+        ],
+        "linesText": [
+          "کانفیگ رایگان و",
+          "پرسرعت، در چند ثانیه"
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 72
+      },
+      {
+        "el": "p.sub",
+        "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "17px",
+        "lineHeight": "30.6px",
+        "boxWidth": 372,
+        "lineCount": 3,
+        "lineWidths": [
+          341,
+          357,
+          347
+        ],
+        "linesText": [
+          "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن",
+          "دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با",
+          "دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود."
+        ],
+        "lastLineWords": 7,
+        "lastLineRatio": 97
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "چطور کار می‌کند؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          182
+        ],
+        "linesText": [
+          "چطور کار می‌کند؟"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "از ورود تا اتصال، کمتر از یک دقیقه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          232
+        ],
+        "linesText": [
+          "از ورود تا اتصال، کمتر از یک دقیقه."
+        ],
+        "lastLineWords": 8,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "از هر کشوری که بخواهی",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          259
+        ],
+        "linesText": [
+          "از هر کشوری که بخواهی"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 372,
+        "lineCount": 2,
+        "lineWidths": [
+          365,
+          42
+        ],
+        "linesText": [
+          "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و",
+          "روزانه."
+        ],
+        "lastLineWords": 1,
+        "lastLineRatio": 11
+      },
+      {
+        "el": "p.loccap",
+        "text": "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "14px",
+        "lineHeight": "26.6px",
+        "boxWidth": 370,
+        "lineCount": 2,
+        "lineWidths": [
+          310,
+          66
+        ],
+        "linesText": [
+          "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد",
+          "و بدون مرز."
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": 21
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "حجم روزانه‌ات را بیشتر کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          269
+        ],
+        "linesText": [
+          "حجم روزانه‌ات را بیشتر کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 372,
+        "lineCount": 2,
+        "lineWidths": [
+          360,
+          150
+        ],
+        "linesText": [
+          "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن",
+          "— همه بدون پرداخت."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 42
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "در اپ دلخواهت باز کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          233
+        ],
+        "linesText": [
+          "در اپ دلخواهت باز کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 372,
+        "lineCount": 2,
+        "lineWidths": [
+          324,
+          233
+        ],
+        "linesText": [
+          "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ",
+          "متناسب با دستگاهت را انتخاب کن."
+        ],
+        "lastLineWords": 6,
+        "lastLineRatio": 72
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "سوالی داری؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          139
+        ],
+        "linesText": [
+          "سوالی داری؟"
+        ],
+        "lastLineWords": 2,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "راهنماها و مقالات",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 372,
+        "lineCount": 1,
+        "lineWidths": [
+          188
+        ],
+        "linesText": [
+          "راهنماها و مقالات"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 372,
+        "lineCount": 2,
+        "lineWidths": [
+          356,
+          172
+        ],
+        "linesText": [
+          "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های",
+          "رایج دربارهٔ کانفیگ رایگان."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": 48
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "بدون ثبت‌نام. بدون ردگیری.",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "26px",
+        "lineHeight": "40.3px",
+        "boxWidth": 322,
+        "lineCount": 1,
+        "lineWidths": [
+          294
+        ],
+        "linesText": [
+          "بدون ثبت‌نام. بدون ردگیری."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "برای دریافت کانفیگ هیچ حساب، ایمیل یا شماره‌ای لازم نیست. هویت فقط با یک شناسهٔ سبک روی همین مرورگر ساخته می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 322,
+        "lineCount": 3,
+        "lineWidths": [
+          274,
+          303,
+          265
+        ],
+        "linesText": [
+          "برای دریافت کانفیگ هیچ حساب، ایمیل یا",
+          "شماره‌ای لازم نیست. هویت فقط با یک شناسهٔ",
+          "سبک روی همین مرورگر ساخته می‌شود."
+        ],
+        "lastLineWords": 6,
+        "lastLineRatio": 88
+      }
+    ],
+    "locNames": []
+  },
+  "591": {
+    "rows": [
+      {
+        "el": "div.container.hd-row",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 198.8,
+        "boxWidth": 591,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.hd-ctrls",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 84,
+        "boxWidth": 84,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.sheet-controls",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 211.3,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.seg",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 127.3,
+        "boxWidth": 135.3,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-row",
+        "wrap": "nowrap",
+        "overflowX": "auto",
+        "justify": "normal",
+        "kids": 4,
+        "lines": 1,
+        "perLine": [
+          4
+        ],
+        "orphan": false,
+        "naturalWidth": 528.8,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": true,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.w-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 317.3,
+        "boxWidth": 509,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.pick-label",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 185.8,
+        "boxWidth": 509,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "button.btn.cta",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "center",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 47,
+        "boxWidth": 509,
+        "wouldOverflow": false,
+        "clipped": true,
+        "hiddenPx": 608,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.reassure",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 272.9,
+        "boxWidth": 509,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "span.livepill",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 29.6,
+        "boxWidth": 136.6,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.flagstrip",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 6,
+        "lines": 1,
+        "perLine": [
+          6
+        ],
+        "orphan": false,
+        "naturalWidth": 324,
+        "boxWidth": 518,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 517,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 517,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 517,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "div.mvrow",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 517,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": "66px",
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 513,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 513,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "a.appcard",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 3,
+        "perLine": [
+          1,
+          1,
+          1
+        ],
+        "orphan": true,
+        "naturalWidth": 513,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 0 auto",
+          "1 1 0%",
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.statband",
+        "wrap": "nowrap",
+        "overflowX": "hidden",
+        "justify": "normal",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 549,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "1 1 0%"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.8,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 233.8,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 230.1,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 247.9,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "button.acc-head",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 249.3,
+        "boxWidth": 549,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto",
+          "0 0 auto"
+        ]
+      },
+      {
+        "el": "div.art-chips",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 13,
+        "lines": 7,
+        "perLine": [
+          2,
+          2,
+          1,
+          2,
+          2,
+          2,
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 3111.2,
+        "boxWidth": 551,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.trust-badges",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "center",
+        "kids": 3,
+        "lines": 1,
+        "perLine": [
+          3
+        ],
+        "orphan": false,
+        "naturalWidth": 408.3,
+        "boxWidth": 501,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-cta",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 550.4,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "nav.ft-more",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 14,
+        "lines": 6,
+        "perLine": [
+          3,
+          2,
+          2,
+          3,
+          2,
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 2770.2,
+        "boxWidth": 551,
+        "wouldOverflow": true,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-bottom",
+        "wrap": "wrap",
+        "overflowX": "visible",
+        "justify": "space-between",
+        "kids": 2,
+        "lines": 2,
+        "perLine": [
+          1,
+          1
+        ],
+        "orphan": false,
+        "naturalWidth": 389.2,
+        "boxWidth": 551,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      },
+      {
+        "el": "div.ft-langs",
+        "wrap": "nowrap",
+        "overflowX": "visible",
+        "justify": "normal",
+        "kids": 2,
+        "lines": 1,
+        "perLine": [
+          2
+        ],
+        "orphan": false,
+        "naturalWidth": 136.4,
+        "boxWidth": 144.4,
+        "wouldOverflow": false,
+        "clipped": false,
+        "hiddenPx": 0,
+        "mask": false,
+        "scrollSnap": "none",
+        "childMinWidth": null,
+        "childFlex": [
+          "0 1 auto"
+        ]
+      }
+    ],
+    "targets": {
+      "C1 article chip (.art-chips .chip)": {
+        "count": 13,
+        "h": {
+          "min": 36.2,
+          "max": 36.2
+        },
+        "w": {
+          "min": 162.4,
+          "max": 301.4
+        },
+        "display": "flex",
+        "fontSize": "13px",
+        "lineHeight": "18.2px",
+        "paddingBlock": "8px/8px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C2 footer column link (.ft-col a)": {
+        "count": 10,
+        "h": {
+          "min": 37.3,
+          "max": 37.3
+        },
+        "w": {
+          "min": 259.5,
+          "max": 259.5
+        },
+        "display": "block",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "6.5px/6.5px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 10,
+        "pitch": 37.3,
+        "verticalGap": 0
+      },
+      "C2 footer keyword link (.ft-more a)": {
+        "count": 13,
+        "h": {
+          "min": 22.5,
+          "max": 22.5
+        },
+        "w": {
+          "min": 124.8,
+          "max": 258.6
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 13,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C2 footer bottom link (.ft-bottom a)": null,
+      "C3 flag card (.loc-card)": {
+        "count": 29,
+        "h": {
+          "min": 98.8,
+          "max": 98.8
+        },
+        "w": {
+          "min": 121.3,
+          "max": 121.3
+        },
+        "display": "flex",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "13px/11px",
+        "paddingInline": "6px/6px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C3 big flag (.flagstrip .fbig)": {
+        "count": 5,
+        "h": {
+          "min": 44,
+          "max": 44
+        },
+        "w": {
+          "min": 44,
+          "max": 44
+        },
+        "display": "block",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "C4 burger (.burger)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "grid",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C4 account (.acct-btn)": {
+        "count": 1,
+        "h": {
+          "min": 38,
+          "max": 38
+        },
+        "w": {
+          "min": 38,
+          "max": 38
+        },
+        "display": "flex",
+        "fontSize": "13.5px",
+        "lineHeight": "24.3px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "C5 accordion row (.acc-head)": {
+        "count": 5,
+        "h": {
+          "min": 59.9,
+          "max": 59.9
+        },
+        "w": {
+          "min": 549,
+          "max": 549
+        },
+        "display": "flex",
+        "fontSize": "15.5px",
+        "lineHeight": "27.9px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "18px/18px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": 138.3,
+        "verticalGap": 78.4
+      },
+      "CTA (.cta)": {
+        "count": 1,
+        "h": {
+          "min": 57.1,
+          "max": 57.1
+        },
+        "w": {
+          "min": 509,
+          "max": 509
+        },
+        "display": "inline-flex",
+        "fontSize": "16.5px",
+        "lineHeight": "23.1px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "22px/22px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "footer CTA (.ft-cta-btn)": {
+        "count": 1,
+        "h": {
+          "min": 50.1,
+          "max": 50.1
+        },
+        "w": {
+          "min": 195.9,
+          "max": 195.9
+        },
+        "display": "flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "12px/12px",
+        "paddingInline": "20px/20px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "loccta (.loccta)": {
+        "count": 1,
+        "h": {
+          "min": 54.2,
+          "max": 54.2
+        },
+        "w": {
+          "min": 518,
+          "max": 518
+        },
+        "display": "flex",
+        "fontSize": "14px",
+        "lineHeight": "25.2px",
+        "paddingBlock": "14px/14px",
+        "paddingInline": "14px/14px",
+        "minHeight": "0px",
+        "under44": 0,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "link-more (.link-more)": {
+        "count": 3,
+        "h": {
+          "min": 26.1,
+          "max": 26.1
+        },
+        "w": {
+          "min": 129.8,
+          "max": 164.3
+        },
+        "display": "inline-flex",
+        "fontSize": "14.5px",
+        "lineHeight": "26.1px",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "0px",
+        "under44": 3,
+        "pitch": 1601.2,
+        "verticalGap": 1575.1
+      },
+      "appcard (.appcard)": {
+        "count": 3,
+        "h": {
+          "min": 92.3,
+          "max": 92.3
+        },
+        "w": {
+          "min": 551,
+          "max": 551
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "18px/18px",
+        "paddingInline": "18px/18px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 106.3,
+        "verticalGap": 14
+      },
+      "mvrow (.mvrow)": {
+        "count": 4,
+        "h": {
+          "min": 96,
+          "max": 96
+        },
+        "w": {
+          "min": 551,
+          "max": 551
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "paddingBlock": "16px/16px",
+        "paddingInline": "16px/16px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 107,
+        "verticalGap": 11
+      },
+      "lang button (.ft-langs button)": {
+        "count": 2,
+        "h": {
+          "min": 34.5,
+          "max": 34.5
+        },
+        "w": {
+          "min": 64.6,
+          "max": 69.7
+        },
+        "display": "block",
+        "fontSize": "12.5px",
+        "lineHeight": "22.5px",
+        "paddingBlock": "6px/6px",
+        "paddingInline": "15px/15px",
+        "minHeight": "auto",
+        "under44": 2,
+        "pitch": 0,
+        "verticalGap": null
+      },
+      "theme switch (.theme-switch)": {
+        "count": 1,
+        "h": {
+          "min": 34,
+          "max": 34
+        },
+        "w": {
+          "min": 66,
+          "max": 66
+        },
+        "display": "block",
+        "fontSize": "13.3333px",
+        "lineHeight": "normal",
+        "paddingBlock": "0px/0px",
+        "paddingInline": "0px/0px",
+        "minHeight": "auto",
+        "under44": 1,
+        "pitch": null,
+        "verticalGap": null
+      },
+      "sheet navlink (.sheet .navlink)": {
+        "count": 6,
+        "h": {
+          "min": 48.4,
+          "max": 48.4
+        },
+        "w": {
+          "min": 549,
+          "max": 549
+        },
+        "display": "flex",
+        "fontSize": "16px",
+        "lineHeight": "22.4px",
+        "paddingBlock": "13px/13px",
+        "paddingInline": "14px/14px",
+        "minHeight": "auto",
+        "under44": 0,
+        "pitch": 50.4,
+        "verticalGap": 2
+      }
+    },
+    "tinyTargets": [
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 98.8,
+        "h": 30.6
+      },
+      {
+        "el": "a.acct-btn.status-btn",
+        "t": "حساب کاربری",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button.icon-only.burger",
+        "t": "",
+        "w": 38,
+        "h": 38
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 60,
+        "h": 28.2
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 65.3,
+        "h": 28.2
+      },
+      {
+        "el": "button.theme-switch.is-dark",
+        "t": "",
+        "w": 66,
+        "h": 34
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ ماموریت‌ها",
+        "w": 152.1,
+        "h": 26.1
+      },
+      {
+        "el": "a.link-more",
+        "t": "مشاهدهٔ همهٔ سوالات",
+        "w": 129.8,
+        "h": 26.1
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 259.1,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 217.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 231.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 259.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 301.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 256.2,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 192.5,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 254.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 182.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 217.8,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 243.7,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 212.6,
+        "h": 36.2
+      },
+      {
+        "el": "a.chip",
+        "t": "آموزش Streisand آیفون",
+        "w": 162.4,
+        "h": 36.2
+      },
+      {
+        "el": "a.link-more",
+        "t": "دربارهٔ حریم خصوصی بخوان",
+        "w": 164.3,
+        "h": 26.1
+      },
+      {
+        "el": "a.brandmark",
+        "t": "GozarX",
+        "w": 259.5,
+        "h": 30.6
+      },
+      {
+        "el": "a",
+        "t": "دریافت کانفیگ",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "لوکیشن‌ها",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حجم بیشتر",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حساب کاربری",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "راهنمای اتصال",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "سوالات متداول",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "دربارهٔ ما",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "قوانین استفاده",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "حریم خصوصی",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "تماس با ما",
+        "w": 259.5,
+        "h": 37.3
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان V2Ray روزانه",
+        "w": 217.9,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ VLESS رایگان با تحو",
+        "w": 178.2,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان روزانه بدو",
+        "w": 191.4,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان اندروید با",
+        "w": 218,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان آیفون (iOS",
+        "w": 258.6,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان ویندوز با ",
+        "w": 215.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "فیلترشکن رایگان بدون قطعی",
+        "w": 154.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "وی‌پی‌ان رایگان که زیر فیل",
+        "w": 213.5,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "کانفیگ رایگان بدون ثبت‌نام",
+        "w": 145.1,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "سرور رایگان بدون خرید و را",
+        "w": 178.3,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش v2rayng و کانفیگ رای",
+        "w": 202.8,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش هیدیفای با کانفیگ را",
+        "w": 173.7,
+        "h": 22.5
+      },
+      {
+        "el": "a",
+        "t": "آموزش Streisand آیفون",
+        "w": 124.8,
+        "h": 22.5
+      },
+      {
+        "el": "button",
+        "t": "فارسی",
+        "w": 64.6,
+        "h": 34.5
+      },
+      {
+        "el": "button",
+        "t": "English",
+        "w": 69.7,
+        "h": 34.5
+      }
+    ],
+    "subtitles": [
+      {
+        "el": "h1",
+        "text": "کانفیگ رایگان و پرسرعت، در چند ثانیه",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "35.46px",
+        "lineHeight": "54.963px",
+        "boxWidth": 551,
+        "lineCount": 4,
+        "lineWidths": [
+          365,
+          7,
+          168,
+          168
+        ],
+        "linesText": [
+          "کانفیگ رایگان و پرسرعت، در چند ثانیه"
+        ],
+        "lastLineWords": 7,
+        "lastLineRatio": 46
+      },
+      {
+        "el": "p.sub",
+        "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "17px",
+        "lineHeight": "30.6px",
+        "boxWidth": 544,
+        "lineCount": 2,
+        "lineWidths": [
+          519,
+          531
+        ],
+        "linesText": [
+          "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و",
+          "بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود."
+        ],
+        "lastLineWords": 12,
+        "lastLineRatio": 100
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "چطور کار می‌کند؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          190
+        ],
+        "linesText": [
+          "چطور کار می‌کند؟"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "از ورود تا اتصال، کمتر از یک دقیقه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          232
+        ],
+        "linesText": [
+          "از ورود تا اتصال، کمتر از یک دقیقه."
+        ],
+        "lastLineWords": 8,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "از هر کشوری که بخواهی",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          270
+        ],
+        "linesText": [
+          "از هر کشوری که بخواهی"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          411
+        ],
+        "linesText": [
+          "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه."
+        ],
+        "lastLineWords": 11,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.loccap",
+        "text": "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "14px",
+        "lineHeight": "26.6px",
+        "boxWidth": 518,
+        "lineCount": 1,
+        "lineWidths": [
+          380
+        ],
+        "linesText": [
+          "سرورهای فعال در نقاط مختلف جهان برای اینترنت آزاد و بدون مرز."
+        ],
+        "lastLineWords": 12,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "حجم روزانه‌ات را بیشتر کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          281
+        ],
+        "linesText": [
+          "حجم روزانه‌ات را بیشتر کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          513
+        ],
+        "linesText": [
+          "چند کار ساده انجام بده و حجم روزانه‌ات را چند برابر کن — همه بدون پرداخت."
+        ],
+        "lastLineWords": 16,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "در اپ دلخواهت باز کن",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          243
+        ],
+        "linesText": [
+          "در اپ دلخواهت باز کن"
+        ],
+        "lastLineWords": 5,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 551,
+        "lineCount": 2,
+        "lineWidths": [
+          532,
+          25
+        ],
+        "linesText": [
+          "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب",
+          "کن."
+        ],
+        "lastLineWords": 1,
+        "lastLineRatio": 5
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "سوالی داری؟",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          146
+        ],
+        "linesText": [
+          "سوالی داری؟"
+        ],
+        "lastLineWords": 2,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "راهنماها و مقالات",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          196
+        ],
+        "linesText": [
+          "راهنماها و مقالات"
+        ],
+        "lastLineWords": 3,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 551,
+        "lineCount": 1,
+        "lineWidths": [
+          532
+        ],
+        "linesText": [
+          "آموزش اتصال با برنامه‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان."
+        ],
+        "lastLineWords": 12,
+        "lastLineRatio": null
+      },
+      {
+        "el": "h2.sec-title",
+        "text": "بدون ثبت‌نام. بدون ردگیری.",
+        "textWrap": "balance",
+        "textAlign": "center",
+        "fontSize": "27.186px",
+        "lineHeight": "42.1383px",
+        "boxWidth": 501,
+        "lineCount": 1,
+        "lineWidths": [
+          307
+        ],
+        "linesText": [
+          "بدون ثبت‌نام. بدون ردگیری."
+        ],
+        "lastLineWords": 4,
+        "lastLineRatio": null
+      },
+      {
+        "el": "p.sec-sub",
+        "text": "برای دریافت کانفیگ هیچ حساب، ایمیل یا شماره‌ای لازم نیست. هویت فقط با یک شناسهٔ سبک روی همین مرورگر ساخته می‌شود.",
+        "textWrap": "wrap",
+        "textAlign": "center",
+        "fontSize": "16px",
+        "lineHeight": "28.8px",
+        "boxWidth": 501,
+        "lineCount": 2,
+        "lineWidths": [
+          491,
+          355
+        ],
+        "linesText": [
+          "برای دریافت کانفیگ هیچ حساب، ایمیل یا شماره‌ای لازم نیست. هویت فقط",
+          "با یک شناسهٔ سبک روی همین مرورگر ساخته می‌شود."
+        ],
+        "lastLineWords": 9,
+        "lastLineRatio": 72
+      }
+    ],
+    "locNames": []
+  }
+}

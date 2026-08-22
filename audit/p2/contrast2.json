@@ -1,0 +1,350 @@
+{
+  "dark__gradient": {
+    "text": "در چند ثانیه",
+    "image": "linear-gradient(120deg, rgb(30, 64, 175), rgb(14, 116, 144))",
+    "effectiveBg": "#061735",
+    "bgShare": 2,
+    "fontSize": "30px",
+    "large": true,
+    "threshold": 3,
+    "samples": {
+      "t=0": {
+        "color": "#1e40af",
+        "ratio": 2.04
+      },
+      "t=0.25": {
+        "color": "#1a4da7",
+        "ratio": 2.26
+      },
+      "t=0.5": {
+        "color": "#165aa0",
+        "ratio": 2.54
+      },
+      "t=0.75": {
+        "color": "#126798",
+        "ratio": 2.89
+      },
+      "t=1": {
+        "color": "#0e7490",
+        "ratio": 3.32
+      }
+    },
+    "worst": [
+      "t=0",
+      {
+        "color": "#1e40af",
+        "ratio": 2.04
+      }
+    ]
+  },
+  "dark": [
+    {
+      "name": "G3 antibot line",
+      "text": "با یک بررسی نامرئی در برابر ربات محافظت ",
+      "fontSize": "11.5px",
+      "fontWeight": "400",
+      "color": "#64748b",
+      "effectiveBg": "#0e1729",
+      "bgShare": 89,
+      "ratio": 3.76,
+      "threshold": 4.5,
+      "pass": false,
+      "large": false
+    },
+    {
+      "name": "G3 livepill «۲۹ لوکیشن»",
+      "text": "۲۹ لوکیشن فعال",
+      "fontSize": "12.5px",
+      "fontWeight": "600",
+      "color": "#94a3b8",
+      "effectiveBg": "#0e1729",
+      "bgShare": 79,
+      "ratio": 6.98,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G3 widget sub «یک لوکیشن…»",
+      "text": "یک لوکیشن انتخاب کن و بگیر",
+      "fontSize": "12.5px",
+      "fontWeight": "400",
+      "color": "#94a3b8",
+      "effectiveBg": "#0e1729",
+      "bgShare": 13,
+      "ratio": 6.98,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G2 reward badge figure (.mvamt b)",
+      "text": "+۵۰۰",
+      "fontSize": "19px",
+      "fontWeight": "900",
+      "color": "#6ee7b7",
+      "effectiveBg": "#0e3137",
+      "bgShare": 72,
+      "ratio": 9.1,
+      "threshold": 3,
+      "pass": true,
+      "large": true
+    },
+    {
+      "name": "G2 reward badge unit (.mvamt i)",
+      "text": "MB",
+      "fontSize": "10px",
+      "fontWeight": "700",
+      "color": "#94a3b8",
+      "effectiveBg": "#0e3137",
+      "bgShare": 69,
+      "ratio": 5.41,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G2 mission title (.mvbd h3)",
+      "text": "دعوت دوستان",
+      "fontSize": "15px",
+      "fontWeight": "800",
+      "color": "#f1f5f9",
+      "effectiveBg": "#0e1729",
+      "bgShare": 91,
+      "ratio": 16.34,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "CTA label (.cta)",
+      "text": "دریافت کانفیگ",
+      "fontSize": "16.5px",
+      "fontWeight": "800",
+      "color": "#eaf2ff",
+      "effectiveBg": "#1c46ac",
+      "bgShare": 3,
+      "ratio": 7.39,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "footer CTA (.ft-cta-btn)",
+      "text": "دریافت کانفیگ رایگان",
+      "fontSize": "14.5px",
+      "fontWeight": "800",
+      "color": "#06132b",
+      "effectiveBg": "#3b82f6",
+      "bgShare": 91,
+      "ratio": 5.03,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "appcard rec badge (.app-rec)",
+      "text": "پیشنهادی",
+      "fontSize": "11px",
+      "fontWeight": "700",
+      "color": "#6ee7b7",
+      "effectiveBg": "#0e3137",
+      "bgShare": 70,
+      "ratio": 9.1,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "loc-rec «popular» badge",
+      "missing": true
+    },
+    {
+      "name": "faint token sample (.hint/.faint)",
+      "text": "",
+      "fontSize": "11.5px",
+      "fontWeight": "400",
+      "color": "#64748b",
+      "effectiveBg": "#0e1729",
+      "bgShare": 64,
+      "ratio": 3.76,
+      "threshold": 4.5,
+      "pass": false,
+      "large": false
+    }
+  ],
+  "light__gradient": {
+    "text": "در چند ثانیه",
+    "image": "linear-gradient(120deg, rgb(37, 99, 235), rgb(6, 182, 212))",
+    "effectiveBg": "#c8e2f6",
+    "bgShare": 1,
+    "fontSize": "30px",
+    "large": true,
+    "threshold": 3,
+    "samples": {
+      "t=0": {
+        "color": "#2563eb",
+        "ratio": 3.86
+      },
+      "t=0.25": {
+        "color": "#1d78e5",
+        "ratio": 3.22
+      },
+      "t=0.5": {
+        "color": "#168de0",
+        "ratio": 2.66
+      },
+      "t=0.75": {
+        "color": "#0ea1da",
+        "ratio": 2.19
+      },
+      "t=1": {
+        "color": "#06b6d4",
+        "ratio": 1.81
+      }
+    },
+    "worst": [
+      "t=1",
+      {
+        "color": "#06b6d4",
+        "ratio": 1.81
+      }
+    ]
+  },
+  "light": [
+    {
+      "name": "G3 antibot line",
+      "text": "با یک بررسی نامرئی در برابر ربات محافظت ",
+      "fontSize": "11.5px",
+      "fontWeight": "400",
+      "color": "#7c8aa0",
+      "effectiveBg": "#ffffff",
+      "bgShare": 89,
+      "ratio": 3.5,
+      "threshold": 4.5,
+      "pass": false,
+      "large": false
+    },
+    {
+      "name": "G3 livepill «۲۹ لوکیشن»",
+      "text": "۲۹ لوکیشن فعال",
+      "fontSize": "12.5px",
+      "fontWeight": "600",
+      "color": "#5e6b80",
+      "effectiveBg": "#ffffff",
+      "bgShare": 79,
+      "ratio": 5.4,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G3 widget sub «یک لوکیشن…»",
+      "text": "یک لوکیشن انتخاب کن و بگیر",
+      "fontSize": "12.5px",
+      "fontWeight": "400",
+      "color": "#5e6b80",
+      "effectiveBg": "#ffffff",
+      "bgShare": 14,
+      "ratio": 5.4,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G2 reward badge figure (.mvamt b)",
+      "text": "+۵۰۰",
+      "fontSize": "19px",
+      "fontWeight": "900",
+      "color": "#047857",
+      "effectiveBg": "#dcfce7",
+      "bgShare": 72,
+      "ratio": 4.99,
+      "threshold": 3,
+      "pass": true,
+      "large": true
+    },
+    {
+      "name": "G2 reward badge unit (.mvamt i)",
+      "text": "MB",
+      "fontSize": "10px",
+      "fontWeight": "700",
+      "color": "#5e6b80",
+      "effectiveBg": "#dcfce7",
+      "bgShare": 69,
+      "ratio": 4.91,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "G2 mission title (.mvbd h3)",
+      "text": "دعوت دوستان",
+      "fontSize": "15px",
+      "fontWeight": "800",
+      "color": "#0f172a",
+      "effectiveBg": "#ffffff",
+      "bgShare": 91,
+      "ratio": 17.85,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "CTA label (.cta)",
+      "text": "دریافت کانفیگ",
+      "fontSize": "16.5px",
+      "fontWeight": "800",
+      "color": "#ffffff",
+      "effectiveBg": "#ffffff",
+      "bgShare": 3,
+      "ratio": 1,
+      "threshold": 4.5,
+      "pass": false,
+      "large": false
+    },
+    {
+      "name": "footer CTA (.ft-cta-btn)",
+      "text": "دریافت کانفیگ رایگان",
+      "fontSize": "14.5px",
+      "fontWeight": "800",
+      "color": "#ffffff",
+      "effectiveBg": "#2563eb",
+      "bgShare": 91,
+      "ratio": 5.17,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "appcard rec badge (.app-rec)",
+      "text": "پیشنهادی",
+      "fontSize": "11px",
+      "fontWeight": "700",
+      "color": "#047857",
+      "effectiveBg": "#dcfce7",
+      "bgShare": 70,
+      "ratio": 4.99,
+      "threshold": 4.5,
+      "pass": true,
+      "large": false
+    },
+    {
+      "name": "loc-rec «popular» badge",
+      "missing": true
+    },
+    {
+      "name": "faint token sample (.hint/.faint)",
+      "text": "",
+      "fontSize": "11.5px",
+      "fontWeight": "400",
+      "color": "#7c8aa0",
+      "effectiveBg": "#ffffff",
+      "bgShare": 64,
+      "ratio": 3.5,
+      "threshold": 4.5,
+      "pass": false,
+      "large": false
+    }
+  ]
+}
