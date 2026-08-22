@@ -1,0 +1,146 @@
+{
+  "baseline": {
+    "360": {
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "doc": 8049,
+      "subChars": 134,
+      "subLines": 4,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "390": {
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "doc": 7908,
+      "subChars": 134,
+      "subLines": 4,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "393": {
+      "ctaTop": 875.3,
+      "ctaBottom": 932.3,
+      "doc": 7881,
+      "subChars": 134,
+      "subLines": 4,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "412": {
+      "ctaTop": 844.7,
+      "ctaBottom": 901.8,
+      "doc": 7786,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    }
+  },
+  "combo5": {
+    "360": {
+      "ctaTop": 670.3,
+      "ctaBottom": 727.3,
+      "doc": 7968,
+      "subChars": 134,
+      "subLines": 4,
+      "trustRowVisible": false,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "390": {
+      "ctaTop": 642.4,
+      "ctaBottom": 699.5,
+      "doc": 7799,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": false,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "393": {
+      "ctaTop": 642.4,
+      "ctaBottom": 699.5,
+      "doc": 7772,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": false,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "412": {
+      "ctaTop": 642.4,
+      "ctaBottom": 699.5,
+      "doc": 7708,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": false,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    }
+  },
+  "option6": {
+    "360": {
+      "ctaTop": 445.7,
+      "ctaBottom": 502.8,
+      "doc": 8007,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "390": {
+      "ctaTop": 445.7,
+      "ctaBottom": 502.8,
+      "doc": 7866,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "393": {
+      "ctaTop": 445.7,
+      "ctaBottom": 502.8,
+      "doc": 7839,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    },
+    "412": {
+      "ctaTop": 445.7,
+      "ctaBottom": 502.8,
+      "doc": 7774,
+      "subChars": 134,
+      "subLines": 3,
+      "trustRowVisible": true,
+      "trustBadgesVisible": true,
+      "trustBadgeRows": 2
+    }
+  },
+  "shorten": [
+    {
+      "wordsDropped": 0,
+      "chars": 134,
+      "subLines": 4,
+      "ctaBottom": 727.3,
+      "clears": false,
+      "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر می‌شود."
+    },
+    {
+      "wordsDropped": 1,
+      "chars": 126,
+      "subLines": 3,
+      "ctaBottom": 699.5,
+      "clears": true,
+      "text": "هر روز یک کانفیگ آزمایشی رایگان بگیر؛ لوکیشن دلخواهت را انتخاب کن و بدون ثبت‌نام وصل شو. با دعوت دوستان هم حجم روزانه‌ات بیشتر"
+    }
+  ]
+}

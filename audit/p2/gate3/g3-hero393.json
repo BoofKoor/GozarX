@@ -1,0 +1,22 @@
+{
+  "A": {
+    "dark": {},
+    "light": {}
+  },
+  "B": {
+    "dark": {},
+    "light": {}
+  },
+  "C": {
+    "dark": {
+      "ruleColor": "#22d3ee",
+      "groundColor": "#05112c",
+      "ruleRatio": 10.35
+    },
+    "light": {
+      "ruleColor": "#0e7490",
+      "groundColor": "#d6e6f8",
+      "ruleRatio": 4.22
+    }
+  }
+}

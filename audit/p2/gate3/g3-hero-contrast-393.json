@@ -1,0 +1,668 @@
+{
+  "0 · current (baseline)": {
+    "dark": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#1a3f9d",
+          "ground": "#05142e",
+          "corePx": 3,
+          "ratio": 1.96
+        },
+        {
+          "xPct": 9,
+          "glyph": "#1c48aa",
+          "ground": "#05132e",
+          "corePx": 19,
+          "ratio": 2.24
+        },
+        {
+          "xPct": 17,
+          "glyph": "#1a4ca8",
+          "ground": "#05142f",
+          "corePx": 9,
+          "ratio": 2.3
+        },
+        {
+          "xPct": 25,
+          "glyph": "#1a4fa6",
+          "ground": "#05142f",
+          "corePx": 6,
+          "ratio": 2.36
+        },
+        {
+          "xPct": 32,
+          "glyph": "#174f9d",
+          "ground": "#061430",
+          "corePx": 4,
+          "ratio": 2.3
+        },
+        {
+          "xPct": 48,
+          "glyph": "#165a9f",
+          "ground": "#061532",
+          "corePx": 4,
+          "ratio": 2.58
+        },
+        {
+          "xPct": 56,
+          "glyph": "#155e9e",
+          "ground": "#061431",
+          "corePx": 4,
+          "ratio": 2.71
+        },
+        {
+          "xPct": 63,
+          "glyph": "#135b93",
+          "ground": "#061533",
+          "corePx": 4,
+          "ratio": 2.53
+        },
+        {
+          "xPct": 71,
+          "glyph": "#13639a",
+          "ground": "#061533",
+          "corePx": 9,
+          "ratio": 2.82
+        },
+        {
+          "xPct": 94,
+          "glyph": "#106d94",
+          "ground": "#071634",
+          "corePx": 10,
+          "ratio": 3.1
+        }
+      ],
+      "min": 1.96,
+      "max": 3.1,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 1.96
+    },
+    "light": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#3679eb",
+          "ground": "#d0e6f7",
+          "corePx": 3,
+          "ratio": 3.21
+        },
+        {
+          "xPct": 9,
+          "glyph": "#2170e8",
+          "ground": "#cfe5f6",
+          "corePx": 19,
+          "ratio": 3.56
+        },
+        {
+          "xPct": 17,
+          "glyph": "#1e76e6",
+          "ground": "#cee4f7",
+          "corePx": 10,
+          "ratio": 3.35
+        },
+        {
+          "xPct": 25,
+          "glyph": "#1c7be5",
+          "ground": "#cde3f6",
+          "corePx": 6,
+          "ratio": 3.17
+        },
+        {
+          "xPct": 32,
+          "glyph": "#2487e4",
+          "ground": "#cde3f7",
+          "corePx": 4,
+          "ratio": 2.81
+        },
+        {
+          "xPct": 48,
+          "glyph": "#158ddf",
+          "ground": "#cae2f6",
+          "corePx": 4,
+          "ratio": 2.66
+        },
+        {
+          "xPct": 56,
+          "glyph": "#1493de",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 2.49
+        },
+        {
+          "xPct": 63,
+          "glyph": "#209ddf",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 2.24
+        },
+        {
+          "xPct": 71,
+          "glyph": "#109cdc",
+          "ground": "#c9dff6",
+          "corePx": 8,
+          "ratio": 2.26
+        },
+        {
+          "xPct": 94,
+          "glyph": "#0aacd7",
+          "ground": "#c8dff7",
+          "corePx": 10,
+          "ratio": 1.94
+        }
+      ],
+      "min": 1.94,
+      "max": 3.56,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 2.81
+    }
+  },
+  "A · solid brand ink": {
+    "dark": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#86b5eb",
+          "ground": "#05142e",
+          "corePx": 4,
+          "ratio": 8.57
+        },
+        {
+          "xPct": 9,
+          "glyph": "#93c5fd",
+          "ground": "#05132e",
+          "corePx": 19,
+          "ratio": 10.22
+        },
+        {
+          "xPct": 17,
+          "glyph": "#93c5fd",
+          "ground": "#05142f",
+          "corePx": 10,
+          "ratio": 10.15
+        },
+        {
+          "xPct": 25,
+          "glyph": "#93c5fd",
+          "ground": "#05142f",
+          "corePx": 7,
+          "ratio": 10.15
+        },
+        {
+          "xPct": 32,
+          "glyph": "#8dbff5",
+          "ground": "#061430",
+          "corePx": 5,
+          "ratio": 9.48
+        },
+        {
+          "xPct": 48,
+          "glyph": "#93c5fd",
+          "ground": "#061532",
+          "corePx": 5,
+          "ratio": 10.03
+        },
+        {
+          "xPct": 56,
+          "glyph": "#93c5fd",
+          "ground": "#061431",
+          "corePx": 5,
+          "ratio": 10.11
+        },
+        {
+          "xPct": 63,
+          "glyph": "#8bbbf2",
+          "ground": "#061533",
+          "corePx": 4,
+          "ratio": 9.02
+        },
+        {
+          "xPct": 71,
+          "glyph": "#93c5fd",
+          "ground": "#061533",
+          "corePx": 9,
+          "ratio": 10.01
+        },
+        {
+          "xPct": 94,
+          "glyph": "#93c5fd",
+          "ground": "#071634",
+          "corePx": 11,
+          "ratio": 9.92
+        }
+      ],
+      "min": 8.57,
+      "max": 10.22,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 8.57
+    },
+    "light": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#2d5bdb",
+          "ground": "#d0e6f7",
+          "corePx": 3,
+          "ratio": 4.5
+        },
+        {
+          "xPct": 9,
+          "glyph": "#1d4ed8",
+          "ground": "#cfe5f6",
+          "corePx": 19,
+          "ratio": 5.17
+        },
+        {
+          "xPct": 17,
+          "glyph": "#1d4ed8",
+          "ground": "#cee4f7",
+          "corePx": 10,
+          "ratio": 5.13
+        },
+        {
+          "xPct": 25,
+          "glyph": "#1d4ed8",
+          "ground": "#cde3f6",
+          "corePx": 6,
+          "ratio": 5.08
+        },
+        {
+          "xPct": 32,
+          "glyph": "#2454d9",
+          "ground": "#cde3f7",
+          "corePx": 4,
+          "ratio": 4.76
+        },
+        {
+          "xPct": 48,
+          "glyph": "#1d4ed8",
+          "ground": "#cae2f6",
+          "corePx": 4,
+          "ratio": 5.02
+        },
+        {
+          "xPct": 56,
+          "glyph": "#1d4ed8",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 4.97
+        },
+        {
+          "xPct": 63,
+          "glyph": "#2756da",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 4.54
+        },
+        {
+          "xPct": 71,
+          "glyph": "#1d4ed8",
+          "ground": "#c9dff6",
+          "corePx": 9,
+          "ratio": 4.9
+        },
+        {
+          "xPct": 94,
+          "glyph": "#1d4ed8",
+          "ground": "#c8dff7",
+          "corePx": 10,
+          "ratio": 4.9
+        }
+      ],
+      "min": 4.5,
+      "max": 5.17,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 4.5
+    }
+  },
+  "B · gradient, raised floor + RTL-mirrored": {
+    "dark": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#21b6d9",
+          "ground": "#05142e",
+          "corePx": 3,
+          "ratio": 7.64
+        },
+        {
+          "xPct": 9,
+          "glyph": "#26c5ef",
+          "ground": "#05132e",
+          "corePx": 19,
+          "ratio": 9.06
+        },
+        {
+          "xPct": 17,
+          "glyph": "#27c1ef",
+          "ground": "#05142f",
+          "corePx": 10,
+          "ratio": 8.68
+        },
+        {
+          "xPct": 25,
+          "glyph": "#2abbf1",
+          "ground": "#05142f",
+          "corePx": 6,
+          "ratio": 8.26
+        },
+        {
+          "xPct": 32,
+          "glyph": "#28afe6",
+          "ground": "#061430",
+          "corePx": 4,
+          "ratio": 7.27
+        },
+        {
+          "xPct": 48,
+          "glyph": "#2eadf2",
+          "ground": "#061532",
+          "corePx": 4,
+          "ratio": 7.21
+        },
+        {
+          "xPct": 56,
+          "glyph": "#30a8f3",
+          "ground": "#061431",
+          "corePx": 4,
+          "ratio": 6.96
+        },
+        {
+          "xPct": 63,
+          "glyph": "#2d97e4",
+          "ground": "#061533",
+          "corePx": 4,
+          "ratio": 5.73
+        },
+        {
+          "xPct": 71,
+          "glyph": "#339bf4",
+          "ground": "#061533",
+          "corePx": 8,
+          "ratio": 6.14
+        },
+        {
+          "xPct": 94,
+          "glyph": "#388cf5",
+          "ground": "#071634",
+          "corePx": 10,
+          "ratio": 5.32
+        }
+      ],
+      "min": 5.32,
+      "max": 9.06,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 7.27
+    },
+    "light": {
+      "fontSize": 30,
+      "fontWeight": 800,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 10,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#267da3",
+          "ground": "#d0e6f7",
+          "corePx": 3,
+          "ratio": 3.6
+        },
+        {
+          "xPct": 9,
+          "glyph": "#116e9d",
+          "ground": "#cfe5f6",
+          "corePx": 19,
+          "ratio": 4.33
+        },
+        {
+          "xPct": 17,
+          "glyph": "#116ca0",
+          "ground": "#cee4f7",
+          "corePx": 10,
+          "ratio": 4.37
+        },
+        {
+          "xPct": 25,
+          "glyph": "#1369a5",
+          "ground": "#cde3f6",
+          "corePx": 6,
+          "ratio": 4.43
+        },
+        {
+          "xPct": 32,
+          "glyph": "#1e6ead",
+          "ground": "#cde3f7",
+          "corePx": 4,
+          "ratio": 4.1
+        },
+        {
+          "xPct": 48,
+          "glyph": "#1562b2",
+          "ground": "#cae2f6",
+          "corePx": 4,
+          "ratio": 4.59
+        },
+        {
+          "xPct": 56,
+          "glyph": "#1660b7",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 4.6
+        },
+        {
+          "xPct": 63,
+          "glyph": "#2568c0",
+          "ground": "#c9e1f6",
+          "corePx": 4,
+          "ratio": 4.08
+        },
+        {
+          "xPct": 71,
+          "glyph": "#185ac2",
+          "ground": "#c9dff6",
+          "corePx": 8,
+          "ratio": 4.69
+        },
+        {
+          "xPct": 94,
+          "glyph": "#1b53d0",
+          "ground": "#c8dff7",
+          "corePx": 10,
+          "ratio": 4.81
+        }
+      ],
+      "min": 3.6,
+      "max": 4.81,
+      "lastWord": "ثانیه",
+      "lastWordCols": 5,
+      "lastWordMin": 3.6
+    }
+  },
+  "C · weight + size, colour demoted to a rule": {
+    "dark": {
+      "fontSize": 34.2,
+      "fontWeight": 900,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 9,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#f1f5f9",
+          "ground": "#04132d",
+          "corePx": 9,
+          "ratio": 16.87
+        },
+        {
+          "xPct": 10,
+          "glyph": "#f1f5f9",
+          "ground": "#05142e",
+          "corePx": 11,
+          "ratio": 16.73
+        },
+        {
+          "xPct": 18,
+          "glyph": "#f1f5f9",
+          "ground": "#05132e",
+          "corePx": 6,
+          "ratio": 16.83
+        },
+        {
+          "xPct": 34,
+          "glyph": "#f1f5f9",
+          "ground": "#05142f",
+          "corePx": 15,
+          "ratio": 16.7
+        },
+        {
+          "xPct": 51,
+          "glyph": "#f1f5f9",
+          "ground": "#061431",
+          "corePx": 17,
+          "ratio": 16.64
+        },
+        {
+          "xPct": 59,
+          "glyph": "#f1f5f9",
+          "ground": "#061532",
+          "corePx": 16,
+          "ratio": 16.51
+        },
+        {
+          "xPct": 68,
+          "glyph": "#f1f5f9",
+          "ground": "#061433",
+          "corePx": 18,
+          "ratio": 16.59
+        },
+        {
+          "xPct": 84,
+          "glyph": "#f1f5f9",
+          "ground": "#061433",
+          "corePx": 18,
+          "ratio": 16.59
+        },
+        {
+          "xPct": 92,
+          "glyph": "#f1f5f9",
+          "ground": "#071535",
+          "corePx": 12,
+          "ratio": 16.42
+        }
+      ],
+      "min": 16.42,
+      "max": 16.87,
+      "lastWord": "ثانیه",
+      "lastWordCols": 4,
+      "lastWordMin": 16.7
+    },
+    "light": {
+      "fontSize": 34.2,
+      "fontWeight": 900,
+      "isLarge": true,
+      "threshold": 3,
+      "samples": 9,
+      "cols": [
+        {
+          "xPct": 1,
+          "glyph": "#0f172a",
+          "ground": "#d1e6f7",
+          "corePx": 8,
+          "ratio": 13.92
+        },
+        {
+          "xPct": 10,
+          "glyph": "#0f172a",
+          "ground": "#d0e5f7",
+          "corePx": 10,
+          "ratio": 13.8
+        },
+        {
+          "xPct": 18,
+          "glyph": "#0f172a",
+          "ground": "#cee4f6",
+          "corePx": 6,
+          "ratio": 13.65
+        },
+        {
+          "xPct": 34,
+          "glyph": "#0f172a",
+          "ground": "#cce3f6",
+          "corePx": 14,
+          "ratio": 13.5
+        },
+        {
+          "xPct": 51,
+          "glyph": "#0f172a",
+          "ground": "#cbe1f6",
+          "corePx": 17,
+          "ratio": 13.3
+        },
+        {
+          "xPct": 59,
+          "glyph": "#0f172a",
+          "ground": "#cae1f7",
+          "corePx": 15,
+          "ratio": 13.28
+        },
+        {
+          "xPct": 68,
+          "glyph": "#0f172a",
+          "ground": "#c9e0f6",
+          "corePx": 17,
+          "ratio": 13.16
+        },
+        {
+          "xPct": 84,
+          "glyph": "#0f172a",
+          "ground": "#c9dff6",
+          "corePx": 18,
+          "ratio": 13.07
+        },
+        {
+          "xPct": 92,
+          "glyph": "#0f172a",
+          "ground": "#c9def6",
+          "corePx": 12,
+          "ratio": 12.98
+        }
+      ],
+      "min": 12.98,
+      "max": 13.92,
+      "lastWord": "ثانیه",
+      "lastWordCols": 4,
+      "lastWordMin": 13.5
+    }
+  }
+}
