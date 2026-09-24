@@ -246,7 +246,11 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   against both contracts rather than the changelog: 3.0 re-keyed users by numeric `id`, which left
   every uuid-keyed call silently skipped — expired trials never deleted, a ban that did not revoke,
   referral/reward bumps and LIMITED revives that never landed, a bulk traffic reset of nobody — and
-  3.4 replaced host squad exclusions with EXCLUDE / ALLOW_ONLY modes.
+  3.4 replaced host squad exclusions with EXCLUDE / ALLOW_ONLY modes. Verified LIVE as well: both
+  panels built from source, the 2.8.1 database migrated to 3.4.4 in place, every client call and a
+  real signed `user.expired` webhook exercised on each. The same audit removed the raw-subscription
+  fallback: its path exists in no panel version, so an empty link list (rare — the panel normally
+  answers with placeholder links) became a 404 "account gone" and deleted a live trial.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —

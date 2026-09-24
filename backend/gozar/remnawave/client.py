@@ -53,20 +53,6 @@ def _links_from_list(links: list[str]) -> dict[str, str]:
     return out
 
 
-def _parse_raw_links(raw: Any) -> dict[str, str]:
-    # VERIFY: the raw subscription shape varies by panel version — a list of link strings, a
-    #         {remark: link} map, or a wrapper like {"links": [...]}/{"subscription": [...]}.
-    if isinstance(raw, list):
-        return _links_from_list([str(x) for x in raw])
-    if isinstance(raw, dict):
-        for key in ("links", "subscription", "configs"):
-            if isinstance(raw.get(key), list):
-                return _links_from_list([str(x) for x in raw[key]])
-        if raw and all(isinstance(v, str) for v in raw.values()):
-            return {str(k): str(v) for k, v in raw.items()}
-    return {}
-
-
 class RemnawaveClient:
     def __init__(self, http: httpx.AsyncClient, base_url: str, token: SecretStr | str) -> None:
         self._http = http
@@ -257,25 +243,29 @@ class RemnawaveClient:
             await self._request("GET", f"/subscriptions/by-username/{username}")
         )
 
-    # VERIFY: GET /api/subscriptions/raw/{shortUuid} — raw config data; shape is panel-version-
-    #         sensitive (a link list, a {remark: link} map, or a wrapper), so we parse defensively.
-    async def get_subscription_raw(self, short_uuid: str) -> Any:
-        return await self._request("GET", f"/subscriptions/raw/{short_uuid}")
-
     async def subscription(self, username: str) -> tuple[Subscription, dict[str, str]]:
         """The user's own subscription paired with a remark NAME -> config link map.
 
         Single source of truth for the location picker: the picker's names and the link handed back
         on a pick both come from this one response, so they can never cross-index (the v1 bug). We
-        try, in order: the by-username ``ssConfLinks`` map; else parse remarks out of ``links[]``;
-        else fall back to the raw endpoint (whose shape varies). All shape handling is # VERIFY:.
+        take the by-username ``ssConfLinks`` map, else parse remarks out of ``links[]``.
+
+        VERIFY: 2.8 and 3.4 both build ``ssConfLinks`` as ``{}`` and fill ``links[]`` for this
+        admin endpoint (it resolves hosts as authenticated), so ``links[]`` is what answers. With
+        default subscription settings it is never empty: a user with no host, or one that is not
+        ACTIVE, gets the panel's placeholder links (customRemarks: "→ No hosts found",
+        "⌛ Subscription expired", …) — a location allowlist drops those, as no squad host carries
+        that remark (an EMPTY bot allowlist keeps everything, placeholders included). It is empty
+        only when such a placeholder list was cleared or every host is excluded from
+        XRAY_BASE64, and it is returned as the real answer it is. There is
+        deliberately no second endpoint to fall back to: the one this used to try
+        (``/subscriptions/raw/{shortUuid}``) exists in no panel version, and its 404 read as
+        "account gone", deleting a live trial (a LIMITED one's revive path included).
         """
         sub = await self.get_subscription(username)
         links = dict(sub.ss_conf_links)
         if not links:
             links = _links_from_list(sub.links)
-        if not links and sub.user.short_uuid:
-            links = _parse_raw_links(await self.get_subscription_raw(sub.user.short_uuid))
         return sub, links
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:

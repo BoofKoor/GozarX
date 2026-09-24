@@ -256,6 +256,23 @@ async def test_claim_already_active_when_live(session) -> None:
     assert not panel.created  # reused the live trial; no new panel user
 
 
+async def test_claim_live_trial_with_no_links_keeps_the_account(session) -> None:
+    # A live subscription that carries no link (e.g. the panel's placeholder list for its state was
+    # emptied) is not a terminal trial: keep the account and the status. This used to fall back to
+    # a raw-subscription path no panel version has; its 404 read as "account gone" and the live
+    # trial — a LIMITED one's revive path included — was deleted.
+    panel = FakePanel([(_sub(), {})])
+    trial = await _service(session, panel)
+    user = await _user(session, status=UserStatus.active_config, panel_username="g100_live")
+
+    result = await trial.claim(user)
+
+    assert isinstance(result, AlreadyActive)
+    assert user.status is UserStatus.active_config
+    assert user.panel_username == "g100_live"
+    assert panel.deleted == [] and not panel.created
+
+
 async def test_claim_transient_error_on_active_keeps_state(session) -> None:
     panel = FakePanel([RemnawaveError("503", status_code=503)])
     trial = await _service(session, panel)
