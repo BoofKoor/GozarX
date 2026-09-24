@@ -356,8 +356,8 @@ async def reset_all_active(ctx: dict, admin_id: int) -> None:
     for i, username in enumerate(usernames, start=1):
         try:
             panel_user = await panel.get_user(username)
-            if panel_user is not None and panel_user.uuid:
-                await panel.reset_user_traffic(panel_user.uuid)
+            if panel_user is not None and panel_user.ref:  # uuid on panel 2.x, numeric id on 3.x
+                await panel.reset_user_traffic(panel_user.ref)
                 reset += 1
             else:
                 skipped += 1

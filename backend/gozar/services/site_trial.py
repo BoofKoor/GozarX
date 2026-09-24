@@ -145,14 +145,14 @@ async def bump_live_trial(
 ) -> None:
     """Raise a device's live-trial panel limit to a new allowance — also the LIMITED->ACTIVE revive
     path (PATCHing a higher limit re-activates a data-exhausted account). Best-effort: a single
-    bounded call, logged and ignored on failure; drops the nudge guard + cached sub on success.
+    bounded call keyed by username (valid on Remnawave 2.x and 3.x alike), logged and ignored on
+    failure; drops the nudge guard + cached sub on success, and does nothing on a 404 (gone).
     Shared by the referral credit and the reward claim (both raise the same device's allowance)."""
     if device.status != SiteDeviceStatus.active_config or not device.site_panel_username:
         return
     try:
-        panel_user = await panel.get_user(device.site_panel_username)
-        if panel_user and panel_user.uuid:
-            await panel.update_traffic_limit(panel_user.uuid, new_daily_bytes)
+        bumped = await panel.update_traffic_limit(device.site_panel_username, new_daily_bytes)
+        if bumped is not None:
             await redis.delete(site_limited_notified_key(device.uuid))
             await redis.delete(site_sub_cache_key(device.uuid))
     except RemnawaveError:

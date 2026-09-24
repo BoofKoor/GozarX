@@ -36,12 +36,9 @@ class FakePanel:
         self._user = user
         self.traffic_updates: list[tuple[str, int]] = []
 
-    async def get_user(self, username: str) -> PanelUser | None:
-        return self._user
-
-    async def update_traffic_limit(self, uuid: str, traffic_bytes: int) -> PanelUser:
-        self.traffic_updates.append((uuid, traffic_bytes))
-        return PanelUser(uuid=uuid)
+    async def update_traffic_limit(self, username: str, traffic_bytes: int) -> PanelUser | None:
+        self.traffic_updates.append((username, traffic_bytes))
+        return self._user  # None = the panel answered 404 (the account is already gone)
 
 
 async def _service(session, panel, redis=None) -> ReferralService:
@@ -73,8 +70,8 @@ async def test_award_increments_and_persists_atomically(session) -> None:
     assert await ConfigLogRepository(session).count_for_user(2) == 1
 
 
-async def test_award_bumps_live_inviter_trial_by_uuid(session) -> None:
-    panel = FakePanel(PanelUser(uuid="u-inv"))
+async def test_award_bumps_live_inviter_trial_by_username(session) -> None:
+    panel = FakePanel(PanelUser(username="g1_live"))
     await _add(
         session,
         telegram_id=1,
@@ -89,7 +86,8 @@ async def test_award_bumps_live_inviter_trial_by_uuid(session) -> None:
 
     assert award.new_count == 3
     expected = (1024 + 3 * 500) * 1024 * 1024  # within the cap of 10
-    assert panel.traffic_updates == [("u-inv", expected)]  # PATCH keyed off the uuid
+    # PATCH keyed by username: panel 3.x dropped the uuid, and 2.x accepts the name as well.
+    assert panel.traffic_updates == [("g1_live", expected)]
     assert award.new_daily_bytes == expected
 
 
@@ -97,7 +95,7 @@ async def test_award_revives_data_limited_inviter(session) -> None:
     # The inviter is data-limited (kept active_config). Crediting a referral bumps their cap AND
     # clears the one-shot nudge guard + the stale sub cache, so the revived state re-reads.
     redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
-    panel = FakePanel(PanelUser(uuid="u-inv"))
+    panel = FakePanel(PanelUser(username="g1_live"))
     await _add(
         session,
         telegram_id=1,
@@ -113,9 +111,33 @@ async def test_award_revives_data_limited_inviter(session) -> None:
     award = await referral.award_first_claim(invitee)
 
     assert award.new_count == 1
-    assert panel.traffic_updates == [("u-inv", (1024 + 1 * 500) * 1024 * 1024)]  # cap lifted
+    assert panel.traffic_updates == [("g1_live", (1024 + 1 * 500) * 1024 * 1024)]  # cap lifted
     assert await redis.get(limited_notified_key(1)) is None  # guard dropped
     assert await redis.get(sub_cache_key(1)) is None  # stale cache dropped -> revived re-read
+
+
+async def test_award_keeps_caches_when_inviter_account_is_gone(session) -> None:
+    # The PATCH answered 404 (the panel account vanished under us): nothing was bumped, so the
+    # nudge guard and the cached sub must stay — dropping them would pretend a revive happened.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = FakePanel(None)
+    await _add(
+        session,
+        telegram_id=1,
+        status=UserStatus.active_config,
+        panel_username="g1_gone",
+        referral_count=0,
+    )
+    invitee = await _add(session, telegram_id=2, referred_by=1)
+    await redis.set(limited_notified_key(1), "1")
+    await redis.set(sub_cache_key(1), "cached")
+
+    award = await (await _service(session, panel, redis)).award_first_claim(invitee)
+
+    assert award.new_count == 1  # the credit itself never depends on the panel
+    assert panel.traffic_updates == [("g1_gone", (1024 + 1 * 500) * 1024 * 1024)]
+    assert await redis.get(limited_notified_key(1)) == "1"
+    assert await redis.get(sub_cache_key(1)) == "cached"
 
 
 async def test_award_caps_the_bonus(session) -> None:
@@ -130,7 +152,7 @@ async def test_award_caps_the_bonus(session) -> None:
 
 
 async def test_award_inactive_inviter_no_panel_call(session) -> None:
-    panel = FakePanel(PanelUser(uuid="u-inv"))
+    panel = FakePanel(PanelUser(username="g1_live"))
     await _add(session, telegram_id=1, status=UserStatus.available, panel_username=None)
     invitee = await _add(session, telegram_id=2, referred_by=1)
 

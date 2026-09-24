@@ -29,7 +29,11 @@ class ActiveSquadRef(_Base):
 
 
 class PanelUser(_Base):
+    # VERIFY (3.0 contract): Remnawave 3.0 DROPPED the user ``uuid`` and keys every user path
+    # (``DELETE /api/users/{…}``, ``…/actions/reset-traffic``) by the numeric ``id`` instead. 2.x
+    # returns BOTH but validates those same paths as a UUID. Never pick one yourself — use ``ref``.
     uuid: str = ""
+    id: int | None = None
     username: str = ""
     status: str = ""  # ACTIVE | DISABLED | LIMITED | EXPIRED
     traffic_limit_bytes: int = Field(default=0, alias="trafficLimitBytes")
@@ -39,6 +43,15 @@ class PanelUser(_Base):
     active_internal_squads: list[ActiveSquadRef] = Field(
         default_factory=list, alias="activeInternalSquads"
     )
+
+    @property
+    def ref(self) -> str:
+        """The key this panel's ``/api/users/{…}`` paths take: the ``uuid`` on 2.x, the numeric
+        ``id`` on 3.x. Read off the record itself, so one build serves both majors without a
+        version setting. "" when it carries neither — there is then nothing safe to call."""
+        if self.uuid:
+            return self.uuid
+        return str(self.id) if self.id else ""
 
 
 class SquadInbound(_Base):
@@ -62,6 +75,14 @@ class HostInbound(_Base):
     config_profile_inbound_uuid: str | None = Field(default=None, alias="configProfileInboundUuid")
 
 
+class HostInternalSquads(_Base):
+    """``host.internalSquads`` (3.4+): ``EXCLUDE`` serves every squad EXCEPT ``squads``;
+    ``ALLOW_ONLY`` serves ONLY ``squads``."""
+
+    mode: str = "EXCLUDE"
+    squads: list[str] = Field(default_factory=list)
+
+
 class Host(_Base):
     uuid: str = ""
     remark: str = ""  # human location name — match configs to locations by THIS, never by index
@@ -71,9 +92,25 @@ class Host(_Base):
     # Defaults False, so a panel build that omits the field behaves exactly as before.
     is_hidden: bool = Field(default=False, alias="isHidden")
     inbound: HostInbound = Field(default_factory=HostInbound)
+    # ≤3.3: a plain exclusion list. 3.4 REPLACED it with ``internalSquads`` ({mode, squads}), so a
+    # 3.4 host carries only the latter — read through ``serves_squad``, never either field directly.
     excluded_internal_squads: list[str] = Field(
         default_factory=list, alias="excludedInternalSquads"
     )
+    internal_squads: HostInternalSquads | None = Field(default=None, alias="internalSquads")
+
+    def serves_squad(self, squad_uuid: str) -> bool:
+        """Whether this host's squad rule lets ``squad_uuid`` see it (the inbound join is separate).
+
+        Mirrors the panel's own host query: ALLOW_ONLY serves just the listed squads, EXCLUDE all
+        but them. A pre-3.4 panel only has the exclusion list, which is EXCLUDE by another name, and
+        a mode this code doesn't know is read as EXCLUDE — the panel's default for every host.
+        """
+        rule = self.internal_squads
+        if rule is None:
+            return squad_uuid not in self.excluded_internal_squads
+        listed = squad_uuid in rule.squads
+        return listed if rule.mode.upper() == "ALLOW_ONLY" else not listed
 
 
 class SubscriptionUser(_Base):
