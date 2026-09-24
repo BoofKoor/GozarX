@@ -49,7 +49,7 @@ class _StubPanel:
     async def get_user(self, username: str):
         return None  # no live panel account in tests -> reclaim/ban revoke is a no-op
 
-    async def delete_user(self, uuid: str) -> bool:
+    async def delete_user(self, ref: str) -> bool:
         return True
 
 

@@ -65,6 +65,94 @@ async def test_get_user_404_returns_none() -> None:
     assert await client.get_user("nope") is None
 
 
+# GetFullUserResponseModel as each major serialises it (trimmed to what we read + the keys). 2.x
+# sends BOTH `uuid` and a numeric `id` but validates `/users/{…}` paths as a UUID; 3.0 dropped the
+# uuid column and keys those paths by `id`. One build must drive both, so `ref` reads the record.
+_USER_V2 = {
+    "uuid": "0b5e0cb5-8c3d-4f5a-9d6e-1f2a3b4c5d6e",
+    "id": 7,
+    "shortUuid": "s2",
+    "username": "g1_100",
+    "status": "ACTIVE",
+    "trafficLimitBytes": 1024,
+    "expireAt": "2030-01-01T00:00:00.000Z",
+    "subscriptionUrl": "https://sub/s2",
+    "activeInternalSquads": [{"uuid": "sq1", "name": "Trial"}],
+    "userTraffic": {"usedTrafficBytes": 5, "onlineAt": None},
+}
+_USER_V3 = {key: value for key, value in _USER_V2.items() if key != "uuid"} | {"id": 42}
+
+
+def _delete_flow_handler(
+    user: dict, seen: list[tuple[str, str]], delete: httpx.Response
+) -> Handler:
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        if request.method == "GET":
+            return httpx.Response(200, json={"response": user})
+        return delete
+
+    return handler
+
+
+async def test_delete_user_by_username_keys_off_the_uuid_on_panel_2() -> None:
+    seen: list[tuple[str, str]] = []
+    deleted = httpx.Response(200, json={"response": {"isDeleted": True}})
+    client = _client(_delete_flow_handler(_USER_V2, seen, deleted))
+
+    assert await client.delete_user_by_username("g1_100") is True
+    assert seen == [
+        ("GET", "/api/users/by-username/g1_100"),
+        ("DELETE", f"/api/users/{_USER_V2['uuid']}"),  # 2.x: the uuid, never the numeric id
+    ]
+
+
+async def test_delete_user_by_username_keys_off_the_id_on_panel_3() -> None:
+    # 3.x answers DELETE with 204 and no body — still a successful delete.
+    seen: list[tuple[str, str]] = []
+    client = _client(_delete_flow_handler(_USER_V3, seen, httpx.Response(204)))
+
+    assert await client.delete_user_by_username("g1_100") is True
+    assert seen == [("GET", "/api/users/by-username/g1_100"), ("DELETE", "/api/users/42")]
+
+
+async def test_delete_user_by_username_gone_is_false_without_a_delete() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        return httpx.Response(404, json={"message": "User not found"})
+
+    assert await _client(handler).delete_user_by_username("g1_100") is False
+    assert seen == [("GET", "/api/users/by-username/g1_100")]
+
+
+async def test_delete_user_by_username_without_any_key_calls_nothing_destructive() -> None:
+    # A record we can't key (neither uuid nor id) must never turn into DELETE /api/users/ (the
+    # collection) — it reads as "nothing to delete".
+    seen: list[tuple[str, str]] = []
+    keyless = {"username": "g1_100", "status": "EXPIRED"}
+    client = _client(_delete_flow_handler(keyless, seen, httpx.Response(500)))
+
+    assert await client.delete_user_by_username("g1_100") is False
+    assert seen == [("GET", "/api/users/by-username/g1_100")]
+
+
+@pytest.mark.parametrize(("user", "ref"), [(_USER_V2, _USER_V2["uuid"]), (_USER_V3, "42")])
+async def test_reset_user_traffic_uses_the_panels_own_key(user: dict, ref: str) -> None:
+    seen: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.path)
+        return httpx.Response(200, json={"response": user})  # both majors answer with the user
+
+    client = _client(handler)
+    panel_user = await client.get_user("g1_100")
+    assert panel_user is not None and panel_user.ref == ref
+    assert await client.reset_user_traffic(panel_user.ref) is True
+    assert seen[-1] == f"/api/users/{ref}/actions/reset-traffic"
+
+
 async def test_get_subscription_parses_ssconflinks() -> None:
     payload = {
         "response": {
@@ -121,6 +209,30 @@ async def test_squad_location_names_matches_by_inbound() -> None:
     }
     names = await _client(_squads_hosts_handler(_SQUADS, hosts)).squad_location_names("sq1")
     assert names == ["Germany"]  # Finland: wrong inbound; Excluded: squad excluded
+
+
+async def test_squad_location_names_reads_panel_3_4_squad_modes() -> None:
+    # 3.4 replaced `excludedInternalSquads` with `internalSquads: {mode, squads}`, so a 3.4 host
+    # carries only the latter. Read the old way, every rule below was ignored: the EXCLUDE host
+    # leaked in, and so did an ALLOW_ONLY host reserved for another squad.
+    def host(remark: str, mode: str, squads: list[str]) -> dict:
+        return {
+            "remark": remark,
+            "inbound": {"configProfileInboundUuid": "p1"},
+            "internalSquads": {"mode": mode, "squads": squads},
+        }
+
+    hosts = {
+        "response": [
+            host("Germany", "EXCLUDE", []),  # excludes nobody
+            host("Finland", "EXCLUDE", ["sq1"]),  # excludes the trial squad
+            host("Sweden", "ALLOW_ONLY", ["sq1"]),  # reserved for the trial squad
+            host("Norway", "ALLOW_ONLY", ["sq-vip"]),  # reserved for someone else
+            host("Poland", "EXCLUDE", ["sq-vip"]),  # excludes only someone else
+        ]
+    }
+    names = await _client(_squads_hosts_handler(_SQUADS, hosts)).squad_location_names("sq1")
+    assert names == ["Germany", "Sweden", "Poland"]
 
 
 async def test_squad_location_names_scopes_to_squad_never_all_hosts() -> None:

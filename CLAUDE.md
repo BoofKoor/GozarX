@@ -53,6 +53,13 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 - **Use the configured referral reward everywhere** — never hardcode reward/cap numbers.
 - **Remnawave: VERIFY every endpoint** against the live OpenAPI (`{PANEL_BASE_URL}/api`) before wiring;
   mark each with `# VERIFY:` and provide fallbacks rather than hardcoding response field names.
+- **One build drives Remnawave 2.x AND 3.x** — detected from each response's shape, never a version
+  setting, so the bot can be deployed before the panel is upgraded. 3.0 dropped the user `uuid`:
+  `/api/users/{…}` takes the uuid on 2.x and the numeric `id` on 3.x, so a path goes through
+  `PanelUser.ref`, never a raw field, and `PATCH /api/users` is keyed by `username` (the one body key
+  both accept). 3.4 replaced a host's `excludedInternalSquads` with `internalSquads {mode, squads}`
+  (EXCLUDE / ALLOW_ONLY) — squad rules are read through `Host.serves_squad`. The contract to check a
+  change against is `libs/contract` in `remnawave/backend` at the tag the panel runs.
 
 ## Lessons from v1 (bugs designed out — see conventions above)
 1. No destructive side effects on import (old `config.py` ran `delete_user()` + `create_tables()`).
@@ -235,6 +242,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   and every route split so `/login` stops downloading 1.09 MB. `docs/panel/shot.py` plus a handful
   of `page.evaluate` probes is the loop; the report of the whole pass is the artifact this phase
   was reviewed against.
+19 Remnawave 3.x readiness, deployed BEFORE the panel upgrade and still correct on 2.8. Checked
+  against both contracts rather than the changelog: 3.0 re-keyed users by numeric `id`, which left
+  every uuid-keyed call silently skipped — expired trials never deleted, a ban that did not revoke,
+  referral/reward bumps and LIMITED revives that never landed, a bulk traffic reset of nobody — and
+  3.4 replaced host squad exclusions with EXCLUDE / ALLOW_ONLY modes. Verified LIVE as well: both
+  panels built from source, the 2.8.1 database migrated to 3.4.4 in place, every client call and a
+  real signed `user.expired` webhook exercised on each. The same audit removed the raw-subscription
+  fallback: its path exists in no panel version, so an empty link list (rare — the panel normally
+  answers with placeholder links) became a 404 "account gone" and deleted a live trial.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —

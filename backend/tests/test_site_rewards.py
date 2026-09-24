@@ -44,18 +44,15 @@ _SETTINGS = {
 
 
 class BumpPanel:
-    """Stub for the live-trial bump: exposes get_user + update_traffic_limit and records bumps."""
+    """Stub for the live-trial bump: records each ``update_traffic_limit`` (keyed by username)."""
 
     def __init__(self, user: PanelUser | None = None) -> None:
         self._user = user
         self.bumped: list[tuple[str, int]] = []
 
-    async def get_user(self, username):
-        return self._user
-
-    async def update_traffic_limit(self, uuid, traffic_bytes):
-        self.bumped.append((uuid, traffic_bytes))
-        return PanelUser(uuid=uuid)
+    async def update_traffic_limit(self, username, traffic_bytes):
+        self.bumped.append((username, traffic_bytes))
+        return self._user  # None = the panel answered 404 (the account is already gone)
 
 
 async def _redis(**overrides):
@@ -96,7 +93,7 @@ async def _subscribe(session, device_uuid: str, endpoint: str = "https://push/1"
 
 async def test_pwa_reward_grants_once_and_bumps_live(session) -> None:
     redis = await _redis()
-    panel = BumpPanel(PanelUser(uuid="u1", username="s-x"))
+    panel = BumpPanel(PanelUser(username="s-x"))
     device = await _device(
         session, status=SiteDeviceStatus.active_config, site_panel_username="s-x"
     )
@@ -105,7 +102,7 @@ async def test_pwa_reward_grants_once_and_bumps_live(session) -> None:
     first = await svc.claim(device, SiteRewardType.pwa)
     assert first.ok is True
     assert first.amount_mb == 200
-    assert panel.bumped and panel.bumped[0][1] == (1024 + 200) * _MB  # live trial raised
+    assert panel.bumped == [("s-x", (1024 + 200) * _MB)]  # live trial raised, keyed by username
 
     second = await svc.claim(device, SiteRewardType.pwa)
     assert second.ok is False and second.reason == "already_claimed"

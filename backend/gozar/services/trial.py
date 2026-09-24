@@ -305,10 +305,8 @@ class TrialService:
         expiry time has passed. A LIMITED user whose time is valid is NOT terminal (kept/revivable).
 
         The background reconcile sweep uses THIS instead of ``_is_expired`` (which reads the
-        subscription endpoint): a terminal trial has no active links, so ``subscription()`` falls
-        through to the raw-config endpoint whose failure would mask the expiry. Reading the user
-        record needs a single call, never touches links, and its ``status`` is the source of
-        truth."""
+        subscription endpoint): the user record is a single call that never resolves hosts into
+        links — the sweep has no use for them — and its ``status`` is the source of truth."""
         if user.status.upper() in _ENDED_STATUSES:
             return True
         expires = _parse_dt(user.expire_at)

@@ -148,7 +148,7 @@ class AdminService:
             return
         try:
             panel_user = await self._panel.get_user(username)
-            if panel_user is not None and panel_user.uuid:
-                await self._panel.delete_user(panel_user.uuid)
+            if panel_user is not None and panel_user.ref:  # uuid on panel 2.x, numeric id on 3.x
+                await self._panel.delete_user(panel_user.ref)
         except RemnawaveError:
             logger.warning("ban: panel revoke failed for %s (left to expire)", user.telegram_id)

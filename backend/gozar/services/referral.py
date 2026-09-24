@@ -6,8 +6,8 @@ loaded via the SAME ``user_repo``, so the inviter's ``referral_count += 1`` and 
 second/short-lived session, so the +1 can't be dropped and a commit failure rolls back both.
 
 If the inviter currently holds a live trial we also raise its panel traffic limit immediately
-(``PATCH /users`` keys off the uuid, so we fetch the user by username first — finding #4). That bump
-is best-effort: one bounded call, logged and ignored on failure (the inviter's next claim recomputes
+(``PATCH /users`` keyed by username — the one key Remnawave 2.x and 3.x both accept). That bump is
+best-effort: one bounded call, logged and ignored on failure (the inviter's next claim recomputes
 the allowance from the new count regardless).
 """
 
@@ -80,21 +80,20 @@ class ReferralService:
         This is also the REVIVE path for a data-exhausted (LIMITED-but-time-valid) inviter: because
         such a user is now kept ``active_config`` with a live panel account (see TrialService), this
         guard passes and the bump lifts their cap. VERIFIED against Remnawave's ``updateUser``
-        handler (users.service.ts): PATCHing a LIMITED user with a ``trafficLimitBytes`` HIGHER than
-        their current limit (or 0 = unlimited) flips them back to ``ACTIVE`` and re-adds them to the
-        node — reviving the SAME config, no usage reset needed (which would wrongly refund spent
-        traffic). NB: the panel keys the re-activation off new-limit > OLD-limit, so a bump AT the
-        referral cap (allowance unchanged) does NOT revive — correct, there's no bonus left to give.
-        On a successful bump we drop the one-shot nudge guard + the cached sub so the read is fresh.
+        handler (users.service.ts, identical in 2.8 and 3.4): PATCHing a LIMITED user with a
+        ``trafficLimitBytes`` HIGHER than their current limit (or 0 = unlimited) flips them back to
+        ``ACTIVE`` and re-adds them to the node — reviving the SAME config, no usage reset needed
+        (which would wrongly refund spent traffic). NB: the panel keys the re-activation off
+        new-limit > OLD-limit, so a bump AT the referral cap (allowance unchanged) does NOT revive —
+        correct, there's no bonus left to give. On a successful bump we drop the one-shot nudge
+        guard + the cached sub so the read is fresh; a 404 (account already gone) bumps nothing.
         """
         if inviter.status is not UserStatus.active_config or not inviter.panel_username:
             return
         try:
-            panel_user = await self._panel.get_user(inviter.panel_username)
-            if panel_user and panel_user.uuid:
-                await self._panel.update_traffic_limit(panel_user.uuid, new_daily_bytes)
-                if self._redis is not None:
-                    await self._redis.delete(limited_notified_key(inviter.telegram_id))
-                    await self._redis.delete(sub_cache_key(inviter.telegram_id))
+            bumped = await self._panel.update_traffic_limit(inviter.panel_username, new_daily_bytes)
+            if bumped is not None and self._redis is not None:
+                await self._redis.delete(limited_notified_key(inviter.telegram_id))
+                await self._redis.delete(sub_cache_key(inviter.telegram_id))
         except RemnawaveError:
             logger.warning("referral live-bump failed for inviter %s", inviter.telegram_id)

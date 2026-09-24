@@ -53,20 +53,6 @@ def _links_from_list(links: list[str]) -> dict[str, str]:
     return out
 
 
-def _parse_raw_links(raw: Any) -> dict[str, str]:
-    # VERIFY: the raw subscription shape varies by panel version — a list of link strings, a
-    #         {remark: link} map, or a wrapper like {"links": [...]}/{"subscription": [...]}.
-    if isinstance(raw, list):
-        return _links_from_list([str(x) for x in raw])
-    if isinstance(raw, dict):
-        for key in ("links", "subscription", "configs"):
-            if isinstance(raw.get(key), list):
-                return _links_from_list([str(x) for x in raw[key]])
-        if raw and all(isinstance(v, str) for v in raw.values()):
-            return {str(k): str(v) for k, v in raw.items()}
-    return {}
-
-
 class RemnawaveClient:
     def __init__(self, http: httpx.AsyncClient, base_url: str, token: SecretStr | str) -> None:
         self._http = http
@@ -130,31 +116,41 @@ class RemnawaveClient:
             raise
         return PanelUser.model_validate(data)
 
-    # VERIFY: PATCH /api/users (update-user.command.ts) keys off the user UUID, not username — so
-    #         the referral bump (Phase 5) fetches the user by username for its uuid, then PATCHes.
-    async def update_traffic_limit(self, uuid: str, traffic_bytes: int) -> PanelUser:
-        payload = {"uuid": uuid, "trafficLimitBytes": traffic_bytes}
-        return PanelUser.model_validate(await self._request("PATCH", "/users", json=payload))
+    # VERIFY: PATCH /api/users (update-user.command.ts) keyed by USERNAME — the one key both majors
+    #         accept in the body: 2.x takes uuid|username, 3.x id|username (it dropped the uuid,
+    #         so a body keyed by it alone is stripped to no key at all and refused with a 400).
+    #         None on 404: the account is already gone, which callers treat as "nothing to bump".
+    async def update_traffic_limit(self, username: str, traffic_bytes: int) -> PanelUser | None:
+        payload = {"username": username, "trafficLimitBytes": traffic_bytes}
+        try:
+            data = await self._request("PATCH", "/users", json=payload)
+        except RemnawaveError as exc:
+            if exc.status_code == 404:
+                return None
+            raise
+        return PanelUser.model_validate(data)
 
-    # VERIFY: DELETE /api/users/{uuid} -> response.isDeleted
-    async def delete_user(self, uuid: str) -> bool:
-        data = await self._request("DELETE", f"/users/{uuid}")
+    # VERIFY: DELETE /api/users/{ref} — 2.x: ref = uuid, answers {isDeleted}; 3.x: ref = numeric
+    #         id, answers 204 with no body. Pass ``PanelUser.ref``, never a raw uuid/id field.
+    async def delete_user(self, ref: str) -> bool:
+        data = await self._request("DELETE", f"/users/{ref}")
         return bool(data.get("isDeleted", True)) if isinstance(data, dict) else True
 
     async def delete_user_by_username(self, username: str) -> bool:
-        """Resolve a username to its uuid (PATCH/DELETE key off the uuid, not the name) and delete
-        that panel account. Returns False when the user is already gone (404) or carries no uuid; a
-        transient failure raises ``RemnawaveError`` so callers can treat deletion as best-effort."""
+        """Resolve a username to its path key (DELETE takes the uuid on 2.x, the id on 3.x — never
+        the name) and delete that panel account. Returns False when the user is already gone (404)
+        or the record carries no key; a transient failure raises ``RemnawaveError`` so callers can
+        treat deletion as best-effort."""
         panel_user = await self.get_user(username)  # None on 404
-        if panel_user is None or not panel_user.uuid:
+        if panel_user is None or not panel_user.ref:
             return False
-        return await self.delete_user(panel_user.uuid)
+        return await self.delete_user(panel_user.ref)
 
-    # VERIFY: POST /api/users/{uuid}/actions/reset-traffic -> response.isReset. Zeroes the user's
-    #         used traffic for the current period (admin bulk "reset daily consumption"). Single
-    #         bounded attempt per user; the caller logs + skips on failure (no retry loop).
-    async def reset_user_traffic(self, uuid: str) -> bool:
-        data = await self._request("POST", f"/users/{uuid}/actions/reset-traffic")
+    # VERIFY: POST /api/users/{ref}/actions/reset-traffic (ref as for delete_user) -> the user.
+    #         Zeroes the user's used traffic for the current period (admin bulk "reset daily
+    #         consumption"). Single bounded attempt per user; the caller logs + skips on failure.
+    async def reset_user_traffic(self, ref: str) -> bool:
+        data = await self._request("POST", f"/users/{ref}/actions/reset-traffic")
         return bool(data.get("isReset", True)) if isinstance(data, dict) else True
 
     # VERIFY: GET /api/system/stats -> response.{onlineStats,users,nodes,cpu,memory,…}. Confirmed
@@ -247,25 +243,29 @@ class RemnawaveClient:
             await self._request("GET", f"/subscriptions/by-username/{username}")
         )
 
-    # VERIFY: GET /api/subscriptions/raw/{shortUuid} — raw config data; shape is panel-version-
-    #         sensitive (a link list, a {remark: link} map, or a wrapper), so we parse defensively.
-    async def get_subscription_raw(self, short_uuid: str) -> Any:
-        return await self._request("GET", f"/subscriptions/raw/{short_uuid}")
-
     async def subscription(self, username: str) -> tuple[Subscription, dict[str, str]]:
         """The user's own subscription paired with a remark NAME -> config link map.
 
         Single source of truth for the location picker: the picker's names and the link handed back
         on a pick both come from this one response, so they can never cross-index (the v1 bug). We
-        try, in order: the by-username ``ssConfLinks`` map; else parse remarks out of ``links[]``;
-        else fall back to the raw endpoint (whose shape varies). All shape handling is # VERIFY:.
+        take the by-username ``ssConfLinks`` map, else parse remarks out of ``links[]``.
+
+        VERIFY: 2.8 and 3.4 both build ``ssConfLinks`` as ``{}`` and fill ``links[]`` for this
+        admin endpoint (it resolves hosts as authenticated), so ``links[]`` is what answers. With
+        default subscription settings it is never empty: a user with no host, or one that is not
+        ACTIVE, gets the panel's placeholder links (customRemarks: "→ No hosts found",
+        "⌛ Subscription expired", …) — a location allowlist drops those, as no squad host carries
+        that remark (an EMPTY bot allowlist keeps everything, placeholders included). It is empty
+        only when such a placeholder list was cleared or every host is excluded from
+        XRAY_BASE64, and it is returned as the real answer it is. There is
+        deliberately no second endpoint to fall back to: the one this used to try
+        (``/subscriptions/raw/{shortUuid}``) exists in no panel version, and its 404 read as
+        "account gone", deleting a live trial (a LIMITED one's revive path included).
         """
         sub = await self.get_subscription(username)
         links = dict(sub.ss_conf_links)
         if not links:
             links = _links_from_list(sub.links)
-        if not links and sub.user.short_uuid:
-            links = _parse_raw_links(await self.get_subscription_raw(sub.user.short_uuid))
         return sub, links
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:
@@ -274,9 +274,11 @@ class RemnawaveClient:
         VERIFY (live contract): there's no direct squad->hosts endpoint, so we match by inbound
         UUID. A squad's ``inbounds[]`` are config-profile inbounds whose OWN id is ``uuid``; a host
         points at an inbound via ``host.inbound.configProfileInboundUuid``. So the join is
-        ``squad.inbounds[].uuid`` == ``host.inbound.configProfileInboundUuid`` (dropping hosts that
-        exclude the squad) — NOT the squad's non-existent ``configProfileInboundUuid`` (matching on
-        that gave an empty set every time, which then leaked EVERY host into one squad).
+        ``squad.inbounds[].uuid`` == ``host.inbound.configProfileInboundUuid`` (dropping hosts whose
+        squad rule keeps this squad out — ``Host.serves_squad``, which reads both the ≤3.3
+        exclusion list and 3.4's EXCLUDE/ALLOW_ONLY) — NOT the squad's non-existent
+        ``configProfileInboundUuid`` (matching on that gave an empty set every time, which then
+        leaked EVERY host into one squad).
 
         Returns strictly the matched squad's locations. An unknown squad, or a squad no enabled host
         serves, yields ``[]`` (logged) — never every host. Silently falling back to all hosts is the
@@ -298,8 +300,7 @@ class RemnawaveClient:
         matched = [
             h.remark
             for h in enabled
-            if h.inbound.config_profile_inbound_uuid in inbound_uuids
-            and squad_uuid not in h.excluded_internal_squads
+            if h.inbound.config_profile_inbound_uuid in inbound_uuids and h.serves_squad(squad_uuid)
         ]
         if not matched:
             logger.warning(

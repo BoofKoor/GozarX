@@ -13,7 +13,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from gozar.config.settings import get_settings
-from gozar.remnawave.schemas import PanelUser
+from gozar.remnawave.schemas import PanelUser, WebhookUserEvent
 from gozar.web.app import create_app
 from gozar.web.routes.panel import _reminder_tokens
 
@@ -62,3 +62,33 @@ def test_reminder_tokens_from_webhook_data() -> None:
 
 def test_reminder_tokens_missing_expire() -> None:
     assert _reminder_tokens(PanelUser())["expire"] == "—"  # no expireAt -> placeholder
+
+
+def test_panel_3_user_event_parses_without_a_uuid() -> None:
+    # Remnawave 3.0 dropped the user uuid: a user.* webhook's `data` is the same full-user model,
+    # now keyed by a numeric `id`. Everything the receiver reads — the event name, the username
+    # that routes it to a bot user or a site device, and the reminder tokens — must survive that.
+    future = (datetime.now(UTC) + timedelta(hours=3)).isoformat()
+    body = {
+        "scope": "user",
+        "event": "user.expired",
+        "timestamp": "2026-09-01T10:00:00.000Z",
+        "data": {
+            "id": 42,
+            "shortUuid": "abc",
+            "username": "g1_1700000000",
+            "status": "EXPIRED",
+            "trafficLimitBytes": 2 * 1024**3,
+            "trafficLimitStrategy": "NO_RESET",
+            "expireAt": future,
+            "subscriptionUrl": "https://sub.example.com/abc",
+            "activeInternalSquads": [{"uuid": "sq1", "name": "Trial"}],
+            "userTraffic": {"usedTrafficBytes": 512 * 1024**2, "onlineAt": None},
+        },
+        "meta": None,
+    }
+    event = WebhookUserEvent.model_validate(body)
+    assert event.event == "user.expired"
+    assert event.data.username == "g1_1700000000"
+    assert event.data.ref == "42"  # the key a follow-up DELETE takes on 3.x
+    assert _reminder_tokens(event.data)["used_traffic"] == "512 MB"

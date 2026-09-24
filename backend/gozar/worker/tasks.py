@@ -356,8 +356,8 @@ async def reset_all_active(ctx: dict, admin_id: int) -> None:
     for i, username in enumerate(usernames, start=1):
         try:
             panel_user = await panel.get_user(username)
-            if panel_user is not None and panel_user.uuid:
-                await panel.reset_user_traffic(panel_user.uuid)
+            if panel_user is not None and panel_user.ref:  # uuid on panel 2.x, numeric id on 3.x
+                await panel.reset_user_traffic(panel_user.ref)
                 reset += 1
             else:
                 skipped += 1
@@ -392,10 +392,9 @@ async def reconcile_trials(ctx: dict) -> None:
     data-limit nudge is webhook-only.
 
     Each user is probed with a single ``get_user`` (the authoritative user record), NOT
-    ``subscription``: a terminal trial has no active links, so the subscription path falls through
-    to the raw-config endpoint whose failure would raise and silently skip the user every sweep —
-    the exact reason expired accounts piled up. The user record is one call, needs no links, and its
-    ``status`` is the source of truth (and a 404 means it's already gone → still reset the user).
+    ``subscription``: the user record is one call that resolves no hosts into links — the sweep
+    has no use for them — and its ``status`` is the source of truth (and a 404 means it's already
+    gone → still reset the user).
 
     Idempotent with the webhook — a user it already reset is no longer ``active_config``, so this
     never double-notifies. Best-effort throughout: one bounded panel attempt per user, and a panel
@@ -416,8 +415,7 @@ async def reconcile_trials(ctx: dict) -> None:
     for telegram_id, username in targets:
         try:
             # Authoritative user record (single call, no link resolution): its `status` is the
-            # source of truth and it never falls through to the raw-config endpoint the way
-            # `subscription()` does for a link-less expired user (which would raise and skip it).
+            # source of truth for whether the trial has ended.
             panel_user = await panel.get_user(username)  # None on 404 — the account is already gone
         except RemnawaveError:
             continue  # transient — the next sweep retries
@@ -528,10 +526,10 @@ async def site_reconcile(ctx: dict) -> None:
     'ended' nudge. A data-limited-but-time-valid trial is deliberately left alone (revivable by a
     referral/reward bump; the data-limit nudge is webhook-only, mirroring the bot).
 
-    Single bounded ``get_user`` per device (the authoritative record, NOT ``subscription`` — a
-    terminal trial has no links and would fall through to the raw-config endpoint and mask the
-    expiry). Idempotent with the webhook: a device it already reset is no longer ``active_config``,
-    and it re-verifies the row is unchanged since the probe before mutating.
+    Single bounded ``get_user`` per device (the authoritative record, NOT ``subscription`` — one
+    call, no host-to-link resolution, and its ``status`` is the source of truth). Idempotent with
+    the webhook: a device it already reset is no longer ``active_config``, and it re-verifies the
+    row is unchanged since the probe before mutating.
     """
     sessionmaker = ctx.get("sessionmaker")
     panel = ctx.get("panel")

@@ -10,6 +10,7 @@ import fakeredis.aioredis
 from gozar.cache.redis import sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
+from gozar.remnawave.schemas import PanelUser
 from gozar.services.admin import AdminService
 from gozar.services.settings_service import SettingKey
 
@@ -83,8 +84,8 @@ class FakePanel:
     async def get_user(self, username: str) -> object:
         return self._panel_user
 
-    async def delete_user(self, uuid: str) -> bool:
-        self.deleted.append(uuid)
+    async def delete_user(self, ref: str) -> bool:
+        self.deleted.append(ref)
         return True
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:
@@ -130,13 +131,22 @@ async def test_ban_revokes_panel_and_flips_status() -> None:
     user = User(telegram_id=5, status=UserStatus.active_config, panel_username="g5_1")
     redis = _redis()
     await redis.set(sub_cache_key(5), "cached")
-    panel = FakePanel(panel_user=type("PU", (), {"uuid": "uuid-5"})())
+    panel = FakePanel(panel_user=PanelUser(uuid="uuid-5", id=5))  # a 2.x record carries both
     result = await _svc(users=FakeUsers(user=user), panel=panel, redis=redis).ban(5)
     assert result is user
     assert user.status is UserStatus.banned
     assert user.panel_username is None
-    assert panel.deleted == ["uuid-5"]  # live config revoked
+    assert panel.deleted == ["uuid-5"]  # live config revoked — 2.x paths take the uuid
     assert await redis.get(sub_cache_key(5)) is None  # cache cleared
+
+
+async def test_ban_revokes_by_numeric_id_on_panel_3() -> None:
+    # Remnawave 3.0 dropped the user uuid: the record carries only `id`, and DELETE takes that.
+    # Keying on the uuid alone skipped the revoke silently and left a banned user's config live.
+    user = User(telegram_id=6, status=UserStatus.active_config, panel_username="g6_1")
+    panel = FakePanel(panel_user=PanelUser(id=4242, username="g6_1"))
+    await _svc(users=FakeUsers(user=user), panel=panel).ban(6)
+    assert panel.deleted == ["4242"]
 
 
 async def test_ban_missing_user_returns_none() -> None:
