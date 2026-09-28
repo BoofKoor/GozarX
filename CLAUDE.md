@@ -178,6 +178,13 @@ When a change needs a server deploy, hand the owner exactly these commands. The 
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
+**Moving to a new server:** on the OLD server, as root, `cd ~/GozarX && ./migrate.sh <new-ip>`. It
+ships the project dir + the running images + Postgres + Redis, requires every table's row count to
+match, verifies the new stack, and rolls back by itself on any failure during the cutover; the one
+manual step is the Cloudflare A-record change it prints, and it waits for that switch. The move runs
+in its own session (a dropped SSH window doesn't stop it) and only ever touches a target that has no
+`gozar` stack yet.
+
 **First-time install (server):** clone the repo, then `sudo ./install.sh` (or `make install`). It
 prompts for the **domain first, then a TLS certificate** (Cloudflare Origin Certificate — cert + key),
 collects the Telegram/panel/admin details, generates all secrets, writes a chmod-600 `.env`, builds +
