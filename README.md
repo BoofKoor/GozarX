@@ -130,10 +130,11 @@ sudo ./install.sh
 ```
 
 `migrate.sh` copies the project directory (code, `.env`, origin certificate, TLS config), the
-running images, the database and Redis to the new server, verifies every table's row count and
-the site's responses there, and rolls back by itself if anything fails during the few minutes the
-bot is offline. It then waits for the DNS switch and retires the old stack (its volumes and a dump
-stay behind as a backup).
+running images, the database and Redis to the new server, verifies every table's row count, the
+site's responses, and that the bot can reach Telegram and the panel from inside its container, and
+rolls back by itself if anything fails during the few minutes the bot is offline. It then waits for
+the DNS switch, has Telegram deliver the messages that queued up meanwhile, and retires the old
+stack (its volumes and a dump stay behind as a backup).
 
 - **Backups:** set `BACKUP_CHANNEL_ID` during install (and add the bot as a channel admin) to receive
   a nightly gzipped `pg_dump` at 03:00 UTC.

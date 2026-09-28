@@ -9,15 +9,16 @@
 # The only manual step is the DNS change it asks for at the end. Everything else is automatic:
 #   1. Prepare — no downtime. Installs Docker on the new server, copies the project directory
 #      (code, .env, origin certificate, TLS overlay) and the images the old server is running, and
-#      proves the new server can reach the Remnawave panel and Telegram and is reachable on 80/443.
+#      proves the new server is reachable on 80/443 and can reach the Remnawave panel and Telegram
+#      — from inside a container too, which is where the bot actually runs.
 #   2. Cutover — a few minutes offline. Stops the old stack, dumps Postgres and snapshots Redis,
 #      restores both on the new server, requires every table's row count to match, then starts
-#      the stack and checks it answers the way the old one did. ANY failure in this phase rolls
-#      back by itself: the new server's volumes are dropped and the old stack, which this script
-#      never modifies, is started again.
+#      the stack and checks it answers the way the old one did and that the app itself reaches
+#      Telegram and the panel. ANY failure in this phase rolls back by itself: the new server's
+#      volumes are dropped and the old stack, which this script never modifies, is started again.
 #   3. DNS — prints the records to change, waits until the public URL is served by the new server,
-#      then removes the old containers (the volumes, the dump and the Redis snapshot stay behind
-#      as a backup).
+#      has Telegram deliver the messages that queued up meanwhile, then removes the old containers
+#      (the volumes, the dump and the Redis snapshot stay behind as a backup).
 #
 # The move does not depend on this terminal. Once the SSH connection is open (the one password
 # prompt), the work runs in its own session and the terminal only shows its log, so closing the
@@ -103,6 +104,40 @@ panel_code() {
     printf 'Authorization: Bearer %s\n' "$tok" \
         | curl -s -o /dev/null -w '%{http_code}' --max-time 15 -H @- "${url%/}/api/system/stats" \
             2>/dev/null || true
+}
+# The bot's two outbound calls, made from INSIDE a container: the server reaching Telegram says
+# nothing about Docker's own outbound traffic (forwarding rules, MTU), and /health is a plain 200.
+read -r -d '' EGRESS_PY <<'PY' || true
+import os, urllib.request, urllib.error
+def code(url, headers={}):
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=15) as r:
+            return str(r.status)
+    except urllib.error.HTTPError as e:
+        return str(e.code)
+    except Exception as e:
+        return "000 (%s: %s)" % (type(e).__name__, getattr(e, "reason", e))
+print("TG=" + code("https://api.telegram.org/bot" + os.environ.get("BOT_TOKEN", "") + "/getMe"))
+print("PANEL=" + code(os.environ.get("PANEL_BASE_URL", "").rstrip("/") + "/api/system/stats",
+                      {"Authorization": "Bearer " + os.environ.get("PANEL_API_TOKEN", "")}))
+PY
+# egress_check LPANEL LAUNCHER... — run the probe through LAUNCHER (`docker run … IMAGE`, or
+# `dc exec -T app`) and name what the bot could not reach. Any answer from Telegram counts: the
+# token is the one the old server already uses; the question is only whether traffic gets out.
+egress_check() {
+    local lpanel="$1" out tg panel
+    shift
+    out="$("$@" python -c "$EGRESS_PY" 2>&1 </dev/null || true)"
+    tg="$(printf '%s\n' "$out" | sed -n 's/^TG=//p')"
+    panel="$(printf '%s\n' "$out" | sed -n 's/^PANEL=//p')"
+    if [ -z "$tg" ] || [ "${tg%% *}" = 000 ]; then
+        echo "from inside a container the new server can't reach api.telegram.org: ${tg:-$out}" >&2
+        return 1
+    fi
+    if [ "$lpanel" = 200 ] && [ "${panel%% *}" != 200 ]; then
+        echo "from inside a container the new server gets '${panel:-nothing}' from the Remnawave panel (the old server gets 200)" >&2
+        return 1
+    fi
 }
 EOF
 
@@ -280,9 +315,8 @@ EOF
 
 remote_checks() {
     step "Checking the new server can do the job"
-    local lpanel
-    lpanel="$(panel_code)"
-    remote LPANEL="$lpanel" <<'EOF'
+    LPANEL="$(panel_code)"   # what the old server gets from the panel — the bar the new one must meet
+    remote LPANEL="$LPANEL" <<'EOF'
 rpanel="$(panel_code)"
 if [ "$LPANEL" = 200 ] && [ "$rpanel" != 200 ]; then
     echo "the new server can't use the Remnawave panel (HTTP $rpanel; the old server gets 200)." >&2
@@ -296,8 +330,20 @@ busy="$(ss -Hltn '( sport = :80 or sport = :443 )' 2>/dev/null || true)"
 avail_kb="$(df -Pk /var/lib/docker 2>/dev/null | awk 'NR == 2 {print $4}')"
 [ "${avail_kb:-0}" -ge 4194304 ] || { echo "the new server needs at least 4 GB free disk" >&2; exit 1; }
 EOF
-    [ "$lpanel" = 200 ] || warn "the panel answers HTTP $lpanel from the old server too — not a blocker for the move"
+    [ "$LPANEL" = 200 ] || warn "the panel answers HTTP $LPANEL from the old server too — not a blocker for the move"
     ok "panel and Telegram reachable, ports 80/443 free, disk ok"
+}
+
+probe_egress() {
+    step "Checking the bot can reach Telegram and the panel from inside a container"
+    remote LPANEL="$LPANEL" APP_IMAGE="$APP_IMAGE" <<'EOF'
+if ! egress_check "$LPANEL" docker run --rm --env-file "$PROJ/.env" "$APP_IMAGE"; then
+    echo "the server itself reaches them, so Docker's outbound traffic is what is blocked there —" >&2
+    echo "typically a firewall rule on forwarded traffic, or a network MTU below 1500" >&2
+    exit 1
+fi
+EOF
+    ok "reachable from inside a container"
 }
 
 ship_images() {
@@ -416,7 +462,7 @@ EOF
     ok "database and Redis restored — every table's row count matches ($(tr ',' '\n' <<<"$OLD_COUNTS" | wc -l) tables)"
 
     phase "starting the new stack"
-    remote CHECKS="$CHECKS" <<'EOF'
+    remote CHECKS="$CHECKS" LPANEL="$LPANEL" <<'EOF'
 # Everything but the worker first. The worker is the only part that acts on its own (reminders,
 # sweeps, backups), so it starts once the rest is proven — a rollback never races it.
 dc up -d $(dc config --services | grep -vx worker) >&2
@@ -429,8 +475,16 @@ for c in $CHECKS; do
     fi
     echo "  ✓ https://$host$path → 200 on the new server" >&2
 done
+# The bot's real work is outbound — answering Telegram, provisioning on the panel — which none of
+# the URLs above exercise. Probe it from the app container itself before calling the move done.
+for try in 1 2 3; do
+    if egress_check "$LPANEL" dc exec -T app 2>"$MIG/egress.err"; then break; fi
+    if [ "$try" = 3 ]; then cat "$MIG/egress.err" >&2; exit 1; fi
+    sleep 5
+done
+echo "  ✓ the app reaches Telegram and the panel" >&2
 dc up -d >&2
-rm -f "$MIG/gozar.sql.gz" "$MIG/redis.tgz"
+rm -f "$MIG/gozar.sql.gz" "$MIG/redis.tgz" "$MIG/egress.err"
 EOF
     LIVE=1
     if [ -e "$MIG/cancel" ]; then
@@ -481,7 +535,12 @@ dns_switch() {
         for h in "${left[@]}"; do
             # The old stack is stopped, so a 200 here can only come from the new server.
             code="$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "https://$h/health" 2>/dev/null || true)"
-            if [ "$code" = 200 ]; then ok "$h is now served by the new server"; else next+=("$h"); fi
+            if [ "$code" = 200 ]; then
+                ok "$h is now served by the new server"
+                if [ "$h" = "$DOMAIN" ]; then kick_webhook; fi
+            else
+                next+=("$h")
+            fi
         done
         [ "${#next[@]}" -gt 0 ] || break
         left=("${next[@]}")
@@ -495,17 +554,50 @@ dns_switch() {
     done
 }
 
+# While the bot's domain still pointed at the stopped old server, Telegram queued every message and
+# spaced its retries further apart after each failure — so a bot that already works can stay silent
+# for minutes after the switch. Registering the same webhook again makes Telegram retry at once,
+# and the queue is kept (drop_pending_updates stays false).
+kick_webhook() {
+    local tok resp
+    tok="$(env_get BOT_TOKEN)"
+    resp="$(curl -s --max-time 15 "https://api.telegram.org/bot$tok/setWebhook" \
+        --data-urlencode "url=https://$DOMAIN/tg/$(env_get WEBHOOK_SECRET)" \
+        --data-urlencode "secret_token=$(env_get WEBHOOK_HEADER_SECRET)" 2>/dev/null || true)"
+    if printf '%s' "$resp" | grep -Eq '"ok": *true'; then
+        ok "Telegram asked to deliver the messages that queued up during the switch"
+    else
+        warn "couldn't re-register the webhook with Telegram — it will still retry on its own"
+    fi
+}
+
+# Wait (up to two minutes) for Telegram to hand that queue over, and say how it went.
+report_webhook() {
+    local tok hook="" pending="" err
+    tok="$(env_get BOT_TOKEN)"
+    for _ in $(seq 24); do
+        hook="$(curl -fsS --max-time 10 "https://api.telegram.org/bot$tok/getWebhookInfo" 2>/dev/null || true)"
+        pending="$(printf '%s' "$hook" | grep -oE '"pending_update_count": *[0-9]+' | grep -oE '[0-9]+$' || true)"
+        if [ -z "$pending" ] || [ "$pending" -le 3 ]; then break; fi
+        sleep 5
+    done
+    if [ -z "$pending" ]; then
+        warn "couldn't read the webhook status from Telegram — send /start to the bot to check"
+    elif ! printf '%s' "$hook" | grep -Eq "\"url\": *\"https://${DOMAIN//./\\.}/tg/"; then
+        warn "Telegram's webhook does not point at https://$DOMAIN/tg/… — send /start to the bot to check"
+    elif [ "$pending" -le 3 ]; then
+        ok "Telegram webhook → https://$DOMAIN/tg/… — its queue is delivered, the bot is answering"
+    else
+        err="$(printf '%s' "$hook" | grep -oE '"last_error_message": *"[^"]*"' \
+            | sed -E 's/^"last_error_message": *"//; s/"$//' || true)"
+        warn "Telegram still holds $pending messages for the bot${err:+ — its last error: $err}"
+        warn "it keeps retrying them; send /start to the bot to check"
+    fi
+}
+
 finish() {
     dc down >/dev/null 2>&1 || true   # the old containers go; its volumes stay as a backup
-    local tok hook pending
-    tok="$(env_get BOT_TOKEN)"
-    hook="$(curl -fsS --max-time 10 "https://api.telegram.org/bot$tok/getWebhookInfo" 2>/dev/null || true)"
-    if printf '%s' "$hook" | grep -q "\"url\":\"https://$DOMAIN/tg/"; then
-        pending="$(printf '%s' "$hook" | grep -o '"pending_update_count":[0-9]*' | cut -d: -f2 || true)"
-        ok "Telegram webhook → https://$DOMAIN/tg/… (${pending:-0} updates pending)"
-    else
-        warn "couldn't confirm the Telegram webhook — send /start to the bot to check"
-    fi
+    report_webhook
     printf '\n%s%s GozarX now runs on %s %s\n' "$C_BOLD" "$C_GREEN" "$R_HOST" "$C_RESET" >&2
     cat >&2 <<EOF
 
@@ -558,6 +650,8 @@ work() {
     ship_images
     check_cancel
     probe_inbound
+    check_cancel
+    probe_egress
     cutover
     close_ssh
     dns_switch
@@ -618,6 +712,9 @@ main() {
 }
 
 # Guarded entrypoint — `source migrate.sh` (for tests) defines the functions without running.
+# The `exit` sits inside the block bash has already read, so a file changed on disk while a move
+# runs (a `git pull` in this directory) is never read past this point.
 if [ "${BASH_SOURCE[0]}" = "${0}" ]; then
     main "$@"
+    exit
 fi

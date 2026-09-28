@@ -183,7 +183,11 @@ ships the project dir + the running images + Postgres + Redis, requires every ta
 match, verifies the new stack, and rolls back by itself on any failure during the cutover; the one
 manual step is the Cloudflare A-record change it prints, and it waits for that switch. The move runs
 in its own session (a dropped SSH window doesn't stop it) and only ever touches a target that has no
-`gozar` stack yet.
+`gozar` stack yet. `/health` is a plain 200, so it proves nothing about the bot's OUTBOUND work: the
+script checks Telegram and the panel from inside a container (before the cutover, and again from
+the app itself before going live) — the server reaching them says nothing about Docker's own
+traffic. After the switch it re-registers the webhook (queue kept): Telegram backs off while the
+domain still points at the stopped old server, and a working bot otherwise stays silent for minutes.
 
 **First-time install (server):** clone the repo, then `sudo ./install.sh` (or `make install`). It
 prompts for the **domain first, then a TLS certificate** (Cloudflare Origin Certificate — cert + key),
