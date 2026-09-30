@@ -31,6 +31,7 @@ from gozar.worker.tasks import (
     broadcast_text,
     fanout,
     reconcile_trials,
+    refresh_squad_online,
     reset_all_active,
     sample_health,
     sample_usage,
@@ -86,6 +87,10 @@ class WorkerSettings:
         func(fanout, timeout=_BROADCAST_TIMEOUT, max_tries=1),
         func(broadcast_text, timeout=_BROADCAST_TIMEOUT, max_tries=1),
         func(site_push_broadcast, timeout=_BROADCAST_TIMEOUT, max_tries=1),
+        # Queued by the dashboard under a FIXED job id so concurrent dashboards collapse into one
+        # sweep; keep_result=0 frees that id the moment the sweep ends, so the next stale read can
+        # queue again. One try: a failed sweep is simply retried by the next stale read.
+        func(refresh_squad_online, keep_result=0, max_tries=1),
         # The rest keep arq's defaults (300s timeout, retry) — they're short, bounded per-item work.
         reset_all_active,
         reconcile_trials,

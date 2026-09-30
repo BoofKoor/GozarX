@@ -212,6 +212,9 @@ async def get_user_detail(
 
     traffic: int | None = None
     if card.user.panel_username:
+        # Release the pooled connection before the panel call: everything the dialog needs from the
+        # database has been read, and a slow panel must not hold a connection the bot is waiting on.
+        await session.commit()
         # One bounded attempt. The panel being down must not make a record unopenable, so a failure
         # leaves the figure NULL and the dialog says so.
         try:

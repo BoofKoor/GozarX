@@ -13,13 +13,13 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Switch } from "@/components/ui/Switch";
 import { useConfirm } from "@/components/ui/confirm";
 import {
+  useActivityHours,
   useAudience,
   useDeleteDraft,
   useDrafts,
   useSaveDraft,
   useSendBroadcast,
 } from "@/hooks/useBroadcast";
-import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { useI18n } from "@/i18n";
 import {
@@ -119,7 +119,7 @@ export function Broadcast() {
     useAudience(["en"], filter),
     useAudience(["ru"], filter),
   ];
-  const { data: analytics } = useDashboardAnalytics(30);
+  const { data: activity } = useActivityHours();
   const { data: health } = useSystemHealth();
   const send = useSendBroadcast();
   const { data: drafts } = useDrafts();
@@ -144,11 +144,7 @@ export function Broadcast() {
   const canSend = Boolean(body) && langs.length > 0 && !overLimit && queueOk && buttonsOk;
   const minutes = Math.max(1, Math.round(recipients / RATE_PER_SEC / 60));
 
-  const byHour = (() => {
-    const acc: number[] = new Array(24).fill(0);
-    for (const cell of analytics?.heatmap ?? []) acc[cell.hour] += cell.count;
-    return acc;
-  })();
+  const byHour = activity?.hours.length === 24 ? activity.hours : new Array<number>(24).fill(0);
   const peakHour = byHour.some((n) => n > 0) ? byHour.indexOf(Math.max(...byHour)) : -1;
   // Scheduling defaults to the hour users are most active — the whole reason the strip is here is
   // that scheduling blind is how a broadcast lands at 04:00.

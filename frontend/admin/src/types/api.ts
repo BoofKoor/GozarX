@@ -203,6 +203,12 @@ export interface UserListParams {
 
 export type UserAction = "ban" | "unban" | "reclaim" | "zero_referrals";
 
+/** GET /admin/broadcast/hours — claims per local hour of day (index = hour). */
+export interface ActivityHours {
+  hours: number[];
+  days: number;
+}
+
 export interface BroadcastAudience {
   recipients: number;
 }

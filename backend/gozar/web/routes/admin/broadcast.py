@@ -31,7 +31,9 @@ from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language
 from gozar.db.repositories.broadcast_draft import BroadcastDraftRepository
 from gozar.db.repositories.broadcast_log import BroadcastLogRepository
+from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.services.stats import window_start
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/broadcast", tags=["broadcast"])
@@ -119,6 +121,35 @@ async def audience(
             langs, only_active=only_active, only_referrers=only_referrers
         )
     )
+
+
+class HoursOut(BaseModel):
+    #: Claims per local (Asia/Tehran) hour of day over the last ``days`` days; index = hour.
+    hours: list[int]
+    days: int
+
+
+_HOURS_DAYS = 30
+_HOURS_TTL = 600  # an hour-of-day profile over a month does not move between page views
+
+
+@router.get("/hours", response_model=HoursOut)
+async def activity_hours(request: Request, session: DbSession, admin: AdminUser) -> HoursOut:
+    """When users are active, by hour — what the composer's scheduling strip draws."""
+    key = f"cache:broadcast:hours:{_HOURS_DAYS}"
+    redis = request.app.state.redis
+    cached = await redis.get(key)
+    if cached is not None:
+        try:
+            return HoursOut.model_validate_json(cached)
+        except ValueError:
+            pass
+    out = HoursOut(
+        hours=await ConfigLogRepository(session).hourly_counts(window_start(_HOURS_DAYS)),
+        days=_HOURS_DAYS,
+    )
+    await redis.set(key, out.model_dump_json(), ex=_HOURS_TTL)
+    return out
 
 
 @router.get("/history", response_model=list[BroadcastLogOut])

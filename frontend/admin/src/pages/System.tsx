@@ -14,7 +14,7 @@ import { useI18n } from "@/i18n";
 export function System() {
   const { t } = useI18n();
   const [minutes, setMinutes] = useState(60);
-  const { data: health, isLoading, isError, refetch } = useSystemHealth();
+  const { data: health, isLoading, isError, refetch } = useSystemHealth(10_000);
   const { data: history = [] } = useSystemHistory(minutes);
 
   if (isLoading) {

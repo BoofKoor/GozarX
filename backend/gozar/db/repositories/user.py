@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import String, bindparam, cast, delete, func, or_, select
+from sqlalchemy import String, cast, delete, func, or_, select
 from sqlalchemy.sql import Select
 
 from gozar.config.reporting import DISPLAY_TZ_NAME
@@ -14,23 +14,25 @@ from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
 
 
-def _latest_claim_location() -> Select:
-    """`(user_id, location)` for every user's MOST RECENT claim.
+def _latest_claim_location():  # a correlated scalar subquery
+    """The location of THIS user's most recent claim, as a correlated scalar subquery.
 
     "Which location is this user on" is the latest claim, not any claim: a user who tried Germany
     once and has been on Finland ever since must not appear under Germany.
+
+    Correlated (one ``LIMIT 1`` probe per user on ``ix_config_logs_user_created_id``) rather than
+    a window function ranking every claim ever made: measured 0.37s against 0.92s on 1.3M claims,
+    and the gap grows with the table while the per-user probe does not. ``id`` breaks the tie
+    between two claims in the same microsecond, as ``ConfigLogRepository.latest_locations`` does.
     """
-    ranked = select(
-        ConfigLog.user_id.label("user_id"),
-        ConfigLog.location.label("location"),
-        func.row_number()
-        .over(
-            partition_by=ConfigLog.user_id,
-            order_by=(ConfigLog.created_at.desc(), ConfigLog.id.desc()),
-        )
-        .label("rn"),
-    ).subquery()
-    return select(ranked.c.user_id).where(ranked.c.rn == 1, ranked.c.location == bindparam("loc"))
+    return (
+        select(ConfigLog.location)
+        .where(ConfigLog.user_id == User.telegram_id)
+        .order_by(ConfigLog.created_at.desc(), ConfigLog.id.desc())
+        .limit(1)
+        .correlate(User)
+        .scalar_subquery()
+    )
 
 
 def _filtered(
@@ -47,9 +49,7 @@ def _filtered(
             or_(cast(User.telegram_id, String).ilike(like), User.panel_username.ilike(like))
         )
     if location and location.strip():
-        stmt = stmt.where(
-            User.telegram_id.in_(_latest_claim_location().params(loc=location.strip()))
-        )
+        stmt = stmt.where(_latest_claim_location() == location.strip())
     return stmt
 
 
@@ -127,6 +127,36 @@ class UserRepository(BaseRepository):
         """Total rows matching the same filter — drives the page count."""
         stmt = _filtered(select(func.count()).select_from(User), status, search, location)
         return int(await self.session.scalar(stmt) or 0)
+
+    async def summary(
+        self, **signups_since: datetime | tuple[datetime, datetime]
+    ) -> dict[str, int]:
+        """The dashboard's user-table headline from ONE scan: totals by status, referrals, reminder
+        opt-ins, and a signup count per named window (a bound, or a half-open ``(start, end)``).
+
+        These used to be eleven separate statements — three ``count_by_status`` calls, five
+        ``count_created_since`` calls and three more — each its own pass over ``users``.
+        """
+        columns = [
+            func.count(),
+            func.count().filter(User.status == UserStatus.available),
+            func.count().filter(User.status == UserStatus.active_config),
+            func.count().filter(User.status == UserStatus.banned),
+            func.coalesce(func.sum(User.referral_count), 0),
+            func.count().filter(User.reminder_enabled.is_(True)),
+        ]
+        for bound in signups_since.values():
+            if isinstance(bound, tuple):
+                start, end = bound
+                columns.append(func.count().filter(User.created_at >= start, User.created_at < end))
+            else:
+                columns.append(func.count().filter(User.created_at >= bound))
+        row = (await self.session.execute(select(*columns).select_from(User))).one()
+        keys = ("total", "available", "active", "banned", "referrals", "reminder_enabled")
+        out = {key: int(value or 0) for key, value in zip(keys, row[: len(keys)], strict=True)}
+        for name, value in zip(signups_since, row[len(keys) :], strict=True):
+            out[name] = int(value or 0)
+        return out
 
     async def count_created_since(self, since: datetime) -> int:
         """Users registered at/after ``since`` — backs the new-today / new-this-week KPIs."""

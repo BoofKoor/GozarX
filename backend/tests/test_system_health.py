@@ -51,7 +51,7 @@ class _Bot:
         self._led = last_error_date
         self._msg = message
 
-    async def get_webhook_info(self) -> SimpleNamespace:
+    async def get_webhook_info(self, **_: object) -> SimpleNamespace:
         return SimpleNamespace(
             url="https://x/tg/secret",
             pending_update_count=3,
@@ -92,9 +92,16 @@ def test_overall_degraded_on_panel_backlog_or_recent_error() -> None:
 
 
 def test_overall_ok_when_all_healthy() -> None:
-    wh = WebhookHealth(configured=True, pending=0)
+    wh = WebhookHealth(configured=True, url_set=True, pending=0)
     host = HostResources(mem_pct=10.0, disk_pct=10.0)
     assert _overall(_OK, _OK, _OK, _OK, wh, host) == "ok"
+
+
+def test_overall_degraded_when_no_webhook_is_registered() -> None:
+    # Telegram answering getWebhookInfo is not Telegram delivering updates: with no URL set the bot
+    # receives nothing, and that used to read as a healthy green dot.
+    wh = WebhookHealth(configured=True, url_set=False, pending=0)
+    assert _overall(_OK, _OK, _OK, _OK, wh, HostResources()) == "degraded"
 
 
 async def test_build_snapshot_degraded_when_panel_down(session) -> None:
@@ -164,3 +171,47 @@ async def test_build_snapshot_no_webhook_error(session) -> None:
     snap = await build_snapshot(session, redis, _PanelUp(), _Bot(None, None))
     assert snap.telegram.ok and snap.webhook.last_error_at is None
     assert snap.webhook.recent_error is False and snap.status == "ok"
+
+
+class _CountingPanel(_PanelUp):
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def system_stats(self) -> SystemStats:
+        self.calls += 1
+        return await super().system_stats()
+
+
+async def test_live_snapshot_reuses_a_recent_panel_reading(session) -> None:
+    # The route is polled from every page; each poll used to cost a panel call.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = _CountingPanel()
+    await build_snapshot(session, redis, panel, None)
+    await build_snapshot(session, redis, panel, None)
+    assert panel.calls == 1
+
+
+async def test_worker_snapshot_always_asks_afresh(session) -> None:
+    # The sampler IS the history: it must measure, not replay a cached answer.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = _CountingPanel()
+    await build_snapshot(session, redis, panel, None, fresh=True)
+    await build_snapshot(session, redis, panel, None, fresh=True)
+    assert panel.calls == 2
+
+
+async def test_live_snapshot_shares_one_telegram_reading(session) -> None:
+    class _CountingBot(_Bot):
+        calls = 0
+
+        async def get_webhook_info(self, **kwargs: object) -> SimpleNamespace:
+            type(self).calls += 1
+            assert kwargs.get("request_timeout")  # bounded, never aiogram's 60s default
+            return await super().get_webhook_info()
+
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    bot = _CountingBot(None, None)
+    first = await build_snapshot(session, redis, _PanelUp(), bot)
+    second = await build_snapshot(session, redis, _PanelUp(), bot)
+    assert _CountingBot.calls == 1
+    assert first.webhook == second.webhook and second.webhook.url_set is True

@@ -35,7 +35,7 @@ from aiogram.types import (
 from sqlalchemy.engine import make_url
 
 from gozar.bot.replies import preview_options
-from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
+from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX, single_flight
 from gozar.config.settings import get_settings
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.site_device import SiteDeviceStatus
@@ -51,8 +51,9 @@ from gozar.remnawave.schemas import PanelUser
 from gozar.services import push
 from gozar.services.content import ContentService
 from gozar.services.health import build_snapshot, sample_from
+from gozar.services.panel_cache import write_squad_online
 from gozar.services.reminders import ReminderService
-from gozar.services.settings_service import SettingsService
+from gozar.services.settings_service import SettingKey, SettingsService, SiteSettingKey
 from gozar.services.site_reminders import SiteReminderService, nudge_tokens
 from gozar.services.telegram_errors import is_unreachable
 from gozar.services.trial import TrialService, human_bytes, human_remaining
@@ -713,8 +714,45 @@ async def sample_health(ctx: dict) -> None:
     sessionmaker = ctx["sessionmaker"]
     try:
         async with sessionmaker() as session:
-            snapshot = await build_snapshot(session, redis, ctx["panel"], ctx.get("bot"))
+            snapshot = await build_snapshot(
+                session, redis, ctx["panel"], ctx.get("bot"), fresh=True
+            )
         await redis.lpush(HEALTH_HISTORY_KEY, json.dumps(sample_from(snapshot)))
         await redis.ltrim(HEALTH_HISTORY_KEY, 0, HEALTH_HISTORY_MAX - 1)
     except Exception:
         logger.warning("health sample failed (ignored)")
+
+
+async def refresh_squad_online(ctx: dict) -> None:
+    """Count the trial squad(s)' online users and record the figure for the dashboard.
+
+    This is the sweep ``/dashboard/stats`` used to run inline — every panel user, 500 per request,
+    one request after another. It runs HERE, queued by the dashboard when its recorded figure goes
+    stale, so it happens at most once at a time (the job id is fixed, and the lock below covers a
+    second worker) and only while somebody is looking. A failed sweep records nothing: the previous
+    figure keeps being served until it expires, which beats swapping in a panel-wide number that
+    counts the operator's own squads.
+    """
+    redis = ctx.get("cache_redis")
+    panel = ctx.get("panel")
+    sessionmaker = ctx.get("sessionmaker")
+    if redis is None or panel is None or sessionmaker is None:
+        return
+    async with single_flight(redis, "squad_online", "sweep", ttl_seconds=300) as first:
+        if not first:
+            return
+        async with sessionmaker() as session:
+            settings = SettingsService(session, redis)
+            squads = {
+                s
+                for s in (
+                    await settings.get(SettingKey.TRIAL_SQUAD),
+                    await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD),
+                )
+                if s
+            }
+        if not squads:
+            return
+        count = await panel.squad_online_count(squads)
+        if count is not None:
+            await write_squad_online(redis, count)

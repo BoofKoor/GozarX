@@ -34,10 +34,13 @@ class SiteDevice(Base):
     # as the referral code in invite links. Unique; minted at first sight, backfilled for old rows.
     handle: Mapped[str | None] = mapped_column(String(16), unique=True, index=True, nullable=True)
     status: Mapped[str] = mapped_column(
-        String(16), default=SiteDeviceStatus.available, server_default=SiteDeviceStatus.available
+        String(16),
+        default=SiteDeviceStatus.available,
+        server_default=SiteDeviceStatus.available,
+        index=True,
     )
     # Remnawave username of the current site trial account (s-prefixed); None when not holding one.
-    site_panel_username: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    site_panel_username: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     # Provision time of the last trial — the rolling-cooldown anchor (aligned with panel expiry).
     last_claim_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     referral_count: Mapped[int] = mapped_column(Integer, default=0, server_default=text("0"))
@@ -50,7 +53,9 @@ class SiteDevice(Base):
     # Light anti-abuse signals captured at first sight (never a hard block on their own).
     fingerprint_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     ip_bucket: Mapped[str | None] = mapped_column(String(64), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )
     # Last time this device was seen by the API (any identity-bearing request), refreshed at most
     # hourly. Without it the site had NO visit signal at all: every "visitor" figure was really
     # "identities ever minted", which counts each cookieless client (crawlers, incognito reloads)

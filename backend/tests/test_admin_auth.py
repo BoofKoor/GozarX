@@ -124,3 +124,23 @@ async def test_login_unconfigured_503(client: httpx.AsyncClient, monkeypatch) ->
     get_settings.cache_clear()
     r = await client.post("/api/admin/auth/login", json={"username": "root", "password": "x"})
     assert r.status_code == 503
+
+
+async def test_login_attempts_are_rate_limited_per_ip() -> None:
+    import fakeredis.aioredis
+
+    app = create_app()
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        codes = [
+            (
+                await c.post("/api/admin/auth/login", json={"username": "root", "password": "x"})
+            ).status_code
+            for _ in range(11)
+        ]
+        # The limit counts attempts, not failures: even the right password waits out the window.
+        right = await c.post(
+            "/api/admin/auth/login", json={"username": "root", "password": _PASSWORD}
+        )
+    assert codes[:10] == [401] * 10
+    assert codes[10] == 429 and right.status_code == 429

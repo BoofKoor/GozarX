@@ -1,10 +1,14 @@
 """Dashboard (auth-gated): headline counts + activity/growth series + breakdowns + live panel stats.
 
-DB counts reuse Phase 6 ``AdminService.stats()`` so the panel and the in-bot ``/admin`` never drift.
-The chart series, language/location breakdowns, top referrers, growth and conversion are cheap
-grouped queries over the same per-request session. The engagement + trial-health figures come from a
-single ``GET /api/system/stats`` panel call (``online_now`` = the panel's live online count); if the
-panel can't answer we fall back to the DB active-config count and zero the panel-only fields.
+The headline is DATABASE-first: a handful of grouped queries over the per-request session. The
+engagement + trial-health figures come from the panel's ``/system/stats``, read through
+``services.panel_cache`` (one bounded call, shared and briefly cached) and fetched BEFORE the first
+query, so no pooled connection sits idle while the panel answers.
+
+"Online now" is scoped to the trial squad(s). Counting it means paging through every panel user, so
+it is never done here: the worker records it (``refresh_squad_online``) and this route reads the
+last recorded figure, asking for a fresh one when it is stale. Until one exists the panel-wide count
+stands in, flagged by ``online_squad_scoped = False``.
 """
 
 from __future__ import annotations
@@ -21,8 +25,12 @@ from pydantic import BaseModel
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.usage_sample import UsageSampleRepository
 from gozar.db.repositories.user import UserRepository
-from gozar.remnawave.schemas import SystemStats
-from gozar.services.admin import AdminService
+from gozar.services.panel_cache import (
+    SQUAD_ONLINE_FRESH,
+    read_squad_online,
+    read_system_stats,
+    request_squad_online_refresh,
+)
 from gozar.services.settings_service import SettingKey, SettingsService, SiteSettingKey
 from gozar.services.stats import (
     pct_change,
@@ -39,21 +47,25 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 _ALLOWED_RANGES = (7, 14, 30, 90)
 _DEFAULT_RANGE = 14
 _RETENTION_WEEKS = 8
-_SQUAD_ONLINE_KEY = "cache:squad_online"
-_SQUAD_ONLINE_TTL = 60  # seconds — matches the panel's online cadence; caps the pagination cost
+#: The deeper analytics are ~20 aggregates over every claim ever made and are polled by every open
+#: dashboard tab; a minute of staleness is invisible at that cadence and saves each tab the scans.
+_ANALYTICS_TTL = 60
+_RETENTION_TTL = 300
+
+
+def _analytics_key(window: int) -> str:
+    return f"cache:dash:analytics:{window}"
+
+
+def _retention_key(weeks: int) -> str:
+    return f"cache:dash:retention:{weeks}"
 
 
 async def _online_now(
-    panel: object,
-    settings: SettingsService,
-    redis: object,
-    stats: SystemStats | None,
-    db_active: int,
+    request: Request, settings: SettingsService, panel_wide: int
 ) -> tuple[int, bool]:
-    """(online_now, squad_scoped). Prefer the count of trial-squad users online in the last minute
-    (excludes the operator's personal squads that inflate the panel-wide figure); 60s-cached. Falls
-    back to the panel-wide ``onlineNow`` (or the DB active count when the panel is down)."""
-    panel_wide = stats.online_now if stats is not None else db_active
+    """(online_now, squad_scoped): the last recorded trial-squad count when one exists, else the
+    panel-wide figure. Never pages the panel itself — see the module docstring."""
     squads = {
         s
         for s in (
@@ -64,14 +76,12 @@ async def _online_now(
     }
     if not squads:
         return panel_wide, False
-    cached = await redis.get(_SQUAD_ONLINE_KEY)  # type: ignore[attr-defined]
-    if cached is not None:
-        return int(cached), True
-    count = await panel.squad_online_count(squads)  # type: ignore[attr-defined]
-    if count is None:
+    recorded = await read_squad_online(request.app.state.redis)
+    if recorded is None or recorded[1] > SQUAD_ONLINE_FRESH:
+        await request_squad_online_refresh(getattr(request.app.state, "arq", None))
+    if recorded is None:
         return panel_wide, False
-    await redis.set(_SQUAD_ONLINE_KEY, count, ex=_SQUAD_ONLINE_TTL)  # type: ignore[attr-defined]
-    return count, True
+    return recorded[0], True
 
 
 class DayPoint(BaseModel):
@@ -245,76 +255,72 @@ async def dashboard_stats(
     days: int = Query(default=_DEFAULT_RANGE),
 ) -> DashboardOut:
     window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
+    redis = request.app.state.redis
+    # The panel reading FIRST: the session has not touched the database yet, so no pooled
+    # connection is held while the panel answers (it is usually a cache hit anyway).
+    stats = (await read_system_stats(request.app.state.panel, redis)).stats
+
     user_repo = UserRepository(session)
     config_log_repo = ConfigLogRepository(session)
-    settings = SettingsService(session, request.app.state.redis)
-    panel = request.app.state.panel
-    admin_svc = AdminService(user_repo, config_log_repo, settings, panel, request.app.state.redis)
-    s = await admin_svc.stats()
+    settings = SettingsService(session, redis)
 
     now = datetime.now(UTC)
-    # Inclusive N-calendar-day window anchored on a UTC day boundary, so the oldest bucket is
+    # Inclusive N-calendar-day window anchored on a local day boundary, so the oldest bucket is
     # complete and the zero-filled series spans exactly `window` days (see services/stats.py).
     since = window_start(window)
+    prev_start, prev_end = previous_window(window)
+    today = start_of_today()
+
+    # One pass over each table for every headline count (they were ~20 separate statements).
+    users = await user_repo.summary(
+        new_today=today,
+        new_this_week=now - timedelta(days=7),
+        new_two_weeks=now - timedelta(days=14),
+        signups_in_range=since,
+        signups_prev_range=(prev_start, prev_end),
+    )
+    logs = await config_log_repo.window_counts(
+        today_start=today, since=since, prev_start=prev_start, prev_end=prev_end
+    )
     claims = await config_log_repo.daily_counts(since)
     signups = await user_repo.signups_daily(since)
     languages = await user_repo.language_breakdown()
     top_locations = await config_log_repo.location_counts(since)
     referrers = await user_repo.top_referrers()
 
-    # User growth: today, this week, and week-over-week change (independent of the chart range).
-    new_today = await user_repo.count_created_since(start_of_today())
-    new_this_week = await user_repo.count_created_since(now - timedelta(days=7))
-    two_weeks = await user_repo.count_created_since(now - timedelta(days=14))
-    prev_week = two_weeks - new_this_week
+    total = users["total"]
+    new_this_week = users["new_this_week"]
+    prev_week = users["new_two_weeks"] - new_this_week
     # None (not 0.0) when there's no prior-week baseline, so a launch week with signups doesn't read
     # as "0% — flat". The frontend renders None as a "new" badge when this week has signups.
     growth_pct = round((new_this_week - prev_week) / prev_week * 100, 1) if prev_week else None
+    avg_referrals = round(users["referrals"] / total, 2) if total else 0.0
 
-    # Referral & conversion.
-    claimed = await config_log_repo.distinct_user_count()
-    reminder_enabled = await user_repo.count_reminder_enabled()
-    avg_referrals = round(s.referrals / s.total, 2) if s.total else 0.0
-
-    # Window-over-window comparison. `previous_window` returns the equally long, non-overlapping
-    # range immediately before the current one, so the deltas below compare like with like.
-    prev_start, prev_end = previous_window(window)
-    signups_in_range = await user_repo.count_created_since(since)
-    signups_prev_range = await user_repo.count_created_between(prev_start, prev_end)
-    claims_in_range = await config_log_repo.count_since(since)
-    claims_prev_range = await config_log_repo.count_between(prev_start, prev_end)
-    claimers_in_range = await config_log_repo.active_user_count_since(since)
-    claimers_prev_range = await config_log_repo.active_user_count_between(prev_start, prev_end)
-
-    # Engagement + trial health from one panel call (graceful when unreachable).
-    stats = await panel.system_stats()
     # "Online now" scoped to the service's trial squad(s) — the panel-wide onlineNow also counts the
-    # operator's OWN personal squads. Cached 60s (bounded pagination is heavy). Falls back to the
-    # panel-wide figure when no squad is configured or the scoped call fails.
-    online_now, online_squad_scoped = await _online_now(
-        panel, settings, request.app.state.redis, stats, s.active
-    )
+    # operator's OWN personal squads. Read from what the worker recorded; see `_online_now`.
+    panel_wide = stats.online_now if stats is not None else users["active"]
+    online_now, online_squad_scoped = await _online_now(request, settings, panel_wide)
 
     return DashboardOut(
-        total_users=s.total,
-        available=s.available,
-        active=s.active,
-        banned=s.banned,
-        configs_today=s.configs_today,
-        referrals=s.referrals,
+        total_users=total,
+        available=users["available"],
+        active=users["active"],
+        banned=users["banned"],
+        configs_today=logs["claims_today"],
+        referrals=users["referrals"],
         range_days=window,
-        new_today=new_today,
+        new_today=users["new_today"],
         new_this_week=new_this_week,
         growth_pct=growth_pct,
-        signups_in_range=signups_in_range,
-        signups_prev_range=signups_prev_range,
-        signups_delta_pct=pct_change(signups_in_range, signups_prev_range),
-        claims_in_range=claims_in_range,
-        claims_prev_range=claims_prev_range,
-        claims_delta_pct=pct_change(claims_in_range, claims_prev_range),
-        claimers_in_range=claimers_in_range,
-        claimers_prev_range=claimers_prev_range,
-        claimers_delta_pct=pct_change(claimers_in_range, claimers_prev_range),
+        signups_in_range=users["signups_in_range"],
+        signups_prev_range=users["signups_prev_range"],
+        signups_delta_pct=pct_change(users["signups_in_range"], users["signups_prev_range"]),
+        claims_in_range=logs["claims_in_range"],
+        claims_prev_range=logs["claims_prev_range"],
+        claims_delta_pct=pct_change(logs["claims_in_range"], logs["claims_prev_range"]),
+        claimers_in_range=logs["claimers_in_range"],
+        claimers_prev_range=logs["claimers_prev_range"],
+        claimers_delta_pct=pct_change(logs["claimers_in_range"], logs["claimers_prev_range"]),
         online_now=online_now,
         online_squad_scoped=online_squad_scoped,
         online_last_day=stats.online_last_day if stats else 0,
@@ -325,8 +331,8 @@ async def dashboard_stats(
         panel_total_users=stats.total_users if stats else 0,
         total_traffic_bytes=stats.total_traffic_bytes if stats else 0,
         nodes_online=stats.nodes_online if stats else 0,
-        conversion_pct=_pct(claimed, s.total),
-        reminder_enabled=reminder_enabled,
+        conversion_pct=_pct(logs["claimers_all_time"], total),
+        reminder_enabled=users["reminder_enabled"],
         avg_referrals=avg_referrals,
         claims_series=[
             DayPoint(day=d, count=n) for d, n in zero_filled_daily(claims, since=since, days=window)
@@ -349,24 +355,40 @@ async def dashboard_analytics(
     days: int = Query(default=_DEFAULT_RANGE),
 ) -> DashboardAnalyticsOut:
     window = days if days in _ALLOWED_RANGES else _DEFAULT_RANGE
-    user_repo = UserRepository(session)
-    log_repo = ConfigLogRepository(session)
-    settings = SettingsService(session, request.app.state.redis)
+    redis = request.app.state.redis
+    cached = await redis.get(_analytics_key(window))
+    if cached is not None:
+        try:
+            return DashboardAnalyticsOut.model_validate_json(cached)
+        except ValueError:
+            pass  # an unreadable entry is recomputed below
+    out = await _compute_analytics(session, redis, window)
+    await redis.set(_analytics_key(window), out.model_dump_json(), ex=_ANALYTICS_TTL)
+    return out
+
+
+async def _compute_analytics(session: object, redis: object, window: int) -> DashboardAnalyticsOut:
+    user_repo = UserRepository(session)  # type: ignore[arg-type]
+    log_repo = ConfigLogRepository(session)  # type: ignore[arg-type]
+    settings = SettingsService(session, redis)  # type: ignore[arg-type]
     now = datetime.now(UTC)
     since = window_start(window)
-
-    dau = await log_repo.active_user_count_since(now - timedelta(days=1))
-    wau = await log_repo.active_user_count_since(now - timedelta(days=7))
-    mau = await log_repo.active_user_count_since(now - timedelta(days=30))
     prev_since, prev_until = previous_window(window)
-    median_h, within_24h, cohort = await log_repo.first_claim_stats(since=since)
-    median_prev, within_prev, cohort_prev = await log_repo.first_claim_stats(
-        since=prev_since, until=prev_until
+
+    actives = await log_repo.active_user_counts(
+        dau=now - timedelta(days=1), wau=now - timedelta(days=7), mau=now - timedelta(days=30)
     )
-    _, _, claimers_all_time = await log_repo.first_claim_stats()
+    dau, wau, mau = actives["dau"], actives["wau"], actives["mau"]
+    # Every user's first claim is derived ONCE for all three cohorts (it was three full passes).
+    firsts = await log_repo.first_claim_windows(
+        {"range": (since, None), "prev": (prev_since, prev_until), "all": (None, None)}
+    )
+    median_h, within_24h, cohort = firsts["range"]
+    median_prev, within_prev, cohort_prev = firsts["prev"]
+    claimers_all_time = firsts["all"][2]
     joined, joined_claimed, referral_eligible = await user_repo.referral_funnel()
-    total = await user_repo.count()
-    referrals = await user_repo.sum_referrals()
+    users = await user_repo.summary()
+    total, referrals = users["total"], users["referrals"]
     heatmap = await log_repo.hourly_weekday_counts(since)
     signup_heatmap = await user_repo.signups_hourly_weekday(since)
     distribution = await log_repo.claims_per_user_buckets()
@@ -426,6 +448,7 @@ async def dashboard_analytics(
 
 @router.get("/retention", response_model=RetentionOut)
 async def dashboard_retention(
+    request: Request,
     session: DbSession,
     admin: AdminUser,
     weeks: int = Query(default=_RETENTION_WEEKS, ge=2, le=26),
@@ -436,6 +459,13 @@ async def dashboard_retention(
     Retention is returned as PERCENTAGES of the cohort so rows of different sizes are comparable;
     index 0 is the signup week itself (the activation rate), 1 the week after, and so on.
     """
+    redis = request.app.state.redis
+    cached = await redis.get(_retention_key(weeks))
+    if cached is not None:
+        try:
+            return RetentionOut.model_validate_json(cached)
+        except ValueError:
+            pass
     rows = await ConfigLogRepository(session).weekly_retention_cohorts(weeks)
     cohorts: list[CohortRow] = []
     today = datetime.now(UTC).date()
@@ -455,7 +485,9 @@ async def dashboard_retention(
                 retention=[_pct(offsets.get(i, 0), size) for i in range(span)],
             )
         )
-    return RetentionOut(weeks=weeks, cohorts=cohorts)
+    out = RetentionOut(weeks=weeks, cohorts=cohorts)
+    await redis.set(_retention_key(weeks), out.model_dump_json(), ex=_RETENTION_TTL)
+    return out
 
 
 class UsageDay(BaseModel):

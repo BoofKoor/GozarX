@@ -27,4 +27,6 @@ class SiteMessage(Base):
     # Correlate to the sending device when known (plain column, not a FK — survives deletion).
     device_uuid: Mapped[str | None] = mapped_column(String(36), nullable=True)
     read: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

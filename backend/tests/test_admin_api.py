@@ -410,6 +410,56 @@ async def test_dashboard_surfaces_panel_system_stats(db_sessions, monkeypatch) -
     get_settings.cache_clear()
 
 
+async def test_dashboard_reads_the_recorded_squad_count_and_never_pages_the_panel(
+    db_sessions, monkeypatch
+) -> None:
+    """The regression behind the slow dashboard: `/stats` used to sweep EVERY panel user inline.
+    It now serves the worker's recorded figure, and asks for a refresh only when that is stale."""
+    from gozar.db.repositories.settings import SettingsRepository
+    from gozar.services.panel_cache import SQUAD_ONLINE_JOB, write_squad_online
+
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    async with db_sessions() as session:
+        await SettingsRepository(session).set("trial_internal_squad", "sq-1")
+        await session.commit()
+
+    class _Panel(_StubPanel):
+        async def system_stats(self) -> SystemStats:
+            return SystemStats(online_now=99)
+
+        async def squad_online_count(self, squads: set[str]) -> int:
+            raise AssertionError("the dashboard must never page the panel itself")
+
+    class _Arq:
+        def __init__(self) -> None:
+            self.jobs: list[str | None] = []
+
+        async def enqueue_job(self, name: str, *args: object, _job_id: str | None = None) -> None:
+            self.jobs.append(_job_id)
+
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = _Panel()
+    app.state.arq = _Arq()
+    headers = {"Authorization": f"Bearer {create_access('root')}"}
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://t", headers=headers
+    ) as c:
+        # Nothing recorded yet: the panel-wide figure stands in, flagged, and a refresh is queued.
+        first = (await c.get("/api/admin/dashboard/stats")).json()
+        assert first["online_now"] == 99 and first["online_squad_scoped"] is False
+        assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
+        # Once the worker has recorded a count, that is what the dashboard shows — no new job.
+        await write_squad_online(app.state.redis, 12)
+        second = (await c.get("/api/admin/dashboard/stats")).json()
+        assert second["online_now"] == 12 and second["online_squad_scoped"] is True
+        assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
+    get_settings.cache_clear()
+
+
 async def test_protected_route_rejects_missing_token(admin_client: httpx.AsyncClient) -> None:
     # Same app, but strip the Authorization header for this one call.
     r = await admin_client.get("/api/admin/settings/", headers={"Authorization": ""})

@@ -172,6 +172,110 @@ class ConfigLogRepository(BaseRepository):
         )
         return int(result.rowcount or 0)
 
+    # --- one-scan summaries ----------------------------------------------------------------------
+    async def window_counts(
+        self,
+        *,
+        today_start: datetime,
+        since: datetime,
+        prev_start: datetime,
+        prev_end: datetime,
+    ) -> dict[str, int]:
+        """Every claim count the dashboard headline needs, from ONE pass over ``config_logs``.
+
+        The headline used to ask for these six figures one query at a time — six sequential scans
+        of the largest table, each a full scan because the windows were separate statements.
+        ``claimers_all_time`` is the distinct users who ever claimed (the conversion numerator).
+        """
+        in_range = ConfigLog.created_at >= since
+        in_prev = (ConfigLog.created_at >= prev_start) & (ConfigLog.created_at < prev_end)
+        distinct_users = func.count(func.distinct(ConfigLog.user_id))
+        row = (
+            await self.session.execute(
+                select(
+                    func.count().filter(ConfigLog.created_at >= today_start),
+                    func.count().filter(in_range),
+                    func.count().filter(in_prev),
+                    distinct_users.filter(in_range),
+                    distinct_users.filter(in_prev),
+                    distinct_users,
+                ).select_from(ConfigLog)
+            )
+        ).one()
+        keys = (
+            "claims_today",
+            "claims_in_range",
+            "claims_prev_range",
+            "claimers_in_range",
+            "claimers_prev_range",
+            "claimers_all_time",
+        )
+        return {key: int(value or 0) for key, value in zip(keys, row, strict=True)}
+
+    async def active_user_counts(self, **since: datetime) -> dict[str, int]:
+        """Distinct claimers at/after each named bound, from one scan (DAU/WAU/MAU)."""
+        if not since:
+            return {}
+        distinct_users = func.count(func.distinct(ConfigLog.user_id))
+        row = (
+            await self.session.execute(
+                select(
+                    *(
+                        distinct_users.filter(ConfigLog.created_at >= bound)
+                        for bound in since.values()
+                    )
+                ).select_from(ConfigLog)
+            )
+        ).one()
+        return {name: int(value or 0) for name, value in zip(since, row, strict=True)}
+
+    async def first_claim_windows(
+        self, windows: dict[str, tuple[datetime | None, datetime | None]]
+    ) -> dict[str, tuple[float | None, int, int]]:
+        """``first_claim_stats`` for several windows at once: ``{name: (median_h, within_24h, n)}``.
+
+        Each call to ``first_claim_stats`` recomputed every user's first claim over the whole table;
+        the analytics view made three of them per request. This derives the first claims once and
+        filters the three aggregates per window (``FILTER`` works on ordered-set aggregates too).
+        """
+        firsts = (
+            select(
+                ConfigLog.user_id.label("uid"),
+                func.min(ConfigLog.created_at).label("fc"),
+            )
+            .group_by(ConfigLog.user_id)
+            .subquery()
+        )
+        delta_h = func.extract("epoch", firsts.c.fc - User.created_at) / 3600.0
+        columns = []
+        for since, until in windows.values():
+            conds = []
+            if since is not None:
+                conds.append(firsts.c.fc >= since)
+            if until is not None:
+                conds.append(firsts.c.fc < until)
+            median = func.percentile_cont(0.5).within_group(delta_h.asc())
+            within = func.count().filter(delta_h <= 24, *conds)
+            total = func.count()
+            if conds:
+                median = median.filter(*conds)
+                total = total.filter(*conds)
+            columns += [median, within, total]
+        row = (
+            await self.session.execute(
+                select(*columns).select_from(firsts.join(User, User.telegram_id == firsts.c.uid))
+            )
+        ).one()
+        out: dict[str, tuple[float | None, int, int]] = {}
+        for i, name in enumerate(windows):
+            median, within, total = row[i * 3 : i * 3 + 3]
+            out[name] = (
+                round(float(median), 4) if median is not None else None,
+                int(within or 0),
+                int(total or 0),
+            )
+        return out
+
     # --- analytics (Phase B) ---------------------------------------------------------------------
     async def active_user_count_since(self, since: datetime) -> int:
         """Distinct users who claimed at/after ``since`` — backs the DAU/WAU/MAU active-user tiles
@@ -198,6 +302,21 @@ class ConfigLogRepository(BaseRepository):
             select(dow, hour, func.count()).where(ConfigLog.created_at >= since).group_by(dow, hour)
         )
         return [(int(d), int(h), int(n)) for d, h, n in rows.all()]
+
+    async def hourly_counts(self, since: datetime, tz: str = DISPLAY_TZ_NAME) -> list[int]:
+        """Claims per LOCAL hour of day at/after ``since`` → 24 counts, index = hour.
+
+        The broadcast composer's hour strip. It used to fetch the dashboard's whole analytics
+        payload (and re-fetch it every minute) to sum one heatmap into these 24 numbers.
+        """
+        hour = func.extract("hour", func.timezone(tz, ConfigLog.created_at)).label("hour")
+        rows = await self.session.execute(
+            select(hour, func.count()).where(ConfigLog.created_at >= since).group_by(hour)
+        )
+        out = [0] * 24
+        for h, n in rows.all():
+            out[int(h) % 24] = int(n)
+        return out
 
     async def claims_per_user_buckets(self) -> dict[str, int]:
         """Histogram of lifetime claims per user → ``{"1": n, "2-3": n, "4-6": n, "7+": n}`` (only

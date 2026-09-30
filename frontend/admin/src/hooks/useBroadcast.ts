@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import type {
+  ActivityHours,
   BroadcastAudience,
   BroadcastDraft,
   BroadcastDraftSave,
@@ -30,6 +31,19 @@ export function useAudience(languages: Lang[], filter: AudienceFilter = {}) {
           params: { languages: param, only_active, only_referrers },
         })
       ).data,
+  });
+}
+
+/** Claims per local hour of day over the last 30 days — the composer's scheduling strip.
+ *
+ * Its own endpoint rather than the dashboard's analytics: the strip needs 24 numbers, and pulling
+ * the whole analytics payload (and re-pulling it every minute) cost ~20 aggregate queries each time.
+ * An hour-of-day profile over a month does not move while a message is being written. */
+export function useActivityHours() {
+  return useQuery({
+    queryKey: ["broadcast-hours"],
+    queryFn: async () => (await api.get<ActivityHours>("/admin/broadcast/hours")).data,
+    staleTime: 10 * 60_000,
   });
 }
 
