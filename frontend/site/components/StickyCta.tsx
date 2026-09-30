@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { useSite } from "@/lib/useSite";
 import { Icon } from "@/components/Icon";
 
@@ -14,7 +15,7 @@ const OTHER_CTAS = ".ft-cta, .land-cta";
 // cooldown (there is nothing to do yet) and, by CSS, from 940px up, where the hero keeps the widget
 // beside the copy.
 export function StickyCta({ locale, target }: { locale: Locale; target: string }) {
-  const t = translator(locale);
+  const t = useT();
   const { status, loading } = useSite();
   const [offscreen, setOffscreen] = useState(false);
   const [otherCta, setOtherCta] = useState(false);

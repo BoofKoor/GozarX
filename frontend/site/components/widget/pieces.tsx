@@ -1,43 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
-import { flagCC, locName } from "@/components/widget/flags";
+import { type Locale, faDigits } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { Icon } from "@/components/Icon";
 import { Announce } from "@/components/Announce";
 import { formatVolume } from "@/lib/format";
 
-// ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
-// `fluid` leaves the size to the stylesheet (`.flag` is 40px), for a place that resizes it by
-// breakpoint — an inline size would outrank any media query.
-export function Flag({ name, size = 40, fluid = false }: { name: string; size?: number; fluid?: boolean }) {
-  const cc = flagCC(name);
-  const [errored, setErrored] = useState(false);
-  const style = fluid ? undefined : ({ inlineSize: size, blockSize: size } as const);
-  if (cc && !errored) {
-    return (
-      <img
-        className="flag"
-        src={`/flags/${cc}.svg`}
-        alt=""
-        style={style}
-        loading="lazy"
-        onError={() => setErrored(true)}
-      />
-    );
-  }
-  return (
-    <span className="flag flag-fallback" style={style} aria-hidden>
-      {locName(name).slice(0, 2).toUpperCase()}
-    </span>
-  );
-}
-
 // ---- CopyField: LTR monospace island + copy button (design `.copyfield`) ----
 export function CopyField({ value, locale }: { value: string; locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const [copied, setCopied] = useState(false);
   const [failed, setFailed] = useState(false);
   const codeRef = useRef<HTMLElement>(null);
@@ -132,7 +106,7 @@ function detectPlatform(): Platform {
 }
 
 export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   // Detect synchronously in the initializer — this component only ever mounts CLIENT-side (inside the
   // config state, after the fetch resolves; the SSR pass shows the skeleton), so navigator is already
   // available on first render. Detecting in an effect instead made the row render 3 apps (column) then
@@ -188,7 +162,7 @@ export function UsageMeter({
   note?: string;
 }) {
   const vol = (b: number | null) => (b == null ? "—" : formatVolume(b, locale));
-  const t = translator(locale);
+  const t = useT();
   const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
   const metric = remainingBytes != null;
   const pctTxt = `${faDigits(String(pct), locale)}${locale === "fa" ? "٪" : "%"}`;
@@ -261,7 +235,7 @@ export function Countdown({
   label: string;
   locale: Locale;
 }) {
-  const t = translator(locale);
+  const t = useT();
   const left = useSecondsLeft(deadline);
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);

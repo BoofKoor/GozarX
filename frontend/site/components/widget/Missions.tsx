@@ -3,7 +3,8 @@
 import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { pushSupported, subscribeToPush } from "@/lib/push";
@@ -38,7 +39,7 @@ function dismissUntilTomorrow(): void {
 // Home Screen" steps, since web push only exists there for an installed web app. Reward MB comes
 // from site_* settings. Dismissible until tomorrow.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
-  const t = translator(locale);
+  const t = useT();
   const { config, reload, pushPerm, pushOn, refreshPush } = useSite();
   const pwa = usePwaState();
   const [hidden, setHidden] = useState(dismissedNow);
@@ -55,7 +56,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   }
 
   async function invite() {
-    if (await shareInvite(link, locale)) return;
+    if (await shareInvite(link, t)) return;
     if (typeof navigator !== "undefined" && "share" in navigator) return; // a sheet exists; dismissed
     if (await copyText(link)) toast(t("invite_copied"));
   }
@@ -65,7 +66,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
       if (await promptInstall()) {
         const r = await api.claimReward("pwa").catch(() => null);
         await reload();
-        toast(rewardMessage(locale, r, config?.reward_pwa_mb, "m_pwa_done"));
+        toast(rewardMessage(t, locale, r, config?.reward_pwa_mb, "m_pwa_done"));
       }
     } finally {
       setBusy(null);
@@ -78,7 +79,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
       const r = ok ? await api.claimReward("push").catch(() => null) : null;
       await refreshPush(); // keep the shared push state (status-page switch/mission) in sync
       await reload();
-      if (ok) toast(rewardMessage(locale, r, config?.reward_push_mb, "m_push_done"));
+      if (ok) toast(rewardMessage(t, locale, r, config?.reward_push_mb, "m_push_done"));
       else if (Notification.permission === "denied") toast(t("ps_bl_d"));
       else toast(t("rw_push_err"));
     } finally {

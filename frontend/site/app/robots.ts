@@ -12,6 +12,7 @@ export default function robots(): MetadataRoute.Robots {
       disallow: ["/api/", "/status", "/offline"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
-    host: SITE_URL,
+    // No `host`: a Yandex-only directive (since retired) that every other crawler ignores or flags
+    // as invalid (C-66) — the canonical origin is already in the sitemap URL and every page's tags.
   };
 }

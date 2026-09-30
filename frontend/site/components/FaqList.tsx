@@ -1,29 +1,28 @@
 "use client";
 
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import Link from "@/components/Link";
+import { useCallback, useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { FAQ_CATS, FAQ_LABELS, type FaqItem } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 import { AccItem } from "@/components/Accordion";
+import { QueryParam } from "@/components/QueryParam";
 
 // FAQ list — faithful reproduction of the design's `vFaq`: a search box + category tabs filtering a
 // list of `.acc` accordions, with an empty state when nothing matches.
-export function FaqList({
-  locale,
-  items,
-  initialQuery = "",
-}: {
-  locale: Locale;
-  items: FaqItem[];
-  initialQuery?: string;
-}) {
+export function FaqList({ locale, items }: { locale: Locale; items: FaqItem[] }) {
   const labels = FAQ_LABELS[locale];
   const cats = FAQ_CATS[locale];
   const [cat, setCat] = useState<string>("all");
-  const [query, setQuery] = useState(initialQuery);
-  // a search that arrived from elsewhere opens nothing yet — the reader picks from what matched
-  const [open, setOpen] = useState<number | null>(initialQuery ? null : 0);
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<number | null>(0);
+  // `?q=` — the 404 page's search box lands here with the words already typed. A search that
+  // arrived from elsewhere opens nothing yet: the reader picks from what matched.
+  const arrive = useCallback((q: string | undefined) => {
+    if (!q) return;
+    setQuery(q.slice(0, 80));
+    setOpen(null);
+  }, []);
 
   const q = query.trim().toLowerCase();
   const visible = useMemo(
@@ -39,6 +38,7 @@ export function FaqList({
 
   return (
     <>
+      <QueryParam name="q" onValue={arrive} />
       <div className="faq-tools">
         <div className="idx-search">
           <Icon name="search" sw={2} />

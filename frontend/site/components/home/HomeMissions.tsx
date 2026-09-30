@@ -1,8 +1,7 @@
-"use client";
-
-import Link from "next/link";
-import { type CopyOverrides, type Locale, translator } from "@/lib/i18n";
-import { useSite } from "@/lib/useSite";
+import Link from "@/components/Link";
+import type { CopyOverrides, Locale } from "@/lib/i18n";
+import type { PublicConfig } from "@/lib/api";
+import { translator } from "@/lib/copy";
 import { Icon } from "@/components/Icon";
 import { MB, formatMb, volumeParts } from "@/lib/format";
 
@@ -11,7 +10,8 @@ import { MB, formatMb, volumeParts } from "@/lib/format";
 // shown as a bold "+N MB" tile — never a generic "more volume" label or a hardcoded number. Each row
 // is a link to where the mission is actually DONE — the rewards card on the account page (C-38): the
 // rows lifted on hover like links and went nowhere. A figure the backend did not give is left out
-// rather than shown as «—».
+// rather than shown as «—». A server component: `config` is the /config the page reads anyway, so the
+// amounts are in the HTML and the band costs no JavaScript.
 const MISSIONS = [
   { t: "mv1_t", d: "mv1_d", ic: "users", key: "reward_referral_mb" },
   { t: "mv2_t", d: "mv2_d", ic: "download", key: "reward_pwa_mb" },
@@ -19,9 +19,16 @@ const MISSIONS = [
   { t: "mv4_t", d: "mv4_d", ic: "cal", key: "reward_streak_mb" },
 ] as const;
 
-export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+export function HomeMissions({
+  locale,
+  config,
+  copy,
+}: {
+  locale: Locale;
+  config: PublicConfig | null;
+  copy?: CopyOverrides;
+}) {
   const t = translator(locale, copy);
-  const { config } = useSite();
 
   return (
     <section className="sec" id="rewards">

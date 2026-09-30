@@ -1,6 +1,6 @@
 // Line-icon set — verbatim path data from the design artifacts' `IC` map (docs/website/design).
 // Mirrors the design's `svg(name, sw, cls)` helper: 24×24 viewBox, stroked, round caps/joins.
-// `ic-dir` on directional icons (arrow/send) flips under RTL via globals.css.
+// `ic-dir` on directional icons (arrow/send) flips under RTL via styles/base.css.
 
 export const ICONS: Record<string, string> = {
   bolt: '<path d="M13 2 4.5 13.5H11l-1 8.5 8.5-11.5H12l1-8.5Z"/>',

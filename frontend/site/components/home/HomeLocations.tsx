@@ -1,9 +1,7 @@
-"use client";
-
-import Link from "next/link";
-import { type CopyOverrides, type Locale, faDigits, fill, translator } from "@/lib/i18n";
+import Link from "@/components/Link";
+import { type CopyOverrides, type Locale, faDigits, fill } from "@/lib/i18n";
+import { translator } from "@/lib/copy";
 import { formatPlaces } from "@/lib/format";
-import { useSite } from "@/lib/useSite";
 import { flagCC, locLabel, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
 
@@ -13,19 +11,28 @@ import { Icon } from "@/components/Icon";
 // when the panel exposes no locations. Each flag PICKS its location in the claim widget above
 // (`/?loc=`, V-11) — they were pictures of choices that could not be chosen — and from 900px the
 // card runs map-beside-flags across the row instead of a 520px card in the middle of 1180.
+// A server component: `locations` is the squad's list as the page read it (the same read the stats
+// band counts), so the flags, the count and the sentence naming them are in the HTML — the band was
+// a skeleton until the browser's own fetch, and cost JavaScript to draw what the server already had.
 const SHOWN = 5;
 
-export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
+export function HomeLocations({
+  locale,
+  locations,
+  copy,
+}: {
+  locale: Locale;
+  locations: string[] | null;
+  copy?: CopyOverrides;
+}) {
   const t = translator(locale, copy);
-  const { locations, loading } = useSite();
   const list = locations ?? [];
   const total = list.length;
-  if (!loading && total === 0) return null;
+  if (total === 0) return null;
 
-  const skeleton = total === 0; // first load in flight
   // `{locs}` is the squad's own list, in the reader's language (C-53): the sentence used to name
   // Ukraine, Germany and the USA whether or not the squad served any of them. An override without
-  // the token renders as written; until the list arrives the line keeps its height, empty.
+  // the token renders as written.
   const sub = fill(t("loc_sub"), {
     locs: formatPlaces(
       list.map((n) => locLabel(n, locale)),
@@ -41,23 +48,15 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
         <div className="sec-head reveal">
           <span className="eyebrow">{t("loc_eyebrow")}</span>
           <h2 className="sec-title">{t("loc_title")}</h2>
-          {sub ? (
-            <p className="sec-sub">{sub}</p>
-          ) : (
-            <p className="sec-sub" aria-hidden>
-              {"\u00a0"}
-            </p>
-          )}
+          {sub && <p className="sec-sub">{sub}</p>}
         </div>
 
         <div className="loccard reveal">
           <div className="locframe">
-            {!skeleton && (
-              <span className="livepill">
-                <span className="livedot" aria-hidden />
-                <b>{faDigits(String(total), locale)}</b> {t("loc_active")}
-              </span>
-            )}
+            <span className="livepill">
+              <span className="livedot" aria-hidden />
+              <b>{faDigits(String(total), locale)}</b> {t("loc_active")}
+            </span>
             <img className="worldmap" src="/map-world.webp" alt="" width={640} height={382} />
           </div>
 
@@ -65,32 +64,28 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
             <div className="locdiv" />
 
             <div className="flagstrip">
-              {skeleton
-                ? Array.from({ length: SHOWN }).map((_, i) => (
-                    <span key={i} className="fbig skeleton" aria-hidden />
-                  ))
-                : shown.map((name) => {
-                    const cc = flagCC(name);
-                    // the link carries the MATCHING key (the remark); the reader gets their language
-                    const label = locLabel(name, locale);
-                    return (
-                      <Link
-                        key={name}
-                        className="fbig-link"
-                        href={`/?loc=${encodeURIComponent(locName(name))}#hero-widget`}
-                        aria-label={label}
-                        title={label}
-                      >
-                        {cc ? (
-                          <img className="fbig" src={`/flags/${cc}.svg`} alt="" loading="lazy" />
-                        ) : (
-                          <span className="fbig fb-fallback" aria-hidden>
-                            {label.slice(0, 2).toUpperCase()}
-                          </span>
-                        )}
-                      </Link>
-                    );
-                  })}
+              {shown.map((name) => {
+                const cc = flagCC(name);
+                // the link carries the MATCHING key (the remark); the reader gets their language
+                const label = locLabel(name, locale);
+                return (
+                  <Link
+                    key={name}
+                    className="fbig-link"
+                    href={`/?loc=${encodeURIComponent(locName(name))}#hero-widget`}
+                    aria-label={label}
+                    title={label}
+                  >
+                    {cc ? (
+                      <img className="fbig" src={`/flags/${cc}.svg`} alt="" loading="lazy" />
+                    ) : (
+                      <span className="fbig fb-fallback" aria-hidden>
+                        {label.slice(0, 2).toUpperCase()}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
               {more > 0 && (
                 <Link className="flagmore" href="/locations" aria-label={t("loc_all")}>
                   +{faDigits(String(more), locale)}

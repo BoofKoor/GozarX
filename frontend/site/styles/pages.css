@@ -1,0 +1,268 @@
+/* The pages the homepage never draws (C-59): about, contact, the FAQ page, the guides, the legal
+   pages, the SEO landings and the locations and articles indexes, /offline and the 404. Imported by
+   each of them and loaded after base.css — so a rule here beats a base rule of equal specificity,
+   which is exactly what a page-level refinement wants, and a base rule that must win over one of
+   these has to move here with it (see .dl-alt below). */
+
+.eyebrow .ic{ inline-size:14px; block-size:14px; }
+.btn.sm{ font-size:13.5px; padding:9px 14px; }
+.page-head .eyebrow{ margin-block-end:14px; }
+
+/* Small content-page utilities: a lead paragraph, a vertical stack, the chips. (The compatibility
+   layer they came from — .btn-primary, .btn-ghost, .card-pad, .mt-* — is gone: the last pages using
+   it draw with the design's own .btn / .btn.secondary / .btn.lg now, C-62.) */
+.lead { font-size: clamp(16px, 2.4vw, 18px); color: var(--muted); max-width: 62ch; }
+.stack > * + * { margin-top: 14px; }
+/* Base chip must precede the color modifiers so `.chip-success/-warning` win the cascade. */
+.chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
+.chip-success { background: var(--success-surface); color: var(--success-ink); }
+.chip-warning { background: var(--warning-surface); color: var(--warning-ink); }
+.chip-muted { background: var(--sunken); color: var(--muted); }
+/* ============ Phase 5 contact form (restored post-merge, from design phase-5-content.html) ============ */
+.two{ display:grid; gap:28px; grid-template-columns:1fr; }
+@media (min-width:860px){ .two{ grid-template-columns:1fr 1.1fr; gap:44px; align-items:start; } }
+.mission{ font-size:16px; line-height:1.9; color:var(--text); }
+.mission .lead{ font-size:18px; font-weight:600; margin-block-end:12px; }
+.deflect{ margin-block-start:22px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px; }
+.deflect h2{ font-size:14px; font-weight:700; margin:0 0 10px; }
+.deflect a{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--link); text-decoration:none; margin-inline-end:14px; }
+.deflect a .ic{ inline-size:14px; block-size:14px; }
+.mission a{ color:var(--link); font-weight:600; }
+/* /about (C-33) — its own page: the lead under the H1, three cards (goal · how it stays free ·
+   privacy), then the same deflect row the contact page uses. */
+.about-head{ max-width:44rem; }
+.about-lead{ font-size:18px; line-height:1.8; color:var(--muted); margin:0; }
+.about-grid{ display:grid; gap:16px; grid-template-columns:1fr; }
+@media (min-width:860px){ .about-grid{ grid-template-columns:repeat(3,1fr); } }
+.about-card{ padding:22px; display:flex; flex-direction:column; gap:10px; }
+.about-card .htile{ inline-size:40px; block-size:40px; border-radius:12px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.about-card .htile .ic{ inline-size:20px; block-size:20px; }
+.about-card h2{ font-size:18px; font-weight:800; margin:4px 0 0; }
+.about-card p{ font-size:15px; line-height:1.9; color:var(--text); margin:0; }
+.about-more{ display:inline-flex; align-items:center; gap:6px; margin-block-start:auto; min-block-size:44px; font-size:14px; font-weight:700; color:var(--link); text-decoration:none; }
+.about-more .ic{ inline-size:14px; block-size:14px; }
+.about-deflect{ margin-block-start:20px; }
+.form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
+.field{ margin-block-end:16px; }
+.field label{ display:block; font-size:13.5px; font-weight:600; margin-block-end:7px; }
+.field .opt{ color:var(--muted); font-weight:500; }
+.inp{ inline-size:100%; font:inherit; font-size:14.5px; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:11px 13px; }
+.inp:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
+textarea.inp{ resize:vertical; min-block-size:120px; line-height:1.7; }
+select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 20px) 55%,calc(100% - 15px) 55%; background-size:5px 5px; background-repeat:no-repeat; }
+[dir="rtl"] select.inp{ background-position:15px 55%,20px 55%; }
+.resp-note{ font-size:12.5px; color:var(--muted); margin-block-start:10px; display:flex; align-items:center; gap:6px; }
+.resp-note .ic{ inline-size:14px; block-size:14px; }
+.form-success{ display:none; text-align:center; padding:20px 0; }
+.form-card.sent .form-body{ display:none; }
+.form-card.sent .form-success{ display:block; }
+.form-success .ok{ inline-size:56px; block-size:56px; border-radius:50%; background:var(--success-surface); color:var(--success-ink); display:grid; place-items:center; margin:0 auto 14px; }
+.form-success .ok .ic{ inline-size:30px; block-size:30px; }
+.form-success h2{ font-size:18px; font-weight:800; margin:0 0 6px; }
+.form-success h2:focus{ outline:none; }
+.form-success p{ font-size:14px; color:var(--muted); margin:0; }
+.field.err .inp{ border-color:var(--danger); }
+.field .errmsg{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:5px; }
+.field.err .errmsg{ display:block; }
+/* ============ Phase 5 FAQ page tools (restored post-merge) ============ */
+.narrow{ max-width:820px; }
+.page-head.c{ text-align:center; max-width:44rem; margin-inline:auto; }
+.page-head p{ font-size:16px; color:var(--muted); margin:0; }
+.faq-tools{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-block:6px 20px; }
+.tabs{ display:flex; gap:6px; flex-wrap:wrap; margin-block-end:18px; }
+.tab{ border:1px solid var(--border); background:var(--surface); color:var(--muted); font:inherit; font-size:13.5px; font-weight:600; padding:8px 15px; border-radius:var(--r-pill); cursor:pointer; line-height:1.4; }
+.tab[aria-pressed="true"]{ background:var(--brand-tint); border-color:var(--primary); color:var(--brand-tint-ink); font-weight:700; }
+
+/* ── Setup guides (list + detail) ─────────────────────────────────────────────
+   Each card/hero tile is tinted by a per-platform accent set inline as --acc. Brand marks come
+   from <BrandIcon> (filled, currentColor). The list is icon-led rows; the detail is a connected
+   timeline with a store-badge download button. */
+.guides-sec{ padding-block-start:28px; }
+.gwrap{ display:grid; gap:14px; }
+@media(min-width:720px){ .gwrap{ grid-template-columns:1fr 1fr; } }
+.gcard{ display:flex; align-items:center; gap:15px; text-decoration:none; color:var(--text);
+  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:15px 16px; box-shadow:var(--shadow-sm); position:relative; overflow:hidden;
+  transition:transform .16s, box-shadow .16s, border-color .16s; }
+.gcard::before{ content:""; position:absolute; inset-block:0; inset-inline-start:0; inline-size:3px;
+  background:var(--acc); opacity:0; transition:opacity .16s; }
+.gcard:hover{ transform:translateY(-3px);
+  border-color:color-mix(in srgb,var(--acc) 42%,var(--border));
+  box-shadow:0 14px 28px -16px color-mix(in srgb,var(--acc) 55%,transparent), var(--shadow-md); }
+.gcard:hover::before{ opacity:1; }
+.gos{ flex:0 0 auto; inline-size:50px; block-size:50px; border-radius:15px; display:grid; place-items:center;
+  position:relative; color:var(--acc);
+  background:color-mix(in srgb,var(--acc) 14%,var(--surface));
+  box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 22%,transparent); }
+.gos svg{ inline-size:27px; block-size:27px; position:relative; z-index:1; }
+.gos .glow{ position:absolute; inset:0; border-radius:inherit; opacity:.55;
+  background:radial-gradient(120% 120% at 30% 20%, color-mix(in srgb,var(--acc) 30%,transparent), transparent 70%); }
+.gcard-id{ flex:1; min-inline-size:0; }
+.gtop{ display:flex; align-items:baseline; gap:10px; }
+.gtop b{ font-size:17px; font-weight:800; }
+.gtag{ font-size:12.5px; font-weight:700; color:var(--success-ink); }
+.gsub{ margin-block-start:8px; display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.gpill{ direction:ltr; display:inline-flex; align-items:center; gap:6px; background:var(--sunken);
+  border:1px solid var(--border); border-radius:var(--r-pill); padding:3px 10px 3px 6px;
+  font-size:12.5px; font-weight:700; color:var(--text); }
+.gpill img{ inline-size:17px; block-size:17px; border-radius:5px; }
+.gtime{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--muted); }
+.gtime .ic{ inline-size:14px; block-size:14px; }
+.gchevw{ flex:0 0 auto; inline-size:34px; block-size:34px; border-radius:50%; display:grid; place-items:center;
+  background:var(--sunken); color:var(--muted); transition:background .16s, color .16s; }
+.gcard:hover .gchevw{ background:color-mix(in srgb,var(--acc) 14%,var(--surface)); color:var(--acc); }
+[dir="ltr"] .gchev{ transform:scaleX(-1); }  /* drill-in points to the reading-forward edge */
+
+.guide-page{ padding-block:28px 56px; }
+.gback{ color:var(--link); text-decoration:none; font-weight:600; }
+.ghero{ display:flex; align-items:center; gap:16px; margin-block:8px 4px; }
+.gos.gbig{ inline-size:60px; block-size:60px; border-radius:18px; }
+.gos.gbig svg{ inline-size:32px; block-size:32px; }
+.ghero-txt{ min-inline-size:0; }
+.ghero h1{ font-size:clamp(24px,4.4vw,32px); font-weight:800; line-height:var(--lh-head); margin:0 0 8px; }
+.grow{ display:flex; flex-wrap:wrap; gap:8px; }
+.chip.happ{ direction:ltr; }
+.chip-app{ border-radius:4px; }
+.chip.chip-muted .ic{ inline-size:13px; block-size:13px; }
+.gsteps-h{ font-size:20px; font-weight:800; margin-block:34px 20px; }
+.tl{ display:flex; flex-direction:column; }
+.tstep{ display:flex; gap:16px; position:relative; padding-block-end:22px; }
+.tstep.last{ padding-block-end:0; }
+.tstep:not(.last)::before{ content:""; position:absolute; inset-inline-start:20px; top:44px; bottom:-2px;
+  inline-size:2px; background:linear-gradient(color-mix(in srgb,var(--primary) 45%,var(--border)), var(--border) 70%, transparent); }
+.tbadge{ flex:0 0 auto; inline-size:42px; block-size:42px; border-radius:50%;
+  background:linear-gradient(140deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); color:#fff;
+  display:grid; place-items:center; font-weight:800; font-size:17px; position:relative; z-index:1;
+  box-shadow:0 8px 18px -8px color-mix(in srgb,var(--hero-2) 70%,transparent); }
+.tcard{ flex:1; min-inline-size:0; background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--r-lg); padding:16px 18px; box-shadow:var(--shadow-sm); }
+.tcard strong{ font-size:16px; }
+.tcard p{ color:var(--muted); }
+.tcard .tdesc{ margin-block-start:8px; }
+.gtrouble{ padding:20px; }
+@media (min-width:768px){ .gtrouble{ padding:24px; } }
+.gtrouble p{ margin-block-start:8px; }
+.dlbtn{ direction:ltr; display:inline-flex; align-items:center; gap:11px; text-decoration:none;
+  background:var(--text); color:var(--surface); border-radius:var(--r-btn); padding:9px 16px 9px 13px;
+  margin-block-start:15px; box-shadow:0 10px 22px -12px color-mix(in srgb,var(--text) 55%,transparent);
+  transition:transform .12s, filter .15s, box-shadow .15s; }
+.dlbtn:hover{ transform:translateY(-2px); filter:brightness(1.06);
+  box-shadow:0 14px 26px -12px color-mix(in srgb,var(--acc) 60%,transparent); }
+.dlbtn .store{ flex:0 0 auto; display:grid; place-items:center; }
+.dlbtn .store svg{ inline-size:24px; block-size:24px; }
+.dlbtn .dlt{ direction:rtl; display:flex; flex-direction:column; text-align:right; line-height:1.18; }
+.dlbtn .dlt small{ font-size:10.5px; font-weight:600; opacity:.75; }
+.dlbtn .dlt b{ font-size:14.5px; font-weight:800; letter-spacing:.1px; }
+[dir="ltr"] .dlbtn .dlt{ direction:ltr; text-align:left; }
+
+/* ===== SEO landing pages (/l/[slug]) + locations index (/locations) ===== */
+.landing-page .crumbs, .legal-page .crumbs{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-block-end:14px; }
+.landing-page .crumbs a, .legal-page .crumbs a{ color:var(--muted); text-decoration:none; }
+.landing-page .crumbs a:hover, .legal-page .crumbs a:hover{ color:var(--text); }
+.landing-page .crumbs .crumb-sep, .legal-page .crumbs .crumb-sep{ inline-size:14px; block-size:14px; opacity:.7; flex:none; }
+.landing-page h1{ font-size:clamp(26px,4.2vw,34px); line-height:1.35; margin-block-end:14px; }
+/* admin-authored article body: comfortable fa reading rhythm (spec: ~38rem measure, 1.8 leading) */
+.landing-body{ max-inline-size:38rem; line-height:1.9; font-size:15.5px; color:var(--text); }
+.landing-body p{ margin-block:10px 14px; }
+.landing-body h2{ font-size:19px; margin-block:26px 8px; }
+.landing-body ul{ padding-inline-start:22px; margin-block:10px 14px; display:grid; gap:6px; }
+.landing-body a{ color:var(--primary); text-decoration:none; font-weight:600; }
+.landing-body a:hover{ text-decoration:underline; }
+.landing-body code{ direction:ltr; unicode-bidi:isolate; background:var(--sunken); border:1px solid var(--border); border-radius:6px; padding:1px 6px; font-size:13px; }
+.landing-widget{ margin-block:28px; }
+@media (min-width:1000px){ .art-cards.three{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.landing-related h2{ font-size:17px; margin-block-end:10px; }
+.landing-related .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+.landing-related .chip{ text-decoration:none; padding:7px 14px; font-size:13px; }
+.landing-related .chip:hover{ border-color:var(--border-strong); color:var(--text); }
+
+.locations-page .sec-head{ margin-block-end:18px; }
+.loc-intro{ max-inline-size:40rem; margin-inline:auto; line-height:1.9; color:var(--muted); text-align:start; display:grid; gap:8px; margin-block-end:30px; }
+.loc-h2{ font-size:19px; margin-block:26px 14px; }
+.loc-cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
+.loc-card-link{ display:block; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; transition:border-color .15s ease, transform .15s ease; }
+.loc-card-link:hover{ border-color:var(--border-strong); transform:translateY(-2px); }
+.loc-card-link b{ display:block; font-size:15px; margin-block-end:6px; }
+.loc-card-link p{ font-size:12.5px; line-height:1.7; color:var(--muted); margin-block-end:10px;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.loc-card-link .more{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700; color:var(--primary); }
+.loc-card-link .more .ic{ inline-size:14px; block-size:14px; }
+.locgrid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; }
+.loccell{ display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:10px 12px; min-block-size:56px; transition:border-color .15s ease; }
+.loccell:hover{ border-color:var(--border-strong); }
+.loccell .ln{ font-size:13.5px; font-weight:700; flex:1; min-inline-size:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.loccell.skeleton{ border-style:dashed; }
+/* landing: the widget comes straight after the H1 now, so the page's top padding is trimmed on a
+   phone; the closing band sends a reader who finished the article back up to it */
+@media (max-width:599.98px){
+  .landing-page.sec{ padding-block-start:24px; }
+  .landing-page .landing-widget{ margin-block:18px 26px; }
+}
+.land-cta{ margin-block:34px 8px; padding:22px 24px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); display:flex; align-items:center; justify-content:space-between; gap:16px 22px; flex-wrap:wrap; }
+[dir="rtl"] .land-cta{ background:linear-gradient(225deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); }
+.land-cta-t{ min-inline-size:0; }
+.land-cta-t h2{ font-size:18px; font-weight:800; line-height:1.5; margin:0 0 4px; }
+.land-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
+.land-cta + .landing-related{ margin-block-start:30px; }
+
+/* guides: the second install source, the App Store's Apple ID caveat, the step-2 path to the widget,
+   and a step's screenshot when one has been dropped into public/guides/<platform>/<n>.webp */
+.dl-alt{ display:flex; align-items:center; gap:4px; inline-size:fit-content; margin-block-start:10px; font-size:13px; font-weight:700; color:var(--link); text-decoration:none; }
+.dl-alt:hover{ text-decoration:underline; }
+.dl-alt .ic{ inline-size:14px; block-size:14px; }
+/* its 44px phone target (the rest of that rule is in base.css) must follow the base rule above */
+@media (max-width:999.98px){ .dl-alt{ margin-block-start:2px; } }
+.dl-note{ display:flex; align-items:flex-start; gap:8px; margin:12px 0 0; padding:10px 12px; font-size:13px; line-height:1.8; color:var(--text); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); }
+.dl-note .ic{ inline-size:16px; block-size:16px; flex:none; margin-block-start:4px; color:var(--muted); }
+.guide-get{ margin-block-start:12px; text-decoration:none; }
+.guide-get .ic{ inline-size:16px; block-size:16px; }
+.tshot{ display:block; inline-size:100%; block-size:auto; aspect-ratio:16/9; object-fit:cover; margin-block-start:14px; border-radius:var(--r-card); border:1px solid var(--border); background:var(--sunken); }
+.offline-actions{ margin-block-start:16px; }
+.offline-h{ margin:0; font-size:15px; font-weight:700; }
+/* Touch targets ≥44px wherever the layout is the phone/tablet one (the burger's breakpoint) — the
+   spec's number, and Apple's. Measured before: 58 controls under it, from the header's 38px buttons
+   and a 23px breadcrumb to a 32px copy button (C-40). Where a control must LOOK smaller than its
+   target (the copy plate, the switch), the 44px box is transparent and the visual is drawn inside
+   it; where a bar must not grow, negative block margins give the box back to the layout. */
+@media (max-width:999.98px){
+  .landing-page .crumbs a, .legal-page .crumbs a{ display:inline-flex; align-items:center; min-block-size:44px; margin-block:-10px; padding-inline:11px; margin-inline:-11px; }
+  .guide-page details > summary{ min-block-size:44px; padding-block:8px; margin-block:-8px; }
+}
+
+/* ===== Legal pages (C-34) — the design's vLegal: crumb, the terms/privacy switch, title + date, then
+   a numbered contents list (sticky beside the text from 900px) and the numbered sections. ===== */
+.legal-page{ padding-block-start:24px; }
+.legal-switch{ display:inline-flex; gap:4px; padding:4px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); margin-block-end:14px; }
+.legal-switch a{ display:inline-flex; align-items:center; font-size:13px; font-weight:700; color:var(--muted); text-decoration:none; padding:6px 14px; border-radius:var(--r-pill); }
+.legal-switch a[aria-current="page"]{ background:var(--primary); color:var(--on-primary); }
+.legal-page h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:6px 0; }
+.updated{ font-size:12.5px; color:var(--muted); margin:0 0 22px; }
+.doc{ display:grid; gap:28px; grid-template-columns:1fr; }
+@media (min-width:900px){
+  .doc{ grid-template-columns:220px 1fr; gap:40px; align-items:start; }
+  .toc{ position:sticky; inset-block-start:88px; }
+}
+.toc-h{ font-size:12px; font-weight:700; color:var(--muted); margin:0 0 10px; }
+.toc ol{ list-style:none; margin:0; padding:0; }
+.toc a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding:7px 12px; border-radius:9px; border-inline-start:2px solid transparent; }
+.toc a:hover{ color:var(--text); background:var(--sunken); }
+.legal-body h2{ font-size:20px; font-weight:800; margin:26px 0 12px; display:flex; align-items:baseline; gap:10px; scroll-margin-block-start:88px; }
+.legal-body section:first-child h2{ margin-block-start:0; }
+.legal-body h2 .n{ font-size:14px; font-weight:800; color:var(--link); }
+.legal-body p{ font-size:15.5px; line-height:1.95; color:var(--text); margin:0 0 12px; max-width:40rem; }
+.legal-body .privacy-note{ display:flex; gap:10px; align-items:flex-start; background:var(--brand-tint); border:1px solid var(--brand-tint-2); border-radius:var(--r-card); padding:16px 18px; margin-block:8px 16px; }
+.legal-body .privacy-note .ic{ inline-size:18px; block-size:18px; flex:none; margin-block-start:7px; color:var(--brand-tint-ink); }
+.legal-body .privacy-note p{ margin:0; }
+.legal-body .privacy-note b{ color:var(--brand-tint-ink); }
+@media (max-width:999.98px){
+  .toc a, .legal-switch a{ min-block-size:44px; display:flex; align-items:center; }
+}
+
+/* ===== The last saved config (lib/lastConfig): /offline's card, and the widget's S8 while /status
+   cannot be reached. Start-aligned inside the centred offline page — a link reads from its start. */
+.offline-slot{ inline-size:100%; max-inline-size:520px; margin-inline:auto; }
+.offline-cfg{ padding:18px; margin-block-start:14px; text-align:start; }
+.oc-exp{ color:var(--warning-ink); }
+
+.faq-empty p{ margin:0 0 14px; }
+.faq-empty .btn .ic{ inline-size:16px; block-size:16px; }

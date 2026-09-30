@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { usePathname } from "next/navigation";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
+import { publicPath } from "@/lib/locale";
 import { useLocaleSwitch } from "@/lib/prefs";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { Icon } from "@/components/Icon";
@@ -37,9 +39,9 @@ function isCurrent(pathname: string, href: string): boolean {
 // Clean header — brand + nav + "My status" + burger. Language is auto-detected and theme follows
 // the device by default; both can be changed from the header's desktop controls, the mobile sheet,
 // the footer, or the status-page settings — all through `lib/prefs`, so they cannot disagree.
-export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "dark" }) {
-  const pathname = usePathname() ?? "/";
-  const t = translator(locale);
+export function Header({ locale }: { locale: Locale }) {
+  const pathname = publicPath(usePathname() ?? "/");
+  const t = useT();
   const [sheet, setSheet] = useState(false);
   const switchLocale = useLocaleSwitch(locale);
   const sheetRef = useRef<HTMLDivElement>(null);
@@ -55,7 +57,6 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
     : pathname === "/status"
       ? "#claim"
       : "/#hero-widget";
-  const serverTheme = theme ?? "system";
 
   return (
     <>
@@ -96,12 +97,7 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
                 EN
               </button>
             </div>
-            <ThemeChoice
-              locale={locale}
-              serverChoice={serverTheme}
-              variant="icons"
-              className="hd-theme"
-            />
+            <ThemeChoice locale={locale} variant="icons" className="hd-theme" />
             {/* brand-tint chip + person icon — the account cards' tile language. On mobile the
                 label hides and the chip collapses to the burger's exact footprint (CSS). */}
             <Link
@@ -173,7 +169,7 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               English
             </button>
           </div>
-          <ThemeChoice locale={locale} serverChoice={serverTheme} variant="icons" />
+          <ThemeChoice locale={locale} variant="icons" />
         </div>
       </div>
     </>

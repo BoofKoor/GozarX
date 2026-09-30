@@ -6,13 +6,43 @@
 // hashes) in one shot.
 // v3: /offline now hands back the last saved config (an inline script over localStorage), so an
 // install still holding the v2 copy of it would keep the page that promised a config and showed none.
-const CACHE = "gozarx-shell-v3";
+// v4: the shell's stylesheet, scripts and font are cached with it (C-67). Only the HTML was, so an
+// offline load drew the saved config in the browser's default styles — or, where the cached page
+// referenced a chunk nothing had kept, not at all.
+const CACHE = "gozarx-shell-v4";
 const SHELL = ["/", "/status", "/offline"];
+// What a page needs to draw itself, as it names it: the build's hashed CSS/JS and the font.
+const ASSET_RE = /(?:href|src)="(\/(?:_next\/static\/[^"]+\.(?:css|js)|fonts\/[^"]+\.woff2))"/g;
+// Cached files beyond the shell pages are capped, oldest first: the build's hashes change on every
+// deploy while this file (and so the cache's name) does not, so without a cap each deploy's chunks
+// would pile up behind the last.
+const MAX_ASSETS = 80;
+
+async function precache() {
+  const c = await caches.open(CACHE);
+  const urls = new Set();
+  for (const page of SHELL) {
+    try {
+      const res = await fetch(page, { credentials: "same-origin" });
+      if (!res.ok) continue;
+      await c.put(page, res.clone());
+      const html = await res.text();
+      for (const m of html.matchAll(ASSET_RE)) urls.add(m[1].replace(/&amp;/g, "&"));
+    } catch (_) {
+      /* offline at install time — the shell fills in on later visits */
+    }
+  }
+  await Promise.all([...urls].map((u) => c.add(u).catch(() => {})));
+}
+
+async function trim(c) {
+  const keys = await c.keys();
+  const assets = keys.filter((k) => !SHELL.includes(new URL(k.url).pathname));
+  for (const k of assets.slice(0, Math.max(0, assets.length - MAX_ASSETS))) await c.delete(k);
+}
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}),
-  );
+  event.waitUntil(precache().catch(() => {}));
   self.skipWaiting();
 });
 
@@ -23,11 +53,15 @@ self.addEventListener("activate", (event) => {
   self.clients.claim();
 });
 
-// Network-first for navigations, falling back to the cached shell / offline page. API calls are
-// never cached (device-scoped, must be live).
+// Network-first for navigations, falling back to the cached shell / offline page. The build's
+// assets are content-hashed, so a cached copy is always the right one: served from the cache first,
+// and kept on the way through, so whatever a page loaded online is there for it offline. The font
+// is not hashed — served from the cache too, but refreshed behind it. API calls are never cached
+// (device-scoped, must be live).
 self.addEventListener("fetch", (event) => {
   const req = event.request;
-  if (req.method !== "GET" || new URL(req.url).pathname.startsWith("/api/")) return;
+  const url = new URL(req.url);
+  if (req.method !== "GET" || url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
   if (req.mode === "navigate") {
     event.respondWith(
       fetch(req)
@@ -42,7 +76,26 @@ self.addEventListener("fetch", (event) => {
         })
         .catch(() => caches.match(req).then((m) => m || caches.match("/offline"))),
     );
+    return;
   }
+  const hashed = url.pathname.startsWith("/_next/static/");
+  if (!hashed && !url.pathname.startsWith("/fonts/")) return;
+  event.respondWith(
+    caches.open(CACHE).then(async (c) => {
+      const hit = await c.match(req);
+      const fresh = fetch(req)
+        .then((res) => {
+          if (res.ok && res.type === "basic") c.put(req, res.clone()).then(() => trim(c)).catch(() => {});
+          return res;
+        })
+        .catch(() => hit || Response.error());
+      if (hit) {
+        if (!hashed) event.waitUntil(fresh);
+        return hit;
+      }
+      return fresh;
+    }),
+  );
 });
 
 self.addEventListener("push", (event) => {

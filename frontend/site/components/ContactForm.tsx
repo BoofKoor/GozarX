@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
@@ -11,7 +12,7 @@ import { Icon } from "@/components/Icon";
 // reply handle → stored server-side, read from the admin panel). No email/social. The whole card
 // flips to `.sent` on success; an empty message shows the `.field.err` inline error.
 export function ContactForm({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const { config } = useSite();
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");

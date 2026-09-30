@@ -1,24 +1,15 @@
-import { cookies, headers } from "next/headers";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/lib/i18n";
+import { notFound } from "next/navigation";
+import { isLocale, type Locale } from "@/lib/i18n";
 
-// Server-side locale resolution used by page/layout server components so the first render matches.
-// Order: an explicit `locale` cookie (the user's saved choice) → the browser's Accept-Language →
-// fa. Language is auto-detected, then overridable from settings/footer — never in the header.
-export async function getLocale(): Promise<Locale> {
-  const store = await cookies();
-  const raw = store.get("locale")?.value ?? "";
-  if (isLocale(raw)) return raw;
-  return localeFromAcceptLanguage((await headers()).get("accept-language"));
+// The locale of a page under `app/[lang]` — the segment `proxy.ts` rewrote the request onto. Pages
+// read it from their params instead of from the request (cookies, Accept-Language), because reading
+// the request made every page dynamic: nothing was cached, and each visit re-rendered the whole tree
+// (C-61). Anything else in the segment (a direct `/de/…`) is not a page.
+export type LangParams = Promise<{ lang: string }>;
+
+export async function localeOf(params: LangParams): Promise<Locale> {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+  return lang;
 }
 
-// Pick fa/en by whichever appears first in Accept-Language; default fa (the primary audience). e.g.
-// "en-US,en;q=0.9" → en, "fa-IR,fa;q=0.9,en;q=0.8" → fa, "de-DE" or missing → fa.
-export function localeFromAcceptLanguage(header: string | null): Locale {
-  const h = (header ?? "").toLowerCase();
-  const fa = h.indexOf("fa");
-  const en = h.indexOf("en");
-  if (fa === -1 && en === -1) return DEFAULT_LOCALE;
-  if (fa === -1) return "en";
-  if (en === -1) return "fa";
-  return fa <= en ? "fa" : "en";
-}

@@ -376,6 +376,16 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   (so does the widget when /status is unreachable). The home FAQ is the panel's first five, the
   locations copy names the squad's live list, the config link has a QR code, and a restore that
   would replace this browser's data asks first. `docs/website/audit/accept_e.py` checks all of it.
+27 The site audit's Phase F: performance and the SEO architecture. Every page is rendered ONCE and
+  served from the server's cache (`app/[lang]`, `revalidate = 300`) instead of on every visit —
+  `cookies()` in the root layout had made all of them dynamic. `proxy.ts` picks the language per
+  request and rewrites onto that tree, one URL per page (decision D3). The copy dictionaries left
+  the JavaScript (one locale travels in the page payload; 244 design and 75 chrome keys nothing read
+  are gone), and one 113 KB stylesheet became four files a page loads only when it draws them: the
+  home page's CSS 20.6 → 9.4 KB gzip, its JS 191.8 → 167.4 — over the 160 budget, ~144 KB of it
+  being Next's and React's runtime. Plus a share card per landing, the locations list in the HTML,
+  a service worker that keeps the shell's CSS/JS/fonts, and a manifest per language.
+  `docs/website/audit/accept_f.py` checks all of it.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -667,13 +677,59 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   site copy, landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`, `lib/faq`). Never
   `/status`: reading it mints a device. `/locations` takes an OPTIONAL device, so a cookieless server
   read resolves none and mints none.
+- **SEO is Persian-only (decision D3).** One URL per page — no `/en/…`, no hreflang — and English is
+  a display preference, not a second site. `proxy.ts` picks the language per request (the `locale`
+  cookie, then `Accept-Language`, then fa, so a crawler gets Persian) and REWRITES the request onto
+  `app/[lang]`; a typed `/fa/…` or `/en/…` is a 308 to the plain URL. Never `noindex` the English
+  render: its URL is the Persian page's. Because one URL answers in two languages, pages go out
+  `private, no-cache` (set in `next.config` `headers()` — Next overwrites what the proxy sets), so
+  no shared cache hands one visitor's language to the next; the ETag makes a repeat visit a 304.
+  Switching language sets the cookie and reloads: each language is its own root layout. Revisiting
+  D3 means a real `/en/` URL space with hreflang, not a flag.
+- **A page is rendered ONCE, so nothing under `app/[lang]` reads the request.** One `cookies()`,
+  `headers()` or `searchParams` in a page or layout makes every route a per-visit render again — the
+  layout's theme cookie did exactly that. What differs per visitor is the browser's: the theme is
+  set before first paint by the inline script in `SiteDocument`, and a query string (`?loc=`, `?q=`)
+  is read by `<QueryParam>`, which carries its OWN Suspense boundary — a bare `useSearchParams` makes
+  everything above it client-only up to the nearest one, and the widget and the FAQ list dropped
+  out of the HTML. The cache lives in memory (`isrFlushToDisk: false`): on disk every slug a scanner
+  invents under `/l/` left ~100 KB of cached 404 that nothing removed. `accept_f.py` fails a page
+  whose second request is not a cache HIT.
+- **The copy dictionaries never reach the JavaScript.** They live in `lib/copy` (`CHROME`,
+  `DESIGN_COPY`) and only server code imports it, through `translator(locale, overrides)`. A client
+  component calls `useT()`, fed once by `CopyProvider` with `clientCopy(locale, overrides)` — one
+  language with the panel's overrides applied, in the page payload: ~7 KB of HTML instead of ~21 KB
+  of JS holding both languages. Importing `lib/copy` from a `"use client"` module puts both
+  dictionaries back into every page. A key nothing reads is deleted, unless the panel can write it
+  (`site_copy_keys.py`).
+- **Internal links are `components/Link`** — `next/link` with `prefetch={false}`. On a static page
+  Next prefetches the WHOLE route for every link within 200px of the viewport, the closed phone
+  menu's included: its payload, the layout segment carrying the copy, and its JavaScript — 12
+  requests and ~36 KB of a phone's first visit, on a connection the visitor pays for.
+- **An unmatched path is drawn by `app/global-not-found.tsx`** (`experimental.globalNotFound`),
+  through the same `SiteDocument` as every page and in the language the proxy would pick: with the
+  root layout inside `[lang]` there is no layout for an ordinary not-found to render in. A page's own
+  `notFound()` (an unknown `/l/<slug>`) still gets Next's error shell with its content drawn in the
+  browser, as it did before — the status is 404 and the page `noindex`.
 - **Seeded copy changes by MIGRATION as well as in the seed.** `add_default` inserts only what is
   absent, so a reworded default never reaches a running install. Update the rows that still hold the
   OLD text verbatim (`4a1e7c9d2f80`, `a42488f9321a`) and nothing an operator wrote. The site's in-code
   fallbacks (`FAQ_ITEMS`, `DESIGN_COPY`) mirror the seed and `SITE_COPY_DEFAULTS` exactly.
-- **Every theme token lives in all FOUR blocks of `globals.css`** (auto-light, auto-dark,
-  `[data-theme=light]`, `[data-theme=dark]`). One missing resolves to nothing, silently: `--skel-1/2`
-  were never defined, so every skeleton was an empty box and the widget loaded as a blank card.
+- **Every theme token lives in all FOUR blocks of `styles/tokens.css`** (auto-light, auto-dark,
+  `[data-theme=light]`, `[data-theme=dark]`), and that file is GENERATED from `styles/tokens.mjs`
+  (`npm run tokens`); `npm run build` refuses a stale file or a token only one theme defines. One
+  missing resolved to nothing, silently: `--skel-1/2` were never defined, so every skeleton was an
+  empty box and the widget loaded as a blank card.
+- **A stylesheet is loaded by what draws it, and where a rule goes was MEASURED** (which rule
+  matches which element on which page, over 107 renders). `styles/base.css` holds every rule a
+  home-page state draws and is imported by the root layout; `claimed.css` the post-claim views,
+  imported by `widget/after` so it arrives with that lazy module; `status.css` only `/status`;
+  `pages.css` the rest, imported by each page that uses it. Splitting changes the CASCADE: a later
+  file beats `base.css` at equal specificity whatever the old order was, so a base rule that used to
+  come after — and override — one now in a later file moves with it (compare property FAMILIES:
+  `padding` against `padding-inline`). And `not-found.tsx` imports no CSS: the not-found boundary
+  is part of EVERY page's tree, and `pages.css` imported there took the home page's CSS from 9.4
+  to 13.3 KB.
 - **A skeleton that starts painting can start costing CLS.** Chromium only tracks nodes that paint,
   so while `--skel-*` were undefined the skeleton was invisible to layout-shift scoring as well as
   to the eye. Once it painted, React's reconciliation recycled its placeholder `div`s into the
@@ -802,6 +858,17 @@ and the Postgres password are reused, never rotated; a blank admin password keep
 - **A QR code is black on white in both themes**, one SVG path with the spec's four-module quiet
   zone, and its encoder (`uqr`) is imported on the first open — a visitor who never asks downloads
   nothing.
+- **The service worker installs the shell's assets, not only its HTML** (`CACHE` `gozarx-shell-v4`):
+  the CSS, JS and fonts the shells' HTML names are precached, and each hashed `/_next/static` file a
+  page loads is kept (at most 80). With only the HTML cached, `/offline` opened unstyled. A new
+  shell, or a change to what one loads, bumps `CACHE`.
+- **A share card is `app/og/[name]/route.tsx`** — outside `[lang]`, named `.png` (the proxy passes
+  anything with an extension through untouched), 1200×630. Its text is Latin only: Satori does not
+  join Persian letters. A landing with a location gets its flag, anything else the site card.
+- **One manifest per language** with the same `id: "/"`, so installing from either is one app; the
+  layout links the page's own. `any` and `maskable` are separate icons: a maskable icon is a
+  full-bleed square with the logo shrunk into its safe zone, which is what an `any maskable` icon
+  showed wherever no mask applies.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

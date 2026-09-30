@@ -1,8 +1,6 @@
-"use client";
-
-import { type Locale, faDigits, translator } from "@/lib/i18n";
-import { useSite } from "@/lib/useSite";
+import { type CopyOverrides, type Locale, faDigits } from "@/lib/i18n";
 import type { PublicStats } from "@/lib/api";
+import { translator } from "@/lib/copy";
 import { Icon } from "@/components/Icon";
 
 // STATS band — three LIVE, honest figures (no marketing fabrications): configs delivered (a real
@@ -11,10 +9,20 @@ import { Icon } from "@/components/Icon";
 // page for the hero chip anyway — so the band's figures are in the HTML rather than «—» placeholders
 // that a second client-side fetch filled in. A figure the backend could not give is LEFT OUT, not
 // printed as «—» (C-38): a dash in a stats band reads as "zero" or "broken", and neither is true.
-export function HomeStats({ locale, stats }: { locale: Locale; stats: PublicStats | null }) {
-  const t = translator(locale);
-  const { locations, loading } = useSite();
-
+// A server component: the location count is the squad's list as the page read it (`locations`), so
+// all three figures are in the HTML and the band costs no JavaScript.
+export function HomeStats({
+  locale,
+  stats,
+  locations,
+  copy,
+}: {
+  locale: Locale;
+  stats: PublicStats | null;
+  locations: string[] | null;
+  copy?: CopyOverrides;
+}) {
+  const t = translator(locale, copy);
   const intl = locale === "fa" ? "fa-IR" : "en-US"; // native grouping (٬) + decimals (٫) for fa
   const pct = locale === "fa" ? "٪" : "%";
   const locCount = locations?.length ?? 0;
@@ -28,9 +36,7 @@ export function HomeStats({ locale, stats }: { locale: Locale; stats: PublicStat
     },
     {
       icon: "pin",
-      // the location list is the one figure only the client has: a placeholder while it loads
-      // (so the band does not change shape as it arrives), and gone if it never does
-      n: locCount ? faDigits(String(locCount), locale) : loading ? "—" : null,
+      n: locCount ? faDigits(String(locCount), locale) : null,
       l: t("stat2"),
       live: true,
     },
