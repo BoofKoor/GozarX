@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { rewardMessage } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
@@ -61,7 +62,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   async function invite() {
     try {
       if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) toast(t("copied"));
+      else if (await copyText(link)) toast(t("invite_copied"));
     } catch {
       /* user cancelled the share sheet */
     }
@@ -75,11 +76,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
     if (pwa !== "installable") return;
     setBusy("pwa");
     try {
-      const ok = await promptInstall();
-      if (ok) {
-        await api.claimReward("pwa");
+      if (await promptInstall()) {
+        const r = await api.claimReward("pwa").catch(() => null);
         await reload();
-        toast("✓");
+        toast(rewardMessage(locale, r, config?.reward_pwa_mb, "m_pwa_done"));
       }
     } finally {
       setBusy(null);
@@ -93,9 +93,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
       await refreshPush(); // re-sync the shared push state (also updates the Settings switch)
       if (ok) {
-        await api.claimReward("push");
+        const r = await api.claimReward("push").catch(() => null);
         await reload();
-        toast("✓");
+        toast(rewardMessage(locale, r, config?.reward_push_mb, "m_push_done"));
       } else if (
         typeof Notification !== "undefined" &&
         Notification.permission !== "denied"
@@ -220,11 +220,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
         {t("rw_foot")}
       </div>
 
-      {flash && (
-        <div className="toast-wrap">
-          <div className="toast">{flash}</div>
-        </div>
-      )}
+      {/* The live region stays mounted: one inserted together with its text is not announced. */}
+      <div className="toast-wrap" role="status">
+        {flash && <div className="toast">{flash}</div>}
+      </div>
 
       {modal === "ios" && <IosSteps locale={locale} onClose={() => setModal(null)} />}
       {modal === "push" && (
@@ -386,9 +385,8 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
           </b>
           <small>{t("rw_keep")}</small>
         </div>
-        <div className="rw2-rail" dir="ltr">
-          {rail}
-        </div>
+        {/* flows with the page: day 1 at inline-start, so a Persian rail reads right to left */}
+        <div className="rw2-rail">{rail}</div>
       </div>
       <div className="rw2-cap">
         <Icon name={cap.icon} sw={2.6} cls={cap.cls} />

@@ -310,6 +310,13 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `site_device_days`, a mint is not a visit, windows shift back, traffic steps across counter
   resets, gauges and rates keep one population and one window, unknowns are «—». Security: tokens
   carry a credential version and a 30-day session cap.
+21 The public site audited the way phase 18 audited the panel — by rendering it (`docs/website/
+  audit/`: 68 code findings, 14 visual, measured probes, a six-phase fix plan A–F) — and its Phase A
+  shipped: skeletons that painted nothing, a reduced-motion override a duplicate rule outranked, the
+  revive block's broken invite field, the countdown's labels, three RTL fills/rails, Persian digits,
+  AA contrast, the active-page marker, and reward toasts that said «✓». The hero's two frozen
+  numbers («۲۴ ساعت», «+۱۲٬۰۰۰ کاربر») now come from `/config.trial_hours` and the real
+  delivered-configs count, and a data migration takes them out of the live FAQ as well.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -578,6 +585,47 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **`faDate` prints an INSTANT on the Tehran clock and a DAY KEY as that date.** Formatted in UTC, a
   timestamp from 00:00–03:30 local read as the day before.
 - **A unit is the locale's word** — `humanHours` said «۲۱s» (see `humanUptime`).
+
+## Website conventions (`frontend/site`)
+- **The site never states a number the backend does not.** A renewal window is `trial_hours`
+  (`/config`), a reward is `reward_*_mb`, social proof is `/stats`. Copy carries `{token}`s filled by
+  `fill()` (`lib/i18n`), which returns `null` when a value is missing — the caller hides the sentence
+  rather than print a guess or a raw `{h}`. The hero promised «هر ۲۴ ساعت» and «+۱۲٬۰۰۰ کاربر»:
+  constants no setting or count could ever move.
+- **A server render reads only DEVICE-INDEPENDENT endpoints** — `/config`, `/stats`, site copy,
+  landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`). Never `/status`: reading it mints
+  a device.
+- **Seeded copy changes by MIGRATION as well as in the seed.** `add_default` inserts only what is
+  absent, so a reworded default never reaches a running install. Update the rows that still hold the
+  OLD text verbatim (`4a1e7c9d2f80`, `a42488f9321a`) and nothing an operator wrote. The site's in-code
+  fallbacks (`FAQ_ITEMS`, `DESIGN_COPY`) mirror the seed and `SITE_COPY_DEFAULTS` exactly.
+- **Every theme token lives in all FOUR blocks of `globals.css`** (auto-light, auto-dark,
+  `[data-theme=light]`, `[data-theme=dark]`). One missing resolves to nothing, silently: `--skel-1/2`
+  were never defined, so every skeleton was an empty box and the widget loaded as a blank card.
+- **A skeleton that starts painting can start costing CLS.** Chromium only tracks nodes that paint,
+  so while `--skel-*` were undefined the skeleton was invisible to layout-shift scoring as well as
+  to the eye. Once it painted, React's reconciliation recycled its placeholder `div`s into the
+  resolved widget — the grid placeholder became `.cta-anchor` — and that node moving scored 0.13
+  CLS on a phone. A loading branch carries its own `key`, so resolving REPLACES it.
+- **The reduced-motion override must win.** A second `.reveal` rule, declared later, outranked the
+  `prefers-reduced-motion` one, so with motion off every below-the-fold section stayed at opacity 0 —
+  blank bands for exactly the visitors who asked for less. `audit.py` counts `stillHiddenReveals`
+  BEFORE it forces them in for a shot.
+- **No bidi-mirrored glyph stands in for an icon.** RTL mirrors `‹`/`›`, so a breadcrumb `‹` pointed
+  back at «خانه» in both languages; use the `chevr` icon with `ic-dir`. A fill grows from
+  inline-start and its gradient runs the same way, and a sequence with a reading order (the streak
+  rail) never takes `dir="ltr"`.
+- **One `faDigits`** (`lib/i18n`), which also turns the `.`/`,` between two digits into «٫»/«٬».
+  Technical strings — links, transfer codes, handles — stay Latin; a Latin unit inside Persian copy
+  sits in `<bdi dir="ltr">`.
+- **Class names are global.** The countdown's segments were `.seg` — the header's pill toggle — and
+  inherited its inline-flex, which put each unit label beside its digits instead of under them.
+- **Feedback is a sentence.** A reward toast says what was added (with the real amount), that it was
+  already taken, or that it failed — never «✓»/«—». A toast's `role="status"` wrapper stays mounted:
+  a live region inserted together with its text is not announced.
+- **Offer an action only where it can succeed.** The push mission hides once notifications are on,
+  once the visitor has blocked them, and where `PushManager` does not exist (iOS Safari outside an
+  installed web app) — there it was a button that could only fail.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "@/lib/server";
-import type { Locale } from "@/lib/i18n";
+import { type Locale, faDigits } from "@/lib/i18n";
 import { GUIDE_LABELS, guideFor } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 import { BrandIcon } from "@/components/BrandIcon";
@@ -74,7 +74,7 @@ export default async function GuidePage({ params }: { params: Promise<{ platform
         <div className="tl">
           {g.steps.map((s, i) => (
             <div className={`tstep${i === g.steps.length - 1 ? " last" : ""}`} key={i}>
-              <span className="tbadge">{i + 1}</span>
+              <span className="tbadge">{faDigits(i + 1, locale)}</span>
               <div className="tcard">
                 <strong>{s.t}</strong>
                 <p className="mt-2">{s.d}</p>

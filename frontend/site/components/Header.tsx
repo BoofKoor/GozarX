@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 
@@ -17,11 +17,18 @@ const NAV: { href: string; key: string }[] = [
   { href: "/contact", key: "nav_contact" },
 ];
 
+// A link is "here" on its own page and on anything under it (/guides → /guides/android) — marked for
+// sighted readers (.active) and screen readers (aria-current) alike.
+function isCurrent(pathname: string, href: string): boolean {
+  return href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(`${href}/`);
+}
+
 // Clean header — brand + nav + "My status" + burger. Language is auto-detected and theme follows
-// the device by default; both are changed from the mobile sheet, the footer, or the status-page
-// settings — deliberately NOT in the header bar (an fa searcher already implies the fa locale).
+// the device by default; both can be changed from the header's desktop controls, the mobile sheet,
+// the footer, or the status-page settings.
 export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "dark" }) {
   const router = useRouter();
+  const pathname = usePathname() ?? "/";
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
   const [themeState, setThemeState] = useState<string>(theme ?? "");
@@ -81,7 +88,12 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
           </Link>
           <nav className="mainnav">
             {NAV.map((n) => (
-              <Link key={n.href} className="navlink" href={n.href}>
+              <Link
+                key={n.href}
+                className={`navlink${isCurrent(pathname, n.href) ? " active" : ""}`}
+                aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
+                href={n.href}
+              >
                 {t(n.key)}
               </Link>
             ))}
@@ -105,14 +117,20 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
             />
             {/* brand-tint chip + person icon — the account cards' tile language. On mobile the
                 label hides and the chip collapses to the burger's exact footprint (CSS). */}
-            <Link className="acct-btn status-btn" href="/status" aria-label={t("nav_status")}>
+            <Link
+              className="acct-btn status-btn"
+              href="/status"
+              aria-label={t("nav_status")}
+              aria-current={isCurrent(pathname, "/status") ? "page" : undefined}
+            >
               <Icon name="user" sw={2} />
               <span className="acct-lbl">{t("nav_status")}</span>
             </Link>
             <button
               className="icon-only burger"
-              aria-label="menu"
+              aria-label={t("menu_open")}
               aria-expanded={sheet}
+              aria-controls="site-menu"
               onClick={() => setSheet(true)}
             >
               <svg className="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -125,12 +143,24 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
 
       {/* mobile sheet — nav + the language/theme controls (kept out of the header bar) */}
       <div className={`sheet-ov${sheet ? " open" : ""}`} onClick={() => setSheet(false)} />
-      <div className={`sheet${sheet ? " open" : ""}`} role="dialog" aria-modal="true" aria-label={t("nav.home")}>
+      <div
+        id="site-menu"
+        className={`sheet${sheet ? " open" : ""}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={t("menu_title")}
+      >
         <div className="sheet-handle" />
         <nav id="sheetnav">
           {[{ href: "/", key: "nav.home" }, ...NAV, { href: "/status", key: "nav_status" }].map(
             (n) => (
-              <Link key={n.href} className="navlink" href={n.href} onClick={() => setSheet(false)}>
+              <Link
+                key={n.href}
+                className={`navlink${isCurrent(pathname, n.href) ? " active" : ""}`}
+                aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
+                href={n.href}
+                onClick={() => setSheet(false)}
+              >
                 {t(n.key)}
               </Link>
             ),

@@ -23,7 +23,10 @@ html, body { min-height: 100%; }
 html { -webkit-text-size-adjust: 100%; }
 body { background: var(--bg, #f6f8fc); }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
-/* ---- Auto theme (no explicit choice → follow the OS; explicit [data-theme] always wins) ---- */
+/* ---- Auto theme (no explicit choice → follow the OS; explicit [data-theme] always wins) ----
+   A colour token lives in FOUR blocks: auto-light, auto-dark, [data-theme=light], [data-theme=dark].
+   A token missing from one is a silent bug in that theme only — --skel-1/--skel-2 existed only in
+   docs TOKENS.css, so every loading skeleton on the site painted nothing. Add to all four. */
 #app:not([data-theme="light"]):not([data-theme="dark"]){ --bg:#F6F8FC; --surface:#FFFFFF; --raised:#FFFFFF; --sunken:#F1F5F9; --sunken-2:#EEF2F8;
     --border:#E4E9F2; --border-strong:#D3DAE6; --text:#0F172A; --muted:#5E6B80; --faint:#7C8AA0;
     --primary:#2563EB; --primary-2:#1D4ED8; --primary-hover:#1D4ED8; --on-primary:#FFFFFF; --link:#2563EB; --ring:#3B82F6;
@@ -34,7 +37,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 24px rgba(37,99,235,.32); --glow-sm:0 4px 14px rgba(37,99,235,.28);
     --backdrop:rgba(15,23,42,.5); --logo-ink:#0F172A; --logo-accent:#2563EB;
     --hero-1:#2563EB; --hero-2:#06B6D4; --card-sheen:rgba(6,182,212,.10); --flag-ring:rgba(2,6,23,.08);
-    --band:#0B1220; --band-ink:#E5EDFF; }
+    --band:#0B1220; --band-ink:#E5EDFF; --accent:#06B6D4; --skel-1:#EAEFF7; --skel-2:#F4F7FC;
+    --grad-a:#2563EB; --grad-b:#0E7490; }
 @media (prefers-color-scheme: dark){
   #app:not([data-theme="light"]):not([data-theme="dark"]){ --bg:#020617; --surface:#0E1729; --raised:#182338; --sunken:#0A1120; --sunken-2:#111C31;
     --border:rgba(148,163,184,.16); --border-strong:rgba(148,163,184,.28); --text:#F1F5F9; --muted:#94A3B8; --faint:#64748B;
@@ -46,7 +50,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 28px rgba(59,130,246,.42); --glow-sm:0 4px 16px rgba(59,130,246,.36);
     --backdrop:rgba(2,6,23,.72); --logo-ink:#F1F5F9; --logo-accent:#3B82F6;
     --hero-1:#1E40AF; --hero-2:#0E7490; --card-sheen:rgba(6,182,212,.12); --flag-ring:rgba(255,255,255,.12);
-    --band:#0A1120; --band-ink:#E5EDFF; }
+    --band:#0A1120; --band-ink:#E5EDFF; --accent:#22D3EE; --skel-1:#141F33; --skel-2:#1C293F;
+    --grad-a:#60A5FA; --grad-b:#22D3EE; }
 }
 /* ============ GozarX — Phase 2: full homepage ============
      Built on the approved Phase 0 system + Phase 1 claim widget (real flags,
@@ -59,6 +64,10 @@ body { background: var(--bg, #f6f8fc); }
     --shadow-sm:0 1px 2px rgba(2,6,23,.06), 0 4px 12px rgba(2,6,23,.06);
     --shadow-md:0 2px 6px rgba(2,6,23,.06), 0 12px 32px rgba(2,6,23,.10);
     --shadow-hero:0 4px 14px rgba(2,6,23,.06), 0 28px 70px rgba(2,6,23,.20);
+    /* The far stop of every gradient that carries WHITE text (claim CTA, guide step badges). The
+       brand's bright cyan (--hero-2 #06B6D4) put the CTA's lighter half at ~3.7:1 and a step badge
+       at ~2.4:1; mixed toward cyan-700 the lightest point stays >= 4.5:1, hover included. */
+    --cta-end:#0E7490;
     min-height:100vh; background:var(--bg); color:var(--text); font-family:var(--font); line-height:var(--lh-body); font-size:16px; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s;
   }
 #app[data-theme="light"]{
@@ -72,7 +81,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 24px rgba(37,99,235,.32); --glow-sm:0 4px 14px rgba(37,99,235,.28);
     --backdrop:rgba(15,23,42,.5); --logo-ink:#0F172A; --logo-accent:#2563EB;
     --hero-1:#2563EB; --hero-2:#06B6D4; --card-sheen:rgba(6,182,212,.10); --flag-ring:rgba(2,6,23,.08);
-    --band:#0B1220; --band-ink:#E5EDFF;
+    --band:#0B1220; --band-ink:#E5EDFF; --accent:#06B6D4; --skel-1:#EAEFF7; --skel-2:#F4F7FC;
+    --grad-a:#2563EB; --grad-b:#0E7490;
   }
 #app[data-theme="dark"]{
     --bg:#020617; --surface:#0E1729; --raised:#182338; --sunken:#0A1120; --sunken-2:#111C31;
@@ -85,7 +95,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 28px rgba(59,130,246,.42); --glow-sm:0 4px 16px rgba(59,130,246,.36);
     --backdrop:rgba(2,6,23,.72); --logo-ink:#F1F5F9; --logo-accent:#3B82F6;
     --hero-1:#1E40AF; --hero-2:#0E7490; --card-sheen:rgba(6,182,212,.12); --flag-ring:rgba(255,255,255,.12);
-    --band:#0A1120; --band-ink:#E5EDFF;
+    --band:#0A1120; --band-ink:#E5EDFF; --accent:#22D3EE; --skel-1:#141F33; --skel-2:#1C293F;
+    --grad-a:#60A5FA; --grad-b:#22D3EE;
   }
 #app[data-locale="fa"]{ --font:"Yekan Bakh VF","Vazirmatn",Tahoma,"Segoe UI",system-ui,sans-serif; --lh-body:1.8; --lh-head:1.55; --ls-head:0; }
 #app[data-locale="en"]{ --font:"Inter Variable","Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --lh-body:1.6; --lh-head:1.2; --ls-head:-.01em; }
@@ -113,8 +124,8 @@ a{ color:inherit; }
 .btn.ghost{ background:transparent; color:var(--text); font-weight:600; }
 .btn.ghost:hover{ background:var(--brand-tint); color:var(--link); }
 .btn.lg{ font-size:16px; padding:14px 24px; }
-.cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); box-shadow:var(--glow); position:relative; overflow:hidden; }
-[dir="rtl"] .cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); }
+.cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow); position:relative; overflow:hidden; }
+[dir="rtl"] .cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
 #app[data-theme="dark"] .cta{ color:#EAF2FF; }
 .cta:hover{ filter:brightness(1.06); box-shadow:var(--glow),0 0 0 4px color-mix(in srgb,var(--primary) 16%,transparent); }
 .cta .ic-dir{ transition:transform .2s; }
@@ -211,7 +222,12 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr); gap:32px; align-items:center; }
 .hero-copy{ text-align:center; }
 .hero-copy h1{ font-size:clamp(30px,6vw,50px); font-weight:800; line-height:var(--lh-head); letter-spacing:var(--ls-head); margin:4px 0 16px; text-wrap:balance; }
-.hero-copy h1 .grad{ background:linear-gradient(120deg,var(--hero-1),var(--hero-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+/* Gradient TEXT is a measured colour pair, not decoration: it reads against the hero wash in both
+   themes. The brand gradient (--hero-1 → --hero-2) started at #1E40AF on #020617 in dark (~2.3:1)
+   and ended on bright cyan in light (~2.3:1 on the tinted wash); --grad-a/--grad-b keep every point
+   of the word >= 3:1, the large-text floor. Mirrored in RTL like the site's other gradients. */
+.hero-copy h1 .grad{ background:linear-gradient(120deg,var(--grad-a),var(--grad-b)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+[dir="rtl"] .hero-copy h1 .grad{ background-image:linear-gradient(240deg,var(--grad-a),var(--grad-b)); }
 .hero-copy .sub{ font-size:17px; color:var(--muted); max-width:34rem; margin:0 auto 22px; }
 /* trust chips ride a single horizontal rail on mobile (swipe) — no messy 2×2 wrap; edges fade to
    hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. */
@@ -271,6 +287,10 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-card[aria-pressed="true"] .loc-online{ border-color:var(--brand-tint); }
 .loc-check{ position:absolute; inset-block-start:6px; inset-inline-end:6px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--primary); color:#fff; display:none; place-items:center; box-shadow:var(--glow-sm); }
 .loc-card[aria-pressed="true"] .loc-check{ display:grid; }
+/* The popular card is the DEFAULT pick, so hiding its badge on selection meant nobody ever saw it.
+   It keeps the badge and drops the check instead — on a card under ~150px wide (phones, and the
+   desktop widget's 90px cards) the two collide. Selection still reads from the border, tint, ring. */
+.loc-card[aria-pressed="true"] .loc-rec ~ .loc-check{ display:none; }
 .loc-check .ic{ inline-size:12px; block-size:12px; }
 .loc-rec{ position:absolute; inset-block-start:-9px; inset-inline-start:10px; z-index:2; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; line-height:1.5; color:var(--warning-ink); background:var(--surface); border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; box-shadow:var(--shadow-sm); }
 .loc-rec svg{ inline-size:11px; block-size:11px; color:var(--warning); flex:none; }
@@ -291,12 +311,11 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-scroll > .loc-grid::-webkit-scrollbar-track{ background:transparent; }
 .loc-scroll::after{ content:""; position:absolute; inset-inline:0; inset-block-end:0; block-size:40px; background:linear-gradient(transparent,var(--surface)); pointer-events:none; opacity:0; transition:opacity .2s; }
 .loc-scroll.more::after{ opacity:1; }
-.loc-card[aria-pressed="true"] .loc-rec{ display:none; }
 .cta-wrap{ margin-block-start:20px; }
 .reassure{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 14px; margin-block-start:14px; }
 .reassure .r{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--muted); }
 .reassure .r .ic{ inline-size:14px; block-size:14px; color:var(--success); }
-.antibot{ display:flex; align-items:center; justify-content:center; gap:6px; margin-block-start:12px; font-size:11.5px; color:var(--faint); }
+.antibot{ display:flex; align-items:center; justify-content:center; gap:6px; margin-block-start:12px; font-size:11.5px; color:var(--muted); }
 .antibot .ic{ inline-size:13px; block-size:13px; }
 .status-head{ display:flex; align-items:center; gap:13px; margin-block-end:18px; }
 .status-ic{ inline-size:46px; block-size:46px; border-radius:14px; display:grid; place-items:center; flex:none; }
@@ -354,11 +373,18 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .meter .v{ font-weight:700; font-variant-numeric:tabular-nums; }
 .bar{ block-size:9px; border-radius:var(--r-pill); background:var(--sunken-2); overflow:hidden; }
 .bar>i{ display:block; block-size:100%; border-radius:var(--r-pill); background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); transition:inline-size .5s ease; }
+/* a fill grows from inline-start, so its gradient runs that way too — else RTL lights the wrong end */
+[dir="rtl"] .bar>i{ background-image:linear-gradient(270deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); }
+/* Countdown segments are `.cd-seg`, NOT `.seg`: `.seg` is the header's pill toggle, and inheriting
+   its display:inline-flex put each unit label BESIDE its digits instead of under them. The label is
+   copy (11px, --muted, AA) — the old 9px --faint caps measured 3.5:1, and letter-spacing broke the
+   Persian words apart; only the Latin labels get the small-caps treatment. */
 .cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; }
-.cd .seg2{ min-inline-size:46px; padding:8px 6px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); text-align:center; }
-.cd .seg2 b{ display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
-.cd .seg2 span{ font-size:9px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; }
-.cd .colon{ font-size:20px; font-weight:800; color:var(--faint); }
+.cd .cd-seg{ display:flex; flex-direction:column; align-items:center; gap:1px; min-inline-size:54px; padding:7px 8px 5px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); }
+.cd .cd-seg b{ font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; color:var(--text); }
+.cd .cd-seg span{ font-size:11px; font-weight:600; line-height:1.4; color:var(--muted); }
+#app[data-locale="en"] .cd .cd-seg span{ font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; }
+.cd .colon{ font-size:20px; font-weight:800; color:var(--muted); padding-block-end:16px; }
 .cd-label{ text-align:center; font-size:12.5px; color:var(--muted); margin-block-end:4px; }
 .divider{ block-size:1px; background:var(--border); margin-block:18px; border:0; }
 .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); }
@@ -369,7 +395,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:32px; block-size:32px; border-radius:8px; display:grid; place-items:center; margin-inline-end:-4px; }
 .x-btn:hover{ background:var(--border); color:var(--text); }
 .m-chips{ display:flex; flex-direction:column; gap:7px; }
-.m-chip{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; }
+.m-chip{ display:flex; align-items:center; gap:10px; text-align:start; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; }
 .m-chip:hover{ border-color:var(--primary); transform:translateX(2px); }
 [dir="rtl"] .m-chip:hover{ transform:translateX(-2px); }
 .m-chip .mi{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
@@ -498,6 +524,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* reveal on scroll — no-JS-safe: content is visible by default; the RevealObserver adds
    `reveal-js` to #app after mount, which arms the fade-up entrance, then adds `.in` per element. */
 .reveal{ opacity:1; transform:none; }
+/* Keep these the ONLY `.reveal` rules. A copy of the first one further down the file had the same
+   specificity and a later position, so it outranked the reduced-motion override below: visitors who
+   asked for less motion got every homepage section at opacity 0 until they scrolled to it. */
 #app.reveal-js .reveal{ opacity:0; transform:translateY(18px); transition:opacity .5s ease, transform .5s ease; }
 #app.reveal-js .reveal.in{ opacity:1; transform:none; }
 @media (prefers-reduced-motion:reduce){ #app *, #app *::before, #app *::after{ animation-duration:.01ms !important; transition-duration:.01ms !important; } #app.reveal-js .reveal{ opacity:1; transform:none; } }
@@ -529,9 +558,10 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* ---------- buttons ---------- */
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px; border:1px solid transparent; border-radius:var(--r-btn); cursor:pointer; font:inherit; font-size:15px; font-weight:700; padding:12px 18px; background:var(--primary); color:var(--on-primary); transition:background .18s, transform .1s, box-shadow .18s, filter .18s; }
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
+.btn.cta[aria-busy="true"]:disabled{ opacity:1; cursor:progress; }
 /* the primary claim CTA */
   .cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px;
-    color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2)));
+    color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end)));
     box-shadow:var(--glow); position:relative; overflow:hidden; }
 .cta::after{ content:""; position:absolute; inset:0; background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%); transform:translateX(-120%); }
 .cta:not(:disabled):hover::after{ animation:sheen 1.1s ease; }
@@ -568,10 +598,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .bar.warn>i{ background:linear-gradient(90deg,var(--warning),#fbbf24); }
 .bar.full>i{ background:linear-gradient(90deg,var(--danger),#f87171); }
 /* segmented countdown */
-  .cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; }
-.cd .seg{ min-inline-size:46px; padding:8px 6px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); text-align:center; }
-.cd .seg b{ display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; color:var(--text); }
-.cd .seg span{ font-size:9px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; }
 /* missions strip */
   .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); }
 .x-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
@@ -583,6 +609,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .revive .rt .ic{ inline-size:18px; block-size:18px; }
 .revive .rd{ font-size:13px; line-height:1.7; color:var(--text); margin:0 0 14px; }
 .revive .rd b{ color:var(--warning-ink); }
+.revive .revive-share{ margin-block-start:10px; }
 .revived-note{ display:none; align-items:center; gap:8px; margin-block-start:12px; font-size:13px; font-weight:700; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-ctl); padding:11px 14px; animation:reveal .35s ease; }
 .revived-note.show{ display:flex; }
 .revived-note .ic{ inline-size:17px; block-size:17px; }
@@ -670,7 +697,6 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .ring-mini .vl.warn{ stroke:var(--warning); }
 .ring-mini .vl.full{ stroke:var(--danger); }
 .ring-mini .pct{ position:absolute; inset:0; display:grid; place-items:center; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
-.cd-inline{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; display:inline-block; }
 .grid-main{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
 @media (min-width:860px){ .grid-main{ grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); align-items:start; } }
 .block-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:14px; }
@@ -745,10 +771,12 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .transfer-card p{ font-size:13px; color:var(--muted); margin:2px 0 0; }
 .code-input{ display:flex; gap:8px; margin-block-start:14px; }
 .code-input input{ flex:1; min-inline-size:0; font:inherit; font-family:ui-monospace,Consolas,monospace; font-size:16px; letter-spacing:.15em; text-transform:uppercase; text-align:center; color:var(--text); background:var(--surface); border:1.5px solid var(--border-strong); border-radius:var(--r-ctl); padding:12px; direction:ltr; }
+.code-input input::placeholder{ font-family:var(--font); font-size:14px; letter-spacing:normal; text-transform:none; color:var(--muted); }
 .code-input input:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
 .code-input.err input{ border-color:var(--danger); }
 .code-err{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:8px; }
 .code-input.err ~ .code-err{ display:block; }
+.code-err.show{ display:block; }
 /* modal */
   .overlay{ position:fixed; inset:0; z-index:100; background:var(--backdrop); display:none; align-items:center; justify-content:center; padding:20px; }
 .overlay.open{ display:flex; }
@@ -776,14 +804,13 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .sim-btns{ display:flex; gap:8px; justify-content:center; margin-block-start:6px; }
 footer.ft{ border-block-start:1px solid var(--border); background:var(--surface); margin-block-start:24px; }
 .devbar{ position:fixed; inset-block-end:14px; inset-inline:0; margin-inline:auto; inline-size:max-content; max-inline-size:calc(100vw - 20px); z-index:70; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-pill); padding:5px 6px 5px 12px; box-shadow:var(--shadow-md); font-size:12px; }
-#app.reveal-js .reveal{ opacity:0; transform:translateY(14px); transition:opacity .5s,transform .5s; }
 /* ============ GozarX — Phase 3: "More volume" missions page (/rewards) ============
      Same system + header/footer as the homepage. Fonts embedded. Mobile-first. */
   
   
   html,body{ margin:0; padding:0; }
-.btn.grad{ color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); box-shadow:var(--glow-sm); }
-[dir="rtl"] .btn.grad{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); }
+.btn.grad{ color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow-sm); }
+[dir="rtl"] .btn.grad{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
 #app[data-theme="dark"] .btn.grad{ color:#EAF2FF; }
 .btn.grad:hover{ filter:brightness(1.06); }
 /* header (same as homepage) */
@@ -897,7 +924,7 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .code-lg { font-size: clamp(22px, 6vw, 30px); letter-spacing: .16em; font-weight: 700; text-align: center; }
 .textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 12px 14px; min-height: 120px; resize: vertical; }
 .textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--brand-tint); }
-.hint { font-size: 13px; color: var(--faint); }
+.hint { font-size: 13px; color: var(--muted); }
 .err-text { color: var(--danger-ink); font-size: 13px; margin-top: 6px; }
 /* Base chip must precede the color modifiers so `.chip-success/-warning` win the cascade. */
 .chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
@@ -930,12 +957,12 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .field{ margin-block-end:16px; }
 .field label{ display:block; font-size:13.5px; font-weight:600; margin-block-end:7px; }
-.field .opt{ color:var(--faint); font-weight:500; }
+.field .opt{ color:var(--muted); font-weight:500; }
 .inp{ inline-size:100%; font:inherit; font-size:14.5px; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:11px 13px; }
 .inp:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
 textarea.inp{ resize:vertical; min-block-size:120px; line-height:1.7; }
 select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 20px) 55%,calc(100% - 15px) 55%; background-size:5px 5px; background-repeat:no-repeat; }
-[dir="rtl"] select.inp{ background-position:20px 55%,15px 55%; }
+[dir="rtl"] select.inp{ background-position:15px 55%,20px 55%; }
 .resp-note{ font-size:12.5px; color:var(--muted); margin-block-start:10px; display:flex; align-items:center; gap:6px; }
 .resp-note .ic{ inline-size:14px; block-size:14px; }
 .form-success{ display:none; text-align:center; padding:20px 0; }
@@ -1039,6 +1066,7 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw2-srow{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .rw2-ring{ position:relative; inline-size:52px; block-size:52px; flex:none; display:grid; place-items:center; }
 .rw2-ring svg{ position:absolute; inset:0; inline-size:100%; block-size:100%; transform:rotate(-90deg); }
+[dir="rtl"] .rw2-ring svg{ transform:rotate(-90deg) scaleY(-1); }
 .rw2-ring circle{ fill:none; stroke-width:3.5; }
 .rw2-ring .tr{ stroke:var(--border-strong); }
 .rw2-ring .pr{ stroke:var(--success); stroke-linecap:round; }
@@ -1091,7 +1119,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .rw2-pill.danger{ background:var(--danger-surface); color:var(--danger-ink); }
 .rw2-track{ inline-size:100%; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
 .rw2-track > i{ display:block; block-size:100%; border-radius:99px; background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
-[dir="rtl"] .rw2-track > i{ margin-inline-start:auto; }
+[dir="rtl"] .rw2-track > i{ background-image:linear-gradient(270deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
 .rw2-cnt{ font-size:11px; font-weight:700; color:var(--muted); }
 .rw2-cnt b{ color:var(--success-ink); }
 
@@ -1191,7 +1219,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .tstep:not(.last)::before{ content:""; position:absolute; inset-inline-start:20px; top:44px; bottom:-2px;
   inline-size:2px; background:linear-gradient(color-mix(in srgb,var(--primary) 45%,var(--border)), var(--border) 70%, transparent); }
 .tbadge{ flex:0 0 auto; inline-size:42px; block-size:42px; border-radius:50%;
-  background:linear-gradient(140deg,var(--hero-1),var(--hero-2)); color:#fff;
+  background:linear-gradient(140deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); color:#fff;
   display:grid; place-items:center; font-weight:800; font-size:17px; position:relative; z-index:1;
   box-shadow:0 8px 18px -8px color-mix(in srgb,var(--hero-2) 70%,transparent); }
 .tcard{ flex:1; min-inline-size:0; background:var(--surface); border:1px solid var(--border);
@@ -1268,10 +1296,10 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .meter.metric .bar{ block-size:10px; background:var(--border-strong); }
 /* countdown scaled to the card's own type scale (title 17-18px) — 27px digits shouted over the
    whole page; 20px keeps the timer prominent without dominating */
-.cfg .cd .seg{ min-inline-size:46px; padding:7px 6px; border-color:var(--border-strong);
+.cfg .cd .cd-seg{ padding:6px 8px 5px; border-color:var(--border-strong);
   background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
-.cfg .cd .seg b{ font-size:20px; }
-.cfg .cd .colon{ font-size:16px; }
+.cfg .cd .cd-seg b{ font-size:20px; }
+.cfg .cd .colon{ font-size:16px; padding-block-end:15px; }
 /* a standard-size "+" before the quick-add hint sentence */
 .apps .lbl{ display:flex; align-items:center; gap:6px; }
 .apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
@@ -1280,6 +1308,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .landing-page .crumbs{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-block-end:14px; }
 .landing-page .crumbs a{ color:var(--muted); text-decoration:none; }
 .landing-page .crumbs a:hover{ color:var(--text); }
+.landing-page .crumbs .crumb-sep{ inline-size:14px; block-size:14px; opacity:.7; flex:none; }
 .landing-page h1{ font-size:clamp(26px,4.2vw,34px); line-height:1.35; margin-block-end:14px; }
 /* admin-authored article body: comfortable fa reading rhythm (spec: ~38rem measure, 1.8 leading) */
 .landing-body{ max-inline-size:38rem; line-height:1.9; font-size:15.5px; color:var(--text); }
@@ -1359,6 +1388,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .acct-btn.status-btn{ display:inline-flex; }
 .acct-btn{ align-items:center; gap:8px; font-size:13.5px; font-weight:700; padding:9px 15px; border-radius:12px; background:var(--brand-tint); color:var(--brand-tint-ink); text-decoration:none; border:1px solid transparent; transition:background .15s; }
 .acct-btn:hover{ background:var(--brand-tint-2); }
+.acct-btn[aria-current="page"]{ border-color:color-mix(in srgb,var(--primary) 45%,transparent); }
 .acct-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .acct-btn .ic{ inline-size:16px; block-size:16px; flex:none; }
 

@@ -15,7 +15,7 @@ from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.health import uptime_pct
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_trial import SiteTrialService
+from gozar.services.site_trial import _DEFAULT_SITE_TRIAL_HOURS, SiteTrialService
 from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice
 
@@ -66,6 +66,10 @@ class PublicConfig(BaseModel):
     reward_push_mb: int = 0
     reward_streak_mb: int = 0
     streak_days: int = 0
+    # The rolling window a config lasts / renews on. Device-independent, so the site can render the
+    # hero's "fresh every Nh" server-side — /status carries it too, but reading /status mints a
+    # device, which a server render must never do.
+    trial_hours: int = _DEFAULT_SITE_TRIAL_HOURS
 
 
 def _service(request: Request, session) -> SiteTrialService:
@@ -104,6 +108,11 @@ async def get_config(request: Request, session: DbSession) -> PublicConfig:
         reward_push_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
         reward_streak_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),
         streak_days=await site_settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+        # Same floor as SiteTrialService._hours(), so the copy never promises a 0h window.
+        trial_hours=max(
+            await site_settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, _DEFAULT_SITE_TRIAL_HOURS),
+            1,
+        ),
     )
 
 

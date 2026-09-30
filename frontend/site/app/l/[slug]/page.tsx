@@ -6,6 +6,7 @@ import { translator } from "@/lib/i18n";
 import { fetchLanding, fetchLandings } from "@/lib/landing";
 import { breadcrumbLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
+import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 
 // SEO keyword landing — one URL per admin-authored `site_landing_pages` row («کانفیگ آلمان»,
@@ -71,7 +72,9 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
         />
         <nav className="crumbs" aria-label="breadcrumb">
           <Link href="/">{t("land_home")}</Link>
-          <span aria-hidden>‹</span>
+          {/* a mirrored icon, not a "‹" glyph — bidi mirrors that one in RTL, so it pointed back at
+              «خانه» in both languages and read as a parenthesis in Persian */}
+          <Icon name="chevr" sw={2.2} cls="ic-dir crumb-sep" />
           {/* bdi: the crumb label is row-locale text inside chrome that may run the other way */}
           <bdi>{row.heading ?? row.title}</bdi>
         </nav>

@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>ممیزی سایت GozarX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* layout: RTL reading column + a sticky contents rail on wide screens; the site's own Gozar blue */
+:root {
+  --bg:#F4F6FB; --surface:#FFFFFF; --sunken:#EEF2F8; --ink:#0F172A; --muted:#55627A; --line:#DDE3EE;
+  --accent:#2563EB; --accent-ink:#1D4ED8; --accent-tint:#E8F0FF;
+  --p1:#B91C1C; --p1-bg:#FDE8E8; --p2:#9A5B00; --p2-bg:#FEF1D6; --p3:#475569; --p3-bg:#EEF2F7;
+  --ok:#047857; --ok-bg:#DDF7EA; --shadow:0 1px 2px rgba(15,23,42,.05),0 8px 24px rgba(15,23,42,.06);
+  --f-body:"Vazirmatn",Tahoma,"Segoe UI",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#070C18; --surface:#0F182B; --sunken:#0B1322; --ink:#EEF2F9; --muted:#9AA7BD; --line:rgba(148,163,184,.18);
+  --accent:#60A5FA; --accent-ink:#93C5FD; --accent-tint:rgba(59,130,246,.16);
+  --p1:#FCA5A5; --p1-bg:rgba(239,68,68,.16); --p2:#FCD34D; --p2-bg:rgba(245,158,11,.15); --p3:#CBD5E1; --p3-bg:rgba(148,163,184,.14);
+  --ok:#6EE7B7; --ok-bg:rgba(16,185,129,.15); --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg:#070C18; --surface:#0F182B; --sunken:#0B1322; --ink:#EEF2F9; --muted:#9AA7BD; --line:rgba(148,163,184,.18);
+  --accent:#60A5FA; --accent-ink:#93C5FD; --accent-tint:rgba(59,130,246,.16);
+  --p1:#FCA5A5; --p1-bg:rgba(239,68,68,.16); --p2:#FCD34D; --p2-bg:rgba(245,158,11,.15); --p3:#CBD5E1; --p3-bg:rgba(148,163,184,.14);
+  --ok:#6EE7B7; --ok-bg:rgba(16,185,129,.15); --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25);
+  color-scheme: dark; }
+body { background:var(--bg); color:var(--ink); }
+.page { font-family:var(--f-body); font-size:15.5px; line-height:1.85; padding-inline:20px; padding-block:28px 64px;
+  max-width:1180px; margin-inline:auto; display:grid; gap:40px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:1080px) { .page { grid-template-columns:210px minmax(0,1fr); } }
+code, .mono { font-family:var(--f-mono); font-size:.86em; direction:ltr; unicode-bidi:isolate; }
+h1,h2,h3 { line-height:1.45; text-wrap:balance; margin:0; }
+h2 { font-size:22px; font-weight:800; margin-block-end:14px; }
+h3 { font-size:17px; font-weight:800; }
+p { margin:0; }
+a { color:var(--accent-ink); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; border-radius:6px; }
+/* rail */
+.rail { display:none; }
+@media (min-width:1080px) { .rail { display:block; position:sticky; top:calc(env(safe-area-inset-top,0px) + 20px); align-self:start; }
+  .rail nav { display:grid; gap:2px; border-inline-start:2px solid var(--line); padding-inline-start:12px; }
+  .rail a { text-decoration:none; color:var(--muted); font-size:13.5px; padding-block:5px; }
+  .rail a:hover { color:var(--ink); }
+  .rail .rt { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:0; margin-block-end:8px; } }
+.main { min-width:0; display:grid; gap:56px; }
+section { min-width:0; scroll-margin-top:16px; }
+/* masthead */
+.mast { display:grid; gap:14px; }
+.kicker { font-size:13px; font-weight:700; color:var(--accent-ink); }
+.mast h1 { font-size:clamp(26px,4.4vw,38px); font-weight:800; }
+.lede { font-size:17px; color:var(--muted); max-width:44rem; }
+.facts { display:flex; flex-wrap:wrap; gap:8px; margin-block-start:6px; }
+.fact { background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:4px 12px; font-size:13px; color:var(--muted); }
+.fact b { color:var(--ink); font-weight:700; }
+/* tallies */
+.tally { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; }
+.tally > div { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; }
+.tally .n { font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.3; }
+.tally .l { font-size:13px; color:var(--muted); }
+.tally .t1 .n { color:var(--p1); } .tally .t2 .n { color:var(--p2); } .tally .t3 .n { color:var(--p3); }
+/* verdict */
+.verdict { display:grid; gap:12px; max-width:48rem; }
+.clusters { margin:0; padding-inline-start:22px; display:grid; gap:6px; }
+/* scorecard */
+.score { list-style:none; margin:0; padding:0; display:grid; gap:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+.score li { display:flex; align-items:center; gap:10px; padding:10px 16px; }
+.score li + li { border-block-start:1px solid var(--line); }
+.sname { flex:1; min-width:0; }
+.dot { width:10px; height:10px; border-radius:50%; flex:none; }
+.d-good { background:var(--ok); } .d-fair { background:var(--accent); } .d-warn { background:var(--p2); } .d-bad { background:var(--p1); }
+.sval { font-size:13px; font-weight:700; padding:2px 10px; border-radius:999px; }
+.v-good { color:var(--ok); background:var(--ok-bg); } .v-fair { color:var(--accent-ink); background:var(--accent-tint); }
+.v-warn { color:var(--p2); background:var(--p2-bg); } .v-bad { color:var(--p1); background:var(--p1-bg); }
+/* tables */
+.tw { overflow-x:auto; background:var(--surface); border:1px solid var(--line); border-radius:16px; }
+table { border-collapse:collapse; width:100%; font-size:14px; }
+th, td { text-align:start; padding:10px 14px; vertical-align:top; }
+thead th { font-size:12.5px; color:var(--muted); font-weight:700; background:var(--sunken); }
+tbody tr + tr td { border-block-start:1px solid var(--line); }
+td.num { font-weight:800; color:var(--accent-ink); font-variant-numeric:tabular-nums; width:2.5em; }
+td.cost { white-space:nowrap; color:var(--muted); }
+.sev { display:inline-block; font-family:var(--f-mono); font-size:12px; font-weight:500; padding:1px 8px; border-radius:6px; white-space:nowrap; }
+.s1 { color:var(--p1); background:var(--p1-bg); } .s2 { color:var(--p2); background:var(--p2-bg); } .s3 { color:var(--p3); background:var(--p3-bg); }
+.s0 { color:var(--ok); background:var(--ok-bg); font-family:var(--f-body); }
+.ph { display:inline-grid; place-items:center; width:26px; height:26px; border-radius:8px; background:var(--accent-tint); color:var(--accent-ink); font-weight:800; font-family:var(--f-mono); font-size:13px; }
+/* evidence */
+.evgrid { display:grid; gap:18px; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); }
+.ev { margin:0; background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; display:flex; flex-direction:column; min-width:0; }
+.ev-wide { grid-column:1 / -1; }
+@media (min-width:760px) { .ev-mid { grid-column:span 2; } }
+.shot { background:var(--sunken); display:grid; place-items:center; padding:12px; border-block-end:1px solid var(--line); }
+.shot img { display:block; max-width:100%; height:auto; border-radius:8px; }
+.ev-tall .shot img { max-height:520px; width:auto; }
+.ev figcaption { padding:12px 14px 14px; display:grid; gap:6px; }
+.evhead { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.evhead b { font-size:15px; }
+.fid { color:var(--muted); }
+.ev p { font-size:13.5px; color:var(--muted); line-height:1.8; }
+/* phases */
+.flow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font-family:var(--f-mono); font-size:13px; color:var(--muted); margin-block-end:16px; }
+.flow .ph { width:30px; height:30px; }
+.phases { display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+.phase { background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:16px 18px; display:grid; gap:10px; align-content:start; }
+.phase header { display:flex; gap:12px; align-items:center; }
+.pl { width:40px; height:40px; border-radius:12px; display:grid; place-items:center; background:var(--accent); color:var(--surface); font-weight:800; font-size:18px; font-family:var(--f-mono); flex:none; }
+.pmeta { font-size:12.5px; color:var(--muted); }
+.phase ul { margin:0; padding-inline-start:20px; display:grid; gap:4px; font-size:14px; }
+.accept { font-size:13px; color:var(--muted); background:var(--sunken); border-radius:10px; padding:8px 12px; }
+.accept b { color:var(--ink); }
+/* filter + index */
+.filters { display:flex; flex-wrap:wrap; gap:6px; margin-block-end:12px; }
+.filters button { font:inherit; font-size:13px; border:1px solid var(--line); background:var(--surface); color:var(--muted); border-radius:999px; padding:4px 14px; cursor:pointer; min-height:36px; }
+.filters button[aria-pressed="true"] { background:var(--accent-tint); color:var(--accent-ink); border-color:var(--accent); font-weight:700; }
+.note { font-size:13.5px; color:var(--muted); }
+pre.cmd { background:var(--sunken); border:1px solid var(--line); border-radius:12px; padding:12px 14px; overflow-x:auto; direction:ltr; text-align:left; font-family:var(--f-mono); font-size:12.5px; line-height:1.7; margin:0; }
+.good-list { margin:0; padding-inline-start:22px; display:grid; gap:4px; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior:auto !important; } }
+</style>
+
+</head>
+<body>
+<div class="page" dir="rtl" lang="fa">
+  <aside class="rail" aria-label="فهرست">
+    <p class="rt">فهرست</p>
+    <nav>
+      <a href="#summary">خلاصه</a>
+      <a href="#score">کارنامه</a>
+      <a href="#top">ده مورد اول</a>
+      <a href="#evidence">شواهد تصویری</a>
+      <a href="#decisions">تصمیم‌های مالک</a>
+      <a href="#plan">پلن اصلاح</a>
+      <a href="#index">همهٔ یافته‌ها</a>
+      <a href="#method">روش و تکرار</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="mast" id="summary">
+      <p class="kicker">ممیزی UI/UX · سایت عمومی · <span class="mono">frontend/site</span></p>
+      <h1>ممیزی رابط و تجربهٔ کاربری سایت GozarX</h1>
+      <p class="lede">کل سایت یک بار از روی کد خوانده شد و یک بار روی رندر واقعی سنجیده شد: همهٔ صفحه‌ها،
+        همهٔ حالت‌های ویجت دریافت، دو زبان، دو تم و پنج عرض صفحه. این صفحه خلاصه، شواهد و پلن اصلاح است؛
+        جزئیات هر مورد با فایل و شمارهٔ خط در <span class="mono">docs/website/audit/</span> است.</p>
+      <div class="facts">
+        <span class="fact">کامیت <b class="mono">9b284a1</b></span>
+        <span class="fact"><b>۹۱</b> تصویر · ۵ عرض · ۲ تم · ۲ زبان</span>
+        <span class="fact"><b>۸۲</b> یافته (۶۸ از کد، ۱۴ از رندر)</span>
+        <span class="fact">مهر ۱۴۰۵</span>
+      </div>
+    </header>
+
+    <section aria-labelledby="h-verdict">
+      <h2 id="h-verdict">جمع‌بندی</h2>
+      <div class="tally">
+        <div class="t1"><div class="n">21</div><div class="l">P1 · اثر محسوس</div></div>
+        <div class="t2"><div class="n">48</div><div class="l">P2 · ناهمخوانی و صیقل</div></div>
+        <div class="t3"><div class="n">13</div><div class="l">P3 · جزئی</div></div>
+        <div><div class="n">۰</div><div class="l">P0 · جریان شکسته</div></div>
+      </div>
+      <div class="verdict" style="margin-block-start:18px">
+        <p>پایهٔ سایت خوب است: تم روشن و تاریک هماهنگ، RTL در بیشتر جاها درست، هیچ اسکرول افقی در هیچ
+          عرضی، جابه‌جایی چیدمان تقریباً صفر، فونت‌ها درست و بدون خطای کنسول. مسیر اصلی — انتخاب لوکیشن،
+          دریافت، کپی یا افزودن به اپ — کار می‌کند.</p>
+        <p>ضعف‌ها در پنج خوشه جمع شده‌اند:</p>
+        <ol class="clusters">
+          <li><b>ویجت در حالت‌های غیرخوش:</b> اسکلتون نامرئی، تایمری که در دقیقهٔ آخر یخ می‌زند، یک پیام برای
+            همهٔ خطاها، و بلوک «زنده کردن کانفیگ» که هم چیدمانش شکسته است هم بازخوردی ندارد.</li>
+          <li><b>تبدیل روی موبایل:</b> دکمهٔ اصلی روی گوشی زیر فولد است، ویجت لندینگ‌های سئو بعد از مقاله
+            می‌آید، و راهنمای اندروید فقط Google Play می‌دهد.</li>
+          <li><b>صداقت متن:</b> «+۱۲٬۰۰۰ کاربر» ثابت، «۲۴ ساعت» هاردکد، وعدهٔ QR که وجود ندارد، و «حساب
+            کاربری» در محصولی که شعارش «بدون حساب» است.</li>
+          <li><b>دسترس‌پذیری:</b> مودال‌ها و منو تلهٔ فوکوس ندارند، هدف‌های لمسی زیر ۴۴px، و ۳۲ بار Tab تا
+            دکمهٔ اصلی.</li>
+          <li><b>RTL در جزئیات:</b> ردیف استریک و نوار دعوت برعکس، جداکنندهٔ breadcrumb رو به عقب، واحد حجم
+            در سه شکل، و نام فارسی لوکیشن‌ها در UI انگلیسی.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="score" aria-labelledby="h-score">
+      <h2 id="h-score">کارنامه به تفکیک محور</h2>
+      <ul class="score"><li><span class="dot d-good"></span><span class="sname">زبان بصری و تم‌ها</span><span class="sval v-good">خوب</span></li><li><span class="dot d-good"></span><span class="sname">واکنش‌گرایی (۰ سرریز در ۳۶۰–۱۲۸۰)</span><span class="sval v-good">عالی</span></li><li><span class="dot d-good"></span><span class="sname">پایداری چیدمان (CLS≈۰)</span><span class="sval v-good">عالی</span></li><li><span class="dot d-good"></span><span class="sname">مسیر خوش دریافت</span><span class="sval v-good">کار می‌کند</span></li><li><span class="dot d-bad"></span><span class="sname">حالت‌های غیرخوش ویجت</span><span class="sval v-bad">ضعیف</span></li><li><span class="dot d-warn"></span><span class="sname">تبدیل روی موبایل و لندینگ</span><span class="sval v-warn">ضعیف</span></li><li><span class="dot d-warn"></span><span class="sname">صداقت و یکدستی متن</span><span class="sval v-warn">متوسط</span></li><li><span class="dot d-warn"></span><span class="sname">دسترس‌پذیری</span><span class="sval v-warn">متوسط</span></li><li><span class="dot d-fair"></span><span class="sname">RTL و زبان</span><span class="sval v-fair">خوب با باگ موضعی</span></li><li><span class="dot d-fair"></span><span class="sname">کارایی (JS ۲۲۳KB gzip)</span><span class="sval v-fair">قابل‌بهبود</span></li><li><span class="dot d-fair"></span><span class="sname">سئو (انگلیسی نامرئی)</span><span class="sval v-fair">قابل‌بهبود</span></li></ul>
+    </section>
+
+    <section id="top" aria-labelledby="h-top">
+      <h2 id="h-top">ده مورد اول: بیشترین اثر، کمترین هزینه</h2>
+      <div class="tw"><table>
+        <thead><tr><th>#</th><th>کار</th><th>شناسه</th><th>هزینهٔ تقریبی</th></tr></thead>
+        <tbody><tr><td class="num">1</td><td>اسکلتون‌ها دیده شوند (تعریف <code>--skel</code>)</td><td><code>C-57</code></td><td class="cost">۱۰ دقیقه</td></tr><tr><td class="num">2</td><td>چیدمان بلوک revive: CopyField + اشتراک</td><td><code>V-02</code></td><td class="cost">۱ ساعت</td></tr><tr><td class="num">3</td><td>حذف یا واقعی‌کردن «+۱۲٬۰۰۰ کاربر» و «۲۴ ساعت»</td><td><code>C-51 · C-52</code></td><td class="cost">۱ ساعت</td></tr><tr><td class="num">4</td><td>نگاشت دلیل خطا به حالت درست ویجت</td><td><code>C-01</code></td><td class="cost">نیم روز</td></tr><tr><td class="num">5</td><td>تایمر بر پایهٔ زمان مطلق + پرسش دوباره در صفر</td><td><code>C-03</code></td><td class="cost">نیم روز</td></tr><tr><td class="num">6</td><td>دکمهٔ اصلی بالای فولد موبایل</td><td><code>V-01</code></td><td class="cost">نیم روز</td></tr><tr><td class="num">7</td><td>ویجت بالای مقاله در لندینگ‌ها</td><td><code>C-26</code></td><td class="cost">۲ ساعت</td></tr><tr><td class="num">8</td><td><code>/locations</code> با پیش‌انتخاب <code>/?loc=</code></td><td><code>C-27</code></td><td class="cost">۱ ساعت</td></tr><tr><td class="num">9</td><td>APK مستقیم در راهنمای اندروید</td><td><code>C-28</code></td><td class="cost">۱ ساعت</td></tr><tr><td class="num">10</td><td>اصلاح RTL استریک، نوار دعوت و breadcrumb</td><td><code>C-45 · C-46 · C-49</code></td><td class="cost">۱ ساعت</td></tr></tbody>
+      </table></div>
+    </section>
+
+    <section id="evidence" aria-labelledby="h-ev">
+      <h2 id="h-ev">شواهد تصویری</h2>
+      <p class="note" style="margin-block-end:14px">همه از سایت build‌شده روی API ساختگی با نام‌های فارسی
+        لوکیشن مثل تولید. تصویرهای موبایل ۳۹۰px، تم روشن، مگر خلافش گفته شده باشد.</p>
+      <div class="evgrid">
+      <figure class="ev ev-tall">
+        <div class="shot"><img src="shots/01-home-fold-m390.webp" alt="دکمهٔ اصلی زیر فولد"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">V-01</code><b>دکمهٔ اصلی زیر فولد</b></div>
+          <p>گوشی ۳۹۰×۸۴۴، اولین صفحه. تیتر دوخطی، زیرعنوان چهارخطی و ردیف چیپ‌ها ویجت را پایین می‌برند؛ دکمهٔ «دریافت کانفیگ» حدود y=۸۸۶ است و دیده نمی‌شود.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-tall">
+        <div class="shot"><img src="shots/02-widget-loading-blank.webp" alt="اسکلتون بارگذاری هیچ چیزی رنگ نمی‌کند"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-57</code><b>اسکلتون بارگذاری هیچ چیزی رنگ نمی‌کند</b></div>
+          <p>ویجت در حال گرفتن <code>/status</code>. توکن‌های <code>--skel-1</code> و <code>--skel-2</code> فقط در <code>TOKENS.css</code> هستند؛ گرادیان نامعتبر می‌شود و کاربر کارت کاملاً سفید می‌بیند.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-tall">
+        <div class="shot"><img src="shots/03-cooldown-frozen-zero.webp" alt="تایمر روی ۰۰:۰۰:۰۰ یخ می‌زند"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-03</code><b>تایمر روی ۰۰:۰۰:۰۰ یخ می‌زند</b></div>
+          <p>بک‌اند زیر یک دقیقه <code>0m</code> می‌فرستد؛ شمارنده صفر می‌شود، یک بار <code>reload</code> می‌زند، همان رشته برمی‌گردد و ویجت دیگر به حالت دریافت برنمی‌گردد. ۲۰۰px پایین کارت هم خالی است.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-tall">
+        <div class="shot"><img src="shots/04-revive-broken.webp" alt="لحظهٔ طلایی revive شکسته است"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">V-02</code><b>لحظهٔ طلایی revive شکسته است</b></div>
+          <p>لینک دعوت بدون قاب، وسط کد بریده (<code>…ref=GZ-7KQ4-</code>)، دکمهٔ اشتراک به خط بعد رفته و دکمهٔ کپی نیست. با زنده‌شدن کانفیگ هم هیچ جشنی رخ نمی‌دهد.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/05-claim-errors-generic.webp" alt="چهار موقعیت متفاوت، یک پیام"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-01</code><b>چهار موقعیت متفاوت، یک پیام</b></div>
+          <p>از چپ به راست: بدون لوکیشن (S7)، خطای پنل، <code>not_ready</code>، <code>rate_limited</code>. سه‌تای آخر یک کارت «یک وقفهٔ کوتاه پیش آمد» می‌گیرند؛ <code>not_ready</code> باید S7 باشد و <code>rate_limited</code> یک تلاش خودکار.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/13-landing-widget-after-article.webp" alt="در لندینگ «کانفیگ آلمان» ویجت دیر می‌رسد"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-26</code><b>در لندینگ «کانفیگ آلمان» ویجت دیر می‌رسد</b></div>
+          <p>کاربری که از گوگل می‌آید اول کل مقاله را می‌بیند؛ ویجت حدود ۱٬۰۰۰px پایین‌تر است.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/14-guide-android.webp" alt="راهنمای اندروید: Google Play و رقم لاتین"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-28</code><b>راهنمای اندروید: Google Play و رقم لاتین</b></div>
+          <p>تنها دکمهٔ نصب Google Play است (از IP ایران دانلود نمی‌دهد)؛ قدم‌ها ۱،۲،۳ لاتین‌اند؛ قدم ۲ لینکی به صفحهٔ دریافت ندارد.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-mid">
+        <div class="shot"><img src="shots/16-dark-hero-gradient-contrast.webp" alt="تیتر تاریک و عدد ثابت کاربران"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">V-05</code><b>تیتر تاریک و عدد ثابت کاربران</b></div>
+          <p>سر گرادیان <code>#1E40AF</code> روی <code>#020617</code> حدود ۲٫۳:۱ است؛ «—» در ابتدای خط دوم یتیم مانده؛ چیپ <code>12,000+ users</code> ثابت و غیرقابل‌تأیید است.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/07-en-persian-location-names.webp" alt="UI انگلیسی با نام فارسی لوکیشن"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-44</code><b>UI انگلیسی با نام فارسی لوکیشن</b></div>
+          <p>remarkهای تولید فارسی‌اند، پس کاربر انگلیسی «آلمان، هلند…» می‌بیند؛ با نام انگلیسی هم «United Stat…» بریده می‌شود.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-tall">
+        <div class="shot"><img src="shots/09-rewards-rtl.webp" alt="کارت جایزه‌ها در RTL برعکس است"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s1">P1</span><code class="fid">C-45</code><b>کارت جایزه‌ها در RTL برعکس است</b></div>
+          <p>روز ۱ استریک سمت چپ است؛ نوار دعوت از لبهٔ چپ پر می‌شود؛ واحد «MB» کنار «مگابایت» در همان صفحه.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-mid">
+        <div class="shot"><img src="shots/11-breadcrumb-separator.webp" alt="جداکنندهٔ breadcrumb رو به عقب"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">C-49</code><b>جداکنندهٔ breadcrumb رو به عقب</b></div>
+          <p>کاراکتر ‹ در فارسی آینه و شبیه پرانتز می‌شود و در انگلیسی رو به «Home» است — در هر دو زبان به عقب اشاره می‌کند.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-mid">
+        <div class="shot"><img src="shots/10-transfer-placeholder-and-expiry.webp" alt="کد انتقال: placeholder گسسته، انقضای مبهم"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">V-07</code><b>کد انتقال: placeholder گسسته، انقضای مبهم</b></div>
+          <p>letter-spacing مونواسپیس حروف «کد ۸ کاراکتری» را از هم جدا کرده؛ «انقضا تا 10:00» با رقم لاتین شبیه ساعت خوانده می‌شود.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/06-location-unavailable-and-change.webp" alt="تغییر لوکیشن مثل یک دریافت تازه"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">V-03</code><b>تغییر لوکیشن مثل یک دریافت تازه</b></div>
+          <p>در حالت تغییر لوکیشن باز «دریافت کانفیگ» و «بدون ثبت‌نام/رایگان/هر ۲۴ ساعت» تکرار می‌شود؛ انصراف نیست.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/19-home-articles-trust-footer.webp" alt="مزرعهٔ لینک، و «حساب» کنار «بدون حساب»"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">V-08</code><b>مزرعهٔ لینک، و «حساب» کنار «بدون حساب»</b></div>
+          <p>۱۳ قرص عنوان سئویی (یکی دربارهٔ Hiddify که پشتیبانی نمی‌شود)، باند «هیچ حسابی لازم نیست» و ستون فوتر «حساب کاربری».</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/15-contact-about-privacy-offline-404.webp" alt="صفحات سیستمی و «دربارهٔ ما» ناتمام"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s2">P2</span><code class="fid">C-35</code><b>صفحات سیستمی و «دربارهٔ ما» ناتمام</b></div>
+          <p>تماس با عنوان «دربارهٔ ما و تماس»، دربارهٔ ما دو جمله، آفلاین وعدهٔ کانفیگی که نشان نمی‌دهد، 404 بی‌فاصله و لاتین.</p>
+        </figcaption>
+      </figure>
+      <figure class="ev ev-wide">
+        <div class="shot"><img src="shots/21-widget-dark-states.webp" alt="آنچه خوب است: تم تاریک ویجت"></div>
+        <figcaption>
+          <div class="evhead"><span class="sev s0">خوب</span><code class="fid">✓</code><b>آنچه خوب است: تم تاریک ویجت</b></div>
+          <p>حالت‌های S1، S4، S5 و S6 در تم تاریک تمیز و هماهنگ‌اند — این کیفیت باید در اصلاح‌ها حفظ شود.</p>
+        </figcaption>
+      </figure>
+      </div>
+    </section>
+
+    <section id="decisions" aria-labelledby="h-dec">
+      <h2 id="h-dec">تصمیم‌هایی که با شماست</h2>
+      <p class="note" style="margin-block-end:12px">این موارد سلیقه یا سیاست محصول‌اند و قبل از فاز مربوط باید
+        روشن شوند. پیشنهاد من در ستون سوم است.</p>
+      <div class="tw"><table>
+        <thead><tr><th></th><th>پرسش</th><th>پیشنهاد</th><th>فاز</th></tr></thead>
+        <tbody><tr><td><code>D1</code></td><td>نام صفحهٔ <code>/status</code> — «حساب کاربری» بماند؟</td><td>«کانفیگ من»؛ آیکون آدمک بماند</td><td><span class="ph">E</span></td></tr><tr><td><code>D2</code></td><td>چیپ «+۱۲٬۰۰۰ کاربر»</td><td>حذف، یا «X کانفیگ تحویل‌شده» از <code>/stats</code></td><td><span class="ph">A</span></td></tr><tr><td><code>D3</code></td><td>سئوی انگلیسی: <code>/en/</code> با hreflang، یا «سئو فقط فارسی»؟</td><td>اگر بازار انگلیسی مهم نیست: فقط فارسی و ثبت در <code>CLAUDE.md</code></td><td><span class="ph">F</span></td></tr><tr><td><code>D4</code></td><td>منبع نصب اندروید</td><td>APK از GitHub Release خود Happ اول، Google Play دوم</td><td><span class="ph">C</span></td></tr><tr><td><code>D5</code></td><td>کد QR</td><td>ساخته شود — برای گرفتن روی لپ‌تاپ و اسکن با گوشی</td><td><span class="ph">E</span></td></tr><tr><td><code>D6</code></td><td>تم سه‌حالته (سیستم/روشن/تاریک)</td><td>بله</td><td><span class="ph">D</span></td></tr><tr><td><code>D7</code></td><td>بلوک «راهنماها و مقالات» صفحهٔ اصلی</td><td>۳–۴ کارت منتخب + «همه»</td><td><span class="ph">C</span></td></tr></tbody>
+      </table></div>
+    </section>
+
+    <section id="plan" aria-labelledby="h-plan">
+      <h2 id="h-plan">پلن اصلاح در شش فاز</h2>
+      <p class="note" style="margin-block-end:12px">هر فاز یک شاخه و یک PR مستقل (قرارداد CLAUDE.md). معیار
+        پذیرش هر فاز با همان ابزار این ممیزی دوباره سنجیده می‌شود.</p>
+      <div class="flow" aria-label="ترتیب فازها"><span class="ph">A</span>←<span class="ph">B</span>←<span class="ph">C</span>
+        <span>·</span><span class="ph">D</span> موازی با B/C <span>·</span><span class="ph">E</span> بعد از D1/D5
+        <span>·</span><span class="ph">F</span> آخر، بعد از D3</div>
+      <div class="phases">
+      <article class="phase" id="phase-a">
+        <header><span class="pl">A</span><div><h3>چیزهای شکسته و بردهای سریع</h3><p class="pmeta">~۱ روز · ریسک پایین · 22 یافته</p></div></header>
+        <ul><li>توکن‌های <code>--skel-1</code> و <code>--skel-2</code> در هر ۴ بلوک تم</li><li>حذف قاعدهٔ تکراری <code>.reveal</code> (<code>globals.css:779</code>) تا کاهش‌حرکت کار کند</li><li>بلوک revive با <code>CopyField</code> و دکمهٔ اشتراک کنارش</li><li>شمارنده: کلاس <code>.cd-seg</code>، برچسب زیر عدد، ≥۱۱px، بدون letter-spacing فارسی</li><li>placeholder و زمان انقضای کد انتقال؛ breadcrumb با آیکون جهت‌دار</li><li>RTL استریک و نوار دعوت؛ ارقام فارسی (قدم‌ها، 404، انقضا)</li><li>کنتراست: <code>--faint</code> فقط تزئینی؛ گرادیان تیتر تاریک و CTA</li><li>«+۱۲٬۰۰۰ کاربر» (D2) و «۲۴ ساعت» ← <code>trial_hours</code></li><li><code>aria-current</code> و <code>.active</code> در منو؛ برچسب فارسی همبرگر</li><li>ماموریت‌ها با مبلغ، راست‌چین، toast کامل</li><li>پاکسازی لحن و اصطلاحات؛ فلش select؛ «۰ B»</li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> پروب کنتراست ۰ خطا · <code>stillHiddenReveals=0</code> زیر reduced-motion · اسکلتون دیده شود · لینک دعوت داخل قاب</p>
+      </article>
+      <article class="phase" id="phase-b">
+        <header><span class="pl">B</span><div><h3>درستی جریان دریافت و لحظهٔ طلایی</h3><p class="pmeta">~۲–۳ روز · بک‌اند + فرانت · 15 یافته</p></div></header>
+        <ul><li>نگاشت دلیل→حالت (S7، پیام درجا، یک تلاش خودکار، ریست Turnstile)</li><li>حالت «در حال بررسی امنیتی…» روی دکمه</li><li>بک‌اند: <code>cooldown_until</code> و <code>expires_at</code> مطلق؛ کلاینت تا همان لحظه می‌شمارد</li><li>S6: polling هنگام دیده‌شدن + جشن «زنده شد» + متن جایزه</li><li>تغییر لوکیشن: «تغییر به …»، انصراف، برچسب «فعلی»</li><li>حالت‌های کوتاه وسط ارتفاع رزرو</li><li>ماموریت اعلان هوشمند (iOS، مسدود، فعال)؛ بستن تا فردا</li><li>دکمه‌های اپ بر اساس سیستم‌عامل + «اپ را نداری؟»</li><li>radiogroup واقعی؛ دو ردیف + «همهٔ لوکیشن‌ها» به‌جای اسکرول تو‌در‌تو</li><li><code>aria-live</code> نتیجه؛ متن اشتراک؛ خوشامد <code>?ref=</code></li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> هر ۷ نتیجهٔ <code>mock_claim</code> حالت خودش · <code>cooldown0</code> ظرف ۶۰ ثانیه به S1 · S6 بدون رفرش جشن · Tab تا CTA ≤۱۲</p>
+      </article>
+      <article class="phase" id="phase-c">
+        <header><span class="pl">C</span><div><h3>تبدیل روی موبایل و مسیرهای ورود</h3><p class="pmeta">~۲ روز · 14 یافته</p></div></header>
+        <ul><li>هیروی موبایل فشرده؛ نوار CTA چسبان تا ویجت دیده نشده</li><li>لندینگ: ویجت فشردهٔ «کانفیگ رایگان {لوکیشن}» بالای مقاله</li><li><code>/locations</code> و پرچم‌های خانه ← <code>/?loc=</code> با پیش‌انتخاب</li><li>دکمهٔ «دریافت کانفیگ» در هدر؛ منوی موبایل با آیکون و صفحهٔ فعال</li><li>راهنما: APK (D4)، نکتهٔ Apple ID، لینک دریافت، افزودن یک‌لمسی، تصویر قدم‌ها</li><li>CTA فوتر وابسته به وضعیت؛ بلوک مقالات منتخب (D7)</li><li>کارت‌های اپ ← راهنمای همان پلتفرم؛ ردیف‌های حجم بیشتر ← لینک</li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> CTA در <code>home-fold-m360</code> و <code>m390</code> کامل دیده شود · ویجت لندینگ بالای فولد · «هلند» انتخاب‌شده برسد</p>
+      </article>
+      <article class="phase" id="phase-d">
+        <header><span class="pl">D</span><div><h3>زیرساخت دسترس‌پذیری و زبان</h3><p class="pmeta">~۲ روز · 10 یافته</p></div></header>
+        <ul><li><code>useFocusTrap</code> مشترک برای منو و مودال‌ها (همان الگوی پنل)</li><li>هدف لمسی ≥۴۴px روی موبایل</li><li>لینک پرش به محتوا؛ <code>aria-live</code>؛ <code>aria-controls</code></li><li>نام بومی لوکیشن با <code>Intl.DisplayNames</code>؛ نام دوخطی به‌جای برش</li><li>یک فرمت‌گر حجم: «۱٫۵ گیگابایت» / <code>1.5 GB</code></li><li>تم سه‌حالته (D6)؛ هوک مشترک زبان/تم؛ سرفصل‌ها</li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> <code>tapUnder44</code> فقط لینک درون‌متنی · Tab از منوی باز خارج نشود · UI انگلیسی «Germany»</p>
+      </article>
+      <article class="phase" id="phase-e">
+        <header><span class="pl">E</span><div><h3>محتوا، معماری اطلاعات، اعتماد</h3><p class="pmeta">~۱–۲ روز + محتوای مالک · 11 یافته</p></div></header>
+        <ul><li>تغییر نام «حساب کاربری» (D1)</li><li>تفکیک <code>/about</code> و <code>/contact</code>؛ دربارهٔ ما واقعی</li><li>صفحات حقوقی با فهرست و شماره‌گذاری</li><li>404 با جستجو، <code>error.tsx</code>، آفلاین با آخرین کانفیگ</li><li>FAQ یک‌منبعی و گسترده‌تر؛ متن پویای کشورها</li><li>هشدار جایگزینی در بازیابی؛ خطای ساخت کد؛ QR (D5)</li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> بدون متن ادعای اجرانشده · offline با کانفیگ کش‌شده</p>
+      </article>
+      <article class="phase" id="phase-f">
+        <header><span class="pl">F</span><div><h3>کارایی و معماری سئو</h3><p class="pmeta">~۳–۵ روز · وابسته به D3 · 10 یافته</p></div></header>
+        <ul><li>کپی سمت سرور یا per-locale؛ حذف ۲۵۳ کلید مرده</li><li>پاکسازی CSS مرده و تکراری؛ یک منبع توکن از <code>TOKENS.css</code></li><li>(D3) زبان در URL + hreflang؛ صفحات بازاریابی استاتیک/ISR</li><li>فهرست لوکیشن در HTML سرور؛ OG هر لندینگ</li><li>service worker با precache شل؛ manifest دوزبانه</li></ul>
+        <p class="accept"><b>معیار پذیرش:</b> JS صفحهٔ اصلی ≤۱۶۰KB gzip · CSS ≤۱۰KB gzip</p>
+      </article>
+      </div>
+    </section>
+
+    <section id="index" aria-labelledby="h-idx">
+      <h2 id="h-idx">همهٔ یافته‌ها</h2>
+      <div class="filters" role="group" aria-label="فیلتر شدت">
+        <button type="button" data-f="all" aria-pressed="true">همه (82)</button>
+        <button type="button" data-f="1" aria-pressed="false">P1 (21)</button>
+        <button type="button" data-f="2" aria-pressed="false">P2 (48)</button>
+        <button type="button" data-f="3" aria-pressed="false">P3 (13)</button>
+      </div>
+      <div class="tw"><table id="ftable">
+        <thead><tr><th>شناسه</th><th>شدت</th><th>یافته</th><th>فاز</th></tr></thead>
+        <tbody><tr data-sev="1"><td><code>C-01</code></td><td><span class="sev s1">P1</span></td><td>بیشتر شکست‌های دریافت به یک پیام خطای عمومی می‌روند</td><td><span class="ph">B</span></td></tr><tr data-sev="1"><td><code>C-02</code></td><td><span class="sev s1">P1</span></td><td>دکمهٔ اصلی در انتظار Turnstile بی‌صدا غیرفعال است</td><td><span class="ph">B</span></td></tr><tr data-sev="1"><td><code>C-03</code></td><td><span class="sev s1">P1</span></td><td>تایمر از رشتهٔ گردشده ساخته می‌شود و در دقیقهٔ آخر یخ می‌زند</td><td><span class="ph">B</span></td></tr><tr data-sev="1"><td><code>C-04</code></td><td><span class="sev s1">P1</span></td><td>زنده‌شدن کانفیگ (S6) نه polling دارد نه جشن نه دکمهٔ کپی</td><td><span class="ph">B</span></td></tr><tr data-sev="1"><td><code>C-05</code></td><td><span class="sev s1">P1</span></td><td>ماموریت‌ها مبلغ جایزه را نشان نمی‌دهند؛ بازخورد فقط «✓» یا «—»</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-06</code></td><td><span class="sev s2">P2</span></td><td>چیپ اعلان بعد از فعال یا مسدودشدن هم پیشنهاد می‌شود</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-07</code></td><td><span class="sev s2">P2</span></td><td>بستن نوار ماموریت‌ها ذخیره نمی‌شود</td><td><span class="ph">B</span></td></tr><tr data-sev="1"><td><code>C-08</code></td><td><span class="sev s1">P1</span></td><td>دکمه‌های اپ fallback ندارند و روی ویندوز اپ‌های نامربوط نشان می‌دهند</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-09</code></td><td><span class="sev s2">P2</span></td><td>متن سایت QR را وعده می‌دهد ولی QR وجود ندارد</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-10</code></td><td><span class="sev s2">P2</span></td><td>انتخابگر لوکیشن ARIA متناقض دارد و ۲۲ توقف Tab می‌سازد</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-11</code></td><td><span class="sev s2">P2</span></td><td>گرید لوکیشن اسکرول تو‌در‌تو روی موبایل می‌سازد</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-12</code></td><td><span class="sev s2">P2</span></td><td>نتیجهٔ دریافت برای صفحه‌خوان اعلام نمی‌شود</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-13</code></td><td><span class="sev s2">P2</span></td><td>حالت «در حال آماده‌سازی» برای پنل کند اطمینان نمی‌دهد</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-14</code></td><td><span class="sev s2">P2</span></td><td>اشتراک دعوت بی‌متن است؛ مهمان دعوت‌شده خوشامدی نمی‌بیند</td><td><span class="ph">B</span></td></tr><tr data-sev="3"><td><code>C-15</code></td><td><span class="sev s3">P3</span></td><td>لینک‌های S7/S8 بارگذاری کامل می‌کنند؛ «۲۴» حدسی</td><td><span class="ph">A</span></td></tr><tr data-sev="1"><td><code>C-16</code></td><td><span class="sev s1">P1</span></td><td>«حساب کاربری» با وعدهٔ «بدون حساب» در تضاد است</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-17</code></td><td><span class="sev s2">P2</span></td><td>بازیابی با کد بی‌هشدار هویت فعلی مرورگر را جایگزین می‌کند</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-18</code></td><td><span class="sev s2">P2</span></td><td>شکست ساخت کد انتقال بی‌صداست؛ زمان انقضا با رقم لاتین</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-19</code></td><td><span class="sev s2">P2</span></td><td>تم دوحالته است؛ بعد از انتخاب، «پیروی از سیستم» از دست می‌رود</td><td><span class="ph">D</span></td></tr><tr data-sev="2"><td><code>C-20</code></td><td><span class="sev s2">P2</span></td><td>کلید اعلان در تنظیمات بی‌توضیح غیرفعال می‌شود</td><td><span class="ph">E</span></td></tr><tr data-sev="3"><td><code>C-21</code></td><td><span class="sev s3">P3</span></td><td>بعد از پاک‌کردن داده پیام تأیید نمایش داده نمی‌شود</td><td><span class="ph">E</span></td></tr><tr data-sev="1"><td><code>C-22</code></td><td><span class="sev s1">P1</span></td><td>منو نشانگر صفحهٔ فعال ندارد</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-23</code></td><td><span class="sev s2">P2</span></td><td>در صفحات داخلی دکمهٔ «دریافت کانفیگ» در هدر نیست</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>C-24</code></td><td><span class="sev s2">P2</span></td><td>منوی موبایل: نام «خانه»، بدون تلهٔ فوکوس و قفل اسکرول</td><td><span class="ph">D</span></td></tr><tr data-sev="3"><td><code>C-25</code></td><td><span class="sev s3">P3</span></td><td>منطق زبان/تم سه بار تکرار شده؛ برچسب‌های انگلیسی</td><td><span class="ph">D</span></td></tr><tr data-sev="1"><td><code>C-26</code></td><td><span class="sev s1">P1</span></td><td>در لندینگ‌های سئو ویجت بعد از کل مقاله آمده</td><td><span class="ph">C</span></td></tr><tr data-sev="1"><td><code>C-27</code></td><td><span class="sev s1">P1</span></td><td>کلیک روی لوکیشن در <code>/locations</code> انتخاب را گم می‌کند</td><td><span class="ph">C</span></td></tr><tr data-sev="1"><td><code>C-28</code></td><td><span class="sev s1">P1</span></td><td>راهنمای اندروید فقط Google Play می‌دهد که از ایران دانلود نمی‌دهد</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>C-29</code></td><td><span class="sev s2">P2</span></td><td>قدم ۲ راهنما «به صفحهٔ دریافت برو» لینک ندارد</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>C-30</code></td><td><span class="sev s2">P2</span></td><td>راهنماها تصویر ندارند</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>C-31</code></td><td><span class="sev s2">P2</span></td><td>شمارهٔ قدم‌های راهنما با رقم لاتین</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-32</code></td><td><span class="sev s2">P2</span></td><td>آکاردئون عیب‌یابی با آکاردئون سوالات فرق دارد</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>C-33</code></td><td><span class="sev s2">P2</span></td><td><code>/about</code> و <code>/contact</code> محتوای تکراری دارند</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-34</code></td><td><span class="sev s2">P2</span></td><td>صفحات حقوقی از طرح پیروی نمی‌کنند</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-35</code></td><td><span class="sev s2">P2</span></td><td>404 و آفلاین حداقلی‌اند؛ صفحهٔ 500 وجود ندارد</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-36</code></td><td><span class="sev s2">P2</span></td><td>دو منبع FAQ؛ حالت خالی جستجو راه «بپرس» ندارد</td><td><span class="ph">E</span></td></tr><tr data-sev="3"><td><code>C-37</code></td><td><span class="sev s3">P3</span></td><td>کارت‌های اپ به راهنمای عمومی می‌روند؛ «Desktop» ترجمه نشده</td><td><span class="ph">C</span></td></tr><tr data-sev="3"><td><code>C-38</code></td><td><span class="sev s3">P3</span></td><td>ردیف‌های «حجم بیشتر» شبیه لینک‌اند ولی نیستند</td><td><span class="ph">C</span></td></tr><tr data-sev="1"><td><code>C-39</code></td><td><span class="sev s1">P1</span></td><td>مودال‌ها تلهٔ فوکوس، بازگشت فوکوس، قفل اسکرول و نام ندارند</td><td><span class="ph">D</span></td></tr><tr data-sev="1"><td><code>C-40</code></td><td><span class="sev s1">P1</span></td><td>هدف‌های لمسی زیر ۴۴px روی موبایل</td><td><span class="ph">D</span></td></tr><tr data-sev="2"><td><code>C-41</code></td><td><span class="sev s2">P2</span></td><td>لینک «پرش به محتوا» وجود ندارد</td><td><span class="ph">D</span></td></tr><tr data-sev="2"><td><code>C-42</code></td><td><span class="sev s2">P2</span></td><td>کپی، toast و خطای فرم برای صفحه‌خوان اعلام نمی‌شوند</td><td><span class="ph">D</span></td></tr><tr data-sev="3"><td><code>C-43</code></td><td><span class="sev s3">P3</span></td><td>آکاردئون‌ها <code>aria-controls</code> ندارند</td><td><span class="ph">D</span></td></tr><tr data-sev="1"><td><code>C-44</code></td><td><span class="sev s1">P1</span></td><td>نام لوکیشن‌ها در UI انگلیسی فارسی می‌ماند</td><td><span class="ph">D</span></td></tr><tr data-sev="1"><td><code>C-45</code></td><td><span class="sev s1">P1</span></td><td>ردیف روزهای استریک در فارسی از چپ شروع می‌شود</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-46</code></td><td><span class="sev s2">P2</span></td><td>نوار پیشرفت دعوت در RTL از لبهٔ چپ پر می‌شود</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-47</code></td><td><span class="sev s2">P2</span></td><td>واحد حجم در سه شکل؛ چیپ حجم «GB ۱» واژگون</td><td><span class="ph">D</span></td></tr><tr data-sev="2"><td><code>C-48</code></td><td><span class="sev s2">P2</span></td><td>برچسب‌های شمارنده ۹px، letter-spacing روی فارسی، تداخل کلاس <code>.seg</code></td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-49</code></td><td><span class="sev s2">P2</span></td><td>جداکنندهٔ breadcrumb در هر دو زبان رو به عقب است</td><td><span class="ph">A</span></td></tr><tr data-sev="3"><td><code>C-50</code></td><td><span class="sev s3">P3</span></td><td>رقم لاتین پراکنده؛ <code>faDigits</code> تکراری</td><td><span class="ph">A</span></td></tr><tr data-sev="1"><td><code>C-51</code></td><td><span class="sev s1">P1</span></td><td>عدد ثابت «+۱۲٬۰۰۰ کاربر» در هیرو</td><td><span class="ph">A</span></td></tr><tr data-sev="1"><td><code>C-52</code></td><td><span class="sev s1">P1</span></td><td>«۲۴ ساعت» هاردکد در هیرو و FAQ</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-53</code></td><td><span class="sev s2">P2</span></td><td>متن‌هایی که ممکن است با واقعیت نخوانند (کشورها، QR، «همهٔ کلاینت‌ها»)</td><td><span class="ph">E</span></td></tr><tr data-sev="2"><td><code>C-54</code></td><td><span class="sev s2">P2</span></td><td>لحن ناهمگون: «تو» و «شما»، «کلیک کنید» روی موبایل</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-55</code></td><td><span class="sev s2">P2</span></td><td>اصطلاحات ناهمگون: «استریک»، «وب‌اپ/PWA»، بخش ناموجود «حجم بیشتر»</td><td><span class="ph">A</span></td></tr><tr data-sev="3"><td><code>C-56</code></td><td><span class="sev s3">P3</span></td><td>۲۵۳ کلید از ۴۹۲ کلید کپی استفاده نمی‌شوند</td><td><span class="ph">F</span></td></tr><tr data-sev="1"><td><code>C-57</code></td><td><span class="sev s1">P1</span></td><td>همهٔ اسکلتون‌ها نامرئی‌اند (توکن <code>--skel</code> تعریف نشده)</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>C-58</code></td><td><span class="sev s2">P2</span></td><td>توکن‌های تم چهار بار تعریف شده‌اند و از <code>TOKENS.css</code> جا مانده‌اند</td><td><span class="ph">F</span></td></tr><tr data-sev="2"><td><code>C-59</code></td><td><span class="sev s2">P2</span></td><td>۹۸KB CSS مسدودکنندهٔ رندر با بخش‌های مرده و تکراری</td><td><span class="ph">F</span></td></tr><tr data-sev="2"><td><code>C-60</code></td><td><span class="sev s2">P2</span></td><td>ارتفاع رزروشدهٔ ۶۱۰px در حالت‌های کوتاه فضای خالی می‌سازد</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>C-61</code></td><td><span class="sev s2">P2</span></td><td>هیچ صفحه‌ای استاتیک/ISR نیست</td><td><span class="ph">F</span></td></tr><tr data-sev="3"><td><code>C-62</code></td><td><span class="sev s3">P3</span></td><td>لایهٔ کلاس‌های قدیمی کنار سیستم طراحی: دو زبان بصری</td><td><span class="ph">F</span></td></tr><tr data-sev="3"><td><code>C-63</code></td><td><span class="sev s3">P3</span></td><td>پرچم‌های بالای فولد lazy بارگذاری می‌شوند</td><td><span class="ph">F</span></td></tr><tr data-sev="1"><td><code>C-64</code></td><td><span class="sev s1">P1</span></td><td>نسخهٔ انگلیسی قابل ایندکس نیست (کوکی به‌جای URL)</td><td><span class="ph">F</span></td></tr><tr data-sev="2"><td><code>C-65</code></td><td><span class="sev s2">P2</span></td><td>فهرست لوکیشن‌ها در <code>/locations</code> فقط سمت کلاینت است</td><td><span class="ph">F</span></td></tr><tr data-sev="3"><td><code>C-66</code></td><td><span class="sev s3">P3</span></td><td>تصویر OG همه‌جا آیکون مربعی است</td><td><span class="ph">F</span></td></tr><tr data-sev="2"><td><code>C-67</code></td><td><span class="sev s2">P2</span></td><td>آفلاین: CSS/JS کش نمی‌شود، آخرین کانفیگ نگه داشته نمی‌شود</td><td><span class="ph">E</span></td></tr><tr data-sev="3"><td><code>C-68</code></td><td><span class="sev s3">P3</span></td><td>manifest: توضیح انگلیسی، آیکون maskable ترکیبی، بدون <code>lang</code>/<code>id</code></td><td><span class="ph">F</span></td></tr><tr data-sev="1"><td><code>V-01</code></td><td><span class="sev s1">P1</span></td><td>روی گوشی ۳۹۰×۸۴۴ دکمهٔ «دریافت کانفیگ» زیر فولد است</td><td><span class="ph">C</span></td></tr><tr data-sev="1"><td><code>V-02</code></td><td><span class="sev s1">P1</span></td><td>بلوک revive: لینک دعوت بی‌قاب، بریده و بدون دکمهٔ کپی</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-03</code></td><td><span class="sev s2">P2</span></td><td>حالت تغییر لوکیشن همان دکمه و متن‌های «دریافت» را تکرار می‌کند</td><td><span class="ph">B</span></td></tr><tr data-sev="2"><td><code>V-04</code></td><td><span class="sev s2">P2</span></td><td>ردیف‌های ماموریت داخل ویجت وسط‌چین و بی‌مبلغ‌اند</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-05</code></td><td><span class="sev s2">P2</span></td><td>کلمهٔ گرادیانی تیتر در تم تاریک ≈۲٫۳:۱</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-06</code></td><td><span class="sev s2">P2</span></td><td>متن سفید روی گرادیان آبی→فیروزه‌ای زیر AA</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-07</code></td><td><span class="sev s2">P2</span></td><td>placeholder کد انتقال حروف فارسی را جدا می‌کند و بریده است</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-08</code></td><td><span class="sev s2">P2</span></td><td>بلوک «راهنماها و مقالات» شبیه مزرعهٔ لینک و در فوتر تکرار</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>V-09</code></td><td><span class="sev s2">P2</span></td><td>فوتر به دارندهٔ کانفیگ می‌گوید «هنوز نگرفته‌ای؟»</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>V-10</code></td><td><span class="sev s2">P2</span></td><td>منوی موبایل بدون آیکون، صفحهٔ فعال و CTA</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>V-11</code></td><td><span class="sev s2">P2</span></td><td>کارت لوکیشن دسکتاپ کم‌عرض؛ پرچم‌ها قابل‌کلیک نیستند</td><td><span class="ph">C</span></td></tr><tr data-sev="2"><td><code>V-12</code></td><td><span class="sev s2">P2</span></td><td>کاربران reduced-motion محتوای صفحهٔ اصلی را نمی‌بینند تا اسکرول کنند</td><td><span class="ph">A</span></td></tr><tr data-sev="2"><td><code>V-13</code></td><td><span class="sev s2">P2</span></td><td>ماموریت اعلان روی iOS نصب‌نشده بن‌بست است</td><td><span class="ph">B</span></td></tr><tr data-sev="3"><td><code>V-14</code></td><td><span class="sev s3">P3</span></td><td>یازده جزئیات بصری (فلش select، «۰ B»، دکمهٔ مشغول، …)</td><td><span class="ph">A</span></td></tr></tbody>
+      </table></div>
+    </section>
+
+    <section id="method" aria-labelledby="h-m">
+      <h2 id="h-m">روش و تکرار ممیزی</h2>
+      <div class="verdict">
+        <p>مرحله ۱ خط مبنا (اسپک در برابر پیاده‌سازی)، مرحله ۲ خواندن همهٔ کد سایت و API عمومی، مرحله ۳ اجرای
+          سایت build‌شده روی API ساختگی و گرفتن ۹۱ تصویر، مرحله ۴ بازبینی تصویرها و پروب‌های خودکار
+          (کنتراست، سرریز، هدف لمسی، ارقام، کیبورد، CLS، وزن)، مرحله ۵ همین گزارش. هر مرحله در یک فایل
+          جدا ذخیره و کامیت شده است.</p>
+        <p><b>آنچه خوب است و باید حفظ شود:</b></p>
+        <ul class="good-list">
+          <li>صفر اسکرول افقی در ۳۶۰ تا ۱۲۸۰ روی همهٔ صفحات</li>
+          <li>CLS برابر ۰ در صفحهٔ اصلی و لندینگ، حتی با API کند</li>
+          <li>تم تاریک ویجت، کارت‌ها و مودال‌ها</li>
+          <li>جزیرهٔ LTR لینک کانفیگ و fallback کپی دستی برای WebView تلگرام</li>
+          <li>حلقهٔ فوکوس کیبورد روی همهٔ کنترل‌ها</li>
+        </ul>
+        <pre class="cmd">cd frontend/site &amp;&amp; npm ci &amp;&amp; npm run build
+python3 docs/website/audit/mockapi.py &amp;
+BACKEND_ORIGIN=http://127.0.0.1:8000 npx next start -p 3100 &amp;
+python3 docs/website/audit/audit.py /tmp/shots
+python3 docs/website/audit/probe_extra.py /tmp/shots</pre>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+  var btns = document.querySelectorAll('.filters button');
+  var rows = document.querySelectorAll('#ftable tbody tr');
+  btns.forEach(function (b) {
+    b.addEventListener('click', function () {
+      var f = b.getAttribute('data-f');
+      btns.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      rows.forEach(function (r) { r.hidden = !(f === 'all' || r.getAttribute('data-sev') === f); });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

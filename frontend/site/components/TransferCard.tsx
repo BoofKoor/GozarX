@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 
 // Device transfer — faithful reproduction of the design's `.transfer-card`. Two halves:
@@ -30,6 +30,7 @@ export function TransferCard({ locale }: { locale: Locale }) {
   const [restoreErr, setRestoreErr] = useState(false);
   const [restored, setRestored] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [genErr, setGenErr] = useState(false);
 
   // Derive the mm:ss remaining from an absolute deadline — NOT a per-tick decrement. The whole point
   // of a transfer code is to walk to another device (this tab backgrounded); a per-fire counter would
@@ -50,14 +51,21 @@ export function TransferCard({ locale }: { locale: Locale }) {
     return () => clearInterval(id);
   }, [deadline]);
 
+  // A refused or failed request says so — it used to leave the button sitting there as if the tap
+  // had not registered.
   async function generate() {
     setBusy(true);
+    setGenErr(false);
     try {
       const res = await api.createTransfer();
       if (res.ok && res.code) {
         setCode(res.code);
         setDeadline(Date.now() + (res.expires_in ?? 600) * 1000);
+      } else {
+        setGenErr(true);
       }
+    } catch {
+      setGenErr(true);
     } finally {
       setBusy(false);
     }
@@ -111,20 +119,27 @@ export function TransferCard({ locale }: { locale: Locale }) {
           </div>
           <div className="expiry">
             <Icon name="clock" sw={2} />
-            <span>{t("tm_expiry")}</span> <b>{mmss(left)}</b>
+            <span>{t("tm_expiry")}</span> <b>{faDigits(mmss(left), locale)}</b>
           </div>
         </>
       ) : (
-        <button
-          className="btn block"
-          type="button"
-          disabled={busy}
-          onClick={generate}
-          style={{ marginBlockStart: 14 }}
-        >
-          <Icon name="device" sw={2} />
-          {t("transfer.generate")}
-        </button>
+        <>
+          <button
+            className="btn block"
+            type="button"
+            disabled={busy}
+            onClick={generate}
+            style={{ marginBlockStart: 14 }}
+          >
+            <Icon name="device" sw={2} />
+            {t("transfer.generate")}
+          </button>
+          {genErr && (
+            <p className="code-err show" role="alert">
+              {t("tm_gen_err")}
+            </p>
+          )}
+        </>
       )}
 
       <hr className="divider" style={{ margin: "18px 0" }} />

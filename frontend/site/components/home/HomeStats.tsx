@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api, type PublicStats } from "@/lib/api";
 import { Icon } from "@/components/Icon";
@@ -9,9 +9,6 @@ import { Icon } from "@/components/Icon";
 // STATS band — three LIVE, honest figures (no marketing fabrications): configs delivered (a real
 // count of claim rows), the active-location count (with a green "online" pulse), and rolling uptime
 // (the share of health samples that weren't "down"). All read straight from the public API.
-function faDigits(s: string, locale: Locale) {
-  return locale === "fa" ? s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : s;
-}
 
 export function HomeStats({ locale }: { locale: Locale }) {
   const t = translator(locale);

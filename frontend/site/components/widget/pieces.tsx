@@ -162,18 +162,21 @@ function humanBytes(n: number): string {
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
 // Passing `remainingBytes` switches on the boxed "metric" layout: a % chip beside the label and a
 // "remaining volume" footer (the config card). Without it, the plain meter is used (exhausted state).
+// `note` replaces the "used of total" figures with a sentence — a fresh config read «۰ B از ۱ GB».
 export function UsageMeter({
   used,
   total,
   pct,
   locale,
   remainingBytes,
+  note,
 }: {
   used: string;
   total: string;
   pct: number;
   locale: Locale;
   remainingBytes?: number;
+  note?: string;
 }) {
   const t = translator(locale);
   const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
@@ -193,10 +196,14 @@ export function UsageMeter({
         </span>
         {/* Each "<number> MB" is bidi-isolated so the Latin unit stays glued to its figure under
             RTL (else it renders reversed, e.g. "MB ۷۰۰.۰ از MB ۶۶۶.۵"). */}
-        <span className="v tnum">
-          <bdi dir="ltr">{faDigits(used, locale)}</bdi> {t("of")}{" "}
-          <bdi dir="ltr">{faDigits(total, locale)}</bdi>
-        </span>
+        {note ? (
+          <span className="v">{note}</span>
+        ) : (
+          <span className="v tnum">
+            <bdi dir="ltr">{faDigits(used, locale)}</bdi> {t("of")}{" "}
+            <bdi dir="ltr">{faDigits(total, locale)}</bdi>
+          </span>
+        )}
       </div>
       <div className={cls}>
         <i style={{ inlineSize: `${Math.min(100, Math.max(0, pct))}%` }} />
@@ -266,39 +273,31 @@ export function Countdown({
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
-  const digits = (n: string) =>
-    locale === "fa" ? n.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : n;
+  // `.cd-seg`, not `.seg` — `.seg` is the header's pill toggle, and its inline-flex put each unit
+  // label beside its digits instead of under them.
   return (
     <>
       <div className="cd-label">{label}</div>
       <div className="cd" dir="ltr">
-        <span className="seg">
-          <b>{digits(pad(h))}</b>
+        <span className="cd-seg">
+          <b>{faDigits(pad(h), locale)}</b>
           <span>{t("cd_h")}</span>
         </span>
-        <span className="colon">:</span>
-        <span className="seg">
-          <b>{digits(pad(m))}</b>
+        <span className="colon" aria-hidden>
+          :
+        </span>
+        <span className="cd-seg">
+          <b>{faDigits(pad(m), locale)}</b>
           <span>{t("cd_m")}</span>
         </span>
-        <span className="colon">:</span>
-        <span className="seg">
-          <b>{digits(pad(s))}</b>
+        <span className="colon" aria-hidden>
+          :
+        </span>
+        <span className="cd-seg">
+          <b>{faDigits(pad(s), locale)}</b>
           <span>{t("cd_s")}</span>
         </span>
       </div>
     </>
   );
-}
-
-// ---- InlineCountdown: plain "H:MM:SS" text that ticks (status stat card `.cd-inline`) ----
-export function InlineCountdown({ from, locale }: { from: string; locale: Locale }) {
-  const left = useCountdown(from);
-  if (toSeconds(from) <= 0) return <span dir="ltr">—</span>;
-  const h = Math.floor(left / 3600);
-  const m = Math.floor((left % 3600) / 60);
-  const s = left % 60;
-  const txt = `${h}:${pad(m)}:${pad(s)}`;
-  const out = locale === "fa" ? txt.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : txt;
-  return <span dir="ltr">{out}</span>;
 }

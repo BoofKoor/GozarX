@@ -3,9 +3,10 @@
 import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { rewardMessage } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
-import { subscribeToPush } from "@/lib/push";
+import { pushSupported, subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
 
@@ -15,7 +16,7 @@ import { Icon } from "@/components/Icon";
 // flow lives on the account page). Reward MB comes from site_* settings. Dismissible.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
-  const { config, reload, refreshPush } = useSite();
+  const { config, reload, pushPerm, pushOn, refreshPush } = useSite();
   const pwa = usePwaState();
   const [hidden, setHidden] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   async function invite() {
     try {
       if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) toast(t("copied"));
+      else if (await copyText(link)) toast(t("invite_copied"));
     } catch {
       /* cancelled */
     }
@@ -40,11 +41,10 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   async function installPwa() {
     setBusy("pwa");
     try {
-      const ok = await promptInstall();
-      if (ok) {
-        await api.claimReward("pwa");
+      if (await promptInstall()) {
+        const r = await api.claimReward("pwa").catch(() => null);
         await reload();
-        toast("✓");
+        toast(rewardMessage(locale, r, config?.reward_pwa_mb, "m_pwa_done"));
       }
     } finally {
       setBusy(null);
@@ -54,14 +54,20 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
     setBusy("push");
     try {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
-      if (ok) await api.claimReward("push");
+      const r = ok ? await api.claimReward("push").catch(() => null) : null;
       await refreshPush(); // keep the shared push state (status-page switch/mission) in sync
       await reload();
-      toast(ok ? "✓" : "—");
+      if (ok) toast(rewardMessage(locale, r, config?.reward_push_mb, "m_push_done"));
+      else if (Notification.permission === "denied") toast(t("ps_bl_d"));
+      else toast(t("rw_push_err"));
     } finally {
       setBusy(null);
     }
   }
+
+  // The amount a chip earns, as a pill — the reason to tap it. `fallback` covers an unset (0) reward.
+  const amount = (mb: number | undefined, fallback: ReactNode) =>
+    mb && mb > 0 ? <bdi dir="ltr">+{faDigits(mb, locale)} MB</bdi> : fallback;
 
   const chips: {
     key: string;
@@ -71,14 +77,37 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
     action: () => void;
     rw: ReactNode;
   }[] = [
-    { key: "invite", ic: "users", title: t("m_invite"), desc: t("m_invite_d"), action: invite, rw: <Icon name="share" sw={2} /> },
+    {
+      key: "invite",
+      ic: "users",
+      title: t("m_invite"),
+      desc: t("m_invite_d"),
+      action: invite,
+      rw: amount(config?.reward_referral_mb, <Icon name="share" sw={2} />),
+    },
   ];
   // Only offer the install chip when the browser can actually install (Chromium prompt captured).
   if (pwa === "installable") {
-    chips.push({ key: "pwa", ic: "download", title: t("m_pwa"), desc: t("m_pwa_d"), action: installPwa, rw: "＋" });
+    chips.push({
+      key: "pwa",
+      ic: "download",
+      title: t("m_pwa"),
+      desc: t("m_pwa_d"),
+      action: installPwa,
+      rw: amount(config?.reward_pwa_mb, "＋"),
+    });
   }
-  if (config?.vapid_public_key) {
-    chips.push({ key: "push", ic: "bell", title: t("m_push"), desc: t("m_push_d"), action: enablePush, rw: "＋" });
+  // Only while it can still be earned HERE: not once notifications are on, not once the visitor has
+  // blocked them (the browser would refuse without asking), and not where push does not exist.
+  if (config?.vapid_public_key && !pushOn && pushPerm !== "denied" && pushSupported()) {
+    chips.push({
+      key: "push",
+      ic: "bell",
+      title: t("m_push"),
+      desc: t("m_push_d"),
+      action: enablePush,
+      rw: amount(config?.reward_push_mb, "＋"),
+    });
   }
 
   return (
@@ -111,11 +140,10 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
           </button>
         ))}
       </div>
-      {flash && (
-        <div className="toast-wrap">
-          <div className="toast">{flash}</div>
-        </div>
-      )}
+      {/* The live region stays mounted: one inserted together with its text is not announced. */}
+      <div className="toast-wrap" role="status">
+        {flash && <div className="toast">{flash}</div>}
+      </div>
     </div>
   );
 }
