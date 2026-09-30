@@ -16,9 +16,11 @@ The browser picks a scenario with cookies (Next's `/api` rewrite forwards them h
 
 | cookie        | values                                                            | default  |
 |---------------|-------------------------------------------------------------------|----------|
-| `mock_state`  | new · active · fresh · cooldown · cooldown0 · exhausted · error    | new      |
-| `mock_claim`  | ok · not_ready · no_locations · location_unavailable ·             | ok       |
-|               | rate_limited · rate_limited_once · turnstile_failed · panel_error  |          |
+| `mock_state`  | new · active · fresh · cooldown · cooldown0 · exhausted ·         | new      |
+|               | blocked · error                                                   |          |
+| `mock_claim`  | ok · not_ready · no_locations · location_unavailable ·            | ok       |
+|               | rate_limited · rate_limited_once · turnstile_failed ·             |          |
+|               | panel_error · blocked (blocked under an open picker)              |          |
 | `mock_locs`   | fa (22 Persian remarks) · en (English remarks) · few (3) · none    | fa       |
 | `mock_delay`  | milliseconds to stall GET /status (skeleton / loading capture)     | 0        |
 | `mock_claim_ms` | milliseconds POST /claim takes (the "taking longer" label at 3s) | 900      |
@@ -31,7 +33,9 @@ re-applies it — that is how a test flips `exhausted` to `active` under a page 
 
 Timing is real: `cooldown` lifts 7h12m after the session starts and `cooldown0` 20s after, at which
 point `/status` answers claimable — so a countdown can be watched reaching zero and recovering.
-Both endpoints carry `expires_at` / `cooldown_until` / `server_time` like the backend.
+Both endpoints carry `expires_at` / `cooldown_until` / `server_time` like the backend. `blocked` is
+a device the operator blocked right after a claim: like the backend it still reports the cooldown
+it is inside, which the widget must NOT count down — nothing is waiting at the end of it.
 """
 
 from __future__ import annotations
@@ -168,6 +172,15 @@ def _status(sess: dict) -> dict:
             configs=4,
             location=loc,
             link=LINK,
+            history=hist,
+        )
+    elif state == "blocked":
+        base.update(
+            status="blocked",
+            can_claim=False,
+            cooldown=_human(sess["expires"] - now),
+            cooldown_until=_iso(sess["expires"]),
+            configs=4,
             history=hist,
         )
     elif state in ("cooldown", "cooldown0"):
@@ -315,6 +328,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(429, {"detail": "rate_limited"}, sid)
             if outcome == "turnstile_failed":
                 return self._send(403, {"detail": "turnstile_failed"}, sid)
+            if outcome == "blocked" or sess["state"] == "blocked":
+                sess["state"] = "blocked"  # the next /status reports it, as the backend's would
+                return self._send(200, {"ok": False, "reason": "blocked", "changed": False,
+                                        "server_time": _iso(time.time())}, sid)
             if outcome in ("not_ready", "no_locations", "panel_error"):
                 return self._send(200, {"ok": False, "reason": outcome, "changed": False}, sid)
             if outcome == "location_unavailable":
@@ -336,6 +353,8 @@ class Handler(BaseHTTPRequestHandler):
                                     "server_time": _iso(time.time()),
                                     "size": "1 GB", "changed": changed}, sid)
         if path == "/rewards/claim":
+            if sess["state"] == "blocked":
+                return self._send(200, {"ok": False, "reason": "blocked"}, sid)
             return self._send(200, {"ok": True, "reward_type": body.get("reward_type"),
                                     "amount_mb": 150, "streak_active": False,
                                     "new_daily": "1.1 GB"}, sid)

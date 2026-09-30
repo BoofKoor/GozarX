@@ -643,8 +643,11 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   failed poll must not throw the widget onto its error screen mid-countdown.
 - **Every claim outcome has a screen.** Only `panel_error`/5xx is S8. `not_ready`/`no_locations` is
   S7 with a retry, `location_unavailable`/`turnstile_failed` stay on S1 with an inline notice, and a
-  429 (almost always our own single-flight lock) gets one automatic retry. Each widget root carries
-  `data-view` and a notice `data-notice`, so tests name states instead of copy.
+  429 (almost always our own single-flight lock) gets one automatic retry. A device the operator
+  blocked is SB, read from `/status`'s `status` — no countdown (the backend still reports the
+  cooldown it is inside, but nothing waits at its end) and no reward missions the server refuses.
+  Each widget root carries `data-view` and a notice `data-notice`, so tests name states instead of
+  copy.
 - **A user-caused outcome takes focus; a background one is announced.** After a tap the outcome's
   `<h2>` is focused; a cooldown lifting or a revive arriving with nobody's hand on the widget goes
   through the `role="status"` region, which is mounted OUTSIDE the per-state roots for that reason.

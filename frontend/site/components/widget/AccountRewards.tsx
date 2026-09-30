@@ -48,6 +48,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   // ~400px card pops in when the fetch resolves and shoves the page (a status-page CLS the RUM data
   // flagged). A quiet skeleton holds the space until the real content replaces it in-place.
   if (!status) return <div className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // A blocked device collects nothing — the server refuses every reward — so the missions would be
+  // a card of buttons that can only fail. The widget above already says why.
+  if (status.status === "blocked") return null;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);
