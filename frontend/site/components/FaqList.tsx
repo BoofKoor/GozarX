@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { FAQ_CATS, FAQ_LABELS, type FaqItem } from "@/lib/content";
 import { Icon } from "@/components/Icon";
+import { AccItem } from "@/components/Accordion";
 
 // FAQ list — faithful reproduction of the design's `vFaq`: a search box + category tabs filtering a
 // list of `.acc` accordions, with an empty state when nothing matches.
@@ -62,17 +63,16 @@ export function FaqList({ locale, items }: { locale: Locale; items: FaqItem[] })
       ) : (
         <div>
           {visible.map(({ it, i }) => (
-            <div className="acc" key={i} data-open={open === i ? "true" : "false"}>
-              <button
-                className="acc-head"
-                aria-expanded={open === i}
-                onClick={() => setOpen(open === i ? null : i)}
-              >
-                <span>{it.q}</span>
-                <Icon name="chev" sw={2} />
-              </button>
-              <div className="acc-body">{it.a}</div>
-            </div>
+            <AccItem
+              key={i}
+              question={it.q}
+              open={open === i}
+              onToggle={() => setOpen(open === i ? null : i)}
+              onReveal={() => setOpen(i)}
+              level={2}
+            >
+              {it.a}
+            </AccItem>
           ))}
         </div>
       )}

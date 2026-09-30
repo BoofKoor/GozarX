@@ -12,9 +12,8 @@ export default async function OfflinePage() {
   return (
     <section>
       <div className="container center stack">
-        <span className="chip chip-warning" style={{ fontSize: 15 }}>
-          {t("offline.title")}
-        </span>
+        {/* the page's title, so it is an h1 — it was a chip with no heading on the page at all */}
+        <h1 className="chip chip-warning offline-h">{t("offline.title")}</h1>
         <p className="lead" style={{ marginInline: "auto" }}>
           {t("offline.sub")}
         </p>

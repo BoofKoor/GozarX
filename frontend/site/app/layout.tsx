@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { cookies } from "next/headers";
 import "./globals.css";
-import { copyrightYear, dir, type Locale } from "@/lib/i18n";
+import { copyrightYear, dir, type Locale, translator } from "@/lib/i18n";
 import { getLocale } from "@/lib/server";
 import { GOOGLE_SITE_VERIFICATION, SITE_URL } from "@/lib/site";
 import { fetchSiteCopy } from "@/lib/siteCopy";
@@ -118,9 +118,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <JsonLd data={webSiteLd(locale)} />
         <div id="app" data-locale={locale} data-theme={theme} suppressHydrationWarning>
           <LogoSymbol />
+          {/* the first Tab stop: past the header's links to the page itself (C-41) */}
+          <a className="skip-link" href="#main">
+            {translator(locale)("skip_main")}
+          </a>
           <SiteProvider locale={locale}>
             <Header locale={locale} theme={theme} />
-            <main>{children}</main>
+            <main id="main" tabIndex={-1}>
+              {children}
+            </main>
             <Footer locale={locale} year={copyrightYear(locale)} articles={articles} />
             <RevealObserver />
           </SiteProvider>

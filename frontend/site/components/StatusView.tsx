@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRef, useState } from "react";
 import { type Locale, timeAgo, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
@@ -11,8 +10,12 @@ import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
 import { Flag } from "@/components/widget/pieces";
-import { locName } from "@/components/widget/flags";
+import { locLabel } from "@/components/widget/flags";
 import { subscribeToPush, unsubscribeFromPush } from "@/lib/push";
+import { useFocusTrap } from "@/lib/useFocusTrap";
+import { useLocaleSwitch } from "@/lib/prefs";
+import { ThemeChoice } from "@/components/ThemeChoice";
+import { Announce } from "@/components/Announce";
 
 // My status — faithful reproduction of docs/website/design/phase-6-status.html (dashboard view):
 // page head + identity note, live stat row (usage ring / time left / daily volume / invites),
@@ -66,7 +69,7 @@ export function StatusView({ locale }: { locale: Locale }) {
                   <div className="hrow" key={`${h.at}-${i}`}>
                     <Flag name={h.location} size={30} />
                     <div className="ht">
-                      <div className="hn">{locName(h.location)}</div>
+                      <div className="hn">{locLabel(h.location, locale)}</div>
                       <div className="hd2">{timeAgo(h.at, locale)}</div>
                     </div>
                   </div>
@@ -127,6 +130,7 @@ function IdentityBar({ handle, locale }: { handle: string; locale: Locale }) {
         >
           <Icon name={copied ? "check" : "copy"} sw={2} />
         </button>
+        <Announce text={copied ? t("copied") : ""} />
         <span className="id-sep" aria-hidden />
         <a className="id-tr" href="#transfer">
           <Icon name="swap" sw={2} />
@@ -148,42 +152,11 @@ function SettingsCard({
   onReload: () => Promise<void> | void;
 }) {
   const t = translator(locale);
-  const router = useRouter();
   // Push state is SHARED via the provider so this switch and the Rewards card's push mission agree.
   const { config, pushPerm: perm, pushOn, refreshPush } = useSite();
   const [busy, setBusy] = useState(false);
-  const [themeState, setThemeState] = useState<string>("");
-  useEffect(() => {
-    // Effective theme: an explicit choice sets data-theme; with no cookie the page follows the OS
-    // via prefers-color-scheme (data-theme unset), so read the media query in that case.
-    const attr = document.getElementById("app")?.getAttribute("data-theme");
-    setThemeState(
-      attr === "light" || attr === "dark"
-        ? attr
-        : window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light",
-    );
-  }, []);
-
-  function setCookie(name: string, value: string) {
-    document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
-  }
-  function switchLocale(next: Locale) {
-    if (next === locale) return;
-    setCookie("locale", next);
-    const html = document.documentElement;
-    html.setAttribute("lang", next);
-    html.setAttribute("dir", next === "fa" ? "rtl" : "ltr");
-    document.getElementById("app")?.setAttribute("data-locale", next);
-    router.refresh();
-  }
-  function setTheme(next: "light" | "dark") {
-    setCookie("theme", next);
-    document.documentElement.setAttribute("data-theme", next);
-    document.getElementById("app")?.setAttribute("data-theme", next);
-    setThemeState(next);
-  }
+  // language and theme go through lib/prefs, the same code the header and the footer use
+  const switchLocale = useLocaleSwitch(locale);
   async function toggleNotif() {
     if (perm === "denied" || busy) return; // denied is browser-level; busy guards a double-tap
     setBusy(true);
@@ -229,7 +202,7 @@ function SettingsCard({
           <Icon name="globe" sw={2} />
         </span>
         <div className="sk">{t("set_lang")}</div>
-        <div className="mini-seg">
+        <div className="mini-seg" role="group" aria-label={t("set_lang")}>
           <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
             فا
           </button>
@@ -243,14 +216,7 @@ function SettingsCard({
           <Icon name="contrast" sw={2} />
         </span>
         <div className="sk">{t("set_theme")}</div>
-        <div className="mini-seg">
-          <button aria-pressed={themeState === "light"} onClick={() => setTheme("light")}>
-            {t("set_theme_l")}
-          </button>
-          <button aria-pressed={themeState === "dark"} onClick={() => setTheme("dark")}>
-            {t("set_theme_d")}
-          </button>
-        </div>
+        <ThemeChoice locale={locale} variant="labels" />
       </div>
       <div className="srow">
         <span className="si">
@@ -278,17 +244,11 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
-  // While the confirm dialog is open: move focus into it and let Escape dismiss it.
-  useEffect(() => {
-    if (!asking) return;
-    cancelRef.current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && !busy) setAsking(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [asking, busy]);
+  // The shared modal contract (Esc, focus in on «انصراف» and back to the button, Tab kept inside,
+  // page scroll locked) — except that a reset in flight cannot be dismissed.
+  useFocusTrap(dialogRef, () => !busy && setAsking(false), asking, cancelRef);
 
   async function reset() {
     setBusy(true);
@@ -317,10 +277,13 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
       {asking && (
         <div className="overlay open" onClick={() => !busy && setAsking(false)}>
           <div
+            ref={dialogRef}
             className="modal"
             role="dialog"
             aria-modal
             aria-labelledby="rm-title"
+            aria-describedby="rm-desc"
+            tabIndex={-1}
             style={{ maxInlineSize: 400 }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -331,8 +294,12 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
               >
                 <Icon name="trash" sw={2.2} />
               </div>
-              <h3 id="rm-title" style={{ marginBlockEnd: 8 }}>{t("rm_t")}</h3>
-              <p className="msub">{t("rm_p")}</p>
+              <h2 id="rm-title" className="ov-title" style={{ marginBlockEnd: 8 }}>
+                {t("rm_t")}
+              </h2>
+              <p id="rm-desc" className="msub">
+                {t("rm_p")}
+              </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button
                   ref={cancelRef}

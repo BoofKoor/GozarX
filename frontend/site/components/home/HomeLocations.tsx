@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { flagCC, locName } from "@/components/widget/flags";
+import { flagCC, locLabel, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
 
 // LOCATIONS teaser — a single compact card: a dotted world map (decorative "global presence"), a
@@ -55,12 +55,13 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
                   ))
                 : shown.map((name) => {
                     const cc = flagCC(name);
-                    const label = locName(name);
+                    // the link carries the MATCHING key (the remark); the reader gets their language
+                    const label = locLabel(name, locale);
                     return (
                       <Link
                         key={name}
                         className="fbig-link"
-                        href={`/?loc=${encodeURIComponent(label)}#hero-widget`}
+                        href={`/?loc=${encodeURIComponent(locName(name))}#hero-widget`}
                         aria-label={label}
                         title={label}
                       >

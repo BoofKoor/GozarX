@@ -192,7 +192,7 @@ def main() -> int:
         page.wait_for_timeout(500)
         menu = page.evaluate(
             "(() => { const s = document.querySelector('#site-menu');"
-            " const first = s.querySelector('a, button');"
+            " const first = s.querySelector('a, button:not(.sheet-close)');"  # Phase D's close button is chrome
             " const links = [...s.querySelectorAll('#sheetnav .navlink')];"
             " return {first: first?.className, firstHref: first?.getAttribute('href'),"
             " active: s.querySelector('#sheetnav .navlink.active')?.textContent.trim(),"

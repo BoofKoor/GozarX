@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { type Locale, faDigits, fill, translator } from "@/lib/i18n";
+import { type Locale, fill, translator } from "@/lib/i18n";
+import { formatMb } from "@/lib/format";
 import type { ArticleLink } from "@/lib/landing";
+import { useLocaleSwitch } from "@/lib/prefs";
 import { useSite } from "@/lib/useSite";
 import { Icon } from "@/components/Icon";
 
@@ -11,10 +12,8 @@ import { Icon } from "@/components/Icon";
 // tagline + three link columns (Product / Resources / Legal), and a bottom bar with a dynamic-year
 // copyright + a segmented language toggle. No social or messenger links anywhere (sitewide rule).
 // Blog is omitted (the product has no blog). `year` is computed server-side and passed in so it
-// hydrates identically (see copyrightYear in lib/i18n).
-function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
-}
+// hydrates identically (see copyrightYear in lib/i18n). Headings: the band is an h2 and the columns
+// h3 — they were h3/h4 on every page, a level below whatever the page's own sections used.
 
 export function Footer({
   locale,
@@ -27,18 +26,8 @@ export function Footer({
   articles?: ArticleLink[];
 }) {
   const t = translator(locale);
-  const router = useRouter();
   const { status, config } = useSite();
-
-  function switchLocale(next: Locale) {
-    if (next === locale) return;
-    setCookie("locale", next);
-    const html = document.documentElement;
-    html.setAttribute("lang", next);
-    html.setAttribute("dir", next === "fa" ? "rtl" : "ltr");
-    document.getElementById("app")?.setAttribute("data-locale", next);
-    router.refresh();
-  }
+  const switchLocale = useLocaleSwitch(locale);
 
   const cols = [
     {
@@ -85,7 +74,7 @@ export function Footer({
           h: t("ft_cta_inv_h"),
           d:
             (reward > 0 &&
-              fill(t("ft_cta_inv_d"), { v: `${faDigits(reward, locale)} ${t("mb_unit")}` })) ||
+              fill(t("ft_cta_inv_d"), { v: formatMb(reward, locale) })) ||
             t("ft_cta_inv_d_any"),
           btn: t("ft_cta_inv_btn"),
           href: "/status#rewards",
@@ -96,7 +85,7 @@ export function Footer({
       <div className="container">
         <div className="ft-cta">
           <div className="ft-cta-t">
-            <h3>{band.h}</h3>
+            <h2>{band.h}</h2>
             <p>{band.d}</p>
           </div>
           <Link className="ft-cta-btn" href={band.href}>
@@ -116,7 +105,7 @@ export function Footer({
           </div>
           {cols.map((col) => (
             <div className="ft-col" key={col.h}>
-              <h4>{t(col.h)}</h4>
+              <h3>{t(col.h)}</h3>
               {col.links.map((l) => (
                 <Link key={l.k} href={l.href}>
                   {t(l.k)}
