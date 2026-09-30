@@ -30,12 +30,15 @@ function UsageStat({
   value,
   metric,
   hint,
+  note,
 }: {
   icon: typeof Gauge;
   label: string;
   value: string;
   metric?: Metric;
   hint?: string;
+  /** What population the figure covers — always shown, delta or not. */
+  note?: string;
 }) {
   const { t } = useI18n();
   const change = metric?.change_pct ?? null;
@@ -68,6 +71,7 @@ function UsageStat({
           </span>
         )}
       </div>
+      {note && <p className="mt-1 text-[11px] leading-snug text-content-subtle">{note}</p>}
     </Card>
   );
 }
@@ -133,18 +137,23 @@ export function UsagePanel({ data }: { data: DashboardUsage }) {
           label={t("d.usage.traffic")}
           value={humanBytes(data.traffic.value)}
           metric={data.traffic}
+          // The panel reports one figure for everything it serves; saying so is what keeps it from
+          // being read beside the overview's trial-squad-only "online now" as the same population.
+          note={data.traffic_counter_reset ? t("d.usage.trafficReset") : t("d.usage.wholePanel")}
         />
         <UsageStat
           icon={Wifi}
           label={t("d.usage.peak")}
           value={formatNumber(data.peak_online.value)}
           metric={data.peak_online}
+          note={t("d.usage.wholePanel")}
         />
         <UsageStat
           icon={Users}
           label={t("d.usage.perUser")}
           value={humanBytes(data.bytes_per_user.value)}
           metric={data.bytes_per_user}
+          note={t("d.usage.perUser.note")}
         />
         <UsageStat
           icon={HardDrive}

@@ -213,6 +213,8 @@ def main() -> int:
             ("cooldown: invite", {"mock_state": "cooldown"}, "/status#rewards", amount),
             ("invite cap reached: their config", {"mock_state": "active", "mock_refs": "cap"},
              "/status", None),
+            # blocked by the operator: nothing to claim, and an invite from it is not credited
+            ("blocked: contact", {"mock_state": "blocked"}, "/contact", None),
         ):
             ctx, page = open_page("/faq", cookies=cookies)
             page.wait_for_timeout(600)

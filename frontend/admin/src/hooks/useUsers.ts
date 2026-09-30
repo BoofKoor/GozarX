@@ -50,7 +50,14 @@ export function useUserAction() {
     mutationFn: async ({ id, action }: { id: number; action: UserAction }) =>
       (await api.post<BotUser>(`/admin/users/${id}/${action}`)).data,
     onSuccess: (updated) => {
-      qc.setQueryData(["user", updated.telegram_id], updated);
+      // The reply is a list ROW, not the dialog's detail: written over ["user", id] as it stood,
+      // it dropped `recent_claims`, and the dialog's `.length` on it took the whole console down
+      // to the error screen — after the action had already applied. Merge it over what the
+      // dialog holds, so the new status shows at once, then refetch the rest.
+      qc.setQueryData<BotUserDetail>(["user", updated.telegram_id], (old) =>
+        old ? { ...old, ...updated } : old,
+      );
+      qc.invalidateQueries({ queryKey: ["user", updated.telegram_id] });
       qc.invalidateQueries({ queryKey: ["users"] });
       // A ban/unban/reclaim shifts the status counts the dashboard shows, so refresh it too.
       qc.invalidateQueries({ queryKey: ["dashboard"] });

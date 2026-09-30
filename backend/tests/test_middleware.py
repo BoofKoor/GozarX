@@ -109,3 +109,24 @@ async def test_no_notification_when_handler_raises(db_sessions) -> None:
     async with db_sessions() as session:  # the user insert rolled back too
         assert await UserRepository(session).get(4343) is None
     await redis.aclose()
+
+
+async def test_a_user_who_writes_again_is_reachable_again(db_sessions) -> None:
+    # A broadcast marked the chat gone while they had the bot blocked; their next update proves
+    # otherwise, and the mark must not keep them out of every future broadcast.
+    from datetime import UTC, datetime
+
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    async with db_sessions() as session:
+        session.add(User(telegram_id=77, unreachable_at=datetime.now(UTC)))
+        await session.commit()
+
+    mw = ContextMiddleware(db_sessions, redis, panel=None)  # type: ignore[arg-type]
+
+    async def handler(event, data) -> str:
+        return "handled"
+
+    await mw(handler, SimpleNamespace(from_user=SimpleNamespace(id=77)), {})
+    async with db_sessions() as session:
+        assert (await UserRepository(session).get(77)).unreachable_at is None
+    await redis.aclose()

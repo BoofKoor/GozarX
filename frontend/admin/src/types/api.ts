@@ -86,28 +86,40 @@ export interface DashboardStats {
   claimers_in_range: number;
   claimers_prev_range: number;
   claimers_delta_pct: number | null;
-  // engagement (panel /system/stats)
-  online_now: number;
+  /** `active` split by whether the trial window has actually elapsed — the status column is healed
+   *  only by the webhook or the reconcile sweep, which skips users while the panel is down. */
+  active_live: number;
+  active_stale: number;
+  // engagement (panel /system/stats) — null wherever the panel did not answer: unknown, not zero
+  online_now: number | null;
   online_squad_scoped: boolean;
-  online_last_day: number;
-  online_last_week: number;
-  never_online: number;
+  /** Seen online in the last 7 days, in the SAME population as `online_now` (the gauge's base). */
+  online_week: number | null;
+  online_last_day: number | null;
+  online_last_week: number | null;
+  never_online: number | null;
   panel_online: boolean;
   // trial health & traffic (panel)
   panel_status_counts: Record<string, number>;
-  panel_total_users: number;
-  total_traffic_bytes: number;
-  nodes_online: number;
+  panel_total_users: number | null;
+  /** null when the panel is down OR answered without a usable counter. */
+  total_traffic_bytes: number | null;
+  nodes_online: number | null;
   // referral & conversion
-  conversion_pct: number;
+  /** Of the window's signups, the share who have claimed — windowed, with its previous twin. */
+  conversion: NullableMetric;
+  /** Every claimer ever over every user ever. */
+  conversion_pct_all_time: number;
   reminder_enabled: number;
   avg_referrals: number;
   // series + breakdowns
   claims_series: DayPoint[];
   signups_series: DayPoint[];
-  languages: NamedCount[];
-  top_locations: NamedCount[];
-  top_referrers: Referrer[];
+  languages: NamedCount[]; // lifetime
+  top_locations: NamedCount[]; // windowed, capped at ten
+  /** Distinct locations claimed in the window — what the capped list leaves out. */
+  locations_total: number;
+  top_referrers: Referrer[]; // lifetime
 }
 
 // --- Phase 7c: texts + buttons editors ---
@@ -152,6 +164,8 @@ export interface ButtonAppearancePatch {
   labels: Partial<LabelMap> | null;
   is_visible: boolean;
   style?: ButtonStyle;
+  /** The screen the visibility applies to (labels and colour are always key-wide). */
+  screen?: string;
 }
 
 export interface ReorderItem {
@@ -175,6 +189,12 @@ export interface BotUser {
   last_location: string | null;
   /** When that claim was provisioned — the row's recency signal. Null until they have claimed. */
   last_claim_at: string | null;
+  /** Banned, but the panel did not answer the revoke: the config still works until the reconcile
+   *  sweep gets the delete through. A ban must never read as done when it is not. */
+  revoke_pending: boolean;
+  /** When a broadcast learned the chat is gone (they blocked the bot). The row is KEPT — deleting it
+   *  shrank every past figure — and the mark clears the next time they message the bot. */
+  unreachable_at: string | null;
 }
 
 /** The record dialog's payload: the row, plus this user's history and live usage. */
@@ -202,6 +222,12 @@ export interface UserListParams {
 }
 
 export type UserAction = "ban" | "unban" | "reclaim" | "zero_referrals";
+
+/** GET /admin/broadcast/hours — claims per local hour of day (index = hour). */
+export interface ActivityHours {
+  hours: number[];
+  days: number;
+}
 
 export interface BroadcastAudience {
   recipients: number;
@@ -451,18 +477,34 @@ export interface NullableMetric {
   change_pct: number | null;
 }
 
+/** A `Metric` whose previous window can be UNKNOWN: visits are recorded per day only from the day
+ *  that recorder shipped, and a window before it has no visit data — which is not zero visitors. */
+export interface VisitMetric {
+  value: number;
+  previous: number | null;
+  change_pct: number | null;
+}
+
+/** A day on the visitor series; `count` is null for a day the visit record does not cover. */
+export interface VisitPoint {
+  day: string;
+  count: number | null;
+}
+
 export interface SiteStats {
   range_days: number;
 
   // Windowed — these move with the range control.
-  visitors: Metric; // devices seen in the window
+  visitors: VisitMetric; // devices seen in the window
   new_visitors: Metric; // identities minted in the window
-  returning_visitors: Metric; // seen in the window, minted before it
+  returning_visitors: VisitMetric; // seen in the window, minted before it
   claimers: Metric; // distinct devices that provisioned in the window
   claims: Metric; // provisions in the window (change-location re-picks excluded)
   conversion_pct: number; // claimers / visitors, both windowed
-  conversion_pct_prev: number;
+  conversion_pct_prev: number | null; // null while the previous window's visits are unknown
   location_changes: number;
+  /** First instant the per-day visit record holds; null before any visit is recorded. */
+  visits_recorded_since: string | null;
 
   // Lifetime — deliberately OUTSIDE the range control, and named so the UI can say so.
   total_devices_all_time: number;
@@ -477,7 +519,7 @@ export interface SiteStats {
   status_counts: Record<string, number>;
 
   claims_series: DayPoint[];
-  visitors_series: DayPoint[];
+  visitors_series: VisitPoint[];
   top_locations: NamedCount[];
   locations_total: number; // distinct locations in the window (top_locations is capped at 10)
 }
@@ -527,8 +569,12 @@ export interface DashboardUsage {
    *  not recording yet" are different facts and the empty state has to tell them apart. */
   recording_since: string | null;
   samples: number;
+  /** The panel's figure — everything it serves, the site and the operator's own squads included. */
   traffic: Metric;
+  /** The counter dropped inside the window, so `traffic` is a floor. */
+  traffic_counter_reset: boolean;
   peak_online: Metric;
+  /** Panel traffic per bot + site claimer: an upper bound, the panel carries own squads too. */
   bytes_per_user: Metric;
   nodes_online: number;
   mem_used: number;
@@ -546,7 +592,8 @@ export interface DashboardAnalytics {
    *  equally long window before it. Both used to be all-time figures under a range control that
    *  could not move them. */
   median_hours_to_claim: NullableMetric;
-  activation_24h: Metric;
+  /** null over an empty cohort: a share of nobody is not 0%. */
+  activation_24h: NullableMetric;
   first_claimers_in_range: number; // the cohort size both percentages are computed over
   claimers_all_time: number;
   referral: ReferralFunnel;
@@ -631,11 +678,18 @@ export interface SiteDeviceRow {
   site_panel_username: string | null;
   referral_count: number;
   referred_by: string | null;
+  /** The streak as it stands NOW — 0 once it has lapsed, whatever the stored counter says. */
   streak_count: number;
+  /** The cooldown anchor; an admin reset clears it. Not "when did it last claim". */
   last_claim_at: string | null;
+  /** The most recent claim in the log — what the "last claim" column shows. */
+  last_claimed_at: string | null;
   ip_bucket: string | null;
   has_fingerprint: boolean; // the hash itself is never exposed — it identifies the browser
   created_at: string | null;
+  /** Blocked, but the panel did not answer the revoke: the trial still works until the sweep
+   *  deletes it. */
+  revoke_pending: boolean;
 }
 
 export interface SiteDevicePage {

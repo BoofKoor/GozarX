@@ -16,12 +16,16 @@ const STATUS: Record<string, { tone: string; key: MessageKey }> = {
   down: { tone: "bg-danger-500", key: "shell.health.down" },
 };
 
+const UNREACHABLE = { tone: "bg-danger-500", key: "shell.health.unreachable" as MessageKey };
+
 /** Live status dot linking to the System page — the health snapshot is already polled every 10s
  *  there, and react-query shares the one query, so this costs no extra requests. */
 function HealthDot() {
-  const { data } = useSystemHealth();
+  const { data, isError } = useSystemHealth();
   const { t } = useI18n();
-  const state = STATUS[data?.status ?? ""];
+  // A poll that failed keeps the LAST good snapshot in `data`, so the dot stayed green and pulsing
+  // while the server was not answering at all. A failed poll is its own state.
+  const state = isError ? UNREACHABLE : STATUS[data?.status ?? ""];
   const label = t(state?.key ?? "shell.health.checking");
   const tone = state?.tone ?? "bg-content-subtle";
   return (
@@ -32,7 +36,7 @@ function HealthDot() {
       className="flex h-9 w-9 items-center justify-center rounded-xl transition hover:bg-surface-hover"
     >
       <span className="relative flex h-2.5 w-2.5">
-        {data?.status === "ok" && (
+        {!isError && data?.status === "ok" && (
           <span
             className={clsx(
               "absolute inline-flex h-full w-full animate-ping rounded-full opacity-70",

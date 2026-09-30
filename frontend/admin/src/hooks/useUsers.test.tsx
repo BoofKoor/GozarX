@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import MockAdapter from "axios-mock-adapter";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -7,10 +7,9 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { api } from "@/lib/api";
 
 import { useAudience } from "./useBroadcast";
-import { useUsers } from "./useUsers";
+import { useUserAction, useUsers } from "./useUsers";
 
-function wrapper() {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+function wrapper(qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })) {
   return ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={qc}>{children}</QueryClientProvider>
   );
@@ -48,5 +47,35 @@ describe("users + broadcast hooks", () => {
       only_active: false,
       only_referrers: false,
     });
+  });
+
+  it("an action keeps the record dialog's detail instead of overwriting it with a row", async () => {
+    // The action's reply is a list ROW. Written over ["user", id] it dropped `recent_claims`, the
+    // dialog read `.length` off undefined, and the whole console fell to the error screen — after
+    // the unban had already applied on the server.
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const claims = [{ location: "Germany", created_at: "2026-09-01T00:00:00Z" }];
+    qc.setQueryData(["user", 5], {
+      telegram_id: 5,
+      status: "banned",
+      recent_claims: claims,
+      claims_series: [],
+      traffic_bytes: null,
+    });
+    mock.onPost("/admin/users/5/unban").reply(200, { telegram_id: 5, status: "available" });
+    mock.onGet("/admin/users/5/detail").reply(200, {
+      telegram_id: 5,
+      status: "available",
+      recent_claims: claims,
+      claims_series: [],
+      traffic_bytes: null,
+    });
+
+    const { result } = renderHook(() => useUserAction(), { wrapper: wrapper(qc) });
+    await act(() => result.current.mutateAsync({ id: 5, action: "unban" }));
+
+    const detail = qc.getQueryData<{ status: string; recent_claims: unknown[] }>(["user", 5]);
+    expect(detail?.status).toBe("available");
+    expect(detail?.recent_claims).toEqual(claims);
   });
 });

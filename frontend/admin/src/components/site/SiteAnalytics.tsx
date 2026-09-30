@@ -188,7 +188,7 @@ function AntiAbusePanel({ abuse }: { abuse: AbuseSignals }) {
                   </span>
                   <span className="flex items-center gap-1 tabular-nums text-content-muted">
                     {t("sa.abuse.devices", { n: formatNumber(b.count) })}
-                    <ChevronLeft className="h-3.5 w-3.5" />
+                    <ChevronLeft className="h-3.5 w-3.5 ltr:-scale-x-100" />
                   </span>
                 </Link>
               </li>

@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -37,6 +38,7 @@ from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
+from gozar.remnawave.links import normalize_remark
 from gozar.remnawave.schemas import PanelUser, Subscription
 from gozar.services.settings_service import SettingKey, SettingsService
 
@@ -270,11 +272,25 @@ class TrialService:
         settings: SettingsService,
         config_log_repo: ConfigLogRepository,
         redis: Redis,
+        *,
+        commit: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._panel = panel
         self._settings = settings
         self._config_log_repo = config_log_repo
         self._redis = redis
+        self._commit_hook = commit
+
+    async def _commit(self) -> None:
+        """End the open transaction, when the caller handed over its commit (the update middleware
+        does; the session stays the middleware's).
+
+        Called before every panel round trip: an open transaction pins a pooled connection for as
+        long as the panel takes, and the webhook's other updates wait on that pool. And before the
+        claim lock is released — see ``claim``.
+        """
+        if self._commit_hook is not None:
+            await self._commit_hook()
 
     # --- cache helpers (the quota math lives in module-level compute_traffic_bytes) --------------
     async def _store_cache(
@@ -301,12 +317,23 @@ class TrialService:
         await self._redis.delete(sub_cache_key(telegram_id))
 
     async def _filter_locations(self, links: dict[str, str]) -> dict[str, str]:
-        """Intersect the link map with the LOCATIONS allowlist (empty allowlist -> keep all)."""
+        """Intersect the link map with the LOCATIONS allowlist (empty allowlist -> keep all).
+
+        Matched by NORMALISED name, like the site: the allowlist holds raw host remarks while the
+        link map is keyed by the RENDERED fragment, so a remark carrying a template token
+        ("Germany {{TRAFFIC_LEFT}}") never compared equal and every claim read "no location". An
+        allowlist that matches none of the links (each ticked host since renamed) keeps them all —
+        the links are the trial squad's own, and an empty picker is never what was configured.
+        """
         allow = await self._settings.get_list(SettingKey.LOCATIONS)
         if not allow:
             return dict(links)
-        allowed = set(allow)
-        return {name: link for name, link in links.items() if name in allowed}
+        allowed = {normalize_remark(name) for name in allow}
+        kept = {name: link for name, link in links.items() if normalize_remark(name) in allowed}
+        if not kept and links:
+            logger.warning("bot locations: the allowlist matches no link; offering all")
+            return dict(links)
+        return kept
 
     # --- self-heal ------------------------------------------------------------------------------
     @staticmethod
@@ -369,6 +396,7 @@ class TrialService:
         if not username:
             await self._reset(user)
             return None
+        await self._commit()
         try:
             sub, links = await self._panel.subscription(username)
         except RemnawaveError as exc:
@@ -386,12 +414,12 @@ class TrialService:
     async def _last_claim_at(self, user: User) -> datetime | None:
         """The rolling-cooldown anchor: when the user last PROVISIONED a trial.
 
-        Prefers the durable ``last_claim_at`` (set at provision, so it lines up with the trial's own
-        expiry); falls back to the newest delivered-config time for a user whose field is still
-        unset (the migration backfills existing rows, so this only covers a pre-backfill edge)."""
-        if user.last_claim_at is not None:
-            return user.last_claim_at
-        return await self._config_log_repo.latest_created_at_for_user(user.telegram_id)
+        ``last_claim_at`` alone. It used to fall back to the newest delivered-config time for an
+        unset row, but the column's migration backfilled every existing user, so the only rows left
+        unset are ones an admin RECLAIM cleared on purpose — and the fallback then re-imposed the
+        very cooldown the reclaim lifted, which is why reclaim had to delete claim history to work.
+        """
+        return user.last_claim_at
 
     # --- public flow ----------------------------------------------------------------------------
     async def claim(self, user: User) -> ClaimResult:
@@ -405,7 +433,12 @@ class TrialService:
         ) as first:
             if not first:
                 return PanelError()
-            return await self._claim_locked(user)
+            result = await self._claim_locked(user)
+            # Durable BEFORE the lock goes. Released first, the lock opened a window — the handler's
+            # Telegram reply, before the middleware commits — in which a second tap read the old
+            # cooldown and provisioned a second account.
+            await self._commit()
+            return result
 
     async def _claim_locked(self, user: User) -> ClaimResult:
         # 1. Already holding a config? Re-read live state (self-heals an ended trial to available).
@@ -439,6 +472,7 @@ class TrialService:
         claim_at = datetime.now(UTC)
         expire_at = claim_at + timedelta(hours=hours)
         username = _gen_username(user.telegram_id)
+        await self._commit()  # two panel calls follow; hold no pooled connection across them
         try:
             await self._panel.create_trial_user(username, traffic_bytes, expire_at, [squad])
         except RemnawaveError:

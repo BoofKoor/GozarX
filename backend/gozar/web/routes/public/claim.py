@@ -19,6 +19,7 @@ from gozar.services.settings_service import SettingsService
 from gozar.services.site_referral import SiteReferralService
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
+    Blocked,
     Delivered,
     LocationUnavailable,
     NoLocations,
@@ -27,7 +28,7 @@ from gozar.services.site_trial import (
     SiteTrialService,
 )
 from gozar.web.dependencies import DbSession
-from gozar.web.routes.public.identity import CurrentDevice, client_ip
+from gozar.web.routes.public.identity import CurrentDevice, OptionalDevice, client_ip
 from gozar.web.routes.public.security import rate_limit_ok, verify_turnstile
 from gozar.web.routes.public.status import server_now
 
@@ -80,6 +81,7 @@ def _service(request: Request, session) -> SiteTrialService:
         SiteClaimRepository(session),
         SiteRewardRepository(session),
         state.redis,
+        commit=session.commit,
     )
 
 
@@ -101,8 +103,10 @@ async def _maybe_credit_referrer(request: Request, session, device) -> None:
 
 @router.get("/locations", response_model=LocationsResponse)
 async def get_locations(
-    request: Request, session: DbSession, device: CurrentDevice
+    request: Request, session: DbSession, device: OptionalDevice
 ) -> LocationsResponse:
+    # OptionalDevice, not CurrentDevice: the picker needs no identity to exist, and minting one here
+    # made every cookieless page load two new devices (`/status` had already minted the first).
     result = await _service(request, session).available_locations(device)
     if isinstance(result, PanelError):
         raise HTTPException(status_code=502, detail="panel_error")
@@ -138,33 +142,38 @@ async def post_claim(
         if not first:
             raise HTTPException(status_code=429, detail="rate_limited")
         result = await _service(request, session).claim(device, body.location)
-        if isinstance(result, Delivered):
-            if not result.changed:
-                await _maybe_credit_referrer(request, session, device)
-            return ClaimResponse(
-                ok=True,
-                location=result.location,
-                link=result.link,
-                expires=result.expires,
-                size=result.size,
-                changed=result.changed,
-                expires_at=result.expires_at,
-            )
-        if isinstance(result, AlreadyClaimedToday):
-            return ClaimResponse(
-                ok=False,
-                reason="cooldown",
-                retry_after=result.retry_after,
-                cooldown_until=result.until.isoformat() if result.until else None,
-            )
-        if isinstance(result, NotReady):
-            return ClaimResponse(ok=False, reason="not_ready")
-        if isinstance(result, NoLocations):
-            return ClaimResponse(ok=False, reason="no_locations")
-        if isinstance(result, LocationUnavailable):
-            # The squad no longer serves what was picked. Hand back the live names so the SPA can
-            # re-render the picker — never silently deliver a different country's config.
-            return ClaimResponse(
-                ok=False, reason="location_unavailable", locations=result.available
-            )
-        return ClaimResponse(ok=False, reason="panel_error")
+        if isinstance(result, Delivered) and not result.changed:
+            await _maybe_credit_referrer(request, session, device)
+        # Durable BEFORE the lock goes. The commit used to run after the response — well after the
+        # lock was released — so a second tap in that window read the old cooldown and provisioned
+        # a second account.
+        await session.commit()
+
+    if isinstance(result, Delivered):
+        return ClaimResponse(
+            ok=True,
+            location=result.location,
+            link=result.link,
+            expires=result.expires,
+            size=result.size,
+            changed=result.changed,
+            expires_at=result.expires_at,
+        )
+    if isinstance(result, Blocked):
+        return ClaimResponse(ok=False, reason="blocked")
+    if isinstance(result, AlreadyClaimedToday):
+        return ClaimResponse(
+            ok=False,
+            reason="cooldown",
+            retry_after=result.retry_after,
+            cooldown_until=result.until.isoformat() if result.until else None,
+        )
+    if isinstance(result, NotReady):
+        return ClaimResponse(ok=False, reason="not_ready")
+    if isinstance(result, NoLocations):
+        return ClaimResponse(ok=False, reason="no_locations")
+    if isinstance(result, LocationUnavailable):
+        # The squad no longer serves what was picked. Hand back the live names so the SPA can
+        # re-render the picker — never silently deliver a different country's config.
+        return ClaimResponse(ok=False, reason="location_unavailable", locations=result.available)
+    return ClaimResponse(ok=False, reason="panel_error")

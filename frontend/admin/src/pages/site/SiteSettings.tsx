@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { SiteTabs } from "@/components/site/SiteTabs";
-import { Button } from "@/components/ui/Button";
+import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -23,6 +23,8 @@ import {
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { normalizeRemark, resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -118,11 +120,7 @@ export function SiteSettings() {
             icon={MapPin}
             title={t("ss.notSetUp")}
             message={t("ss.notSetUp.msg")}
-            action={
-              <Link to="/site/setup">
-                <Button>{t("ssu.title")}</Button>
-              </Link>
-            }
+            action={<LinkButton to="/site/setup">{t("ssu.title")}</LinkButton>}
           />
         </Card>
       </div>
@@ -132,25 +130,34 @@ export function SiteSettings() {
   const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
+  const selection = resolveSelection(form.locations, picker ?? []);
   // What the popular-location select may offer: whatever the form currently says is on the picker.
   const offered = pickerUnavailable
     ? splitLocations(form.locationsText)
-    : form.locations.length > 0
-      ? form.locations
-      : (picker ?? []);
+    : selection.all
+      ? (picker ?? [])
+      : selection.save;
+  // A starred location the picker no longer offers used to read as «هیچ» in the select while the
+  // stale name was still sent — and refused with a 400. It is shown for what it is, and cleared on
+  // save. Only judged against a list the panel actually returned.
+  const popularStale =
+    !pickerUnavailable &&
+    Boolean(picker) &&
+    form.popular_location !== "" &&
+    !offered.some((o) => normalizeRemark(o) === normalizeRemark(form.popular_location));
 
   function submit(e: FormEvent) {
     e.preventDefault();
     if (
       !allValidNumbers([
-        { value: form.trial_hours, min: 1 },
-        { value: form.daily_limit_mb, min: 1 },
-        { value: form.referral_reward_mb, min: 0 },
-        { value: form.referral_reward_limit, min: 0 },
-        { value: form.reward_pwa_mb, min: 0 },
-        { value: form.reward_push_mb, min: 0 },
-        { value: form.reward_streak_mb, min: 0 },
-        { value: form.streak_days, min: 1 },
+        { value: form.trial_hours, ...BOUNDS.trialHours },
+        { value: form.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: form.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: form.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: form.reward_pwa_mb, ...BOUNDS.rewardMb },
+        { value: form.reward_push_mb, ...BOUNDS.rewardMb },
+        { value: form.reward_streak_mb, ...BOUNDS.rewardMb },
+        { value: form.streak_days, ...BOUNDS.streakDays },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -166,8 +173,9 @@ export function SiteSettings() {
         reward_push_mb: form.reward_push_mb,
         reward_streak_mb: form.reward_streak_mb,
         streak_days: form.streak_days,
-        locations: pickerUnavailable ? splitLocations(form.locationsText) : form.locations,
-        popular_location: form.popular_location,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable ? splitLocations(form.locationsText) : selection.save,
+        popular_location: popularStale ? "" : form.popular_location,
       },
       {
         onSuccess: () => toast.success(t("ss.saved")),
@@ -213,11 +221,15 @@ export function SiteSettings() {
           <CardHeader title={t("ss.economy")} icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.trialHours")}>
-              <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
+              <NumberInput
+                {...BOUNDS.trialHours}
+                value={form.trial_hours}
+                onChange={setNum("trial_hours")}
+              />
             </Field>
             <Field label={t("set.dailyLimit")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.dailyLimitMb}
                 value={form.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
@@ -230,37 +242,45 @@ export function SiteSettings() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.rewardMb")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
             <Field label={t("set.rewardLimit")} hint={t("set.rewardLimit.hint")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardLimit}
                 value={form.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
             </Field>
             <Field label={t("ss.reward.pwa")}>
-              <NumberInput min={0} value={form.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
+              <NumberInput
+                {...BOUNDS.rewardMb}
+                value={form.reward_pwa_mb}
+                onChange={setNum("reward_pwa_mb")}
+              />
             </Field>
             <Field label={t("ss.reward.push")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={form.reward_push_mb}
                 onChange={setNum("reward_push_mb")}
               />
             </Field>
             <Field label={t("ss.reward.streak")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={form.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
             </Field>
             <Field label={t("ss.reward.streakDays")}>
-              <NumberInput min={1} value={form.streak_days} onChange={setNum("streak_days")} />
+              <NumberInput
+                {...BOUNDS.streakDays}
+                value={form.streak_days}
+                onChange={setNum("streak_days")}
+              />
             </Field>
           </div>
         </Card>
@@ -288,12 +308,20 @@ export function SiteSettings() {
               onRefresh={refreshFromSquad}
               refreshing={refresh.isPending}
             />
-            <Field label={t("ss.popular")} hint={t("ss.popular.hint")}>
+            <Field
+              label={t("ss.popular")}
+              hint={popularStale ? t("ss.popular.stale") : t("ss.popular.hint")}
+            >
               <Select
                 value={form.popular_location}
                 onChange={(e) => setForm((f) => ({ ...f, popular_location: e.target.value }))}
               >
                 <option value="">{t("ss.popular.none")}</option>
+                {popularStale && (
+                  <option value={form.popular_location}>
+                    {t("ss.popular.staleOption", { name: form.popular_location })}
+                  </option>
+                )}
                 {offered.map((l) => (
                   <option key={l} value={l}>
                     {l}

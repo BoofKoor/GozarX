@@ -16,7 +16,15 @@ from pydantic import BaseModel
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.bounds import (
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    StreakDays,
+    TrialHours,
+)
 from gozar.web.routes.admin.site_locations import (
+    offered_locations,
     reject_popular_outside_list,
     reject_unknown_locations,
 )
@@ -47,14 +55,14 @@ class SiteSettingsOut(BaseModel):
 class SiteSettingsPatch(BaseModel):
     locations: list[str] | None = None
     popular_location: str | None = None  # "" clears it; None leaves it unchanged
-    trial_hours: int | None = None
-    daily_limit_mb: int | None = None
-    referral_reward_mb: int | None = None
-    referral_reward_limit: int | None = None
-    reward_pwa_mb: int | None = None
-    reward_push_mb: int | None = None
-    reward_streak_mb: int | None = None
-    streak_days: int | None = None
+    trial_hours: TrialHours | None = None
+    daily_limit_mb: DailyLimitMb | None = None
+    referral_reward_mb: RewardMb | None = None
+    referral_reward_limit: RewardLimit | None = None
+    reward_pwa_mb: RewardMb | None = None
+    reward_push_mb: RewardMb | None = None
+    reward_streak_mb: RewardMb | None = None
+    streak_days: StreakDays | None = None
 
 
 async def _read(settings: SettingsService) -> SiteSettingsOut:
@@ -106,11 +114,14 @@ async def update_site_settings(
         # empty string clears the flag (no popular location). Validated against the list being
         # SAVED when one is in this same request, else against the stored one — otherwise a
         # combined edit could star a location the picker no longer offers.
-        offered = (
+        stored = (
             body.locations
             if body.locations is not None
             else await settings.get_list(SiteSettingKey.SITE_LOCATIONS)
         )
+        # An empty list means "all of the squad's": check the star against those, or a name the
+        # squad stopped serving could be starred with nothing to contradict it.
+        offered = await offered_locations(request, squad, stored)
         reject_popular_outside_list(body.popular_location, offered)
         await settings.set(SiteSettingKey.SITE_POPULAR_LOCATION, body.popular_location.strip())
     for field, key, floor in _NUM_FIELDS:
@@ -124,8 +135,12 @@ async def update_site_settings(
 async def refresh_site_locations(
     request: Request, session: DbSession, admin: AdminUser
 ) -> SiteSettingsOut:
-    """Re-derive ``SITE_LOCATIONS`` from the site trial squad's remark NAMES (matched by name, never
-    an index) — keeps the picker aligned with the panel after squad/host changes."""
+    """Offer every location the site trial squad serves: ``SITE_LOCATIONS`` becomes ``[]``, which
+    means "all of them, live", once the squad is confirmed to serve something.
+
+    It used to store today's names instead — a snapshot that froze out every host added later and
+    went stale (then blocked the next save with a 400) as soon as a host it named was renamed or
+    hidden in the panel."""
     settings = _settings(request, session)
     squad = await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD)
     if not squad:
@@ -141,5 +156,5 @@ async def refresh_site_locations(
         raise HTTPException(
             status.HTTP_409_CONFLICT, "squad matched no enabled host — locations left unchanged"
         )
-    await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps(names))
+    await settings.set(SiteSettingKey.SITE_LOCATIONS, json.dumps([]))
     return await _read(settings)

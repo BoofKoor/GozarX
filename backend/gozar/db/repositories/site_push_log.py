@@ -29,11 +29,29 @@ class SitePushLogRepository(BaseRepository):
     async def get(self, id_: int) -> SitePushLog | None:
         return await self.session.get(SitePushLog, id_)
 
-    async def mark_sending(self, id_: int) -> None:
+    async def mark_sending(self, id_: int, *, recipients: int | None = None) -> None:
+        """Flip to ``sending``; ``recipients`` is the audience actually walked (it can differ from
+        the count taken at enqueue time, and delivered % must not read above 100)."""
         row = await self.get(id_)
         if row is not None:
             row.status = SitePushStatus.sending
+            if recipients is not None:
+                row.recipients = recipients
             await self.session.flush()
+
+    async def fail_interrupted(self) -> int:
+        """Close rows left ``sending`` by a worker that died mid-send (run at worker start)."""
+        rows = (
+            await self.session.scalars(
+                select(SitePushLog).where(SitePushLog.status == SitePushStatus.sending)
+            )
+        ).all()
+        now = datetime.now(UTC)
+        for row in rows:
+            row.status = SitePushStatus.failed
+            row.finished_at = now
+        await self.session.flush()
+        return len(rows)
 
     async def complete(
         self, id_: int, *, sent: int, failed: int, pruned: int, ok: bool = True

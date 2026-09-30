@@ -11,7 +11,7 @@ here: ``blocked`` keeps the anti-abuse trail that made the device worth looking 
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from pydantic import BaseModel
@@ -20,7 +20,9 @@ from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
-from gozar.services.site_admin import SiteAdminService
+from gozar.services.settings_service import SettingsService, SiteSettingKey
+from gozar.services.site_admin import DeviceActionRefused, SiteAdminService
+from gozar.services.site_trial import _DEFAULT_SITE_TRIAL_HOURS
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/site/devices", tags=["site-devices"])
@@ -47,10 +49,19 @@ class DeviceOut(BaseModel):
     handle: str | None
     status: str
     site_panel_username: str | None
+    #: Blocked, but the panel did not answer the revoke: its config still works until the sweep
+    #: (or another block) gets the delete through.
+    revoke_pending: bool = False
     referral_count: int
     referred_by: str | None
+    #: The streak as it stands NOW: the stored counter, or 0 once it has lapsed (the counter is
+    #: written on a claim, never on the absence of one — ``site_economy.streak_from_claim_times``).
     streak_count: int
+    #: The cooldown anchor. An admin reset clears it, so it is not "when did this device last
+    #: claim" — ``last_claimed_at`` is.
     last_claim_at: datetime | None
+    #: The most recent claim in the log, of any kind.
+    last_claimed_at: datetime | None = None
     ip_bucket: str | None
     has_fingerprint: bool  # never expose the hash itself — it identifies the browser
     created_at: datetime | None
@@ -83,20 +94,44 @@ class DeviceCardOut(DeviceOut):
     invited: int  # devices that arrived via this one's link (RAW, uncapped)
 
 
-def _out(d: SiteDevice) -> DeviceOut:
+def _out(
+    d: SiteDevice,
+    latest: tuple[datetime, datetime | None] | None,
+    trial_hours: int,
+    now: datetime,
+) -> DeviceOut:
+    """One device row. ``latest`` is ``(latest claim, latest real provision)`` from the log."""
+    last_claimed, provision = latest if latest is not None else (None, None)
+    grace = timedelta(hours=max(trial_hours, 1) * 2)
+    live = provision is not None and now - provision <= grace
     return DeviceOut(
         uuid=d.uuid,
         handle=d.handle,
         status=d.status,
         site_panel_username=d.site_panel_username,
+        revoke_pending=d.status == SiteDeviceStatus.blocked and bool(d.site_panel_username),
         referral_count=d.referral_count,
         referred_by=d.referred_by,
-        streak_count=d.streak_count,
+        streak_count=d.streak_count if live else 0,
         last_claim_at=d.last_claim_at,
+        last_claimed_at=last_claimed,
         ip_bucket=d.ip_bucket,
         has_fingerprint=bool(d.fingerprint_hash),
         created_at=d.created_at,
     )
+
+
+async def _trial_hours(request: Request, session: object) -> int:
+    settings = SettingsService(session, request.app.state.redis)  # type: ignore[arg-type]
+    return await settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, _DEFAULT_SITE_TRIAL_HOURS)
+
+
+async def _row(request: Request, session: object, device: SiteDevice) -> DeviceOut:
+    """``_out`` for a single device, looking up what it needs — the record, and every action's
+    answer, must report the same "last claim" and streak as the list row it was opened from."""
+    latest = await SiteClaimRepository(session).latest_for_devices([device.uuid])  # type: ignore[arg-type]
+    hours = await _trial_hours(request, session)
+    return _out(device, latest.get(device.uuid), hours, datetime.now(UTC))
 
 
 @router.get("/", response_model=DevicePage)
@@ -121,8 +156,11 @@ async def list_devices(
         search=search,
         ip_bucket=ip_bucket,
     )
+    latest = await SiteClaimRepository(session).latest_for_devices([d.uuid for d in rows])
+    hours = await _trial_hours(request, session)
+    now = datetime.now(UTC)
     return DevicePage(
-        items=[_out(d) for d in rows],
+        items=[_out(d, latest.get(d.uuid), hours, now) for d in rows],
         total=await repo.count_filtered(status=status, search=search, ip_bucket=ip_bucket),
         page=page,
         page_size=page_size,
@@ -136,8 +174,9 @@ async def get_device(
     card = await _service(request, session).card(uuid)
     if card is None:
         raise HTTPException(404, "device not found")
+    row = await _row(request, session, card.device)
     return DeviceCardOut(
-        **_out(card.device).model_dump(),
+        **row.model_dump(),
         claims=card.claims,
         recent_claims=[
             ClaimOut(location=c.location, is_change=c.is_change, created_at=c.created_at)
@@ -163,24 +202,36 @@ async def device_peers(
     ]
 
 
+_REFUSED = {
+    "blocked": (409, "This device is blocked. Unblock it first, then allow another claim."),
+    "not_blocked": (409, "This device is not blocked."),
+    "panel": (502, "The panel did not answer, so the current config was not revoked. Try again."),
+}
+
+
+async def _act(request: Request, session: object, uuid: str, method: str) -> DeviceOut:
+    try:
+        device = await getattr(_service(request, session), method)(uuid)
+    except DeviceActionRefused as refused:
+        code, detail = _REFUSED[refused.reason]
+        raise HTTPException(code, detail) from refused
+    if device is None:
+        raise HTTPException(404, "device not found")
+    return await _row(request, session, device)
+
+
 @router.post("/{uuid}/block", response_model=DeviceOut)
 async def block_device(
     uuid: str, request: Request, session: DbSession, admin: AdminUser
 ) -> DeviceOut:
-    device = await _service(request, session).block(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "block")
 
 
 @router.post("/{uuid}/unblock", response_model=DeviceOut)
 async def unblock_device(
     uuid: str, request: Request, session: DbSession, admin: AdminUser
 ) -> DeviceOut:
-    device = await _service(request, session).unblock(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "unblock")
 
 
 @router.post("/{uuid}/reset", response_model=DeviceOut)
@@ -189,7 +240,4 @@ async def reset_device_trial(
 ) -> DeviceOut:
     """Free the current trial and clear the cooldown so the device can claim again now. The row,
     its claim history and its rewards are kept — this is forgiveness, not a wipe."""
-    device = await _service(request, session).reset_trial(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "reset_trial")

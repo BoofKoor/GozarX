@@ -7,7 +7,9 @@ import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
 import { Input } from "@/components/ui/Input";
 import { Modal } from "@/components/ui/Modal";
+import { useDiscardGuard } from "@/components/ui/confirm";
 import { useI18n, type MessageKey } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { langLabel } from "@/lib/format";
 import { useUpdateButton } from "@/hooks/useButtons";
 import type { ButtonConfig, ButtonStyle, Lang } from "@/types/api";
@@ -32,6 +34,13 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
   const [labels, setLabels] = useState<Record<Lang, string>>({ ...button.effective_label });
   const [visible, setVisible] = useState(button.is_visible);
   const [style, setStyle] = useState<ButtonStyle>(button.style);
+  const dirty =
+    visible !== button.is_visible ||
+    style !== button.style ||
+    (Object.keys(labels) as Lang[]).some((l) => labels[l] !== button.effective_label[l]);
+  const guard = useDiscardGuard();
+  // Esc and a backdrop click asked nothing and threw the edits away.
+  const close = () => void guard(dirty, onClose);
 
   function save() {
     // Only persist a label that differs from the default; empty -> revert to the code default.
@@ -47,6 +56,9 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           labels: Object.keys(override).length ? override : null,
           is_visible: visible,
           style,
+          // Visibility belongs to the screen this was opened from; the label and colour are the
+          // button's everywhere. Key-wide, hiding change_location here hid it on two more screens.
+          screen: button.screen,
         },
       },
       {
@@ -54,13 +66,14 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           toast.success(t("btn.saved"));
           onClose();
         },
-        onError: () => toast.error(t("btn.saveFailed")),
+        // The server's reason (a label over the limit, an unknown screen), not a bare "failed".
+        onError: (err) => toast.error(apiErrorMessage(err, t("btn.saveFailed"))),
       },
     );
   }
 
   return (
-    <Modal onClose={onClose} className="max-w-lg p-5" labelledBy="button-editor-title">
+    <Modal onClose={close} className="max-w-lg p-5" labelledBy="button-editor-title">
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 id="button-editor-title" className="text-lg font-bold">
           {t("btn.editor.title")}
@@ -134,7 +147,7 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
         </Field>
       </div>
       <div className="mt-5 flex justify-end gap-2">
-        <Button variant="ghost" onClick={onClose}>
+        <Button variant="ghost" onClick={close}>
           {t("btn.cancel")}
         </Button>
         <Button onClick={save} loading={update.isPending}>

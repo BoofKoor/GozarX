@@ -5,15 +5,15 @@ import { Badge } from "@/components/ui/Badge";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { useI18n } from "@/i18n";
 import { faDateTime, formatMs, formatNumber } from "@/lib/format";
-import type { Probe, WebhookHealth } from "@/types/api";
+import { webhookState } from "@/lib/health";
+import type { Probe, SystemHealth, WebhookHealth } from "@/types/api";
 
 export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; telegram: Probe }) {
   const { t } = useI18n();
-  // Match the backend's overall-status threshold: health.py marks the service degraded only when
-  // pending EXCEEDS 50 (_PENDING_BACKLOG), so this card must stay "healthy" through 50 too — else at
-  // exactly 50 the banner would read "healthy" while this badge contradicted it.
-  const healthy =
-    webhook.configured && telegram.ok && !webhook.recent_error && webhook.pending <= 50;
+  // The same verdict the dashboard's health row and the server's overall status reach — this card
+  // used to ignore `url_set`, so a webhook that was never registered read «سالم».
+  const state = webhookState({ webhook, telegram } as SystemHealth);
+  const healthy = state === "ok";
   return (
     <Card>
       <CardHeader
@@ -39,6 +39,7 @@ export function WebhookCard({ webhook, telegram }: { webhook: WebhookHealth; tel
         <Row
           label={t("sys.wh.url")}
           value={webhook.url_set ? t("sys.wh.urlSet") : t("sys.wh.urlUnset")}
+          danger={webhook.configured && telegram.ok && !webhook.url_set}
         />
         <Row
           label={t("sys.wh.latency")}

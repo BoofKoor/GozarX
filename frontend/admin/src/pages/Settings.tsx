@@ -17,6 +17,8 @@ import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -107,15 +109,23 @@ export function Settings() {
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
 
+  // The bot's own rule for a URL button (`services/button_links`): anything else it silently drops.
+  const adUrl = form.ad_button_url.trim();
+  const adUrlInvalid = adUrl !== "" && !/^(https?|tg):\/\//.test(adUrl);
+
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (adUrlInvalid) {
+      toast.error(t("set.adButton.urlInvalid"));
+      return;
+    }
     if (
       !allValidNumbers([
-        { value: form.daily_limit_mb, min: 1 },
-        { value: form.referral_reward_mb, min: 0 },
-        { value: form.referral_reward_limit, min: 0 },
-        { value: form.trial_hours, min: 1 },
-        { value: form.configs_per_page, min: 1 },
+        { value: form.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: form.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: form.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: form.trial_hours, ...BOUNDS.trialHours },
+        { value: form.configs_per_page, ...BOUNDS.configsPerPage },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -129,7 +139,10 @@ export function Settings() {
         trial_hours: form.trial_hours,
         configs_per_page: form.configs_per_page,
         ads_enabled: form.ads_enabled,
-        locations: pickerUnavailable ? splitLocations(form.locationsText) : form.locations,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable
+          ? splitLocations(form.locationsText)
+          : resolveSelection(form.locations, picker ?? []).save,
         ad_button_enabled: form.ad_button_enabled,
         ad_button_text: form.ad_button_text.trim(),
         ad_button_url: form.ad_button_url.trim(),
@@ -165,24 +178,28 @@ export function Settings() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.dailyLimit")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.dailyLimitMb}
                 value={form.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
             </Field>
             <Field label={t("set.trialHours")}>
-              <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
+              <NumberInput
+                {...BOUNDS.trialHours}
+                value={form.trial_hours}
+                onChange={setNum("trial_hours")}
+              />
             </Field>
             <Field label={t("set.rewardMb")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
             <Field label={t("set.rewardLimit")} hint={t("set.rewardLimit.hint")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardLimit}
                 value={form.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
@@ -195,7 +212,7 @@ export function Settings() {
           <div className="space-y-4">
             <Field label={t("set.perPage")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.configsPerPage}
                 value={form.configs_per_page}
                 onChange={setNum("configs_per_page")}
               />
@@ -238,7 +255,10 @@ export function Settings() {
                   placeholder={t("set.adButton.textPlaceholder")}
                 />
               </Field>
-              <Field label={t("set.adButton.url")}>
+              <Field
+                label={t("set.adButton.url")}
+                error={adUrlInvalid ? t("set.adButton.urlInvalid") : undefined}
+              >
                 <Input
                   dir="ltr"
                   value={form.ad_button_url}

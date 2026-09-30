@@ -51,6 +51,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   // `id="rewards"` on both, so /status#rewards (the homepage's reward rows) finds its target in the
   // server HTML, before /status has loaded.
   if (!status) return <div id="rewards" className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // A blocked device collects nothing — the server refuses every reward — so the missions would be
+  // a card of buttons that can only fail. The widget above already says why.
+  if (status.status === "blocked") return null;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);

@@ -152,11 +152,29 @@ def clear_device_cookie(response: Response) -> None:
     response.delete_cookie(DEVICE_COOKIE, path="/")
 
 
+async def _from_cookie(
+    request: Request, repo: SiteDeviceRepository, secret: str
+) -> SiteDevice | None:
+    """The device the signed cookie names, recorded as seen; ``None`` for no (valid) cookie."""
+    device_uuid = verify_device_cookie(request.cookies.get(DEVICE_COOKIE, ""), secret)
+    if device_uuid is None:
+        return None
+    device = await repo.get(device_uuid)
+    if device is not None:
+        # The site's only visit signal. Every identity-bearing request funnels through here, so
+        # this is where "the device was here" gets recorded; without it the admin panel could only
+        # ever count CLAIMS and report "identities ever minted" as if it were traffic. `touch_seen`
+        # throttles itself, so this is not a write per page load.
+        await repo.touch_seen(device)
+    return device
+
+
 async def current_device(request: Request, response: Response, session: DbSession) -> SiteDevice:
     """Resolve (or mint) the caller's ``site_devices`` row from the signed cookie.
 
     Returns the existing device for a valid cookie; otherwise mints a new uuid + device row and sets
-    the signed cookie on the response.
+    the signed cookie on the response. A minted device is NOT recorded as seen until it comes back
+    with that cookie (``SiteDeviceRepository.touch_seen``).
     """
     settings = get_settings()
     secret = settings.site_cookie_secret.get_secret_value()
@@ -168,16 +186,9 @@ async def current_device(request: Request, response: Response, session: DbSessio
         raise HTTPException(status_code=503, detail="site_not_configured")
     repo = SiteDeviceRepository(session)
 
-    device_uuid = verify_device_cookie(request.cookies.get(DEVICE_COOKIE, ""), secret)
-    if device_uuid is not None:
-        device = await repo.get(device_uuid)
-        if device is not None:
-            # The site's only visit signal. Every identity-bearing request funnels through here, so
-            # this is where "the device was here" gets recorded; without it the admin panel could
-            # only ever count CLAIMS and report "identities ever minted" as if it were traffic.
-            # `touch_seen` throttles itself, so this is not a write per page load.
-            await repo.touch_seen(device)
-            return device
+    device = await _from_cookie(request, repo, secret)
+    if device is not None:
+        return device
 
     new_uuid = str(uuid_lib.uuid4())
     device, _ = await repo.get_or_create(
@@ -185,10 +196,24 @@ async def current_device(request: Request, response: Response, session: DbSessio
         fingerprint_hash=fingerprint_hash(request),
         ip_bucket=ip_bucket(request, secret),
         referred_by=await _referrer(request, repo, new_uuid),
+        seen=False,
     )
-    await repo.touch_seen(device)
     set_device_cookie(response, request, new_uuid)
     return device
 
 
+async def optional_device(request: Request, session: DbSession) -> SiteDevice | None:
+    """The caller's device when its cookie names one — and NEVER a new one.
+
+    For reads that do not need an identity to exist. `/locations` minted one for every cookieless
+    caller, and it runs right after `/status` (which already had), so such a client was two new
+    devices per page load.
+    """
+    secret = get_settings().site_cookie_secret.get_secret_value()
+    if not secret:
+        return None  # nothing verifiable, and nothing is minted here to be forgeable
+    return await _from_cookie(request, SiteDeviceRepository(session), secret)
+
+
 CurrentDevice = Annotated[SiteDevice, Depends(current_device)]
+OptionalDevice = Annotated[SiteDevice | None, Depends(optional_device)]

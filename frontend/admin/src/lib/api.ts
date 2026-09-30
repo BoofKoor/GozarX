@@ -26,6 +26,7 @@ api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
 });
 
 let refreshing = false;
+const REFRESH_TIMEOUT_MS = 15_000;
 let waiters: ((token: string | null) => void)[] = [];
 
 function notifyWaiters(token: string | null): void {
@@ -49,9 +50,13 @@ async function refreshAccessToken(): Promise<string | null> {
     // The backend ROTATES the pair on every refresh (fresh access + fresh 7-day refresh); persist
     // both, or the refresh token stays frozen at login and the session dies 7 days later even while
     // the admin is active.
+    //
+    // Bounded: with no timeout a stalled backend held `refreshing` forever, and every later 401
+    // queued behind it — the whole console hung on the one request nobody was waiting for.
     const resp = await axios.post<{ access_token: string; refresh_token: string }>(
       "/api/admin/auth/refresh",
       { refresh_token: refreshToken },
+      { timeout: REFRESH_TIMEOUT_MS },
     );
     setTokens(resp.data.access_token, resp.data.refresh_token);
     return resp.data.access_token;
@@ -67,6 +72,12 @@ api.interceptors.response.use(
     const original = error.config as (AxiosRequestConfig & { _retry?: boolean }) | undefined;
 
     if (status !== 401 || !original) {
+      return Promise.reject(error);
+    }
+    // A 401 from the AUTH routes is the answer itself, not an expired token: a wrong password typed
+    // on /login while an old session was stored used to "refresh", retry the login, fail again and
+    // wipe that session on the way out.
+    if (original.url?.startsWith("/admin/auth/")) {
       return Promise.reject(error);
     }
     // Already retried with a fresh token and still 401 → give up.
@@ -90,9 +101,13 @@ api.interceptors.response.use(
     }
 
     refreshing = true;
-    const token = await refreshAccessToken();
-    refreshing = false;
-    notifyWaiters(token);
+    let token: string | null = null;
+    try {
+      token = await refreshAccessToken();
+    } finally {
+      refreshing = false;
+      notifyWaiters(token);
+    }
 
     if (!token) {
       bounceToLogin();
@@ -110,9 +125,19 @@ api.interceptors.response.use(
  * exactly which location the squad doesn't serve, a 409 ("the squad matched no enabled host") and a
  * 502 ("panel unreachable") all read as "ذخیره نشد." — three different problems, one useless
  * message. FastAPI puts the reason in `detail`; surface it.
+ *
+ * `byStatus` names a refusal the page KNOWS in the operator's language. The server writes its
+ * reasons in English, so a Persian console that surfaced them verbatim toasted English; a status
+ * the page has no sentence for still shows the server's own words rather than the fallback.
  */
-export function apiErrorMessage(error: unknown, fallback: string): string {
+export function apiErrorMessage(
+  error: unknown,
+  fallback: string,
+  byStatus?: Partial<Record<number, string>>,
+): string {
   if (!axios.isAxiosError(error)) return fallback;
+  const known = error.response ? byStatus?.[error.response.status] : undefined;
+  if (known) return known;
   const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
   if (typeof detail === "string" && detail.trim()) return detail;
   // 422 bodies are a list of per-field errors; show the first message rather than "[object Object]".

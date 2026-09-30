@@ -16,6 +16,8 @@ import pytest_asyncio
 from httpx import ASGITransport
 
 from gozar.config.settings import get_settings
+from gozar.db.models.enums import Language
+from gozar.seed import DEFAULT_SITE_CONTENT
 from gozar.services.site_copy_keys import SITE_COPY_DEFAULTS, SITE_COPY_KEYS, content_key
 from gozar.web.app import create_app
 from gozar.web.auth.jwt import create_access
@@ -123,3 +125,60 @@ async def test_public_site_copy_still_answers_on_a_fresh_install(client: httpx.A
     assert body["overrides"] == {}
     assert "hero_title" in body and "meta_title" in body
     assert (await client.get("/api/public/site-copy?locale=ru")).status_code == 422
+
+
+async def _seed_site_copy(client: httpx.AsyncClient) -> None:
+    """What the seed leaves behind: every seeded key holding its default."""
+    for key, bodies in DEFAULT_SITE_CONTENT.items():
+        await client.put(
+            f"/api/admin/site/content/{key}",
+            json={"fa": bodies[Language.fa], "en": bodies[Language.en]},
+        )
+
+
+async def test_a_seeded_key_at_its_default_is_not_custom(client: httpx.AsyncClient) -> None:
+    # A fresh install used to list all eight seeded keys as "custom", each offering a reset.
+    await _seed_site_copy(client)
+    items = {i["key"]: i for i in (await client.get("/api/admin/site/content/")).json()}
+    for key in DEFAULT_SITE_CONTENT:
+        assert items[key]["overridden"] is False, key
+
+
+async def test_resetting_a_seeded_key_restores_its_default_not_a_blank(
+    client: httpx.AsyncClient,
+) -> None:
+    await _seed_site_copy(client)
+    edited = await client.put(
+        "/api/admin/site/content/site_meta_title", json={"fa": "عنوان من", "en": "Mine"}
+    )
+    assert edited.json()["overridden"] is True
+
+    r = await client.put("/api/admin/site/content/site_meta_title", json={"fa": "", "en": ""})
+    item = r.json()
+    default = DEFAULT_SITE_CONTENT["site_meta_title"]
+    # The reset used to store "" — an empty <title> on the live homepage.
+    assert (item["fa"], item["en"]) == (default[Language.fa], default[Language.en])
+    assert item["overridden"] is False
+    public = (await client.get("/api/public/site-copy?locale=fa")).json()
+    assert public["meta_title"] == default[Language.fa]
+
+
+async def test_resetting_a_push_nudge_keeps_it_renderable(client: httpx.AsyncClient) -> None:
+    # A push has no in-code copy to fall back to: a blank title rendered as "[site_push_…]".
+    await _seed_site_copy(client)
+    r = await client.put(
+        "/api/admin/site/content/site_push_limited_body", json={"fa": "  ", "en": ""}
+    )
+    default = DEFAULT_SITE_CONTENT["site_push_limited_body"]
+    assert (r.json()["fa"], r.json()["en"]) == (default[Language.fa], default[Language.en])
+
+
+async def test_the_editor_offers_no_field_the_page_never_shows(client: httpx.AsyncClient) -> None:
+    # The seeded site_hero_title / site_hero_sub rows always win on the page, so an edit to these
+    # design keys "saved" and changed nothing a visitor could see.
+    keys = {i["key"] for i in (await client.get("/api/admin/site/content/")).json()}
+    for shadowed in ("hero_h1_a", "hero_h1_b", "hero_sub"):
+        assert content_key(shadowed) not in keys
+    assert {"site_hero_title", "site_hero_sub"} <= keys
+    r = await client.put(f"/api/admin/site/content/{content_key('hero_sub')}", json={"fa": "x"})
+    assert r.status_code == 404

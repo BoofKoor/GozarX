@@ -6,6 +6,7 @@
 // Gregorian dates. Both come from the browser's built-in Intl — no extra dependency.
 
 import { getLocale, localeTag } from "@/i18n";
+import { DISPLAY_TZ } from "@/lib/time";
 
 const _FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 
@@ -78,14 +79,22 @@ export function formatMb(mb: number): string {
  * the best figure the funnel has. The unit follows the value: seconds under a minute, minutes
  * under an hour, hours above.
  */
+/** The duration units follow the LOCALE, like `humanUptime`'s: «۲۱s» was a Latin letter parked
+ *  after Persian digits, on the one tile whose whole job is that number. */
+const _DURATION_UNITS: Record<string, { s: string; m: string; h: string }> = {
+  fa: { s: " ثانیه", m: " دقیقه", h: " ساعت" },
+  en: { s: "s", m: "m", h: "h" },
+};
+
 export function humanHours(hours: number): string {
-  if (!Number.isFinite(hours) || hours < 0) return isolateQuantity(localizeDigits("0s"));
+  const u = _DURATION_UNITS[getLocale()] ?? _DURATION_UNITS.en;
+  if (!Number.isFinite(hours) || hours < 0) return isolateQuantity(localizeDigits(`0${u.s}`));
   const seconds = hours * 3600;
-  if (seconds < 60) return isolateQuantity(localizeDigits(`${Math.round(seconds)}s`));
-  if (hours < 1) return isolateQuantity(localizeDigits(`${Math.round(seconds / 60)}m`));
+  if (seconds < 60) return isolateQuantity(localizeDigits(`${Math.round(seconds)}${u.s}`));
+  if (hours < 1) return isolateQuantity(localizeDigits(`${Math.round(seconds / 60)}${u.m}`));
   // One decimal past an hour: the difference between 6.9h and 7h is what a period comparison is
   // reading, and rounding it away would flatten the delta the tile sits above.
-  return isolateQuantity(localizeDigits(`${hours.toFixed(1)}h`));
+  return isolateQuantity(localizeDigits(`${hours.toFixed(1)}${u.h}`));
 }
 
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */
@@ -128,19 +137,28 @@ export function shortDay(iso: string): string {
   ).format(d);
 }
 
-/** ISO date/datetime → a full date ("۲۶ تیر ۱۴۰۵" / "17 July 2026"); "—" when missing/invalid. */
+/**
+ * ISO date/datetime → a full date ("۲۶ تیر ۱۴۰۵" / "17 July 2026"); "—" when missing/invalid.
+ *
+ * Two kinds of input, two clocks. A bare "YYYY-MM-DD" is a reporting DAY the server already cut on
+ * the Tehran clock, so it is printed as that calendar date (read at UTC midnight, the only reading
+ * that cannot shift it). A full timestamp is an INSTANT, and it is printed on the Tehran clock:
+ * formatted in UTC as well, every device, push and recorder date stamped between 00:00 and 03:30
+ * local time read as the day before.
+ */
 export function faDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const dayOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const d = new Date(dayOnly ? `${iso}T00:00:00Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   return memo(
-    "date",
+    dayOnly ? "date" : "instantDate",
     () =>
       new Intl.DateTimeFormat(localeTag(), {
         year: "numeric",
         month: "long",
         day: "numeric",
-        timeZone: "UTC",
+        timeZone: dayOnly ? "UTC" : DISPLAY_TZ,
       }),
   ).format(d);
 }
@@ -274,7 +292,12 @@ export function splitLocations(raw: string): string[] {
 
 /** Join a list with the locale's own comma — the inverse of `splitLocations`. */
 export function joinList(list: string[]): string {
-  return list.join(getLocale() === "fa" ? "، " : ", ");
+  return list.join(listSeparator());
+}
+
+/** The active locale's list separator — for callers that isolate each item in its own element. */
+export function listSeparator(): string {
+  return getLocale() === "fa" ? "، " : ", ";
 }
 
 // The formatting tags Telegram actually renders (attribute-less; <a href> handled separately).

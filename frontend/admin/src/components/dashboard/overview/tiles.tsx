@@ -110,6 +110,7 @@ export function TopCard({
   icon: Icon,
   tone,
   label,
+  scope,
   headline,
   value,
   unit,
@@ -118,6 +119,9 @@ export function TopCard({
   icon: LucideIcon;
   tone: 1 | 2 | 3 | 4;
   label: string;
+  /** Which stretch of time the figure covers — the range, or all time. Four cards in one row
+   *  cover two different ones, and unlabelled they all read as the range's. */
+  scope?: string;
   headline: ReactNode;
   value: ReactNode;
   unit: string;
@@ -143,6 +147,7 @@ export function TopCard({
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.085em] text-content-subtle">
             {label}
+            {scope && <span className="normal-case tracking-normal"> · {scope}</span>}
           </div>
           <div
             className={clsx(

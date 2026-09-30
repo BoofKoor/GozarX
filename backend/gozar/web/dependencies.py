@@ -1,7 +1,8 @@
 """FastAPI dependencies for the admin API.
 
 ``get_db`` opens one ``AsyncSession`` per request from ``app.state.sessionmaker`` (commit on
-success, rollback on error) — the request-scoped analogue of the bot's per-update middleware.
+success, rollback on error) — the request-scoped analogue of the bot's per-update middleware. It
+commits before the response is sent, never after (``DbSession``'s ``scope="function"``).
 ``require_admin`` gates a route on a valid **access** JWT and returns the admin username (``sub``).
 """
 
@@ -37,7 +38,12 @@ async def get_db(request: Request) -> AsyncIterator[AsyncSession]:
                 await request.app.state.redis.delete(*keys)
 
 
-DbSession = Annotated[AsyncSession, Depends(get_db)]
+# scope="function": commit BEFORE the response goes out. The default ("request") ends a yield
+# dependency after the response is sent — measured on this FastAPI (0.138.1), the full response
+# reached the client in 2 ms and the commit ran 2 s later — so a commit that failed had already been
+# reported as "saved", and a refetch fired on that reply could read the old row. A route that
+# streams its body must therefore not read through this session (see the users CSV export).
+DbSession = Annotated[AsyncSession, Depends(get_db, scope="function")]
 
 
 def _bearer(authorization: str | None) -> str | None:

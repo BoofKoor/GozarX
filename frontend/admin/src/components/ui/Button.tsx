@@ -1,5 +1,6 @@
 import { clsx } from "clsx";
-import type { ButtonHTMLAttributes } from "react";
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { Link, type LinkProps } from "react-router-dom";
 
 import { Spinner } from "./Spinner";
 
@@ -39,6 +40,70 @@ const ICON_SIZES: Record<Size, string> = {
   lg: "h-11 w-11",
 };
 
+interface Look {
+  variant?: Variant;
+  size?: Size;
+  iconOnly?: boolean;
+  className?: string;
+}
+
+/** The button look, for an element that is not a `<button>` (see `LinkButton`). */
+export function buttonClass({
+  variant = "primary",
+  size = "md",
+  iconOnly = false,
+  className,
+}: Look) {
+  return clsx(
+    "inline-flex shrink-0 items-center justify-center rounded-xl font-medium transition",
+    VARIANTS[variant],
+    iconOnly ? `${ICON_SIZES[size]} p-0` : SIZES[size],
+    className,
+  );
+}
+
+/**
+ * A router link that LOOKS like a button.
+ *
+ * Written as `<Link><Button/></Link>` it was a button inside a link — invalid HTML, two tab stops for
+ * one action, and a screen reader announcing "link, button". One element, one stop.
+ */
+export function LinkButton({
+  variant,
+  size,
+  iconOnly,
+  className,
+  children,
+  ...rest
+}: Look & Omit<LinkProps, "className"> & { children: ReactNode }) {
+  return (
+    <Link {...rest} className={buttonClass({ variant, size, iconOnly, className })}>
+      {children}
+    </Link>
+  );
+}
+
+/** `LinkButton` for an address outside the console (the live site), opened in a new tab. */
+export function ExternalLinkButton({
+  variant,
+  size,
+  iconOnly,
+  className,
+  children,
+  ...rest
+}: Look & Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "className" | "target" | "rel">) {
+  return (
+    <a
+      {...rest}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={buttonClass({ variant, size, iconOnly, className })}
+    >
+      {children}
+    </a>
+  );
+}
+
 export function Button({
   loading,
   variant = "primary",
@@ -53,13 +118,12 @@ export function Button({
   return (
     <button
       type={type}
-      className={clsx(
-        "inline-flex shrink-0 items-center justify-center rounded-xl font-medium transition",
-        "disabled:pointer-events-none disabled:opacity-50",
-        VARIANTS[variant],
-        iconOnly ? `${ICON_SIZES[size]} p-0` : SIZES[size],
-        className,
-      )}
+      className={buttonClass({
+        variant,
+        size,
+        iconOnly,
+        className: clsx("disabled:pointer-events-none disabled:opacity-50", className),
+      })}
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       {...rest}

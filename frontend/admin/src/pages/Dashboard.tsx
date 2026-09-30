@@ -1,15 +1,17 @@
 import {
   Activity,
+  AlertTriangle,
   Download,
   Gauge,
   Gift,
   Globe2,
   HeartPulse,
   LineChart,
+  Loader2,
   Repeat,
   UserPlus,
 } from "lucide-react";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { toast } from "sonner";
 
 import { ActivationPanel } from "@/components/dashboard/ActivationPanel";
@@ -17,17 +19,12 @@ import { ActiveUsersPanel } from "@/components/dashboard/ActiveUsersPanel";
 import { ActivityHeatmap } from "@/components/dashboard/ActivityHeatmap";
 import { ClaimsDistribution } from "@/components/dashboard/ClaimsDistribution";
 import { ConversionPanel } from "@/components/dashboard/ConversionPanel";
-import { CumulativeUsersChart } from "@/components/dashboard/CumulativeUsersChart";
-import { LanguageDonut } from "@/components/dashboard/LanguageDonut";
-import { NewVsReturningChart } from "@/components/dashboard/NewVsReturningChart";
 import { ReferralFunnelPanel } from "@/components/dashboard/ReferralFunnelPanel";
 import { ReminderByLanguage } from "@/components/dashboard/ReminderByLanguage";
 import { RetentionCohorts } from "@/components/dashboard/RetentionCohorts";
 import { Overview } from "@/components/dashboard/overview/Overview";
 import { TopLocations } from "@/components/dashboard/TopLocations";
 import { TopReferrers } from "@/components/dashboard/TopReferrers";
-import { UsagePanel } from "@/components/dashboard/UsagePanel";
-import { TrialHealthPanel } from "@/components/dashboard/TrialHealthPanel";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -47,8 +44,33 @@ import {
   useRetention,
 } from "@/hooks/useDashboard";
 import { useI18n, type MessageKey } from "@/i18n";
-import { faPct, formatNumber } from "@/lib/format";
+import { faPct, faTime, formatNumber } from "@/lib/format";
 import type { DashboardAnalytics } from "@/types/api";
+
+// The five panels that draw with recharts load with their tab, not with the page. Imported
+// statically they made the dashboard's chunk depend on the 434 KB chart library, which the default
+// tab — the hand-drawn overview — never uses.
+const CumulativeUsersChart = lazy(() =>
+  import("@/components/dashboard/CumulativeUsersChart").then((m) => ({
+    default: m.CumulativeUsersChart,
+  })),
+);
+const LanguageDonut = lazy(() =>
+  import("@/components/dashboard/LanguageDonut").then((m) => ({ default: m.LanguageDonut })),
+);
+const NewVsReturningChart = lazy(() =>
+  import("@/components/dashboard/NewVsReturningChart").then((m) => ({
+    default: m.NewVsReturningChart,
+  })),
+);
+const UsagePanel = lazy(() =>
+  import("@/components/dashboard/UsagePanel").then((m) => ({ default: m.UsagePanel })),
+);
+const TrialHealthPanel = lazy(() =>
+  import("@/components/dashboard/TrialHealthPanel").then((m) => ({
+    default: m.TrialHealthPanel,
+  })),
+);
 
 type TabKey = "overview" | "growth" | "retention" | "referrals" | "usage" | "geo" | "health";
 
@@ -81,12 +103,18 @@ function Analytic<T>({
   data,
   render,
   height = "h-52",
+  error = false,
+  onRetry,
 }: {
   data: T | undefined;
   render: (d: T) => JSX.Element;
   height?: string;
+  /** The query FAILED — a skeleton would sit there forever, saying "still loading". */
+  error?: boolean;
+  onRetry?: () => void;
 }) {
   if (!data) {
+    if (error) return <ErrorState onRetry={onRetry} />;
     return (
       <Card>
         <Skeleton className={`${height} w-full`} />
@@ -105,15 +133,23 @@ export function Dashboard() {
     label: t("dash.range.days", { n: formatNumber(r) }),
   }));
   const { data: health } = useSystemHealth();
-  const [tab, setTab] = useState<TabKey>("overview");
   const [exporting, setExporting] = useState(false);
-  const { data, isLoading, isError, refetch } = useDashboard(days);
+  const { data, isLoading, isError, refetch, dataUpdatedAt } = useDashboard(days);
   // Every windowed panel reads from these two queries, so the range control drives the WHOLE page —
   // it used to move only the activity chart while the panels beside it stayed on their own window.
-  const { data: analytics } = useDashboardAnalytics(days);
-  const { data: usage } = useDashboardUsage(days);
+  const analyticsQuery = useDashboardAnalytics(days);
+  const analytics = analyticsQuery.data;
+  const [tab, setTab] = useState<TabKey>("overview");
+  const usageQuery = useDashboardUsage(days, tab === "usage");
+  const usage = usageQuery.data;
   // Cohorts are inherently weekly, so they keep their own axis rather than the day range.
-  const { data: retention } = useRetention(8);
+  const retentionQuery = useRetention(8);
+  const retention = retentionQuery.data;
+  // Every analytics-backed panel says so when that query failed, with a way to ask again.
+  const analyticsState = {
+    error: analyticsQuery.isError,
+    onRetry: () => void analyticsQuery.refetch(),
+  };
 
   async function exportCsv() {
     setExporting(true);
@@ -126,13 +162,39 @@ export function Dashboard() {
     }
   }
 
+  // `keepPreviousData` holds the old range's figures on screen while the new one loads, which is
+  // right — but without saying so the page looked as if the click had not registered, for as long
+  // as the slower window took.
+  const rangePending =
+    (data != null && data.range_days !== days) ||
+    (analytics != null && analytics.range_days !== days);
+  const rangeControl = (
+    <span className="inline-flex items-center gap-2">
+      {rangePending && (
+        <span role="status" aria-label={t("dash.range.loading")}>
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-content-subtle" aria-hidden />
+        </span>
+      )}
+      <Segmented
+        value={days}
+        onChange={setDays}
+        options={RANGE_OPTIONS}
+        size="sm"
+        ariaLabel={t("dash.range.aria")}
+      />
+    </span>
+  );
+
   if (isLoading) {
     return <DashboardSkeleton />;
   }
-  if (isError || !data) {
+  // The full error page only when there is NOTHING to show — and it keeps the range control: a
+  // window that fails (90 days, say) used to take the control away with it, so "retry" could only
+  // ever ask for the same failing window again.
+  if (!data) {
     return (
       <div className="space-y-4">
-        <PageHeader title={t("dash.title")} />
+        <PageHeader title={t("dash.title")} actions={rangeControl} />
         <ErrorState onRetry={() => refetch()} />
       </div>
     );
@@ -148,13 +210,7 @@ export function Dashboard() {
           // drive. Showing a second pair up here would be two controls for one concern.
           tab === "overview" ? undefined : (
             <>
-              <Segmented
-                value={days}
-                onChange={setDays}
-                options={RANGE_OPTIONS}
-                size="sm"
-                ariaLabel={t("dash.range.aria")}
-              />
+              {rangeControl}
               <Button variant="outline" size="sm" onClick={exportCsv} loading={exporting}>
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">{t("dash.export")}</span>
@@ -172,6 +228,24 @@ export function Dashboard() {
         />
       </PageHeader>
 
+      {/* A refresh that failed while figures are already on screen is a notice ABOVE them, not a
+          page that replaces them: one missed poll during a deploy used to swap a working dashboard
+          — tabs, range control and all — for an error card. */}
+      {isError && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-2 rounded-xl bg-warning-500/15 px-3 py-2 text-xs text-warning-700"
+        >
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="min-w-0 flex-1">
+            {t("dash.stale", { time: faTime(new Date(dataUpdatedAt).toISOString()) })}
+          </span>
+          <Button variant="ghost" size="xs" onClick={() => refetch()}>
+            {t("ui.retry")}
+          </Button>
+        </div>
+      )}
+
       {/* One panel for all seven tabs, named by whichever tab is selected — `role="tablist"` is a
           promise that something is being controlled, and until this existed nothing was. */}
       <div
@@ -180,114 +254,148 @@ export function Dashboard() {
         aria-labelledby={tabId(TAB_ID_BASE, tab)}
         className="space-y-4"
       >
-        {/* The overview is the redesigned screen: KPI band, activity trend, "top" cards and the live
+        {/* A tab whose chart code is still downloading shows the same skeleton as its data would. */}
+        <Suspense fallback={<TabSkeleton />}>
+          {/* The overview is the redesigned screen: KPI band, activity trend, "top" cards and the live
           side rail. The other tabs keep the analytics panels built in Phase 2 — the design showed
           one screen, the product has six, and discarding five of them to match a mockup would be
           throwing away work the operator uses. */}
-        {tab === "overview" && (
-          <Overview
-            stats={data}
-            analytics={analytics}
-            retention={retention}
-            health={health}
-            range={data.range_days}
-            ranges={RANGES}
-            onRange={setDays}
-            onExport={exportCsv}
-            exporting={exporting}
-          />
-        )}
-
-        {tab === "growth" && (
-          <>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <CumulativeUsersChart signups={data.signups_series} total={data.total_users} />
-              <Analytic
-                data={analytics}
-                render={(d) => <NewVsReturningChart data={d.new_vs_returning} />}
-              />
-            </div>
-            <Analytic
-              data={analytics}
-              height="h-56"
-              render={(d) => <ActiveUsersSeries data={d} />}
+          {tab === "overview" && (
+            <Overview
+              stats={data}
+              analytics={analytics}
+              retention={retention}
+              health={health}
+              range={days}
+              ranges={RANGES}
+              onRange={setDays}
+              pending={rangePending}
+              onExport={exportCsv}
+              exporting={exporting}
             />
+          )}
+
+          {tab === "growth" && (
+            <>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <CumulativeUsersChart signups={data.signups_series} total={data.total_users} />
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <NewVsReturningChart data={d.new_vs_returning} />}
+                />
+              </div>
+              <Analytic
+                {...analyticsState}
+                data={analytics}
+                height="h-56"
+                render={(d) => <ActiveUsersSeries data={d} />}
+              />
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <ActivationPanel data={d} />}
+                />
+                <ConversionPanel data={data} />
+              </div>
+            </>
+          )}
+
+          {tab === "retention" && (
+            <>
+              {retention ? (
+                <RetentionCohorts data={retention} />
+              ) : retentionQuery.isError ? (
+                <ErrorState onRetry={() => void retentionQuery.refetch()} />
+              ) : (
+                <Card>
+                  <Skeleton className="h-64 w-full" />
+                </Card>
+              )}
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <ActiveUsersPanel data={d} />}
+                />
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <ClaimsDistribution data={d.claims_distribution} />}
+                />
+              </div>
+            </>
+          )}
+
+          {tab === "referrals" && (
+            <>
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <ReferralFunnelPanel data={d} />}
+                />
+                <Analytic
+                  {...analyticsState}
+                  data={analytics}
+                  render={(d) => <ReferralCapPanel data={d} />}
+                />
+              </div>
+              <TopReferrers data={data.top_referrers} />
+            </>
+          )}
+
+          {tab === "usage" && (
+            <Analytic
+              data={usage}
+              error={usageQuery.isError}
+              onRetry={() => void usageQuery.refetch()}
+              height="h-64"
+              render={(d) => <UsagePanel data={d} />}
+            />
+          )}
+
+          {tab === "geo" && (
+            <>
+              <Analytic
+                {...analyticsState}
+                data={analytics}
+                height="h-64"
+                render={(d) => <ActivityHeatmap cells={d.heatmap} />}
+              />
+              <Analytic
+                {...analyticsState}
+                data={analytics}
+                height="h-64"
+                render={(d) => (
+                  <ActivityHeatmap
+                    cells={d.signup_heatmap}
+                    title={t("d.heat.signups")}
+                    unit={t("d.heat.signupsUnit")}
+                    axisNote={t("d.heat.signupsAxis")}
+                  />
+                )}
+              />
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                <TopLocations data={data.top_locations} total={data.locations_total} />
+                <LanguageDonut data={data.languages} />
+              </div>
+              <Analytic
+                {...analyticsState}
+                data={analytics}
+                render={(d) => <ReminderByLanguage data={d.reminder_by_language} />}
+              />
+            </>
+          )}
+
+          {tab === "health" && (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Analytic data={analytics} render={(d) => <ActivationPanel data={d} />} />
+              <TrialHealthPanel data={data} />
               <ConversionPanel data={data} />
             </div>
-          </>
-        )}
-
-        {tab === "retention" && (
-          <>
-            {retention ? (
-              <RetentionCohorts data={retention} />
-            ) : (
-              <Card>
-                <Skeleton className="h-64 w-full" />
-              </Card>
-            )}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Analytic data={analytics} render={(d) => <ActiveUsersPanel data={d} />} />
-              <Analytic
-                data={analytics}
-                render={(d) => <ClaimsDistribution data={d.claims_distribution} />}
-              />
-            </div>
-          </>
-        )}
-
-        {tab === "referrals" && (
-          <>
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <Analytic data={analytics} render={(d) => <ReferralFunnelPanel data={d} />} />
-              <Analytic data={analytics} render={(d) => <ReferralCapPanel data={d} />} />
-            </div>
-            <TopReferrers data={data.top_referrers} />
-          </>
-        )}
-
-        {tab === "usage" && (
-          <Analytic data={usage} height="h-64" render={(d) => <UsagePanel data={d} />} />
-        )}
-
-        {tab === "geo" && (
-          <>
-            <Analytic
-              data={analytics}
-              height="h-64"
-              render={(d) => <ActivityHeatmap cells={d.heatmap} />}
-            />
-            <Analytic
-              data={analytics}
-              height="h-64"
-              render={(d) => (
-                <ActivityHeatmap
-                  cells={d.signup_heatmap}
-                  title={t("d.heat.signups")}
-                  unit={t("d.heat.signupsUnit")}
-                  axisNote={t("d.heat.signupsAxis")}
-                />
-              )}
-            />
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <TopLocations data={data.top_locations} />
-              <LanguageDonut data={data.languages} />
-            </div>
-            <Analytic
-              data={analytics}
-              render={(d) => <ReminderByLanguage data={d.reminder_by_language} />}
-            />
-          </>
-        )}
-
-        {tab === "health" && (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <TrialHealthPanel data={data} />
-            <ConversionPanel data={data} />
-          </div>
-        )}
+          )}
+        </Suspense>
       </div>
     </div>
   );
@@ -362,6 +470,19 @@ function ReferralCapPanel({ data }: { data: DashboardAnalytics }) {
         </div>
       )}
     </Card>
+  );
+}
+
+function TabSkeleton() {
+  return (
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <Card>
+        <Skeleton className="h-52 w-full" />
+      </Card>
+      <Card>
+        <Skeleton className="h-52 w-full" />
+      </Card>
+    </div>
   );
 }
 
