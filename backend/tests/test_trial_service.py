@@ -460,3 +460,27 @@ def test_start_of_today_utc_is_midnight() -> None:
     midnight = start_of_today_utc()
     assert (midnight.hour, midnight.minute, midnight.second, midnight.microsecond) == (0, 0, 0, 0)
     assert midnight.tzinfo is UTC
+
+
+async def test_a_claim_is_committed_while_its_lock_is_still_held(session) -> None:
+    # Released before the commit (which the middleware ran after the handler's Telegram reply), the
+    # lock let a second tap read the old cooldown and provision a second account.
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    await redis.set(SETTINGS_KEY, json.dumps(_BASE_SETTINGS))
+    held_at_commit: list[int] = []
+
+    async def commit() -> None:
+        held_at_commit.append(await redis.exists("lock:claim:100"))
+
+    trial = TrialService(
+        FakePanel([(_sub(), _TWO)]),
+        SettingsService(session, redis),
+        ConfigLogRepository(session),
+        redis,
+        commit=commit,
+    )
+    assert isinstance(await trial.claim(await _user(session)), Provisioned)
+    # One commit before the panel calls (no pooled connection held across them), one at the end —
+    # both while the lock was held.
+    assert held_at_commit == [1, 1]
+    assert await redis.exists("lock:claim:100") == 0

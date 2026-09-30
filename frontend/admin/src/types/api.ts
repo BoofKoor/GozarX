@@ -178,6 +178,9 @@ export interface BotUser {
   /** Banned, but the panel did not answer the revoke: the config still works until the reconcile
    *  sweep gets the delete through. A ban must never read as done when it is not. */
   revoke_pending: boolean;
+  /** When a broadcast learned the chat is gone (they blocked the bot). The row is KEPT — deleting it
+   *  shrank every past figure — and the mark clears the next time they message the bot. */
+  unreachable_at: string | null;
 }
 
 /** The record dialog's payload: the row, plus this user's history and live usage. */

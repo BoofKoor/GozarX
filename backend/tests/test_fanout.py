@@ -1,7 +1,8 @@
 """Worker fan-out: a broadcast removes a user ONLY on a permanent delivery failure (v1 lesson #4).
 
 ``_should_remove`` is the strict allowlist; the ``fanout`` integration test proves a blocked user is
-deleted while a transient failure keeps the user.
+marked unreachable (never deleted — see test_broadcast_unreachable) while a transient failure keeps
+the user untouched.
 """
 
 from __future__ import annotations
@@ -95,8 +96,9 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
         async def list_all_ids(self) -> list[int]:
             return [1, 2, 3, 4]
 
-        async def delete(self, telegram_id: int) -> None:
-            removed.append(telegram_id)
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            removed.extend(telegram_ids)
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -152,8 +154,9 @@ async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 2, 3]
 
-        async def delete(self, telegram_id: int) -> None:
-            removed.append(telegram_id)
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            removed.extend(telegram_ids)
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -220,8 +223,10 @@ async def test_broadcast_flood_is_retried_not_dropped(monkeypatch) -> None:
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 5, 6, 7]
 
-        async def delete(self, telegram_id: int) -> None:
-            raise AssertionError("a flood-controlled user must NEVER be removed")
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            if telegram_ids:
+                raise AssertionError("a flood-controlled user must NEVER be removed")
+            return 0
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -263,8 +268,8 @@ async def test_broadcast_delivers_whole_audience_across_chunks(monkeypatch) -> N
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return list(ids)
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -326,8 +331,8 @@ async def test_broadcast_text_targets_only_chosen_languages(monkeypatch) -> None
             seen_langs.append(kw)
             return [10, 11]
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -377,8 +382,8 @@ async def test_broadcast_attaches_the_inline_keyboard_and_narrows_the_audience(m
             seen.update(kw)
             return [21, 22]
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:

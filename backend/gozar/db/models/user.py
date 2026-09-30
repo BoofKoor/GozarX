@@ -35,3 +35,8 @@ class User(Base):
     # rolling-cooldown anchor. It lines up with the trial's own expiry (both = claim + trial_hours),
     # unlike a config_logs row timestamped at the later location-pick. None until the first claim.
     last_claim_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # When Telegram last said this chat is gone (the user blocked the bot, or deleted the account) —
+    # set by a broadcast, cleared by the user's next update. A broadcast used to DELETE the row
+    # instead: the claim history cascaded away with it, so every past day's figures shrank after
+    # each send, and the live panel account lost the only row that could clean it up at expiry.
+    unreachable_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

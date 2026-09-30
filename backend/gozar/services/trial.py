@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -249,11 +250,25 @@ class TrialService:
         settings: SettingsService,
         config_log_repo: ConfigLogRepository,
         redis: Redis,
+        *,
+        commit: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._panel = panel
         self._settings = settings
         self._config_log_repo = config_log_repo
         self._redis = redis
+        self._commit_hook = commit
+
+    async def _commit(self) -> None:
+        """End the open transaction, when the caller handed over its commit (the update middleware
+        does; the session stays the middleware's).
+
+        Called before every panel round trip: an open transaction pins a pooled connection for as
+        long as the panel takes, and the webhook's other updates wait on that pool. And before the
+        claim lock is released — see ``claim``.
+        """
+        if self._commit_hook is not None:
+            await self._commit_hook()
 
     # --- cache helpers (the quota math lives in module-level compute_traffic_bytes) --------------
     async def _store_cache(
@@ -359,6 +374,7 @@ class TrialService:
         if not username:
             await self._reset(user)
             return None
+        await self._commit()
         try:
             sub, links = await self._panel.subscription(username)
         except RemnawaveError as exc:
@@ -395,7 +411,12 @@ class TrialService:
         ) as first:
             if not first:
                 return PanelError()
-            return await self._claim_locked(user)
+            result = await self._claim_locked(user)
+            # Durable BEFORE the lock goes. Released first, the lock opened a window — the handler's
+            # Telegram reply, before the middleware commits — in which a second tap read the old
+            # cooldown and provisioned a second account.
+            await self._commit()
+            return result
 
     async def _claim_locked(self, user: User) -> ClaimResult:
         # 1. Already holding a config? Re-read live state (self-heals an ended trial to available).
@@ -429,6 +450,7 @@ class TrialService:
         claim_at = datetime.now(UTC)
         expire_at = claim_at + timedelta(hours=hours)
         username = _gen_username(user.telegram_id)
+        await self._commit()  # two panel calls follow; hold no pooled connection across them
         try:
             await self._panel.create_trial_user(username, traffic_bytes, expire_at, [squad])
         except RemnawaveError:

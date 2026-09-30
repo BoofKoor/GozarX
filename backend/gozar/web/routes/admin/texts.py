@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 from gozar.seed import DEFAULT_CONTENT
+from gozar.services import telegram_html
 from gozar.services.content import ContentService, render, sanitize_tokens
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -97,6 +98,12 @@ async def update_text(
     if body.fa is not None and not body.fa.strip():
         # Persian is what every other language falls back to; a blank one leaves nothing to send.
         raise HTTPException(422, "Persian text can't be empty: other languages fall back to it.")
+    for lang, text in (("fa", body.fa), ("en", body.en), ("ru", body.ru)):
+        # Every bot message is sent as HTML: markup Telegram cannot parse fails the WHOLE message,
+        # so this screen would stop answering for everyone who reads it in that language.
+        problem = telegram_html.check(text) if text else None
+        if problem is not None:
+            raise HTTPException(400, f"{lang}: {problem.message()}")
     content = ContentService(session, request.app.state.redis)
     # The editor saves all three languages together, so the per-key link_preview lands on every row.
     # sanitize_tokens strips any stray bidi/zero-width marks an RTL edit slipped inside ``{token}``.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import String, cast, delete, func, or_, select
+from sqlalchemy import String, cast, delete, func, or_, select, update
 from sqlalchemy.sql import Select
 
 from gozar.config.reporting import DISPLAY_TZ_NAME
@@ -249,10 +249,22 @@ class UserRepository(BaseRepository):
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
     async def list_all_ids(self) -> list[int]:
-        """Every telegram_id — the broadcast/forward audience. Materialised once so the worker can
-        throttle its fan-out without holding a DB cursor open for the whole (minutes-long) send."""
-        result = await self.session.scalars(select(User.telegram_id))
+        """Every REACHABLE telegram_id — the broadcast/forward audience. Materialised once so the
+        worker can throttle its fan-out without holding a DB cursor open for the whole send."""
+        result = await self.session.scalars(
+            select(User.telegram_id).where(User.unreachable_at.is_(None))
+        )
         return list(result.all())
+
+    async def mark_unreachable(self, telegram_ids: list[int], at: datetime) -> int:
+        """Record that Telegram says these chats are gone. The rows — and their claim history —
+        stay; the next update from any of them clears the mark (see the context middleware)."""
+        if not telegram_ids:
+            return 0
+        result = await self.session.execute(
+            update(User).where(User.telegram_id.in_(telegram_ids)).values(unreachable_at=at)
+        )
+        return int(result.rowcount or 0)
 
     @staticmethod
     def _audience(
@@ -268,7 +280,8 @@ class UserRepository(BaseRepository):
         unconditionally: they cannot receive anything, and counting them would inflate every
         pre-flight figure the composer shows.
         """
-        stmt = stmt.where(User.status != UserStatus.banned)
+        # Unreachable users too: Telegram has already said the chat is gone.
+        stmt = stmt.where(User.status != UserStatus.banned, User.unreachable_at.is_(None))
         if langs:
             stmt = stmt.where(User.language.in_(langs))
         if only_active:
@@ -306,7 +319,7 @@ class UserRepository(BaseRepository):
     async def list_ids_by_languages(self, langs: list[Language]) -> list[int]:
         """telegram_ids of users whose language is in ``langs`` (empty ⇒ all) — the language-
         targeted broadcast audience. Materialised once, like ``list_all_ids``."""
-        stmt = select(User.telegram_id)
+        stmt = select(User.telegram_id).where(User.unreachable_at.is_(None))
         if langs:
             stmt = stmt.where(User.language.in_(langs))
         result = await self.session.scalars(stmt)

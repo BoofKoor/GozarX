@@ -67,6 +67,9 @@ class UserOut(BaseModel):
     #: sweep (or another ban) gets the delete through. Shown so a ban never reads as done when it
     #: is not.
     revoke_pending: bool = False
+    #: When a broadcast learned this chat is gone (the user blocked the bot). Kept, not deleted, so
+    #: their history stays in every past figure; cleared the next time they message the bot.
+    unreachable_at: datetime | None = None
 
 
 class UserPage(BaseModel):
@@ -112,6 +115,7 @@ def _out(user: User, configs: int | None = None, last_location: str | None = Non
         last_location=last_location,
         last_claim_at=user.last_claim_at,
         revoke_pending=user.status is UserStatus.banned and user.panel_username is not None,
+        unreachable_at=user.unreachable_at,
     )
 
 

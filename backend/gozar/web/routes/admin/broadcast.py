@@ -33,6 +33,7 @@ from gozar.db.repositories.broadcast_draft import BroadcastDraftRepository
 from gozar.db.repositories.broadcast_log import BroadcastLogRepository
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.services import telegram_html
 from gozar.services.stats import window_start
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -264,6 +265,11 @@ async def send_broadcast(
     arq = request.app.state.arq
     if arq is None:
         raise HTTPException(503, "broadcast worker is not configured")
+    # Sent with parse_mode=HTML: markup Telegram cannot parse fails EVERY send, and the operator
+    # heard about it only when the job ended — the whole audience counted as "failed".
+    problem = telegram_html.check(body.text)
+    if problem is not None:
+        raise HTTPException(400, problem.message())
     langs = _parse_langs(body.languages)
     recipients = await UserRepository(session).count_audience(
         langs, only_active=body.only_active, only_referrers=body.only_referrers

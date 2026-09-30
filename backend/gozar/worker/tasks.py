@@ -231,10 +231,11 @@ async def _broadcast_loop(
             await asyncio.sleep(pace - elapsed)
 
     if to_remove:
+        # MARKED, never deleted: a delete cascaded the user's claim history away (every past day's
+        # figures shrank after each broadcast) and orphaned their live panel account, which only the
+        # row can map back for the expiry cleanup. Marked, they leave every audience instead.
         async with sessionmaker() as session:  # type: ignore[operator]
-            repo = UserRepository(session)
-            for uid in to_remove:
-                await repo.delete(uid)
+            await UserRepository(session).mark_unreachable(to_remove, datetime.now(UTC))
             await session.commit()
 
     await _edit(
@@ -568,7 +569,11 @@ async def reconcile_trials(ctx: dict) -> None:
                 users, ConfigLogRepository(session), SettingsService(session, redis), redis, panel
             )
             outcome = await service.apply_ended_trial(user, tokens)
-            if outcome is not None and outcome.user.reminder_enabled:
+            if (
+                outcome is not None
+                and outcome.user.reminder_enabled
+                and outcome.user.unreachable_at is None  # the chat is gone; the send would fail
+            ):
                 msg = await ContentService(session, redis).message(
                     outcome.content_key, outcome.user.language, **outcome.tokens
                 )

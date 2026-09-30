@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { KeyboardBuilder, MAX_CHARS, MessageField } from "@/components/broadcast/Composer";
 import { DraftList } from "@/components/broadcast/DraftList";
+import { describeHtmlProblem } from "@/components/broadcast/htmlProblem";
 import { BroadcastHistory } from "@/components/broadcast/History";
 import { HourStrip } from "@/components/charts/HourStrip";
 import { Button } from "@/components/ui/Button";
@@ -22,6 +23,7 @@ import {
 } from "@/hooks/useBroadcast";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { useI18n } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import {
   formatNumber,
   joinList,
@@ -29,6 +31,8 @@ import {
   localizeDigits,
   telegramPreviewHtml,
 } from "@/lib/format";
+import { checkTelegramHtml } from "@/lib/telegramHtml";
+import { nextZonedHour } from "@/lib/time";
 import type { BroadcastButton, BroadcastDraft, Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
@@ -87,15 +91,6 @@ function Chip({
   );
 }
 
-/** The next occurrence of a given hour, as an ISO instant. */
-function nextOccurrence(hour: number): Date {
-  const at = new Date();
-  at.setMinutes(0, 0, 0);
-  at.setHours(hour);
-  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
-  return at;
-}
-
 export function Broadcast() {
   const { t } = useI18n();
   const [text, setText] = useState("");
@@ -110,7 +105,11 @@ export function Broadcast() {
   const [draftId, setDraftId] = useState<number | null>(null);
 
   const filter = { only_active: onlyActive, only_referrers: onlyReferrers };
-  const { data: audience, isError: audienceError } = useAudience(langs, filter);
+  const {
+    data: audience,
+    isError: audienceError,
+    isFetching: audienceFetching,
+  } = useAudience(langs, filter);
   const { data: everyone } = useAudience(ALL_LANGS);
   // One cheap COUNT per language gives the reach bar a real breakdown, using only the endpoint the
   // page already has. Inventing the split was the alternative.
@@ -136,12 +135,28 @@ export function Broadcast() {
 
   const body = text.trim();
   const overLimit = text.length > MAX_CHARS;
+  // Sent as HTML: markup Telegram cannot parse fails EVERY send, so it is caught here as it is typed
+  // (the server refuses it too) rather than as a whole audience counted "failed" an hour later.
+  const htmlProblem = checkTelegramHtml(text);
   const filled = buttons.filter((b) => b.text.trim() && b.url.trim());
   const buttonsOk = filled.every((b) => b.url.startsWith("https://"));
   // The broadcast is queued in Redis for the arq worker; if Redis is down it cannot be queued at
   // all, which is worth knowing BEFORE composing rather than after pressing send.
   const queueOk = health?.redis.ok !== false;
-  const canSend = Boolean(body) && langs.length > 0 && !overLimit && queueOk && buttonsOk;
+  // Only a count that has ARRIVED for this exact audience may be put in front of the operator:
+  // while a filter change refetched it (or when it failed) the figure read 0, the dialog asked
+  // "send to 0 users?", and the server then sent to the real audience.
+  const audienceReady =
+    langs.length > 0 && audience !== undefined && !audienceError && !audienceFetching;
+  const canSend =
+    Boolean(body) &&
+    langs.length > 0 &&
+    !overLimit &&
+    htmlProblem === null &&
+    queueOk &&
+    buttonsOk &&
+    audienceReady &&
+    recipients > 0;
   const minutes = Math.max(1, Math.round(recipients / RATE_PER_SEC / 60));
 
   const byHour = activity?.hours.length === 24 ? activity.hours : new Array<number>(24).fill(0);
@@ -193,7 +208,7 @@ export function Broadcast() {
     // — "send this to 8,412 users?" — and the hour only appeared in the toast, i.e. after the
     // decision. The last checkpoint before an irreversible send has to state the one thing the
     // operator just chose.
-    const at = scheduled ? nextOccurrence(sendHour) : undefined;
+    const at = scheduled ? nextZonedHour(sendHour) : undefined;
     const clock = localizeDigits(`${String(sendHour).padStart(2, "0")}:00`);
     const ok = await confirm({
       title: t("bc.send.confirmTitle"),
@@ -228,7 +243,8 @@ export function Broadcast() {
           if (draftId !== null) removeDraft.mutate(draftId);
           setDraftId(null);
         },
-        onError: () => toast.error(t("bc.send.failed")),
+        // The server names the refusal (an empty audience, markup Telegram would reject, no worker).
+        onError: (err) => toast.error(apiErrorMessage(err, t("bc.send.failed"))),
       },
     );
   }
@@ -298,12 +314,21 @@ export function Broadcast() {
             {langs.length === 0 && (
               <p className="text-xs font-medium text-danger-700">{t("bc.audience.empty")}</p>
             )}
+            {audienceReady && recipients === 0 && (
+              <p className="text-xs font-medium text-danger-700">{t("bc.audience.nobody")}</p>
+            )}
           </Card>
 
           <Card className="space-y-2.5">
             <h3 className="text-sm font-bold text-content">{t("bc.compose")}</h3>
             <MessageField value={text} onChange={setText} placeholder={t("bc.text.placeholder")} />
-            <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
+            {htmlProblem ? (
+              <p role="alert" className="text-xs font-medium text-danger-700">
+                {describeHtmlProblem(t, htmlProblem)}
+              </p>
+            ) : (
+              <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
+            )}
 
             <KeyboardBuilder buttons={buttons} onChange={setButtons} />
 

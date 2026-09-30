@@ -47,15 +47,19 @@ export function useActivityHours() {
   });
 }
 
-/** Past broadcasts. Polled while one is in flight, so the row fills in without a reload. */
+/** Past broadcasts. Polled while one is in flight, so the row fills in without a reload — and,
+ *  more slowly, while one is SCHEDULED: that row used to sit on «زمان‌بندی‌شده» until the page was
+ *  reopened, long after it had gone out. */
 export function useBroadcastHistory() {
   return useQuery({
     queryKey: ["broadcast-history"],
     queryFn: async () => (await api.get<BroadcastLog[]>("/admin/broadcast/history")).data,
-    refetchInterval: (q) =>
-      (q.state.data ?? []).some((r) => r.status === "sending" || r.status === "queued")
-        ? 5_000
-        : false,
+    refetchInterval: (q) => {
+      const rows = q.state.data ?? [];
+      if (rows.some((r) => r.status === "sending" || r.status === "queued")) return 5_000;
+      if (rows.some((r) => r.status === "scheduled")) return 30_000;
+      return false;
+    },
   });
 }
 

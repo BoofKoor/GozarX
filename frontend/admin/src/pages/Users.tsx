@@ -213,6 +213,9 @@ export function Users() {
                           aria-label={t("users.row.revokePending")}
                         />
                       )}
+                      {u.unreachable_at && (
+                        <Badge tone="neutral">{t("users.status.unreachable")}</Badge>
+                      )}
                     </span>
                   </TD>
                   <TD className="whitespace-nowrap text-sm text-content-muted">
@@ -446,7 +449,17 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
               label={t("users.detail.telegramId")}
               value={<span className="font-mono">{user.telegram_id}</span>}
             />
-            <DetailRow label={t("users.col.status")} value={<StatusBadge status={user.status} />} />
+            <DetailRow
+              label={t("users.col.status")}
+              value={
+                <span className="flex items-center gap-1.5">
+                  <StatusBadge status={user.status} />
+                  {user.unreachable_at && (
+                    <Badge tone="neutral">{t("users.status.unreachable")}</Badge>
+                  )}
+                </span>
+              }
+            />
             <DetailRow label={t("users.detail.language")} value={langLabel(user.language)} />
             <DetailRow label={t("users.col.panel")} value={user.panel_username ?? "—"} />
             <DetailRow label={t("users.detail.referredBy")} value={user.referred_by ?? "—"} />

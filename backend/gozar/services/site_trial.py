@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -222,12 +223,22 @@ class SiteTrialService:
         site_claim_repo: SiteClaimRepository,
         site_reward_repo: SiteRewardRepository,
         redis: Redis,
+        *,
+        commit: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._panel = panel
         self._settings = settings
         self._claims = site_claim_repo
         self._rewards = site_reward_repo
         self._redis = redis
+        self._commit_hook = commit
+
+    async def _commit(self) -> None:
+        """End the open transaction before a panel round trip, when the route handed over its
+        commit. ``/status`` and ``/claim`` used to hold a pooled connection for as long as the panel
+        took; the bot's webhook draws from the same pool."""
+        if self._commit_hook is not None:
+            await self._commit_hook()
 
     # --- settings / cache -----------------------------------------------------------------------
     async def _hours(self) -> int:
@@ -303,6 +314,7 @@ class SiteTrialService:
                 return [str(x) for x in json.loads(cached)]
             except (ValueError, TypeError):
                 pass  # poisoned entry — fall through and re-derive
+        await self._commit()
         try:
             names = await self._panel.squad_location_names(squad)
         except RemnawaveError:
@@ -360,6 +372,7 @@ class SiteTrialService:
         if not username:
             await self._reset(device)
             return None
+        await self._commit()
         try:
             sub, links = await self._panel.subscription(username)
         except RemnawaveError as exc:
@@ -504,6 +517,7 @@ class SiteTrialService:
         )
         expire_at = claim_at + timedelta(hours=hours)
         username = self._username(device)
+        await self._commit()  # two panel calls follow; hold no pooled connection across them
         try:
             await self._panel.create_trial_user(username, traffic, expire_at, [squad])
         except RemnawaveError:

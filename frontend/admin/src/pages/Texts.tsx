@@ -3,6 +3,7 @@ import { Eye, FileText, Save, Search, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { describeHtmlProblem } from "@/components/broadcast/htmlProblem";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -17,6 +18,7 @@ import { Textarea } from "@/components/ui/Textarea";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { formatNumber, joinList, langLabel } from "@/lib/format";
+import { checkTelegramHtml } from "@/lib/telegramHtml";
 import { previewText, useTexts, useUpdateText } from "@/hooks/useTexts";
 import type { BotText, Lang } from "@/types/api";
 
@@ -230,6 +232,15 @@ function TextEditor({ text }: { text: BotText }) {
     return () => clearTimeout(id);
   }, [bodies.fa, text.placeholders]);
 
+  // Every bot message is sent as HTML; a body Telegram cannot parse silences that screen for
+  // everyone reading it in that language. Named here as it is typed; the server refuses it too.
+  const problems = {
+    fa: checkTelegramHtml(bodies.fa),
+    en: checkTelegramHtml(bodies.en),
+    ru: checkTelegramHtml(bodies.ru),
+  };
+  const markupOk = !problems.fa && !problems.en && !problems.ru;
+
   const dirty =
     bodies.fa !== text.fa ||
     bodies.en !== text.en ||
@@ -298,6 +309,7 @@ function TextEditor({ text }: { text: BotText }) {
       {LANGS.map(({ code, dir }) => (
         <Field
           key={code}
+          error={problems[code] ? describeHtmlProblem(t, problems[code]) : undefined}
           label={
             <span className="flex items-center gap-2">
               {langLabel(code)}
@@ -345,7 +357,7 @@ function TextEditor({ text }: { text: BotText }) {
             {t("texts.discard")}
           </Button>
         )}
-        <Button onClick={save} loading={update.isPending} disabled={!dirty}>
+        <Button onClick={save} loading={update.isPending} disabled={!dirty || !markupOk}>
           <Save className="h-4 w-4" />
           {t("texts.save")}
         </Button>

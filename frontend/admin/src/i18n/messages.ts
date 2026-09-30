@@ -118,6 +118,7 @@ const FA = {
   "users.detail.revokePending":
     "این کاربر مسدود است، ولی پنل درخواست حذف کانفیگش را نپذیرفت؛ کانفیگ تا وقتی جاروی دوره‌ای (هر ۱۵ دقیقه) آن را حذف کند کار می‌کند.",
   "users.row.revokePending": "کانفیگ هنوز از پنل حذف نشده",
+  "users.status.unreachable": "ربات را بسته",
   "users.action.refusedBanned":
     "این کاربر مسدود است. اول مسدودی را بردارید، بعد اجازهٔ دریافت مجدد بدهید.",
   "users.action.refusedPanel":
@@ -129,6 +130,17 @@ const FA = {
   "bc.audience": "مخاطب",
   "bc.audience.hint": "{n} گیرنده از {total} کاربر",
   "bc.audience.empty": "حداقل یک زبان را انتخاب کنید.",
+  "bc.audience.nobody": "هیچ کاربری در این مخاطب نیست؛ فیلترها را تغییر دهید.",
+  // Telegram HTML parse mode — shared by the broadcast composer and the texts editor.
+  "tg.html.stray":
+    "تلگرام این متن را رد می‌کند: نویسهٔ {at} یک «<» است که برچسب نیست. برای خودِ «<» بنویسید &lt;",
+  "tg.html.unsupported":
+    "تلگرام این متن را رد می‌کند: {tag} برچسبی نیست که تلگرام بشناسد. برای خودِ «<» بنویسید &lt;",
+  "tg.html.mismatch":
+    "تلگرام این متن را رد می‌کند: {tag} در نویسهٔ {at} برچسبی را می‌بندد که باز نیست.",
+  "tg.html.unclosed": "تلگرام این متن را رد می‌کند: {tag} باز شده و بسته نشده است.",
+  "tg.html.spoiler":
+    'تلگرام این متن را رد می‌کند: {tag} باید class="tg-spoiler" داشته باشد (یا از tg-spoiler استفاده کنید).',
   "bc.audience.unreachable": "شمارش گیرندگان در دسترس نیست.",
   "bc.audience.outside": "خارج از فیلتر",
   "bc.compose": "نگارش پیام",
@@ -148,7 +160,7 @@ const FA = {
   "bc.send": "ارسال",
   "bc.send.confirmTitle": "ارسال پیام همگانی",
   "bc.send.confirm": "این پیام به {n} کاربر ({who}) همین حالا ارسال شود؟",
-  "bc.send.confirmAt": "این پیام ساعت {h} به {n} کاربر ({who}) ارسال شود؟",
+  "bc.send.confirmAt": "این پیام ساعت {h} به وقت تهران به {n} کاربر ({who}) ارسال شود؟",
   "bc.send.queued": "در صف ارسال به {n} کاربر ({who}) قرار گرفت.",
   "bc.send.failed": "ارسال نشد.",
   "bc.eta": "حدود {m} دقیقه با نرخ {rate} پیام در ثانیه",
@@ -181,7 +193,7 @@ const FA = {
   "bc.schedule.hint": "خاموش یعنی همین حالا به صف می‌رود.",
   "bc.schedule.at": "ساعت ارسال",
   "hours.pick": "ارسال در ساعت {h}",
-  "bc.schedule.queued": "برای ساعت {h} زمان‌بندی شد.",
+  "bc.schedule.queued": "برای ساعت {h} به وقت تهران زمان‌بندی شد.",
   "bc.schedule.confirm": "زمان‌بندی",
   "bc.pf.buttons": "لینک دکمه‌ها معتبر است",
   "bc.pf.buttonsBad": "لینک یکی از دکمه‌ها معتبر نیست",
@@ -1094,6 +1106,7 @@ const EN: Record<keyof typeof FA, string> = {
   "users.detail.revokePending":
     "This user is blocked, but the panel did not accept the delete for their config; it keeps working until the reconcile sweep (every 15 minutes) removes it.",
   "users.row.revokePending": "Config not yet removed from the panel",
+  "users.status.unreachable": "Blocked the bot",
   "users.action.refusedBanned":
     "This user is blocked. Unblock them first, then allow another claim.",
   "users.action.refusedPanel":
@@ -1104,6 +1117,16 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.audience": "Audience",
   "bc.audience.hint": "{n} recipients of {total} users",
   "bc.audience.empty": "Pick at least one language.",
+  "bc.audience.nobody": "Nobody is in this audience; change the filters.",
+  "tg.html.stray":
+    "Telegram will reject this: character {at} is a '<' that is not a tag. Write &lt; for a literal '<'.",
+  "tg.html.unsupported":
+    "Telegram will reject this: {tag} is not a tag Telegram supports. Write &lt; for a literal '<'.",
+  "tg.html.mismatch":
+    "Telegram will reject this: {tag} at character {at} closes a tag that is not open.",
+  "tg.html.unclosed": "Telegram will reject this: {tag} is opened and never closed.",
+  "tg.html.spoiler":
+    'Telegram will reject this: {tag} needs class="tg-spoiler" (or use tg-spoiler).',
   "bc.audience.unreachable": "The recipient count is unavailable.",
   "bc.audience.outside": "outside the filter",
   "bc.compose": "Compose",
@@ -1123,7 +1146,7 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.send": "Send",
   "bc.send.confirmTitle": "Send broadcast",
   "bc.send.confirm": "Send this to {n} users ({who}) right now?",
-  "bc.send.confirmAt": "Send this to {n} users ({who}) at {h}?",
+  "bc.send.confirmAt": "Send this to {n} users ({who}) at {h} Tehran time?",
   "bc.send.queued": "Queued for {n} users ({who}).",
   "bc.send.failed": "That did not send.",
   "bc.eta": "about {m} min at {rate} messages per second",
@@ -1157,7 +1180,7 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.schedule.hint": "Off means it goes into the queue now.",
   "bc.schedule.at": "Send at",
   "hours.pick": "Send at {h}",
-  "bc.schedule.queued": "Scheduled for {h}.",
+  "bc.schedule.queued": "Scheduled for {h} Tehran time.",
   "bc.schedule.confirm": "Schedule",
   "bc.pf.buttons": "Button links are valid",
   "bc.pf.buttonsBad": "One of the button links is invalid",
