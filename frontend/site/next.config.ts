@@ -24,6 +24,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  // No page uses next/image — flags, icons and the map are plain <img> of files already sized for
+  // the page — yet `/_next/image` answered any request for a local image by resizing it with sharp.
+  // An endpoint nothing needs is attack surface only, and it was that surface in several Next
+  // advisories (an AVIF decoder RCE, an SVG DoS, an SSRF). Off, it is a 404.
+  images: { unoptimized: true },
   experimental: {
     // A path no route claims gets app/global-not-found.tsx, drawn on the server — the root layout
     // sits inside `[lang]`, so there is no app-wide layout for an ordinary not-found to render in.

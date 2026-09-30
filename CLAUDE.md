@@ -386,6 +386,12 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   being Next's and React's runtime. Plus a share card per landing, the locations list in the HTML,
   a service worker that keeps the shell's CSS/JS/fonts, and a manifest per language.
   `docs/website/audit/accept_f.py` checks all of it.
+28 Next.js 16.2.10 → 16.3.8 and React 19.3.0, for the advisories `npm audit` had been reporting —
+  among them an RCE in `next/og` (the Phase F share card) and, fixed only in 16.3.8, SSG/ISR
+  cache poisoning in self-hosted deployments, which is what Phase F made this site. `npm audit` is
+  clean, and the runtime shrank enough to meet Phase F's JS budget: the home page 167.4 → 155.4 KB.
+  The image optimizer is switched off (nothing used it), and `components/Link` scrolls to an anchor
+  on the current page itself, which 16.3's router stopped doing for a query-only change.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -706,6 +712,14 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   Next prefetches the WHOLE route for every link within 200px of the viewport, the closed phone
   menu's included: its payload, the layout segment carrying the copy, and its JavaScript — 12
   requests and ~36 KB of a phone's first visit, on a connection the visitor pays for.
+  And a click on a link to an anchor on the CURRENT page scrolls there itself: Next 16.3's router
+  scrolls after a navigation only into segments it created, or on a hash-only change, and a
+  query-only change to a static page creates none — the homepage's flags (`/?loc=…#hero-widget`)
+  picked a location in a widget left 1,100px up the page. `accept_c.py` taps one on desktop.
+- **The image optimizer is off** (`images: { unoptimized: true }`). No page uses `next/image` — flags,
+  icons and the map are plain `<img>` of files already sized — yet `/_next/image` resized any local
+  image with sharp on request, and that endpoint was the surface of several Next advisories (an
+  AVIF-decoder RCE, an SVG DoS, an SSRF). It is a 404 now; turning it back on needs a page that uses it.
 - **An unmatched path is drawn by `app/global-not-found.tsx`** (`experimental.globalNotFound`),
   through the same `SiteDocument` as every page and in the language the proxy would pick: with the
   root layout inside `[lang]` there is no layout for an ordinary not-found to render in. A page's own
