@@ -214,7 +214,11 @@ curl -sS -o /dev/null -w "%{http_code}\n" https://gozarx.gozarxservices.com/heal
 When a change needs a server deploy, hand the owner exactly these commands. A change to the nginx
 config also needs `sudo ./install.sh` re-run on the server: the live `nginx/nginx.tls.conf` is written
 from the installer's OWN template (keep it in step with `nginx/nginx.conf`), and a `git pull` never
-touches it (re-running is safe — secrets are reused). The admin panel
+touches it (re-running is safe — secrets are reused). Then RESTART nginx: nginx reads its config only
+at start, and the installer's own `up -d --build` leaves the container running when the image is
+already current, so the rewritten file sits unread until the next restart. Re-running the installer
+asks for the admin password again (only its hash is in `.env`) and mints a fresh hash, which ends
+every admin session (the tokens' credential version, see Security). The admin panel
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
