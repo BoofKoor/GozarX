@@ -213,6 +213,33 @@ async def test_ban_with_the_panel_down_keeps_the_handle_so_the_revoke_can_finish
     assert user.panel_username == "g11"
 
 
+async def test_unban_finishes_a_revoke_the_ban_left_pending() -> None:
+    # Unbanned with the handle still set, the user was `available` beside a working old account that
+    # nothing would ever revoke (the sweep retries only BANNED users) — and a claim added a second.
+    user = User(telegram_id=12, status=UserStatus.banned, panel_username="g12")
+    panel = FakePanel(panel_user=PanelUser(uuid="u-12", username="g12"))
+    await _svc(users=FakeUsers(user=user), panel=panel).unban(12)
+    assert panel.deleted == ["u-12"]
+    assert user.status is UserStatus.available and user.panel_username is None
+
+
+async def test_unban_is_refused_while_the_pending_revoke_still_cannot_land() -> None:
+    user = User(telegram_id=13, status=UserStatus.banned, panel_username="g13")
+    with pytest.raises(ReclaimRefused) as refused:
+        await _svc(users=FakeUsers(user=user), panel=FakePanel(down=True)).unban(13)
+    assert refused.value.reason == "panel"
+    assert user.status is UserStatus.banned and user.panel_username == "g13"  # nothing changed
+
+
+async def test_unban_leaves_a_user_who_is_not_banned_as_they_are() -> None:
+    # Forcing `active_config` to `available` hid the live config from /status and from the sweep.
+    user = User(telegram_id=14, status=UserStatus.active_config, panel_username="g14")
+    panel = FakePanel(panel_user=PanelUser(uuid="u-14", username="g14"))
+    assert await _svc(users=FakeUsers(user=user), panel=panel).unban(14) is user
+    assert user.status is UserStatus.active_config and user.panel_username == "g14"
+    assert panel.deleted == []
+
+
 async def test_zero_referrals_resets_count() -> None:
     user = User(telegram_id=8, referral_count=9)
     await _svc(users=FakeUsers(user=user)).zero_referrals(8)
