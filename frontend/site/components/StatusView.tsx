@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Locale, timeAgo, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
@@ -11,7 +11,9 @@ import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
 import { Flag } from "@/components/widget/pieces";
 import { locLabel } from "@/components/widget/flags";
-import { subscribeToPush, unsubscribeFromPush } from "@/lib/push";
+import { pushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
+import { usePwaState } from "@/lib/pwa";
+import { BlockedHint, IosSteps } from "@/components/widget/Overlay";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { useLocaleSwitch } from "@/lib/prefs";
 import { ThemeChoice } from "@/components/ThemeChoice";
@@ -56,7 +58,13 @@ export function StatusView({ locale }: { locale: Locale }) {
           <AccountRewards locale={locale} />
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <SettingsCard locale={locale} pushEnabled={!!config?.vapid_public_key} onReload={reload} />
+          {/* null until /config answers: the row keeps its place meanwhile (a disabled switch), so the
+              card does not grow under the reader when the answer arrives */}
+          <SettingsCard
+            locale={locale}
+            pushEnabled={config ? !!config.vapid_public_key : null}
+            onReload={reload}
+          />
           <div className="card hist">
             <div className="block-title">
               <h2>
@@ -148,7 +156,7 @@ function SettingsCard({
   onReload,
 }: {
   locale: Locale;
-  pushEnabled: boolean;
+  pushEnabled: boolean | null;
   onReload: () => Promise<void> | void;
 }) {
   const t = translator(locale);
@@ -157,8 +165,15 @@ function SettingsCard({
   const [busy, setBusy] = useState(false);
   // language and theme go through lib/prefs, the same code the header and the footer use
   const switchLocale = useLocaleSwitch(locale);
+  // Why the switch cannot move, said beside it (C-20) — it used to sit disabled with no word of why,
+  // and the fix for "blocked" lived only in the rewards card's modal. Read after mount: the server
+  // cannot know what this browser supports.
+  const pwa = usePwaState();
+  const [supported, setSupported] = useState(true);
+  useEffect(() => setSupported(pushSupported()), []);
+  const [hint, setHint] = useState<null | "blocked" | "ios">(null);
   async function toggleNotif() {
-    if (perm === "denied" || busy) return; // denied is browser-level; busy guards a double-tap
+    if (perm === "denied" || !supported || busy) return; // denied is browser-level; busy: double-tap
     setBusy(true);
     try {
       if (pushOn) {
@@ -218,23 +233,46 @@ function SettingsCard({
         <div className="sk">{t("set_theme")}</div>
         <ThemeChoice locale={locale} variant="labels" />
       </div>
-      <div className="srow">
-        <span className="si">
-          <Icon name="bell" sw={2} />
-        </span>
-        <div className="sk">
-          {t("set_notif")} {permTag}
-          <div className="skd">{t("set_notif_d")}</div>
+      {/* No push key on the server means no notification can ever be sent: no row, rather than a
+          switch that can only sit there disabled. Unknown yet (null) keeps the row, switch off. */}
+      {pushEnabled !== false && (
+        <div className="srow">
+          <span className="si">
+            <Icon name="bell" sw={2} />
+          </span>
+          <div className="sk">
+            {t("set_notif")} {permTag}
+            <div className="skd">{t("set_notif_d")}</div>
+            {perm === "denied" ? (
+              <div className="skd skd-why">
+                {t("set_notif_blocked")}{" "}
+                <button type="button" className="link-btn" onClick={() => setHint("blocked")}>
+                  {t("set_notif_how")}
+                </button>
+              </div>
+            ) : !supported && pwa === "ios" ? (
+              <div className="skd skd-why">
+                {t("set_notif_ios")}{" "}
+                <button type="button" className="link-btn" onClick={() => setHint("ios")}>
+                  {t("set_notif_install")}
+                </button>
+              </div>
+            ) : !supported ? (
+              <div className="skd skd-why">{t("set_notif_unsupported")}</div>
+            ) : null}
+          </div>
+          <button
+            className="switch"
+            role="switch"
+            aria-checked={pushOn}
+            aria-label={t("set_notif")}
+            disabled={perm === "denied" || !supported || !pushEnabled || busy}
+            onClick={toggleNotif}
+          />
         </div>
-        <button
-          className="switch"
-          role="switch"
-          aria-checked={pushOn}
-          aria-label={t("set_notif")}
-          disabled={perm === "denied" || !pushEnabled || busy}
-          onClick={toggleNotif}
-        />
-      </div>
+      )}
+      {hint === "blocked" && <BlockedHint locale={locale} onClose={() => setHint(null)} />}
+      {hint === "ios" && <IosSteps locale={locale} onClose={() => setHint(null)} />}
     </div>
   );
 }
@@ -243,6 +281,7 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
   const t = translator(locale);
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [done, setDone] = useState(false);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -256,6 +295,10 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
       await api.resetDevice();
       setAsking(false);
       await onReset();
+      // The page re-renders as a new device with nothing to show — which, silently, read as if the
+      // tap had done nothing (C-21). A toast says it worked.
+      setDone(true);
+      window.setTimeout(() => setDone(false), 4000);
     } finally {
       setBusy(false);
     }
@@ -263,6 +306,15 @@ function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise
 
   return (
     <>
+      {/* mounted for the page's life: a live region inserted together with its text is not read */}
+      <div className="toast-wrap" role="status" aria-live="polite">
+        {done && (
+          <div className="toast">
+            <Icon name="check" sw={2.4} />
+            {t("reset_done")}
+          </div>
+        )}
+      </div>
       <div className="danger-row">
         <div className="dt">
           <div className="dn">{t("danger_t")}</div>

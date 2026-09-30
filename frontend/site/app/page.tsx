@@ -5,6 +5,7 @@ import { type Locale, faDigits, fill, translator } from "@/lib/i18n";
 import { fetchSiteCopy } from "@/lib/siteCopy";
 import { fetchFeaturedArticles } from "@/lib/landing";
 import { fetchPublicConfig, fetchPublicStats } from "@/lib/publicData";
+import { fetchFaqItems } from "@/lib/faq";
 
 // Self-referencing canonical for the homepage. Set here (not in the root layout) so it applies only
 // to `/` — a layout-level canonical would be inherited by every sub-page and wrongly mark them all
@@ -42,11 +43,14 @@ export default async function HomePage({
   //    nothing. The cap is deliberately above the seeded count: a low cap silently dropped the tail
   //    of the slug ordering (v2rayng-config landed there), leaving exactly the pages this band links.
   //  • /config + /stats for the two hero chips that carry a number (lib/publicData).
-  const [copy, articles, config, stats] = await Promise.all([
+  //  • the FAQ teaser's questions — the panel's rows, the same source as /faq (C-36): the teaser was
+  //    five questions compiled into the bundle, so an edit in the panel never reached the home page.
+  const [copy, articles, config, stats, faq] = await Promise.all([
     fetchSiteCopy(locale),
     fetchFeaturedArticles(4),
     fetchPublicConfig(),
     fetchPublicStats(),
+    fetchFaqItems(locale),
   ]);
   // The translator takes the panel's overrides as its top layer, so every allowlisted design-copy
   // key on this page is editable without a redeploy. With none set it behaves exactly as before.
@@ -158,7 +162,7 @@ export default async function HomePage({
       <HomeStats locale={locale} stats={stats} />
 
       {/* FAQ teaser (live accordion) */}
-      <HomeFaq locale={locale} copy={copy.overrides} />
+      <HomeFaq locale={locale} copy={copy.overrides} items={faq.slice(0, 5)} />
 
       {/* ARTICLES & GUIDES — a few featured articles as cards, server-rendered so the anchors are in
           the raw HTML a crawler sees, and "all articles" for the rest. Thirteen grey title pills

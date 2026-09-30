@@ -2,44 +2,85 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
 import { translator } from "@/lib/i18n";
-import { ABOUT } from "@/lib/content";
+import { fetchSiteCopy } from "@/lib/siteCopy";
+import { Icon } from "@/components/Icon";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
+  const t = translator(locale, (await fetchSiteCopy(locale)).overrides);
   // Self-referencing canonical (relative — metadataBase is set in the root layout).
   return {
-    title: `${ABOUT[locale].title} — GozarX`,
-    description: ABOUT[locale].lead,
+    title: `${t("about_title")} — GozarX`,
+    description: t("about_lead"),
     alternates: { canonical: "/about" },
   };
 }
 
+// About — its own page (C-33). It used to be the contact page's first half under a second URL, so
+// the two carried the same heading and the same two paragraphs. Now: what GozarX is for, how it
+// stays free, and what it keeps about a visitor. The prose is editable in the panel (site copy,
+// "about" group): what funds the service is the operator's to say, so the in-code paragraph only
+// states what the product itself shows — no payment step, a trial with a set length and volume.
 export default async function AboutPage() {
   const locale = await getLocale();
-  const t = translator(locale);
-  const a = ABOUT[locale];
-  return (
-    <section>
-      <div className="container" style={{ maxWidth: 680 }}>
-        <h1>{a.title}</h1>
-        <p className="lead mt-2">{a.lead}</p>
-        <p className="mt-4">{a.body}</p>
+  const t = translator(locale, (await fetchSiteCopy(locale)).overrides);
+  const blocks = [
+    { icon: "spark", h: "about_mission_h", body: "about_body" },
+    { icon: "gift", h: "about_free_h", body: "about_free_body" },
+    { icon: "shield", h: "about_privacy_h", body: "about_privacy_body", more: "/privacy" },
+  ] as const;
 
-        <div className="card card-pad mt-6">
-          <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 12 }}>{a.deflect}</p>
-          <div className="row" style={{ flexWrap: "wrap", gap: 12 }}>
-            <Link href="/faq" className="btn btn-ghost">
-              {t("nav.faq")}
+  return (
+    <>
+      <div className="container">
+        <div className="page-head about-head">
+          <span className="eyebrow">
+            <Icon name="info" sw={2.2} />
+            {t("about_eyebrow")}
+          </span>
+          <h1>{t("about_title")}</h1>
+          <p className="about-lead">{t("about_lead")}</p>
+        </div>
+      </div>
+      <section className="sec" style={{ paddingBlockStart: 20 }}>
+        <div className="container">
+          <div className="about-grid">
+            {blocks.map((b) => (
+              <article key={b.h} className="card about-card">
+                <span className="htile" aria-hidden>
+                  <Icon name={b.icon} sw={2} />
+                </span>
+                <h2>{t(b.h)}</h2>
+                <p>{t(b.body)}</p>
+                {"more" in b && (
+                  <Link className="about-more" href={b.more}>
+                    {t("about_privacy_link")}
+                    <Icon name="arrow" sw={2.2} cls="ic-dir" />
+                  </Link>
+                )}
+              </article>
+            ))}
+          </div>
+          <div className="deflect about-deflect">
+            <h2>{t("about_deflect")}</h2>
+            <Link href="/faq">
+              <Icon name="help" sw={2} />
+              {t("nav_faq")}
+              <Icon name="arrow" sw={2.2} cls="ic-dir" />
             </Link>
-            <Link href="/guides" className="btn btn-ghost">
-              {t("nav.guides")}
+            <Link href="/guides">
+              <Icon name="book" sw={2} />
+              {t("ft_guides")}
+              <Icon name="arrow" sw={2.2} cls="ic-dir" />
             </Link>
-            <Link href="/contact" className="btn btn-ghost">
-              {t("nav.contact")}
+            <Link href="/contact">
+              <Icon name="mail" sw={2} />
+              {t("contact.title")}
+              <Icon name="arrow" sw={2.2} cls="ic-dir" />
             </Link>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
+    </>
   );
 }

@@ -80,7 +80,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
             { name: row.title, path: `/l/${slug}` },
           ])}
         />
-        <nav className="crumbs" aria-label="breadcrumb">
+        <nav className="crumbs" aria-label={t("crumbs")}>
           <Link href="/">{t("land_home")}</Link>
           {/* a mirrored icon, not a "‹" glyph — bidi mirrors that one in RTL, so it pointed back at
               «خانه» in both languages and read as a parenthesis in Persian */}

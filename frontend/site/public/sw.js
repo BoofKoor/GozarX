@@ -4,7 +4,9 @@
 // Bump this whenever the offline shell changes — `activate` deletes every cache whose key isn't the
 // current one, so a bump cleans out an older build's cached HTML (which references now-dead asset
 // hashes) in one shot.
-const CACHE = "gozarx-shell-v2";
+// v3: /offline now hands back the last saved config (an inline script over localStorage), so an
+// install still holding the v2 copy of it would keep the page that promised a config and showed none.
+const CACHE = "gozarx-shell-v3";
 const SHELL = ["/", "/status", "/offline"];
 
 self.addEventListener("install", (event) => {

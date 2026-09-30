@@ -24,11 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function PrivacyPage() {
   const locale = await getLocale();
   return (
-    <LegalArticle
-      locale={locale}
-      title={LEGAL_TITLE[locale].privacy}
-      sections={PRIVACY[locale]}
-      other={{ href: "/terms", label: LEGAL_TITLE[locale].terms }}
-    />
+    <LegalArticle locale={locale} kind="privacy" sections={PRIVACY[locale]} />
   );
 }

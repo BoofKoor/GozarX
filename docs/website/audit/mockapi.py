@@ -26,7 +26,7 @@ The browser picks a scenario with cookies (Next's `/api` rewrite forwards them h
 | `mock_claim_ms` | milliseconds POST /claim takes (the "taking longer" label at 3s) | 900      |
 | `mock_turnstile` | 1 = /config reports Turnstile on (Cloudflare's always-pass test key) | off   |
 | `mock_hist`   | 0 · 3                                                              | 3 if used|
-| `mock_refs`   | cap = the invite cap is reached (10 / 10)                          | 3 / 10   |
+| `mock_refs`   | cap = the invite cap is reached (10 / 10) · 0 = no invites yet     | 3 / 10   |
 
 State is per `mock_sid` cookie (set on first contact), so a claim moves THAT browser from `new` to
 a delivered config exactly like the real flow does. Changing the `mock_state` cookie mid-session
@@ -198,6 +198,8 @@ def _status(sess: dict) -> dict:
         base["history"] = []
     if sess.get("refs") == "cap":
         base["referral_count"] = base["referral_cap"]
+    elif sess.get("refs") == "0":  # a browser with nothing to lose: no config, history or invites
+        base["referral_count"] = 0
     return base
 
 

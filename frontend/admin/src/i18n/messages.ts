@@ -436,6 +436,8 @@ const FA = {
   "sc.group.widget.sub": "کادر گرفتن کانفیگ روی صفحهٔ اصلی",
   "sc.group.sections": "بخش‌های صفحهٔ اصلی",
   "sc.group.sections.sub": "عنوان و زیرعنوان بخش‌های لوکیشن، اپ‌ها و سوال‌ها",
+  "sc.group.about": "صفحهٔ «دربارهٔ ما»",
+  "sc.group.about.sub": "متن صفحهٔ دربارهٔ ما — از جمله اینکه سرویس چطور رایگان می‌ماند",
   "sc.group.push": "متن اعلان‌های خودکار",
   "sc.group.push.sub": "پیام‌هایی که سرویس هنگام تمام‌شدن کانفیگ می‌فرستد",
 
@@ -1469,6 +1471,8 @@ const EN: Record<keyof typeof FA, string> = {
   "sc.group.widget.sub": "The get-a-config box on the home page",
   "sc.group.sections": "Home page sections",
   "sc.group.sections.sub": "Headings for the locations, apps and FAQ blocks",
+  "sc.group.about": "About page",
+  "sc.group.about.sub": "The About page's text — including how the service stays free",
   "sc.group.push": "Automatic notification copy",
   "sc.group.push.sub": "What the service sends when a config runs out",
 

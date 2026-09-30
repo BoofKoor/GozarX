@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import type { Locale } from "@/lib/i18n";
 import { FAQ_CATS, FAQ_LABELS, type FaqItem } from "@/lib/content";
@@ -8,12 +9,21 @@ import { AccItem } from "@/components/Accordion";
 
 // FAQ list — faithful reproduction of the design's `vFaq`: a search box + category tabs filtering a
 // list of `.acc` accordions, with an empty state when nothing matches.
-export function FaqList({ locale, items }: { locale: Locale; items: FaqItem[] }) {
+export function FaqList({
+  locale,
+  items,
+  initialQuery = "",
+}: {
+  locale: Locale;
+  items: FaqItem[];
+  initialQuery?: string;
+}) {
   const labels = FAQ_LABELS[locale];
   const cats = FAQ_CATS[locale];
   const [cat, setCat] = useState<string>("all");
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState<number | null>(0);
+  const [query, setQuery] = useState(initialQuery);
+  // a search that arrived from elsewhere opens nothing yet — the reader picks from what matched
+  const [open, setOpen] = useState<number | null>(initialQuery ? null : 0);
 
   const q = query.trim().toLowerCase();
   const visible = useMemo(
@@ -59,7 +69,14 @@ export function FaqList({ locale, items }: { locale: Locale; items: FaqItem[] })
       </div>
 
       {visible.length === 0 ? (
-        <div className="empty">{labels.empty}</div>
+        // nothing matched: the question is still worth asking, so say where (C-36)
+        <div className="empty faq-empty">
+          <p>{labels.empty}</p>
+          <Link className="btn" href="/contact">
+            <Icon name="mail" sw={2} />
+            {labels.ask}
+          </Link>
+        </div>
       ) : (
         <div>
           {visible.map(({ it, i }) => (

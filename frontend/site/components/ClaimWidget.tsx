@@ -12,8 +12,10 @@ import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
 import { locLabel, locName } from "@/components/widget/flags";
 import { formatMb, formatVolume } from "@/lib/format";
+import { type LastConfig, readLastConfig, saveLastConfig } from "@/lib/lastConfig";
 import { AppButtons, CopyField, Countdown, Flag, UsageMeter } from "@/components/widget/pieces";
 import { Missions } from "@/components/widget/Missions";
+import { QrToggle } from "@/components/widget/QrToggle";
 
 type Mode = "idle" | "provisioning";
 // A claim that did not go through but leaves S1 the right screen: said in place, under the picker,
@@ -314,6 +316,29 @@ export function ClaimWidget({
   // The operator blocked this device: it gets nothing, whatever its cooldown says, so it is neither
   // a cooldown to count down nor one to poll for.
   const blocked = status?.status === "blocked";
+
+  // The last config this browser was shown, kept for when the network is gone (lib/lastConfig): the
+  // offline page hands it back, and so does S8 below when /status cannot be reached — offline, the
+  // service worker serves the cached home and status pages too, not only /offline. Only what the
+  // SERVER confirmed moves it: a live config is saved, "none" (ended, reset, blocked) clears it, and
+  // an unreachable server changes nothing.
+  useEffect(() => {
+    if (loading || offline || !status) return;
+    saveLastConfig(
+      serverHasConfig && status.link
+        ? {
+            link: status.link,
+            location: status.location ?? null,
+            label: status.location ? locLabel(status.location, locale) : null,
+            expires_at: status.expires_at ?? null,
+          }
+        : null,
+    );
+  }, [loading, offline, status, serverHasConfig, locale]);
+  const [saved, setSaved] = useState<LastConfig | null>(null);
+  useEffect(() => {
+    if (offline) setSaved(readLastConfig());
+  }, [offline]);
   const pct =
     status && status.daily_limit_bytes > 0
       ? Math.round((status.usage_bytes / status.daily_limit_bytes) * 100)
@@ -439,6 +464,7 @@ export function ClaimWidget({
             {t("err_help")}
           </Link>
         </CenterState>
+        {offline && saved && <SavedConfig locale={locale} config={saved} />}
       </div>
     );
   }
@@ -513,6 +539,7 @@ export function ClaimWidget({
           <span className="field-label">{t("link_label")}</span>
           <CopyField value={link ?? ""} locale={locale} />
           <AppButtons link={link ?? ""} locale={locale} />
+          {link && <QrToggle value={link} locale={locale} />}
           <UsageMeter
             usedBytes={status?.usage_bytes ?? 0}
             totalBytes={status?.daily_limit_bytes ?? null}
@@ -1052,6 +1079,38 @@ function CenterState({
       <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
         {children}
       </div>
+    </div>
+  );
+}
+
+// The last config this browser was shown, while /status cannot be reached. The link itself does not
+// depend on this site — an app that imported it keeps connecting — so it is worth handing back even
+// when everything else on the page has failed. Past its expiry it says so instead of a date.
+function SavedConfig({ locale, config }: { locale: Locale; config: LastConfig }) {
+  const t = translator(locale);
+  const until = config.expires_at ? Date.parse(config.expires_at) : NaN;
+  const note =
+    !Number.isNaN(until) && until > Date.now()
+      ? fill(t("offline.until"), {
+          t: new Date(until).toLocaleString(locale === "fa" ? "fa-IR" : "en-US", {
+            dateStyle: "medium",
+            timeStyle: "short",
+          }),
+        })
+      : t("offline.expired");
+  return (
+    <div className="saved-cfg" data-saved-config>
+      <p className="oc-head">
+        {t("offline.saved")}
+        {config.label && (
+          <>
+            {" · "}
+            <b>{config.label}</b>
+          </>
+        )}
+      </p>
+      <CopyField value={config.link} locale={locale} />
+      <p className="hint oc-note">{note}</p>
     </div>
   );
 }

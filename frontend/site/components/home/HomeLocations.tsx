@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, faDigits, fill, translator } from "@/lib/i18n";
+import { formatPlaces } from "@/lib/format";
 import { useSite } from "@/lib/useSite";
 import { flagCC, locLabel, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
@@ -22,6 +23,15 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
   if (!loading && total === 0) return null;
 
   const skeleton = total === 0; // first load in flight
+  // `{locs}` is the squad's own list, in the reader's language (C-53): the sentence used to name
+  // Ukraine, Germany and the USA whether or not the squad served any of them. An override without
+  // the token renders as written; until the list arrives the line keeps its height, empty.
+  const sub = fill(t("loc_sub"), {
+    locs: formatPlaces(
+      list.map((n) => locLabel(n, locale)),
+      locale,
+    ),
+  });
   const shown = list.slice(0, SHOWN);
   const more = Math.max(0, total - SHOWN);
 
@@ -31,7 +41,13 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
         <div className="sec-head reveal">
           <span className="eyebrow">{t("loc_eyebrow")}</span>
           <h2 className="sec-title">{t("loc_title")}</h2>
-          <p className="sec-sub">{t("loc_sub")}</p>
+          {sub ? (
+            <p className="sec-sub">{sub}</p>
+          ) : (
+            <p className="sec-sub" aria-hidden>
+              {"\u00a0"}
+            </p>
+          )}
         </div>
 
         <div className="loccard reveal">

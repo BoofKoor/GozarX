@@ -401,13 +401,17 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .app-ico{ inline-size:26px; block-size:26px; border-radius:7px; flex:none; object-fit:cover; box-shadow:inset 0 0 0 1px var(--flag-ring),0 1px 2px rgba(2,6,23,.18); }
 .cfg-actions{ display:flex; gap:8px; margin-block-start:12px; }
-.icon-btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; flex:1; font:inherit; font-size:13px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; }
+.icon-btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; flex:1; min-block-size:44px; font:inherit; font-size:13px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; }
 .icon-btn:hover{ border-color:var(--primary); color:var(--link); background:var(--brand-tint); }
 .icon-btn .ic{ inline-size:16px; block-size:16px; }
 .qr-panel{ margin-block-start:12px; display:none; justify-content:center; }
 .qr-panel.show{ display:flex; }
-.qr-box{ background:#fff; border-radius:var(--r-card); padding:12px; box-shadow:var(--shadow-sm); }
-.qr-box canvas{ display:block; inline-size:132px; block-size:132px; image-rendering:pixelated; }
+.qr-box{ display:block; background:#fff; border-radius:var(--r-card); padding:8px; box-shadow:var(--shadow-sm); }
+/* the code carries its own quiet zone (four modules), so the box only rounds and lifts it */
+.qr-box svg{ display:block; inline-size:184px; block-size:184px; }
+.qr-wait{ inline-size:200px; block-size:200px; }
+.qr-fig{ margin:0; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; }
+.qr-fig .hint{ margin:0; max-inline-size:26ch; }
 .meter{ margin-block-start:16px; }
 .meter .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:8px; font-size:12.5px; }
 .meter .k{ color:var(--muted); display:inline-flex; align-items:center; gap:6px; }
@@ -1008,6 +1012,21 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .deflect h2{ font-size:14px; font-weight:700; margin:0 0 10px; }
 .deflect a{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--link); text-decoration:none; margin-inline-end:14px; }
 .deflect a .ic{ inline-size:14px; block-size:14px; }
+.mission a{ color:var(--link); font-weight:600; }
+/* /about (C-33) — its own page: the lead under the H1, three cards (goal · how it stays free ·
+   privacy), then the same deflect row the contact page uses. */
+.about-head{ max-width:44rem; }
+.about-lead{ font-size:18px; line-height:1.8; color:var(--muted); margin:0; }
+.about-grid{ display:grid; gap:16px; grid-template-columns:1fr; }
+@media (min-width:860px){ .about-grid{ grid-template-columns:repeat(3,1fr); } }
+.about-card{ padding:22px; display:flex; flex-direction:column; gap:10px; }
+.about-card .htile{ inline-size:40px; block-size:40px; border-radius:12px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.about-card .htile .ic{ inline-size:20px; block-size:20px; }
+.about-card h2{ font-size:18px; font-weight:800; margin:4px 0 0; }
+.about-card p{ font-size:15px; line-height:1.9; color:var(--text); margin:0; }
+.about-more{ display:inline-flex; align-items:center; gap:6px; margin-block-start:auto; min-block-size:44px; font-size:14px; font-weight:700; color:var(--link); text-decoration:none; }
+.about-more .ic{ inline-size:14px; block-size:14px; }
+.about-deflect{ margin-block-start:20px; }
 .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .field{ margin-block-end:16px; }
 .field label{ display:block; font-size:13.5px; font-weight:600; margin-block-end:7px; }
@@ -1370,10 +1389,10 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
 
 /* ===== SEO landing pages (/l/[slug]) + locations index (/locations) ===== */
-.landing-page .crumbs{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-block-end:14px; }
-.landing-page .crumbs a{ color:var(--muted); text-decoration:none; }
-.landing-page .crumbs a:hover{ color:var(--text); }
-.landing-page .crumbs .crumb-sep{ inline-size:14px; block-size:14px; opacity:.7; flex:none; }
+.landing-page .crumbs, .legal-page .crumbs{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-block-end:14px; }
+.landing-page .crumbs a, .legal-page .crumbs a{ color:var(--muted); text-decoration:none; }
+.landing-page .crumbs a:hover, .legal-page .crumbs a:hover{ color:var(--text); }
+.landing-page .crumbs .crumb-sep, .legal-page .crumbs .crumb-sep{ inline-size:14px; block-size:14px; opacity:.7; flex:none; }
 .landing-page h1{ font-size:clamp(26px,4.2vw,34px); line-height:1.35; margin-block-end:14px; }
 /* admin-authored article body: comfortable fa reading rhythm (spec: ~38rem measure, 1.8 leading) */
 .landing-body{ max-inline-size:38rem; line-height:1.9; font-size:15.5px; color:var(--text); }
@@ -1575,7 +1594,7 @@ main:focus{ outline:none; }
   .ft-col a{ display:flex; align-items:center; min-block-size:44px; padding-block:0; }
   .ft-more{ gap:0 16px; }
   .ft-more a{ display:inline-flex; align-items:center; min-block-size:44px; }
-  .landing-page .crumbs a{ display:inline-flex; align-items:center; min-block-size:44px; margin-block:-10px; padding-inline:11px; margin-inline:-11px; }
+  .landing-page .crumbs a, .legal-page .crumbs a{ display:inline-flex; align-items:center; min-block-size:44px; margin-block:-10px; padding-inline:11px; margin-inline:-11px; }
   .guide-page details > summary{ min-block-size:44px; padding-block:8px; margin-block:-8px; }
   .x-btn{ inline-size:44px; block-size:44px; margin-block:-6px; margin-inline-end:-10px; }
   .id-bar .id-tr{ min-block-size:44px; margin-block:-10px; }
@@ -1592,3 +1611,71 @@ main:focus{ outline:none; }
   .switch::after{ inset-block-start:12px; inset-inline-start:5px; z-index:1; }
   .switch[aria-checked="true"]::after{ inset-inline-start:25px; }
 }
+
+/* ===== Legal pages (C-34) — the design's vLegal: crumb, the terms/privacy switch, title + date, then
+   a numbered contents list (sticky beside the text from 900px) and the numbered sections. ===== */
+.legal-page{ padding-block-start:24px; }
+.legal-switch{ display:inline-flex; gap:4px; padding:4px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); margin-block-end:14px; }
+.legal-switch a{ display:inline-flex; align-items:center; font-size:13px; font-weight:700; color:var(--muted); text-decoration:none; padding:6px 14px; border-radius:var(--r-pill); }
+.legal-switch a[aria-current="page"]{ background:var(--primary); color:var(--on-primary); }
+.legal-page h1{ font-size:clamp(26px,4.4vw,34px); font-weight:800; line-height:var(--lh-head); margin:6px 0; }
+.updated{ font-size:12.5px; color:var(--muted); margin:0 0 22px; }
+.doc{ display:grid; gap:28px; grid-template-columns:1fr; }
+@media (min-width:900px){
+  .doc{ grid-template-columns:220px 1fr; gap:40px; align-items:start; }
+  .toc{ position:sticky; inset-block-start:88px; }
+}
+.toc-h{ font-size:12px; font-weight:700; color:var(--muted); margin:0 0 10px; }
+.toc ol{ list-style:none; margin:0; padding:0; }
+.toc a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding:7px 12px; border-radius:9px; border-inline-start:2px solid transparent; }
+.toc a:hover{ color:var(--text); background:var(--sunken); }
+.legal-body h2{ font-size:20px; font-weight:800; margin:26px 0 12px; display:flex; align-items:baseline; gap:10px; scroll-margin-block-start:88px; }
+.legal-body section:first-child h2{ margin-block-start:0; }
+.legal-body h2 .n{ font-size:14px; font-weight:800; color:var(--link); }
+.legal-body p{ font-size:15.5px; line-height:1.95; color:var(--text); margin:0 0 12px; max-width:40rem; }
+.legal-body .privacy-note{ display:flex; gap:10px; align-items:flex-start; background:var(--brand-tint); border:1px solid var(--brand-tint-2); border-radius:var(--r-card); padding:16px 18px; margin-block:8px 16px; }
+.legal-body .privacy-note .ic{ inline-size:18px; block-size:18px; flex:none; margin-block-start:7px; color:var(--brand-tint-ink); }
+.legal-body .privacy-note p{ margin:0; }
+.legal-body .privacy-note b{ color:var(--brand-tint-ink); }
+@media (max-width:999.98px){
+  .toc a, .legal-switch a{ min-block-size:44px; display:flex; align-items:center; }
+}
+
+/* ===== The last saved config (lib/lastConfig): /offline's card, and the widget's S8 while /status
+   cannot be reached. Start-aligned inside the centred offline page — a link reads from its start. */
+.offline-slot{ inline-size:100%; max-inline-size:520px; margin-inline:auto; }
+.offline-cfg{ padding:18px; margin-block-start:14px; text-align:start; }
+.saved-cfg{ margin-block-start:18px; padding-block-start:16px; border-block-start:1px solid var(--border); text-align:start; }
+.oc-head{ font-size:13.5px; color:var(--muted); margin:0 0 10px; }
+.oc-head b{ color:var(--text); }
+.oc-note{ margin:10px 0 0; }
+.oc-exp{ color:var(--warning-ink); }
+
+/* ===== 404 and the page error boundary (C-35) ===== */
+.nf-inner{ max-inline-size:640px; margin-inline:auto; text-align:center; }
+.nf-code{ font-size:64px; font-weight:800; line-height:1; margin:0 0 8px; color:var(--muted); }
+.nf-ic{ inline-size:64px; block-size:64px; border-radius:18px; margin:0 auto 14px; display:grid; place-items:center; background:var(--danger-surface); color:var(--danger-ink); }
+.nf-ic .ic{ inline-size:30px; block-size:30px; }
+.nf h1{ font-size:clamp(24px,4vw,30px); font-weight:800; margin:0 0 10px; }
+.nf-sub{ color:var(--muted); margin:0 auto 20px; max-inline-size:34rem; }
+.nf-search{ display:flex; gap:8px; margin:0 auto 22px; max-inline-size:480px; text-align:start; }
+.nf-search .idx-search{ min-inline-size:0; }
+.nf-links{ list-style:none; margin:0 0 22px; padding:0; display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); }
+@media (min-width:640px){ .nf-links{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.nf-links a{ display:flex; align-items:center; gap:8px; min-block-size:48px; padding:10px 14px; border:1px solid var(--border); border-radius:var(--r-card); background:var(--surface); color:var(--text); font-weight:600; font-size:14px; text-decoration:none; text-align:start; }
+.nf-links a:hover{ border-color:var(--primary); }
+.nf-links .ic{ inline-size:17px; block-size:17px; color:var(--link); flex:none; }
+.nf-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+.faq-empty p{ margin:0 0 14px; }
+.faq-empty .btn .ic{ inline-size:16px; block-size:16px; }
+
+/* ===== My config page (C-17, C-20) ===== */
+/* A button that reads as a link inside a sentence; on a phone its hit box grows to 44px without
+   moving the line (the Phase D pattern: padding out, the same margin back). */
+.link-btn{ font:inherit; font-weight:600; color:var(--link); background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+@media (max-width:999.98px){ .link-btn{ padding-block:12px; margin-block:-12px; } }
+.srow .skd-why{ color:var(--warning-ink); margin-block-start:4px; }
+/* redeeming a code re-points this browser; one with anything to lose is asked first */
+.restore-warn{ margin-block-start:12px; background:var(--warning-surface); border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border)); border-radius:var(--r-card); padding:14px 16px; }
+.restore-warn p{ margin:0 0 12px; font-size:13.5px; line-height:1.8; color:var(--text); }
+.rw-actions{ display:flex; gap:8px; flex-wrap:wrap; }

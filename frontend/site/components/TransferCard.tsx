@@ -6,12 +6,18 @@ import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
 import { Announce } from "@/components/Announce";
+import { useSite } from "@/lib/useSite";
 
 // Device transfer — faithful reproduction of the design's `.transfer-card`. Two halves:
 //  • Generate: mint a one-time 8-char code (XXXX-XXXX, LTR) with a live mm:ss expiry to move this
 //    device's history/volume/invites elsewhere.
 //  • Restore: enter a code from another device to bring that history here.
 // No login anywhere — identity is device-scoped. Reset lives in the status page's danger row.
+//
+// Redeeming re-points this browser at the code's device, so whatever THIS browser held — a config,
+// its history, invites — stops showing here. That used to happen without a word (C-17): now a
+// browser with anything to lose is asked first, and a fresh one (the one that actually redeems)
+// sees the restore half first.
 function fmt(code: string): string {
   return code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code;
 }
@@ -32,6 +38,11 @@ export function TransferCard({ locale }: { locale: Locale }) {
   const [restored, setRestored] = useState(false);
   const [busy, setBusy] = useState(false);
   const [genErr, setGenErr] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const { status } = useSite();
+  const hasData =
+    !!status && (status.has_config || status.configs > 0 || status.referral_count > 0);
+  const fresh = !!status && !hasData;
 
   // Derive the mm:ss remaining from an absolute deadline — NOT a per-tick decrement. The whole point
   // of a transfer code is to walk to another device (this tab backgrounded); a per-fire counter would
@@ -81,6 +92,7 @@ export function TransferCard({ locale }: { locale: Locale }) {
   }
 
   async function restore() {
+    setConfirming(false);
     setRestoreErr(false);
     setBusy(true);
     try {
@@ -98,8 +110,8 @@ export function TransferCard({ locale }: { locale: Locale }) {
     }
   }
 
-  return (
-    <div className="card transfer-card">
+  const generateHalf = (
+    <>
       {/* Generate side */}
       <div className="th">
         <div className="ti">
@@ -145,8 +157,10 @@ export function TransferCard({ locale }: { locale: Locale }) {
         </>
       )}
 
-      <hr className="divider" style={{ margin: "18px 0" }} />
-
+    </>
+  );
+  const restoreHalf = (
+    <>
       {/* Restore side */}
       <div className="th">
         <div className="ti">
@@ -178,15 +192,37 @@ export function TransferCard({ locale }: { locale: Locale }) {
               className="btn"
               type="button"
               disabled={busy || entry.trim().length < 8}
-              onClick={restore}
+              onClick={() => (hasData ? setConfirming(true) : restore())}
             >
               <Icon name="check" sw={2.4} />
               {t("restore_btn")}
             </button>
           </div>
           <div className="code-err">{t("restore_err")}</div>
+          {confirming && (
+            <div className="restore-warn" role="alert">
+              <p>{t("restore_warn")}</p>
+              <div className="rw-actions">
+                <button className="btn danger" type="button" disabled={busy} onClick={restore}>
+                  {t("restore_go")}
+                </button>
+                <button className="btn ghost" type="button" onClick={() => setConfirming(false)}>
+                  {t("chg_cancel")}
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
+    </>
+  );
+  const divider = <hr className="divider" style={{ margin: "18px 0" }} />;
+
+  return (
+    <div className="card transfer-card">
+      {fresh ? restoreHalf : generateHalf}
+      {divider}
+      {fresh ? generateHalf : restoreHalf}
     </div>
   );
 }

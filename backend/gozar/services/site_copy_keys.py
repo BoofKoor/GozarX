@@ -48,6 +48,9 @@ SITE_COPY_GROUPS: dict[str, list[str]] = {
         "faq_title",
         "faq_sub",
     ],
+    # The /about page's prose. Its "how it stays free" paragraph is deliberately neutral in code —
+    # what funds the service is the operator's to say, and this is where they say it.
+    "about": ["about_lead", "about_body", "about_free_body", "about_privacy_body"],
 }
 
 SITE_COPY_KEYS: list[str] = [k for keys in SITE_COPY_GROUPS.values() for k in keys]
@@ -64,6 +67,36 @@ _HERO_SUB_EN = (
 _FAQ_SUB_FA = "پاسخ سریع به پرتکرارترین سوال‌ها. اگر جوابت این‌جا نبود، از صفحهٔ تماس بپرس."
 _FAQ_SUB_EN = (
     "Quick answers to the most common questions. If yours isn't here, ask on the contact page."
+)
+_ABOUT_BODY_FA = (
+    "هدف ما ساده است: دسترسی آزاد و بی‌دردسر، بدون ثبت‌نام و بدون هزینه. تیم کوچک ما روی سرعت،"
+    " پایداری و حریم خصوصی تمرکز دارد."
+)
+_ABOUT_BODY_EN = (
+    "Our goal is simple: open, hassle-free access with no signup and no cost. Our small team"
+    " focuses on speed, stability and privacy."
+)
+_ABOUT_FREE_FA = (
+    "دریافت کانفیگ هیچ پرداختی نمی‌خواهد و هیچ مرحلهٔ پولی ندارد. هر کانفیگ آزمایشی است: مدت و"
+    " حجم روزانهٔ مشخصی دارد و وقتی تمام شد، کانفیگ تازه می‌گیری. حجم بیشتر را هم با دعوت دوستان و"
+    " ماموریت‌های سایت می‌گیری، نه با پرداخت."
+)
+_ABOUT_FREE_EN = (
+    "Claiming a config costs nothing and has no paid step. Every config is a trial with a set"
+    " length and a set daily volume; when it ends, you claim a fresh one. More volume comes from"
+    " inviting friends and the site's missions, not from paying."
+)
+_ABOUT_PRIVACY_FA = (
+    "برای دریافت کانفیگ نام، ایمیل یا شماره نمی‌خواهیم. این مرورگر با یک کوکی امضاشده شناخته"
+    " می‌شود. یک اثر انگشت سبک مرورگر و یک هش نمک‌دار از محدودهٔ شبکه‌ات (نه خود IP) هم فقط برای"
+    " جلوگیری از سوءاستفاده نگه داشته می‌شود، و حجم مصرفی کانفیگت شمرده می‌شود تا سقف روزانه اعمال"
+    " شود."
+)
+_ABOUT_PRIVACY_EN = (
+    "We don't ask for a name, email or phone number to claim a config. This browser is recognised"
+    " by a signed cookie. A light browser fingerprint and a salted hash of your network range (not"
+    " the IP itself) are kept only to prevent abuse, and your config's usage is counted so the"
+    " daily cap can apply."
 )
 
 # Verbatim from frontend/site/lib/design-copy.ts. Keep in sync when the design copy changes — a
@@ -109,24 +142,36 @@ SITE_COPY_DEFAULTS: dict[str, dict[Language, str]] = {
         Language.fa: "از هر کشوری که بخواهی",
         Language.en: "From any country you like",
     },
+    # `{locs}` is filled with the squad's live locations in the visitor's language ("Germany,
+    # Netherlands, Finland and more"): the old sentence named Ukraine, Germany and the USA whether
+    # or not the squad served any of them. An override may keep the token or drop it — both render.
     "loc_sub": {
-        Language.fa: "کانفیگ اوکراین، آلمان، آمریکا و بیشتر — همه رایگان و روزانه.",
-        Language.en: "Ukraine, Germany, USA and more — all free, every day.",
+        Language.fa: "کانفیگ {locs} — همه رایگان و روزانه.",
+        Language.en: "{locs} — all free, every day.",
     },
     "app_eyebrow": {Language.fa: "اپ‌های سازگار", Language.en: "Compatible apps"},
     "app_title": {
         Language.fa: "با اپ دلخواهت وصل شو",
         Language.en: "Connect with your favorite app",
     },
+    # The apps the site actually links and deep-links — "every popular client" was a promise
+    # about clients nobody had tried.
     "app_sub": {
-        Language.fa: "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. راهنمای اپ دستگاهت را باز کن.",
+        Language.fa: "کانفیگ در Happ، v2rayNG و Streisand کار می‌کند. راهنمای اپ دستگاهت را باز کن.",
         Language.en: (
-            "Configs work with every popular client. Open the guide for your device's app."
+            "The config works in Happ, v2rayNG and Streisand. Open the guide for your app."
         ),
     },
     "faq_eyebrow": {Language.fa: "سوالات متداول", Language.en: "FAQ"},
     "faq_title": {Language.fa: "سوالی داری؟", Language.en: "Got a question?"},
     "faq_sub": {Language.fa: _FAQ_SUB_FA, Language.en: _FAQ_SUB_EN},
+    "about_lead": {
+        Language.fa: "GozarX یک ابزار رایگان است که هر روز به همه یک کانفیگ آزمایشی می‌دهد.",
+        Language.en: "GozarX is a free tool that hands everyone a trial config every day.",
+    },
+    "about_body": {Language.fa: _ABOUT_BODY_FA, Language.en: _ABOUT_BODY_EN},
+    "about_free_body": {Language.fa: _ABOUT_FREE_FA, Language.en: _ABOUT_FREE_EN},
+    "about_privacy_body": {Language.fa: _ABOUT_PRIVACY_FA, Language.en: _ABOUT_PRIVACY_EN},
 }
 
 

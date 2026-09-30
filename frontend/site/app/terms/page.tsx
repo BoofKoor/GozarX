@@ -24,11 +24,6 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function TermsPage() {
   const locale = await getLocale();
   return (
-    <LegalArticle
-      locale={locale}
-      title={LEGAL_TITLE[locale].terms}
-      sections={TERMS[locale]}
-      other={{ href: "/privacy", label: LEGAL_TITLE[locale].privacy }}
-    />
+    <LegalArticle locale={locale} kind="terms" sections={TERMS[locale]} />
   );
 }

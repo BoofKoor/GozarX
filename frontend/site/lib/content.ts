@@ -1,4 +1,5 @@
-// Static content-page copy (about / legal / faq / guides), bilingual, in-code.
+// Static content-page copy (legal / faq / guides), bilingual, in-code. /about moved to the
+// design copy, where the panel can override its prose (site copy, "about" group).
 // Per CLAUDE.md the site keeps chrome + static copy in code (the DB `content` table holds bot copy
 // and, later, admin-managed keyword landings — not these evergreen pages). Copy is extracted from
 // the approved Phase-5 design mockup (docs/website/design/phase-5-content.html); the iOS/Windows/
@@ -7,22 +8,6 @@
 
 import type { Locale } from "@/lib/i18n";
 
-// ── About ────────────────────────────────────────────────────────────────────
-export const ABOUT: Record<Locale, { title: string; lead: string; body: string; deflect: string }> = {
-  fa: {
-    title: "دربارهٔ ما",
-    lead: "GozarX یک ابزار رایگان است که هر روز به همه یک کانفیگ آزمایشی می‌دهد.",
-    body: "هدف ما ساده است: دسترسی آزاد و بی‌دردسر، بدون ثبت‌نام و بدون هزینه. تیم کوچک ما روی سرعت، پایداری و حریم خصوصی تمرکز دارد.",
-    deflect: "شاید جوابت این‌جا باشد:",
-  },
-  en: {
-    title: "About us",
-    lead: "GozarX is a free tool that hands everyone a trial config every day.",
-    body: "Our goal is simple: open, hassle-free access with no signup and no cost. Our small team focuses on speed, stability and privacy.",
-    deflect: "Your answer might be here:",
-  },
-};
-
 // ── Legal (privacy / terms share one section shape) ───────────────────────────
 export interface LegalSection {
   h: string;
@@ -30,10 +15,26 @@ export interface LegalSection {
   important?: boolean; // rendered as an emphasised "Important:" callout
 }
 
-export const LEGAL_UPDATED: Record<Locale, string> = {
-  fa: "آخرین به‌روزرسانی: تیر ۱۴۰۴",
-  en: "Last updated: July 2025",
-};
+// The day the legal TEXT last changed — one ISO date, printed per locale by `legalUpdated`. It
+// replaces two hand-written strings («تیر ۱۴۰۴» / "July 2025") that were the design mockup's
+// placeholder, not a date anything happened on. Change it in the same commit as the text.
+export const LEGAL_UPDATED_AT = "2026-09-30";
+
+export function legalUpdated(locale: Locale): string {
+  const when = new Date(`${LEGAL_UPDATED_AT}T12:00:00Z`);
+  const fmt = new Intl.DateTimeFormat(locale === "fa" ? "fa-IR-u-ca-persian" : "en-US", {
+    year: "numeric",
+    month: "long",
+    timeZone: "Asia/Tehran",
+  });
+  // Month first in both: ICU's Persian month-year pattern is «۱۴۰۵ مهر», and the order people
+  // write is «مهر ۱۴۰۵».
+  const part = (type: string) => fmt.formatToParts(when).find((p) => p.type === type)?.value ?? "";
+  const date = `${part("month")} ${part("year")}`;
+  return locale === "fa" ? `آخرین به‌روزرسانی: ${date}` : `Last updated: ${date}`;
+}
+
+export const LEGAL_TOC: Record<Locale, string> = { fa: "در این صفحه", en: "On this page" };
 
 export const LEGAL_TITLE: Record<Locale, { privacy: string; terms: string }> = {
   fa: { privacy: "حریم خصوصی", terms: "قوانین استفاده" },
@@ -47,7 +48,7 @@ export const PRIVACY: Record<Locale, LegalSection[]> = {
     { h: "اطلاعاتی که ذخیره نمی‌کنیم", body: "برای دریافت کانفیگ هیچ نام، ایمیل یا شماره‌ای نمی‌گیریم و ذخیره نمی‌کنیم." },
     {
       h: "هویت دستگاه چطور کار می‌کند؟",
-      body: "هویت تو فقط با یک «شناسهٔ سبک روی همین مرورگر» ساخته می‌شود: یک کوکی امضاشده به‌همراه یک اثر انگشت سادهٔ مرورگر. این فقط برای این است که حجم روزانه و دعوت‌هایت را روی همین دستگاه به‌خاطر بسپاریم — نه برای شناسایی شخص تو.",
+      body: "هویت تو فقط با یک «شناسهٔ سبک روی همین مرورگر» ساخته می‌شود: یک کوکی امضاشده. کنارش یک اثر انگشت سادهٔ مرورگر و یک هش نمک‌دار از محدودهٔ شبکه‌ات (نه خود IP) هم نگه داشته می‌شود. شناسه برای این است که حجم روزانه و دعوت‌هایت را روی همین دستگاه به‌خاطر بسپاریم و آن دو نشانه فقط برای جلوگیری از سوءاستفاده‌اند — هیچ‌کدام برای شناسایی شخص تو نیست.",
       important: true,
     },
     { h: "کوکی‌ها", body: "فقط از کوکی‌های ضروری برای کارکرد سرویس استفاده می‌کنیم؛ کوکی تبلیغاتی یا ردگیری شخص ثالث نداریم." },
@@ -58,7 +59,7 @@ export const PRIVACY: Record<Locale, LegalSection[]> = {
     { h: "What we don't store", body: "To claim a config we take and store no name, email or phone number." },
     {
       h: "How device identity works",
-      body: "Your identity is just a “light token kept on this browser”: a signed cookie plus a simple browser fingerprint. It exists only so we can remember your daily volume and invites on this device — not to identify you personally.",
+      body: "Your identity is just a “light token kept on this browser”: a signed cookie. Beside it we keep a simple browser fingerprint and a salted hash of your network range (not the IP itself). The token lets us remember your daily volume and invites on this device, and the two signals exist only to prevent abuse — none of it identifies you personally.",
       important: true,
     },
     { h: "Cookies", body: "We only use cookies essential to the service; no advertising or third-party tracking cookies." },
@@ -97,13 +98,14 @@ export interface FaqItem {
 
 export const FAQ_LABELS: Record<
   Locale,
-  { title: string; sub: string; search: string; empty: string; all: string; categories: string }
+  { title: string; sub: string; search: string; empty: string; ask: string; all: string; categories: string }
 > = {
   fa: {
     title: "سوالات متداول",
     sub: "پاسخ سریع به پرتکرارترین سوال‌ها. اگر جوابت این‌جا نبود، از صفحهٔ تماس بپرس.",
     search: "جستجو در سوالات…",
     empty: "سوالی با این عبارت پیدا نشد.",
+    ask: "سوالت را از ما بپرس",
     all: "همه",
     categories: "دسته‌ها",
   },
@@ -112,6 +114,7 @@ export const FAQ_LABELS: Record<
     sub: "Quick answers to the most common questions. If yours isn't here, ask on the contact page.",
     search: "Search questions…",
     empty: "No question matches that phrase.",
+    ask: "Ask us your question",
     all: "All",
     categories: "Categories",
   },
@@ -142,6 +145,10 @@ export const FAQ_ITEMS: Record<Locale, FaqItem[]> = {
     { cat: "apps", q: "روی ویندوز نصب می‌شود؟", a: "بله، با کلاینت Happ ویندوز." },
     { cat: "trouble", q: "وصل نمی‌شوم", a: "کانفیگ را دوباره بگیر، زمان دستگاه را چک کن و لوکیشن دیگری را امتحان کن." },
     { cat: "trouble", q: "سرعت کم است", a: "لوکیشن نزدیک‌تر را انتخاب کن و مطمئن شو حجم روزانه‌ات تمام نشده." },
+    { cat: "trouble", q: "یک لوکیشن وصل نمی‌شود؛ باید تا کانفیگ بعدی صبر کنم؟", a: "نه. تا وقتی کانفیگت فعال است، از صفحهٔ «کانفیگ من» می‌توانی لوکیشن دیگری انتخاب کنی. لینک تازهٔ همان لوکیشن را در اپت وارد کن؛ حجم و زمان کانفیگ همان قبلی است." },
+    { cat: "trouble", q: "روی اینترنت همراه هم کار می‌کند؟", a: "بله؛ کانفیگ به نوع اینترنت بستگی ندارد و روی وای‌فای و اینترنت همراه هر دو قابل استفاده است. اختلال‌ها ولی بین اپراتورها فرق دارد؛ اگر روی یکی وصل نشد، لوکیشن دیگری را امتحان کن." },
+    { cat: "start", q: "چه اطلاعاتی از من نگه داشته می‌شود؟", a: "برای دریافت کانفیگ نام، ایمیل یا شماره نمی‌گیریم. این مرورگر با یک کوکی امضاشده شناخته می‌شود؛ یک اثر انگشت سبک مرورگر و هشی از محدودهٔ شبکه‌ات (نه خود IP) هم فقط برای جلوگیری از سوءاستفاده نگه داشته می‌شود، و حجم مصرفی کانفیگت برای سقف روزانه شمرده می‌شود. جزئیات در صفحهٔ حریم خصوصی است." },
+    { cat: "trouble", q: "اگر سایت باز نشد، کانفیگم هم قطع می‌شود؟", a: "نه. کانفیگی که در اپت وارد کرده‌ای به این سایت وابسته نیست و تا پایان زمانش کار می‌کند. اگر قبلاً در همین مرورگر کانفیگ گرفته‌ای، آخرین لینکش برای صفحهٔ آفلاین سایت هم نگه داشته می‌شود." },
   ],
   en: [
     { cat: "start", q: "How does the free config work?", a: "Each time your config's time runs out you can claim a fresh free one; pick a location, press the button and import the link into your app." },
@@ -152,6 +159,10 @@ export const FAQ_ITEMS: Record<Locale, FaqItem[]> = {
     { cat: "apps", q: "Can I install it on Windows?", a: "Yes, with the Happ Windows client." },
     { cat: "trouble", q: "I can't connect", a: "Re-claim the config, check your device clock and try a different location." },
     { cat: "trouble", q: "It's slow", a: "Pick a closer location and make sure your daily volume isn't used up." },
+    { cat: "trouble", q: "A location won't connect — do I have to wait for my next config?", a: "No. While your config is active you can pick another location on the “My config” page. Import that location's new link into your app — your volume and time stay the same." },
+    { cat: "trouble", q: "Does it work on mobile data?", a: "Yes — the config doesn't depend on the kind of connection, so it works on Wi-Fi and mobile data alike. Disruptions differ between carriers, though: if it won't connect on one, try another location." },
+    { cat: "start", q: "What do you keep about me?", a: "We take no name, email or phone number to claim a config. This browser is recognised by a signed cookie; a light browser fingerprint and a hash of your network range (not the IP itself) are kept only to prevent abuse, and your config's usage is counted for the daily cap. The details are on the Privacy page." },
+    { cat: "trouble", q: "If the site won't open, does my config stop working?", a: "No. A config you've imported into your app doesn't depend on this site and keeps working until its time is up. If you've claimed one in this browser before, its last link is kept for the site's offline page too." },
   ],
 };
 
