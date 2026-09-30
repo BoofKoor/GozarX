@@ -34,7 +34,8 @@ describe("ActivationPanel", () => {
     // 0.0058 hours is the measured production value: 21 seconds, because the whole flow is
     // /start, pick a language, claim. Printed as hours it was "0" and read as a broken tile.
     show(0.0058);
-    expect(screen.getByText("⁨۲۱s⁩")).toBeInTheDocument();
+    // …and in the locale's own unit: «۲۱s» was a Latin letter after Persian digits.
+    expect(screen.getByText("⁨۲۱ ثانیه⁩")).toBeInTheDocument();
   });
 
   it("shows an em dash for the 24h share of an EMPTY cohort, not a confident 0%", () => {

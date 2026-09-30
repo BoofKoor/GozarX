@@ -110,9 +110,11 @@ async def refresh(body: RefreshIn) -> TokenOut:
     # change is otherwise the only lever and it wouldn't cut off old sessions without this check).
     if payload.sub != get_settings().admin_username:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "invalid refresh token")
+    # The SAME login continues: carried forward, `auth_time` is what stops a chain of refreshes
+    # from being a session that never ends.
     return TokenOut(
-        access_token=create_access(payload.sub),
-        refresh_token=create_refresh(payload.sub),
+        access_token=create_access(payload.sub, auth_time=payload.auth_time),
+        refresh_token=create_refresh(payload.sub, auth_time=payload.auth_time),
     )
 
 

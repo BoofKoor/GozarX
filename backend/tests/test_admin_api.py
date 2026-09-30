@@ -210,6 +210,25 @@ async def test_settings_ad_button_round_trip(admin_client: httpx.AsyncClient) ->
     assert (await admin_client.get("/api/admin/settings/")).json()["ad_button_enabled"] is True
 
 
+async def test_a_promo_link_the_bot_would_drop_is_refused(admin_client: httpx.AsyncClient) -> None:
+    """`t.me/x` saved without a word, and the bot then silently left the button off every
+    delivered config. The rule the bot renders by is now checked on save — and a refused save
+    writes nothing, not the half before the bad field."""
+    r = await admin_client.put(
+        "/api/admin/settings/",
+        json={"ad_button_text": "کانال", "ad_button_url": "t.me/x"},
+    )
+    assert r.status_code == 400 and "https://" in r.json()["detail"]
+    assert (await admin_client.get("/api/admin/settings/")).json()["ad_button_text"] == ""
+    # The emoji id is a number; one typed on a Persian keyboard is taken, in ASCII.
+    ok = await admin_client.put(
+        "/api/admin/settings/", json={"ad_button_emoji_id": "۵۳۶۸۳۲۴۱۷۰۶۷۱۲۰۲۲۸۶"}
+    )
+    assert ok.status_code == 200 and ok.json()["ad_button_emoji_id"] == "5368324170671202286"
+    bad = await admin_client.put("/api/admin/settings/", json={"ad_button_emoji_id": "🔥"})
+    assert bad.status_code == 400
+
+
 async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200
@@ -666,6 +685,41 @@ async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> Non
     assert body["missing_placeholders"] == ["x"]
 
 
+async def test_texts_are_the_bots_own_keys(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    """The website's copy shares the table but not the screen: listed here, each site key read as
+    permanently "untranslated" (the site has no Russian) and a save wrote it an empty ru row."""
+    from gozar.db.models.content import Content
+
+    async with db_sessions() as s:
+        s.add(Content(key="site_hero_title", language=Language.fa, body="سلام"))
+        await s.commit()
+    keys = {t["key"] for t in (await admin_client.get("/api/admin/texts/")).json()}
+    assert "welcome" in keys and not any(k.startswith("site_") for k in keys)
+    assert (
+        await admin_client.put("/api/admin/texts/site_hero_title", json={"fa": "x"})
+    ).status_code == 404
+    # A key nobody reads is refused — and one over the column's width is a 404, not a 500.
+    for key in ("no_such_key", "k" * 200):
+        r = await admin_client.put(f"/api/admin/texts/{key}", json={"fa": "x"})
+        assert r.status_code == 404
+
+
+async def test_a_blank_untranslated_language_writes_no_row(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    from sqlalchemy import select
+
+    from gozar.db.models.content import Content
+
+    r = await admin_client.put("/api/admin/texts/welcome", json={"fa": "سلام", "ru": ""})
+    assert r.status_code == 200
+    async with db_sessions() as s:
+        langs = set(
+            (await s.scalars(select(Content.language).where(Content.key == "welcome"))).all()
+        )
+    assert Language.ru not in langs  # absent (falls back to Persian), not an empty row
+
+
 async def test_texts_link_preview_roundtrips(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.put(
         "/api/admin/texts/required_apps",
@@ -706,6 +760,25 @@ async def test_users_list_filter_search(admin_client: httpx.AsyncClient, db_sess
 
     r = await admin_client.get("/api/admin/users/", params={"search": "g_1002"})
     assert {u["telegram_id"] for u in r.json()["items"]} == {1002}  # panel_username match
+
+
+async def test_users_search_takes_wildcards_literally(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """`_` and `%` are characters to find, not LIKE wildcards: "g_1" used to match "gx1" too, and a
+    lone "%" returned every user."""
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=3001, panel_username="g_1"),
+                User(telegram_id=3002, panel_username="gx1"),
+            ]
+        )
+        await s.commit()
+    r = await admin_client.get("/api/admin/users/", params={"search": "g_1"})
+    assert {u["telegram_id"] for u in r.json()["items"]} == {3001}
+    r = await admin_client.get("/api/admin/users/", params={"search": "%"})
+    assert r.json()["total"] == 0
 
 
 async def test_users_pagination(admin_client: httpx.AsyncClient, db_sessions) -> None:
@@ -842,13 +915,15 @@ async def test_broadcast_drafts_round_trip(admin_client: httpx.AsyncClient) -> N
     assert again["title"] == "بازنویسی"
     assert (await admin_client.get("/api/admin/broadcast/drafts")).json() == [again]
 
-    # A button URL Telegram would reject is refused here too — a draft restored months later
-    # should not be the first time anyone finds out.
-    bad = await admin_client.post(
+    # A half-typed button is KEPT as typed: a draft is unfinished by definition, and refusing it
+    # lost the whole message at the moment it was being saved. Sending is what validates it.
+    loose = await admin_client.post(
         "/api/admin/broadcast/drafts",
-        json={"text": "x", "buttons": [{"text": "y", "url": "http://insecure"}]},
+        json={"text": "x", "buttons": [{"text": "y", "url": "t.me/x"}]},
     )
-    assert bad.status_code == 422
+    assert loose.status_code == 200
+    assert loose.json()["buttons"] == [{"text": "y", "url": "t.me/x"}]
+    await admin_client.delete(f"/api/admin/broadcast/drafts/{loose.json()['id']}")
 
     assert (
         await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
@@ -858,6 +933,18 @@ async def test_broadcast_drafts_round_trip(admin_client: httpx.AsyncClient) -> N
     assert (
         await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
     ).status_code == 404
+
+
+async def test_a_repeated_language_collapses_instead_of_overflowing(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """The list is stored joined in a 32-character column; a crafted repeat of one code used to
+    overflow it into a 500. Repeats mean the language once."""
+    r = await admin_client.post(
+        "/api/admin/broadcast/drafts", json={"text": "x", "languages": ["fa"] * 20 + ["en"]}
+    )
+    assert r.status_code == 200
+    assert r.json()["languages"] == "fa,en"
 
 
 async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> None:

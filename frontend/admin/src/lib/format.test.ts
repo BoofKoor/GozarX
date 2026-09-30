@@ -62,14 +62,15 @@ describe("format helpers", () => {
   it("humanHours picks a unit the figure survives", () => {
     // The bug this exists for: the live median is 0.0058 hours. As hours it printed "0", which
     // reads as a missing number rather than as 21 seconds.
-    expect(humanHours(0.0058)).toBe("\u2068۲۱s\u2069");
-    expect(humanHours(0)).toBe("\u2068۰s\u2069");
+    // The unit is the LOCALE's word — «۲۱s» put a Latin letter after Persian digits.
+    expect(humanHours(0.0058)).toBe("\u2068۲۱ ثانیه\u2069");
+    expect(humanHours(0)).toBe("\u2068۰ ثانیه\u2069");
     // A minute and over switches unit rather than showing a fraction of an hour.
-    expect(humanHours(0.5)).toBe("\u2068۳۰m\u2069");
-    expect(humanHours(1 / 60)).toBe("\u2068۱m\u2069");
+    expect(humanHours(0.5)).toBe("\u2068۳۰ دقیقه\u2069");
+    expect(humanHours(1 / 60)).toBe("\u2068۱ دقیقه\u2069");
     // Past an hour it keeps one decimal, because a period comparison reads the difference
     // between 6.9 and 7.
-    expect(humanHours(6.92)).toBe("\u2068۶٫۹h\u2069");
+    expect(humanHours(6.92)).toBe("\u2068۶٫۹ ساعت\u2069");
   });
 
   it("groups digits with Persian numerals", () => {

@@ -5,14 +5,12 @@ import { toast } from "sonner";
 
 import { BrandTile } from "@/components/layout/Brand";
 import { LanguagePill } from "@/components/layout/LanguagePill";
+import { SquadSelect } from "@/components/setup/SquadSelect";
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { NumberInput } from "@/components/ui/NumberInput";
-import { Select } from "@/components/ui/Select";
-import { Spinner } from "@/components/ui/Spinner";
 import { useCompleteSetup, useSetupStatus, useSquads } from "@/hooks/useSetup";
 import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
@@ -40,7 +38,7 @@ export function Setup() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { data: status } = useSetupStatus();
-  const { data: squads, isLoading, isError } = useSquads();
+  const { data: squads } = useSquads();
   const complete = useCompleteSetup();
   const [trialSquad, setTrialSquad] = useState("");
   const [econ, setEcon] = useState<Econ>(DEFAULT_ECON);
@@ -127,21 +125,7 @@ export function Setup() {
         <Card>
           <form onSubmit={submit} className="space-y-4">
             <Field label={t("setup.squad")} hint={t("setup.squad.hint")}>
-              {isLoading ? (
-                <div className="flex justify-center py-4">
-                  <Spinner className="h-5 w-5 text-brand" />
-                </div>
-              ) : isError ? (
-                <ErrorState compact message={t("setup.squadsUnreachable")} />
-              ) : (
-                <Select value={trialSquad} onChange={(e) => setTrialSquad(e.target.value)}>
-                  {(squads ?? []).map((s) => (
-                    <option key={s.uuid} value={s.uuid}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
+              <SquadSelect value={trialSquad} onChange={setTrialSquad} />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">

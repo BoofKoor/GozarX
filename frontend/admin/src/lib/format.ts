@@ -79,14 +79,22 @@ export function formatMb(mb: number): string {
  * the best figure the funnel has. The unit follows the value: seconds under a minute, minutes
  * under an hour, hours above.
  */
+/** The duration units follow the LOCALE, like `humanUptime`'s: «۲۱s» was a Latin letter parked
+ *  after Persian digits, on the one tile whose whole job is that number. */
+const _DURATION_UNITS: Record<string, { s: string; m: string; h: string }> = {
+  fa: { s: " ثانیه", m: " دقیقه", h: " ساعت" },
+  en: { s: "s", m: "m", h: "h" },
+};
+
 export function humanHours(hours: number): string {
-  if (!Number.isFinite(hours) || hours < 0) return isolateQuantity(localizeDigits("0s"));
+  const u = _DURATION_UNITS[getLocale()] ?? _DURATION_UNITS.en;
+  if (!Number.isFinite(hours) || hours < 0) return isolateQuantity(localizeDigits(`0${u.s}`));
   const seconds = hours * 3600;
-  if (seconds < 60) return isolateQuantity(localizeDigits(`${Math.round(seconds)}s`));
-  if (hours < 1) return isolateQuantity(localizeDigits(`${Math.round(seconds / 60)}m`));
+  if (seconds < 60) return isolateQuantity(localizeDigits(`${Math.round(seconds)}${u.s}`));
+  if (hours < 1) return isolateQuantity(localizeDigits(`${Math.round(seconds / 60)}${u.m}`));
   // One decimal past an hour: the difference between 6.9h and 7h is what a period comparison is
   // reading, and rounding it away would flatten the delta the tile sits above.
-  return isolateQuantity(localizeDigits(`${hours.toFixed(1)}h`));
+  return isolateQuantity(localizeDigits(`${hours.toFixed(1)}${u.h}`));
 }
 
 /** Bytes → a human size string (the panel reports lifetime traffic served in bytes). */

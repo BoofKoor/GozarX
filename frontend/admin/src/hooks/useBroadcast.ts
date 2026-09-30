@@ -20,8 +20,12 @@ export interface AudienceFilter {
   only_referrers?: boolean;
 }
 
+const LANG_ORDER: Lang[] = ["fa", "en", "ru"];
+
 export function useAudience(languages: Lang[], filter: AudienceFilter = {}) {
-  const param = languages.join(",");
+  // In one fixed order: the SET is the audience, not the order it was ticked in — toggling fa off
+  // and on gave "en,ru,fa", a second cache key and a second request for a count already on screen.
+  const param = LANG_ORDER.filter((l) => languages.includes(l)).join(",");
   const only_active = filter.only_active ?? false;
   const only_referrers = filter.only_referrers ?? false;
   return useQuery({

@@ -22,6 +22,7 @@ from datetime import UTC, datetime
 from aiogram import Bot
 from aiogram.exceptions import (
     TelegramAPIError,
+    TelegramBadRequest,
     TelegramForbiddenError,
     TelegramNotFound,
     TelegramRetryAfter,
@@ -114,7 +115,9 @@ async def _attempt(send_one: object, uid: int) -> tuple[str, float]:
         return ("sent", 0)
     except TelegramRetryAfter as exc:
         return ("flood", exc.retry_after)  # flood control — the caller backs off, then retries once
-    except (TelegramForbiddenError, TelegramNotFound) as exc:
+    except (TelegramForbiddenError, TelegramNotFound, TelegramBadRequest) as exc:
+        # BadRequest too: "chat not found" is a 400 — see `services/telegram_errors`. Any other bad
+        # request (a message too long, markup Telegram refused) still keeps the user.
         return ("remove", 0) if _should_remove(exc) else ("failed", 0)
     except TelegramAPIError:
         return ("failed", 0)  # transient API error (incl. other BadRequests) → keep the user

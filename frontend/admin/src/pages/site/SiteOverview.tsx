@@ -9,12 +9,12 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
 
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SiteTabs } from "@/components/site/SiteTabs";
+import { PUSH_STATUS } from "@/components/site/pushStatus";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { ExternalLinkButton, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -64,12 +64,10 @@ export function SiteOverview() {
         title={t("so.title")}
         sub={t("so.sub")}
         actions={
-          <a href="/" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm">
-              <ExternalLink className="h-4 w-4" />
-              {t("so.visit")}
-            </Button>
-          </a>
+          <ExternalLinkButton href="/" variant="outline" size="sm">
+            <ExternalLink className="h-4 w-4" />
+            {t("so.visit")}
+          </ExternalLinkButton>
         }
       >
         <SiteTabs unreadMessages={unread} />
@@ -89,11 +87,7 @@ export function SiteOverview() {
             icon={Wrench}
             title={t("so.notSetUp")}
             message={t("so.notSetUp.msg")}
-            action={
-              <Link to="/site/setup">
-                <Button>{t("so.setUpNow")}</Button>
-              </Link>
-            }
+            action={<LinkButton to="/site/setup">{t("so.setUpNow")}</LinkButton>}
           />
         </Card>
       ) : (
@@ -161,16 +155,12 @@ export function SiteOverview() {
                 />
               </div>
               <div className="mt-4 flex gap-2">
-                <Link to="/site/settings">
-                  <Button variant="outline" size="sm">
-                    {t("so.config.editSettings")}
-                  </Button>
-                </Link>
-                <Link to="/site/content">
-                  <Button variant="ghost" size="sm">
-                    {t("so.config.editCopy")}
-                  </Button>
-                </Link>
+                <LinkButton to="/site/settings" variant="outline" size="sm">
+                  {t("so.config.editSettings")}
+                </LinkButton>
+                <LinkButton to="/site/content" variant="ghost" size="sm">
+                  {t("so.config.editCopy")}
+                </LinkButton>
               </div>
             </Card>
 
@@ -190,10 +180,12 @@ export function SiteOverview() {
                     lastPush ? (
                       <span className="flex items-center gap-2">
                         {faDate(lastPush.created_at)}
-                        <Badge tone={lastPush.status === "done" ? "success" : "neutral"}>
+                        <Badge tone={PUSH_STATUS[lastPush.status]?.tone ?? "neutral"}>
                           {lastPush.status === "done"
                             ? t("so.reach.delivered", { n: formatNumber(lastPush.sent) })
-                            : lastPush.status}
+                            : PUSH_STATUS[lastPush.status]
+                              ? t(PUSH_STATUS[lastPush.status].label)
+                              : lastPush.status}
                         </Badge>
                       </span>
                     ) : (
@@ -218,24 +210,18 @@ export function SiteOverview() {
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link to="/site/pages">
-                  <Button variant="outline" size="sm">
-                    <FileText className="h-4 w-4" />
-                    {t("so.link.pages")}
-                  </Button>
-                </Link>
-                <Link to="/site/inbox">
-                  <Button variant="ghost" size="sm">
-                    <Inbox className="h-4 w-4" />
-                    {t("so.link.inbox")}
-                  </Button>
-                </Link>
-                <Link to="/site/devices">
-                  <Button variant="ghost" size="sm">
-                    <MonitorSmartphone className="h-4 w-4" />
-                    {t("so.link.devices")}
-                  </Button>
-                </Link>
+                <LinkButton to="/site/pages" variant="outline" size="sm">
+                  <FileText className="h-4 w-4" />
+                  {t("so.link.pages")}
+                </LinkButton>
+                <LinkButton to="/site/inbox" variant="ghost" size="sm">
+                  <Inbox className="h-4 w-4" />
+                  {t("so.link.inbox")}
+                </LinkButton>
+                <LinkButton to="/site/devices" variant="ghost" size="sm">
+                  <MonitorSmartphone className="h-4 w-4" />
+                  {t("so.link.devices")}
+                </LinkButton>
               </div>
             </Card>
           </div>

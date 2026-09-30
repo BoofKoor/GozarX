@@ -17,7 +17,7 @@ import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
 import { Textarea } from "@/components/ui/Textarea";
-import { useConfirm } from "@/components/ui/confirm";
+import { useConfirm, useDiscardGuard } from "@/components/ui/confirm";
 import {
   useCreateFaq,
   useDeleteFaq,
@@ -266,6 +266,11 @@ function FaqEditor({
   const create = useCreateFaq();
   const update = useUpdateFaq();
   const saving = create.isPending || update.isPending;
+  const [initial] = useState(form);
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const guard = useDiscardGuard();
+  // Esc, the backdrop and Cancel all ask first when something is unsaved — they discarded it.
+  const close = () => void guard(dirty, onClose);
 
   function save() {
     const body: SiteFaqInput = {
@@ -293,7 +298,7 @@ function FaqEditor({
   return (
     <RecordDialog
       open
-      onClose={onClose}
+      onClose={close}
       title={item ? t("sf.edit.title") : t("sf.new")}
       sub={item ? t("sf.edit.id", { id: formatNumber(item.id) }) : t("sf.edit.newSub")}
       footer={
@@ -301,7 +306,7 @@ function FaqEditor({
           <Button onClick={save} loading={saving}>
             {t("sf.save")}
           </Button>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={close}>
             {t("sf.cancel")}
           </Button>
         </div>

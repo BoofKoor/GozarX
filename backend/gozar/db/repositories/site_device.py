@@ -16,7 +16,7 @@ from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.models.site_device_day import SiteDeviceDay
-from gozar.db.repositories.base import BaseRepository
+from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
 # How stale a `last_seen_at` may be before the next request refreshes it. Coarse on purpose: the
 # column feeds daily buckets, and an unthrottled write would land on every page load.
@@ -34,12 +34,12 @@ def _device_filter(
     if ip_bucket:
         stmt = stmt.where(SiteDevice.ip_bucket == ip_bucket)
     if search and search.strip():
-        like = f"%{search.strip()}%"
+        like = contains_pattern(search.strip())
         stmt = stmt.where(
             or_(
-                SiteDevice.handle.ilike(like),
-                SiteDevice.uuid.ilike(like),
-                SiteDevice.site_panel_username.ilike(like),
+                SiteDevice.handle.ilike(like, escape=LIKE_ESCAPE),
+                SiteDevice.uuid.ilike(like, escape=LIKE_ESCAPE),
+                SiteDevice.site_panel_username.ilike(like, escape=LIKE_ESCAPE),
             )
         )
     return stmt

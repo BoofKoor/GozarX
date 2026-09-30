@@ -8,7 +8,7 @@ import {
   ShieldOff,
   X,
 } from "lucide-react";
-import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -26,6 +26,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Spinner } from "@/components/ui/Spinner";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import { useConfirm } from "@/components/ui/confirm";
+import { useDebouncedValue, useFilterPage } from "@/hooks/useDebouncedValue";
 import {
   useSiteDevice,
   useSiteDeviceAction,
@@ -78,18 +79,21 @@ export function SiteDevices() {
   // sender's somewhere among them. `open` goes one step further and shows that device's record.
   const [search, setSearch] = useState(() => params.get("search") ?? "");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<string | null>(() => params.get("open"));
-  const deferredSearch = useDeferredValue(search);
-
-  useEffect(() => setPage(1), [status, deferredSearch, ipBucket]);
+  // Debounced, not deferred — see `useDebouncedValue`; and the page belongs to the filters, so a
+  // changed filter asks for page 1 in the same render instead of one request later.
+  const settledSearch = useDebouncedValue(search.trim());
+  const filters = {
+    status: status || undefined,
+    search: settledSearch || undefined,
+    ip_bucket: ipBucket || undefined,
+  };
+  const [page, setPage] = useFilterPage(JSON.stringify(filters));
 
   const { data, isLoading, isError, refetch } = useSiteDevices({
     page,
     page_size: PAGE_SIZE,
-    status: status || undefined,
-    search: deferredSearch || undefined,
-    ip_bucket: ipBucket || undefined,
+    ...filters,
   });
 
   const total = data?.total ?? 0;

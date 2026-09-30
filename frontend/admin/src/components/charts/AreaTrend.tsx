@@ -1,6 +1,7 @@
 import { useId, useRef, useState } from "react";
 
 import { useIsDark } from "@/hooks/useIsDark";
+import { dirFor, getLocale } from "@/i18n";
 import { seriesColor, tokenColor } from "@/lib/chartTheme";
 import { localizeDigits } from "@/lib/format";
 
@@ -345,7 +346,10 @@ export function AreaTrend({
             marginTop: "-0.5rem",
           }}
         >
-          <div className="rounded-xl bg-surface px-2.5 py-2 text-xs shadow-raised" dir="rtl">
+          <div
+            className="rounded-xl bg-surface px-2.5 py-2 text-xs shadow-raised"
+            dir={dirFor(getLocale())}
+          >
             {/* Day number and weekday are separate runs: joined into one string the digits and the
                 Persian letter reorder around the separator. */}
             <div className="flex items-baseline gap-1.5 font-semibold text-content">

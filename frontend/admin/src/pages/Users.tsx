@@ -8,7 +8,7 @@ import {
   Ticket,
   UserX,
 } from "lucide-react";
-import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { MiniTrend } from "@/components/charts/MiniTrend";
@@ -27,6 +27,7 @@ import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import { useConfirm } from "@/components/ui/confirm";
+import { useDebouncedValue, useFilterPage } from "@/hooks/useDebouncedValue";
 import {
   downloadUsersCsv,
   useClaimedLocations,
@@ -58,19 +59,17 @@ export function Users() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
   const [location, setLocation] = useState("");
-  const [page, setPage] = useState(1);
   const [detailId, setDetailId] = useState<number | null>(null);
   const [exporting, setExporting] = useState(false);
-  const deferredSearch = useDeferredValue(search);
-
-  useEffect(() => setPage(1), [status, location, deferredSearch]);
+  const settledSearch = useDebouncedValue(search.trim());
 
   const query = {
     status: status || undefined,
-    search: deferredSearch || undefined,
+    search: settledSearch || undefined,
     location: location || undefined,
   };
-  const { data, isLoading, isError, refetch } = useUsers({
+  const [page, setPage] = useFilterPage(JSON.stringify(query));
+  const { data, isPending, isError, fetchStatus, refetch } = useUsers({
     page,
     page_size: PAGE_SIZE,
     ...query,
@@ -79,6 +78,11 @@ export function Users() {
 
   const total = data?.total ?? 0;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // A page past the end — the total shrank under it (a ban on the last page, a filter narrowed by
+  // someone else's action) — steps back to the last real page instead of showing an empty table.
+  useEffect(() => {
+    if (data && page > pages) setPage(pages);
+  }, [data, page, pages, setPage]);
   const filters = [
     { value: "", label: t("users.filter.all") },
     { value: "available", label: t("users.status.available") },
@@ -153,11 +157,18 @@ export function Users() {
           <div className="p-card">
             <ErrorState compact onRetry={() => refetch()} />
           </div>
-        ) : isLoading ? (
+        ) : isPending && fetchStatus === "paused" ? (
+          // Offline: the query is PAUSED, which is neither loading nor an error — and fell through
+          // to «کاربری یافت نشد، هنوز کسی ربات را استارت نکرده», a claim about the bot, not the
+          // network.
+          <div className="p-card">
+            <ErrorState compact message={t("ui.offline")} onRetry={() => refetch()} />
+          </div>
+        ) : isPending ? (
           <div className="flex justify-center py-12">
             <Spinner className="h-7 w-7 text-brand" />
           </div>
-        ) : !data || data.items.length === 0 ? (
+        ) : data.items.length === 0 ? (
           <div className="p-card">
             <EmptyState
               icon={UserX}

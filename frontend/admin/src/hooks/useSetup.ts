@@ -23,9 +23,12 @@ export function useCompleteSetup() {
   return useMutation({
     mutationFn: async (payload: SetupPayload) =>
       (await api.post<SetupStatus>("/admin/setup/", payload)).data,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["setup-status"] });
-      qc.invalidateQueries({ queryKey: ["settings"] });
+    // The answer IS the new setup status, so it goes straight into the cache: invalidated and not
+    // awaited, the gate the caller navigates through still read the cached `completed: false` and
+    // put the wizard back up — with its default values — until the refetch landed.
+    onSuccess: (status) => {
+      qc.setQueryData(["setup-status"], status);
+      return qc.invalidateQueries({ queryKey: ["settings"] });
     },
   });
 }

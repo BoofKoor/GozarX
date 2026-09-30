@@ -11,7 +11,7 @@ from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
-from gozar.db.repositories.base import BaseRepository
+from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
 
 def _latest_claim_location():  # a correlated scalar subquery
@@ -44,9 +44,12 @@ def _filtered(
     if status is not None:
         stmt = stmt.where(User.status == status)
     if search and search.strip():
-        like = f"%{search.strip()}%"
+        like = contains_pattern(search.strip())
         stmt = stmt.where(
-            or_(cast(User.telegram_id, String).ilike(like), User.panel_username.ilike(like))
+            or_(
+                cast(User.telegram_id, String).ilike(like, escape=LIKE_ESCAPE),
+                User.panel_username.ilike(like, escape=LIKE_ESCAPE),
+            )
         )
     if location and location.strip():
         stmt = stmt.where(_latest_claim_location() == location.strip())

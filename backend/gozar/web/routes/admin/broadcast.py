@@ -46,11 +46,19 @@ _MAX_BUTTONS = 3
 
 
 def _parse_langs(codes: list[str]) -> list[Language]:
-    """Validate language codes ⊆ {fa,en,ru}; ``[]`` ⇒ everyone. 422 on an unknown code."""
+    """Validate language codes ⊆ {fa,en,ru}; ``[]`` ⇒ everyone. 422 on an unknown code.
+
+    Duplicates collapse, first occurrence kept: the list is stored joined in a 32-character column,
+    and a crafted "fa,fa,fa,…" of a dozen codes overflowed it into a 500 instead of meaning "fa".
+    """
     bad = [c for c in codes if c not in _LANG_CODES]
     if bad:
         raise HTTPException(422, f"unknown language(s): {bad}")
-    return [Language(c) for c in codes]
+    return [Language(c) for c in dict.fromkeys(codes)]
+
+
+def _joined(langs: list[Language]) -> str:
+    return ",".join(lang.value for lang in langs)
 
 
 class AudienceOut(BaseModel):
@@ -69,6 +77,16 @@ class BroadcastButton(BaseModel):
         if not value.startswith("https://"):
             raise ValueError("button URL must start with https://")
         return value
+
+
+class DraftButton(BaseModel):
+    """A button as it was TYPED — possibly half-finished. Sending validates it
+    (``BroadcastButton``); keeping it does not. Reusing the strict model here made a draft whose
+    link still lacked its ``https://`` unsaveable, which lost the work at exactly the moment it was
+    being kept."""
+
+    text: str = Field(default="", max_length=64)
+    url: str = Field(default="", max_length=512)
 
 
 class BroadcastIn(BaseModel):
@@ -187,7 +205,7 @@ class DraftIn(BaseModel):
     languages: list[str] = Field(default_factory=list)
     only_active: bool = False
     only_referrers: bool = False
-    buttons: list[BroadcastButton] = Field(default_factory=list, max_length=_MAX_BUTTONS)
+    buttons: list[DraftButton] = Field(default_factory=list, max_length=_MAX_BUTTONS)
     #: The hour of day that was chosen, not an instant: an absolute time saved on Monday is in the
     #: past by Tuesday, and "21:00" is what the operator actually picked.
     send_hour: int | None = Field(default=None, ge=0, le=23)
@@ -200,7 +218,7 @@ class DraftOut(BaseModel):
     languages: str
     only_active: bool
     only_referrers: bool
-    buttons: list[BroadcastButton] = Field(default_factory=list)
+    buttons: list[DraftButton] = Field(default_factory=list)
     send_hour: int | None
     updated_at: datetime
 
@@ -213,7 +231,7 @@ def _draft_out(row: object) -> DraftOut:
         languages=row.languages,  # type: ignore[attr-defined]
         only_active=row.only_active,  # type: ignore[attr-defined]
         only_referrers=row.only_referrers,  # type: ignore[attr-defined]
-        buttons=[BroadcastButton(**b) for b in (row.buttons or [])],  # type: ignore[attr-defined]
+        buttons=[DraftButton(**b) for b in (row.buttons or [])],  # type: ignore[attr-defined]
         send_hour=row.send_hour,  # type: ignore[attr-defined]
         updated_at=row.updated_at,  # type: ignore[attr-defined]
     )
@@ -233,11 +251,11 @@ async def save_draft(body: DraftIn, session: DbSession, admin: AdminUser) -> Dra
     Language codes are validated even here: a draft restored months later should not be the first
     time anyone finds out its audience was nonsense.
     """
-    _parse_langs(body.languages)
+    langs = _parse_langs(body.languages)
     row = await BroadcastDraftRepository(session).save(
         id_=body.id,
         body=body.text,
-        languages=",".join(body.languages),
+        languages=_joined(langs),
         only_active=body.only_active,
         only_referrers=body.only_referrers,
         buttons=[b.model_dump() for b in body.buttons] or None,
@@ -288,7 +306,7 @@ async def send_broadcast(
     buttons = [b.model_dump() for b in body.buttons]
     log = await BroadcastLogRepository(session).create(
         body=body.text,
-        languages=",".join(body.languages),
+        languages=_joined(langs),
         only_active=body.only_active,
         only_referrers=body.only_referrers,
         buttons=buttons or None,
@@ -306,7 +324,7 @@ async def send_broadcast(
             "broadcast_text",
             body.text,
             progress_chat,
-            body.languages,
+            [lang.value for lang in langs],
             body.only_active,
             body.only_referrers,
             buttons,

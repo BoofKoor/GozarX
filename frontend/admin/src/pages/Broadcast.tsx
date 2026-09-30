@@ -174,7 +174,10 @@ export function Broadcast() {
         languages: langs,
         only_active: onlyActive,
         only_referrers: onlyReferrers,
-        buttons: filled,
+        // Every button that has ANYTHING in it, as typed: a draft is unfinished by definition, and
+        // a link still missing its https:// used to make the whole draft unsaveable — the work
+        // was lost at exactly the moment it was being kept. Sending still requires a valid link.
+        buttons: buttons.filter((b) => b.text.trim() || b.url.trim()),
         send_hour: scheduled ? sendHour : null,
       },
       {
@@ -182,14 +185,16 @@ export function Broadcast() {
           setDraftId(d.id);
           toast.success(t("bc.draft.saved"));
         },
-        onError: () => toast.error(t("bc.draft.failed")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("bc.draft.failed"))),
       },
     );
   }
 
   function restore(d: BroadcastDraft) {
     setText(d.body);
-    setLangs(d.languages ? (d.languages.split(",") as Lang[]) : ALL_LANGS);
+    // "" is a draft saved with NO language ticked, which this page means as nobody — restored as
+    // "everyone", it silently widened the audience to the whole bot.
+    setLangs(d.languages ? (d.languages.split(",") as Lang[]) : []);
     setOnlyActive(d.only_active);
     setOnlyReferrers(d.only_referrers);
     setButtons(d.buttons);

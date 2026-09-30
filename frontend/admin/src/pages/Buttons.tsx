@@ -31,6 +31,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { useButtons, useReorderButtons, useResetButton } from "@/hooks/useButtons";
 import { useI18n, type MessageKey } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { formatNumber } from "@/lib/format";
 import type { ButtonConfig } from "@/types/api";
 
@@ -158,7 +159,7 @@ function ScreenGroup({
     if (!updates) return;
     reorder.mutate(
       { screen, items: updates },
-      { onError: () => toast.error(t("btn.reorderFailed")) },
+      { onError: (err) => toast.error(apiErrorMessage(err, t("btn.reorderFailed"))) },
     );
   }
 
@@ -195,7 +196,14 @@ function ScreenGroup({
                 row={r.row}
                 buttons={r.buttons}
                 onEdit={onEdit}
-                onReset={reset.mutate}
+                onReset={(key) =>
+                  // Said either way: a reset that failed used to look exactly like one that worked
+                  // until the operator noticed the label had not changed.
+                  reset.mutate(key, {
+                    onSuccess: () => toast.success(t("btn.resetDone")),
+                    onError: (err) => toast.error(apiErrorMessage(err, t("btn.resetFailed"))),
+                  })
+                }
               />
             ))}
             <NewRowZone />

@@ -6,7 +6,7 @@ import { toast } from "sonner";
 
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { Button, ExternalLinkButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -331,12 +331,10 @@ function LandingEditor({
         action={
           <div className="flex items-center gap-1">
             {page?.published && (
-              <a href={siteUrl(page.slug)} target="_blank" rel="noopener noreferrer">
-                <Button variant="ghost" size="sm">
-                  <ExternalLink className="h-4 w-4" />
-                  {t("sl.viewOnSite")}
-                </Button>
-              </a>
+              <ExternalLinkButton href={siteUrl(page.slug)} variant="ghost" size="sm">
+                <ExternalLink className="h-4 w-4" />
+                {t("sl.viewOnSite")}
+              </ExternalLinkButton>
             )}
             {page && !twinExists && (
               <Button variant="ghost" size="sm" onClick={duplicate} loading={create.isPending}>
@@ -363,7 +361,7 @@ function LandingEditor({
           <Field label={t("sl.field.locale")}>
             <Select value={form.locale} onChange={(e) => set("locale", e.target.value)}>
               <option value="fa">{langLabel("fa")}</option>
-              <option value="en">English</option>
+              <option value="en">{langLabel("en")}</option>
             </Select>
           </Field>
         </div>

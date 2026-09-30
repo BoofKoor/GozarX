@@ -36,7 +36,10 @@ def test_remove_on_deactivated() -> None:
 
 
 def test_remove_on_chat_not_found() -> None:
-    # aiogram 3: "chat not found" is a TelegramNotFound, NOT a TelegramBadRequest.
+    # What Telegram actually sends: a 400, which aiogram raises as TelegramBadRequest. Matching only
+    # TelegramNotFound, a gone chat was a "failed" send on every broadcast, forever.
+    assert _should_remove(_exc(TelegramBadRequest, "Bad Request: chat not found"))
+    # A real 404 is accepted as well.
     assert _should_remove(_exc(TelegramNotFound, "Not Found: chat not found"))
 
 
@@ -63,7 +66,8 @@ def test_keep_on_generic_error() -> None:
 
 
 class _Bot:
-    """Per-user send outcomes: 1 ok · 2 blocked · 3 transient · 4 chat-not-found.
+    """Per-user send outcomes: 1 ok · 2 blocked · 3 transient · 4 chat-not-found (404) · 5 chat-not-
+    found as Telegram really sends it (400) · 6 another bad request.
 
     Users 2 and 4 are removed, 3 is kept. User 4 exercises the except-clause routing:
     TelegramNotFound is a sibling of BadRequest (not a subclass), so it must be named in the removal
@@ -83,6 +87,10 @@ class _Bot:
             raise RuntimeError("transient send error")
         if chat_id == 4:
             raise _exc(TelegramNotFound, "Not Found: chat not found")
+        if chat_id == 5:
+            raise _exc(TelegramBadRequest, "Bad Request: chat not found")
+        if chat_id == 6:
+            raise _exc(TelegramBadRequest, "Bad Request: message is too long")
         return None
 
 
@@ -94,7 +102,7 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
             pass
 
         async def list_all_ids(self) -> list[int]:
-            return [1, 2, 3, 4]
+            return [1, 2, 3, 4, 5, 6]
 
         async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
             removed.extend(telegram_ids)
@@ -119,8 +127,9 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
     ctx = {"bot": _Bot(), "sessionmaker": lambda: FakeSession()}
     await fanout(ctx, "broadcast", chat_id=100, message_id=200, admin_id=999)
 
-    # Blocked (2) and chat-not-found (4) are removed; the transient failure (3) keeps the user.
-    assert removed == [2, 4]
+    # Blocked (2) and chat-not-found (4, 5) are marked; the transient failure (3) and an unrelated
+    # bad request (6) keep the user.
+    assert sorted(removed) == [2, 4, 5]
 
 
 class _TextBot:

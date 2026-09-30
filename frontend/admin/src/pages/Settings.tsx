@@ -109,8 +109,16 @@ export function Settings() {
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
 
+  // The bot's own rule for a URL button (`services/button_links`): anything else it silently drops.
+  const adUrl = form.ad_button_url.trim();
+  const adUrlInvalid = adUrl !== "" && !/^(https?|tg):\/\//.test(adUrl);
+
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (adUrlInvalid) {
+      toast.error(t("set.adButton.urlInvalid"));
+      return;
+    }
     if (
       !allValidNumbers([
         { value: form.daily_limit_mb, ...BOUNDS.dailyLimitMb },
@@ -247,7 +255,10 @@ export function Settings() {
                   placeholder={t("set.adButton.textPlaceholder")}
                 />
               </Field>
-              <Field label={t("set.adButton.url")}>
+              <Field
+                label={t("set.adButton.url")}
+                error={adUrlInvalid ? t("set.adButton.urlInvalid") : undefined}
+              >
                 <Input
                   dir="ltr"
                   value={form.ad_button_url}

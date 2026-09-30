@@ -3,6 +3,7 @@ import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { SquadSelect } from "@/components/setup/SquadSelect";
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
@@ -11,7 +12,6 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSquads } from "@/hooks/useSetup";
 import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from "@/hooks/useSite";
@@ -47,7 +47,7 @@ const DEFAULT_ECON: Econ = {
 export function SiteSetup() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { data: squads, isLoading, isError } = useSquads();
+  const { data: squads, isError } = useSquads();
   // pre-fill so re-running never clobbers live values; must LOAD before the form is usable, or a
   // submit would POST DEFAULT_ECON over the live economy on a failed GET (H1).
   const { data: current, isError: settingsError, refetch: refetchSettings } = useSiteSettings();
@@ -200,27 +200,15 @@ export function SiteSetup() {
             </p>
           )}
           <Field label={t("ssu.squad.field")}>
-            {isLoading ? (
-              <Spinner className="h-5 w-5 text-brand" />
-            ) : isError ? (
-              <ErrorState compact message={t("setup.squadsUnreachable")} />
-            ) : (
-              <Select
-                value={trialSquad}
-                onChange={(e) => {
-                  setTrialSquad(e.target.value);
-                  // A new squad has its own locations; clearing means "derive them all".
-                  setLocations([]);
-                  setLocationsText("");
-                }}
-              >
-                {(squads ?? []).map((s) => (
-                  <option key={s.uuid} value={s.uuid}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-            )}
+            <SquadSelect
+              value={trialSquad}
+              onChange={(uuid) => {
+                setTrialSquad(uuid);
+                // A new squad has its own locations; clearing means "derive them all".
+                setLocations([]);
+                setLocationsText("");
+              }}
+            />
           </Field>
         </Card>
 

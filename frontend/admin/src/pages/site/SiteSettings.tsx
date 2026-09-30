@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { SiteTabs } from "@/components/site/SiteTabs";
-import { Button } from "@/components/ui/Button";
+import { Button, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -120,11 +120,7 @@ export function SiteSettings() {
             icon={MapPin}
             title={t("ss.notSetUp")}
             message={t("ss.notSetUp.msg")}
-            action={
-              <Link to="/site/setup">
-                <Button>{t("ssu.title")}</Button>
-              </Link>
-            }
+            action={<LinkButton to="/site/setup">{t("ssu.title")}</LinkButton>}
           />
         </Card>
       </div>

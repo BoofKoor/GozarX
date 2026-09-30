@@ -18,7 +18,14 @@ from httpx import ASGITransport
 from gozar.config.settings import get_settings
 from gozar.web.app import create_app
 from gozar.web.auth import TokenInvalid
-from gozar.web.auth.jwt import TYPE_ACCESS, create_access, create_refresh, decode
+from gozar.web.auth.jwt import (
+    SESSION_MAX,
+    TYPE_ACCESS,
+    TYPE_REFRESH,
+    create_access,
+    create_refresh,
+    decode,
+)
 from gozar.web.auth.passwords import hash_password, verify_password
 
 # ≥32 bytes so PyJWT doesn't warn about a weak HMAC key.
@@ -82,6 +89,45 @@ def test_jwt_wrong_audience_rejected() -> None:
         decode(token, TYPE_ACCESS)
 
 
+def test_a_password_change_ends_every_existing_session(monkeypatch) -> None:
+    """Tokens carry a fingerprint of the credentials they were minted under. A new password hash
+    (and the restart that loads it) must cut off old sessions — a leaked one included — instead of
+    leaving them working for another week, renewable forever."""
+    access, refresh = create_access("root"), create_refresh("root")
+    assert decode(access, TYPE_ACCESS).sub == "root"
+    monkeypatch.setenv("ADMIN_PASSWORD_HASH", hash_password("a-new-password"))
+    get_settings.cache_clear()
+    with pytest.raises(TokenInvalid):
+        decode(access, TYPE_ACCESS)
+    with pytest.raises(TokenInvalid):
+        decode(refresh, TYPE_REFRESH)
+
+
+def test_a_token_from_before_sessions_were_versioned_is_rejected() -> None:
+    now = int(time.time())
+    legacy = pyjwt.encode(
+        {"sub": "root", "typ": "access", "aud": "gozar-admin", "iat": now, "exp": now + 100},
+        _SECRET,
+        algorithm="HS256",
+    )
+    with pytest.raises(TokenInvalid):
+        decode(legacy, TYPE_ACCESS)
+
+
+def test_refreshing_keeps_the_login_time_and_cannot_outlive_the_session() -> None:
+    """Each refresh re-minted a fresh seven days, so one stolen refresh token was a session that
+    never ended. The login's own time rides every refresh, and nothing outlives SESSION_MAX."""
+    started = int(time.time()) - SESSION_MAX + 60  # a login a minute short of its limit
+    refresh = create_refresh("root", auth_time=started)
+    payload = decode(refresh, TYPE_REFRESH)
+    assert payload.auth_time == started
+    assert payload.expires_at <= started + SESSION_MAX  # not now + 7 days
+    # Past the limit, even a correctly signed refresh token is refused.
+    too_old = create_refresh("root", auth_time=int(time.time()) - SESSION_MAX - 5)
+    with pytest.raises(TokenInvalid):
+        decode(too_old, TYPE_REFRESH)
+
+
 # ── HTTP: login / refresh / me ─────────────────────────────────────────────
 @pytest_asyncio.fixture
 async def client() -> AsyncIterator[httpx.AsyncClient]:
@@ -117,6 +163,9 @@ async def test_refresh_mints_new_access(client: httpx.AsyncClient) -> None:
     r = await client.post("/api/admin/auth/refresh", json={"refresh_token": refresh})
     assert r.status_code == 200
     assert decode(r.json()["access_token"], TYPE_ACCESS).sub == "root"
+    # The rotated pair continues the SAME login rather than starting a new one.
+    started = decode(refresh, TYPE_REFRESH).auth_time
+    assert decode(r.json()["refresh_token"], TYPE_REFRESH).auth_time == started
 
 
 async def test_login_unconfigured_503(client: httpx.AsyncClient, monkeypatch) -> None:
