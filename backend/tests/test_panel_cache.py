@@ -13,7 +13,7 @@ import time
 
 import fakeredis.aioredis
 
-from gozar.remnawave.schemas import SystemStats
+from gozar.remnawave.schemas import SquadActivity, SystemStats
 from gozar.services.panel_cache import (
     SQUAD_ONLINE_JOB,
     SQUAD_ONLINE_KEY,
@@ -92,11 +92,15 @@ async def test_an_unreadable_cache_entry_is_a_miss() -> None:
 async def test_squad_online_round_trip_and_age() -> None:
     redis = _redis()
     assert await read_squad_online(redis) is None
-    await write_squad_online(redis, 42)
-    count, age = await read_squad_online(redis)  # type: ignore[misc]
-    assert count == 42 and 0 <= age < 5
+    await write_squad_online(redis, 42, 310)
+    reading = await read_squad_online(redis)
+    assert reading is not None
+    assert reading.count == 42 and reading.week == 310 and 0 <= reading.age < 5
     # An entry from before this key's format (a bare int) is ignored rather than misread.
     await redis.set(SQUAD_ONLINE_KEY, "17")
+    assert await read_squad_online(redis) is None
+    # So is one without the week figure: served, it would gauge a squad count against nothing.
+    await redis.set(SQUAD_ONLINE_KEY, json.dumps({"count": 5, "at": 0}))
     assert await read_squad_online(redis) is None
 
 
@@ -127,15 +131,15 @@ async def test_worker_sweep_records_the_count_once_at_a_time(db_sessions) -> Non
         def __init__(self) -> None:
             self.sweeps = 0
 
-        async def squad_online_count(self, squads: set[str]) -> int:
+        async def squad_online_count(self, squads: set[str]) -> SquadActivity:
             self.sweeps += 1
             assert squads == {"sq-1"}
             await asyncio.sleep(0.05)
-            return 5
+            return SquadActivity(online=5, week=40)
 
     redis, panel = _redis(), _Panel()
     ctx = {"cache_redis": redis, "panel": panel, "sessionmaker": db_sessions}
     await asyncio.gather(refresh_squad_online(ctx), refresh_squad_online(ctx))
     assert panel.sweeps == 1
     recorded = json.loads(await redis.get(SQUAD_ONLINE_KEY))
-    assert recorded["count"] == 5
+    assert recorded["count"] == 5 and recorded["week"] == 40

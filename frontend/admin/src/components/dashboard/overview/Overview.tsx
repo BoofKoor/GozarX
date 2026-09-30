@@ -1,4 +1,4 @@
-import { Clock, Download, Globe2, Languages, MapPin, Radio, UserPlus } from "lucide-react";
+import { Clock, Download, Globe2, Languages, Loader2, MapPin, Radio, UserPlus } from "lucide-react";
 import { Link } from "react-router-dom";
 
 import { AreaTrend } from "@/components/charts/AreaTrend";
@@ -100,6 +100,7 @@ export function Overview({
   range,
   ranges,
   onRange,
+  pending = false,
   onExport,
   exporting,
 }: {
@@ -107,9 +108,12 @@ export function Overview({
   analytics?: DashboardAnalytics;
   retention?: Retention;
   health?: SystemHealth;
+  /** The range the operator ASKED for — the control shows it at once, whatever is on screen. */
   range: number;
   ranges: readonly number[];
   onRange: (n: number) => void;
+  /** The figures on screen are still the previous range's, and the asked-for one is loading. */
+  pending?: boolean;
   onExport: () => void;
   exporting: boolean;
 }) {
@@ -117,12 +121,22 @@ export function Overview({
   const hook = webhookState(health);
   const claims = stats.claims_series;
   const signups = stats.signups_series;
-  const maxY = Math.max(1, ...claims.map((d) => d.count), ...signups.map((d) => d.count));
+  // Each line on its OWN scale: signups run at ~1% of claims, and on one shared axis their line
+  // was a flat stroke along the floor.
+  const maxClaims = Math.max(1, ...claims.map((d) => d.count));
+  const maxSignups = Math.max(1, ...signups.map((d) => d.count));
+  // The window the figures on screen describe (the asked-for one may still be loading).
+  const shownDays = stats.range_days;
+  const inRange = t("dash.scope.range", { n: formatNumber(shownDays) });
+  const allTime = t("dash.scope.allTime");
 
   // The hero sparkline shows how the total GREW each day, not the running total itself: a
   // cumulative curve over one week is a near-straight ramp, which is a shape with no information
   // in it. The marker sits on the best day, which is a day the ramp could never point at.
-  const tail = signups.slice(-7);
+  //
+  // The last SEVEN COMPLETE days: today is still filling, and as the curve's final point it drew
+  // every morning as a collapse — the one shape a growth sparkline must not fake.
+  const tail = signups.slice(0, -1).slice(-7);
   const peak = tail.length
     ? tail.reduce((best, d, i) => (d.count > tail[best].count ? i : best), 0)
     : 0;
@@ -221,7 +235,7 @@ export function Overview({
 
           <KpiTile
             value={formatNumber(stats.claimers_in_range)}
-            label={t("dash.kpi.active", { days: formatNumber(range) })}
+            label={t("dash.kpi.active", { days: formatNumber(shownDays) })}
             delta={<Delta pct={stats.claimers_delta_pct} newLabel={t("dash.delta.first")} />}
           />
           {/* Configs delivered, not the activation median. The median is a real figure and a good
@@ -232,7 +246,7 @@ export function Overview({
               actually did in the window. */}
           <KpiTile
             value={formatNumber(stats.claims_in_range)}
-            label={t("dash.kpi.claims", { days: formatNumber(range) })}
+            label={t("dash.kpi.claims", { days: formatNumber(shownDays) })}
             delta={<Delta pct={stats.claims_delta_pct} newLabel={t("dash.delta.first")} />}
           />
           <KpiTile
@@ -251,6 +265,10 @@ export function Overview({
               <p className="mt-0.5 text-xs text-content-subtle">{t("dash.chart.sub")}</p>
             </div>
             <span className="flex-1" />
+            {/* The control moves the moment it is pressed; what follows is the data catching up.
+                Held on the old range until the new figures landed, a slow window read as a
+                control that had not registered the click at all. */}
+            {pending && <RangeLoading />}
             <Segmented
               value={String(range)}
               onChange={(v) => onRange(Number(v))}
@@ -271,10 +289,26 @@ export function Overview({
             <span className="inline-flex items-center gap-1.5">
               <i className="h-2 w-2 rounded-full bg-chart-1" aria-hidden />
               {t("dash.chart.claims")}
+              <span className="text-content-subtle">{t("dash.chart.leftAxis")}</span>
             </span>
             <span className="inline-flex items-center gap-1.5">
               <i className="h-2 w-2 rounded-full bg-chart-2" aria-hidden />
               {t("dash.chart.signups")}
+              <span className="text-content-subtle">{t("dash.chart.rightAxis")}</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5">
+              <svg width="14" height="2" aria-hidden className="text-content-subtle">
+                <line
+                  x1="0"
+                  y1="1"
+                  x2="14"
+                  y2="1"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeDasharray="3 2"
+                />
+              </svg>
+              {t("dash.chart.partial")}
             </span>
             {/* The panel being unreachable is a real state the stats endpoint reports, and it
                 explains a flat line better than any tooltip can. */}
@@ -286,16 +320,29 @@ export function Overview({
             )}
           </div>
 
-          <AreaTrend
-            series={[
-              { values: claims.map((d) => d.count), label: t("dash.chart.claims") },
-              { values: signups.map((d) => d.count), label: t("dash.chart.signups") },
-            ]}
-            labels={claims.map((d) => axisLabel(d.day))}
-            ticks={ticksFor(maxY)}
-            formatValue={formatNumber}
-            ariaLabel={t("dash.chart.sub")}
-          />
+          <div
+            aria-busy={pending || undefined}
+            className={pending ? "opacity-60 transition-opacity" : "transition-opacity"}
+          >
+            <AreaTrend
+              series={[
+                { values: claims.map((d) => d.count), label: t("dash.chart.claims") },
+                {
+                  values: signups.map((d) => d.count),
+                  label: t("dash.chart.signups"),
+                  axis: "secondary",
+                },
+              ]}
+              labels={claims.map((d) => axisLabel(d.day))}
+              ticks={ticksFor(maxClaims)}
+              secondaryTicks={ticksFor(maxSignups)}
+              // The series always ends on TODAY, which is still filling.
+              partialLast
+              partialLabel={t("dash.chart.soFar")}
+              formatValue={formatNumber}
+              ariaLabel={t("dash.chart.sub")}
+            />
+          </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -303,14 +350,19 @@ export function Overview({
             icon={MapPin}
             tone={1}
             label={t("dash.top.location")}
+            scope={inRange}
             headline={topLocation?.label ?? "—"}
             value={formatNumber(topLocation?.count ?? 0)}
             unit={t("dash.unit.claims")}
           />
+          {/* Lifetime, and SAID so: a referral count is a running total, and the language is
+              every user's current setting. Beside two windowed cards, unlabelled, they read as
+              figures the range control had moved. */}
           <TopCard
             icon={UserPlus}
             tone={2}
             label={t("dash.top.referrer")}
+            scope={allTime}
             headline={topReferrer ? String(topReferrer.telegram_id) : "—"}
             value={formatNumber(topReferrer?.referral_count ?? 0)}
             unit={t("dash.unit.invites")}
@@ -320,6 +372,7 @@ export function Overview({
             icon={Languages}
             tone={3}
             label={t("dash.top.language")}
+            scope={allTime}
             headline={topLanguage ? langLabel(topLanguage.label) : "—"}
             value={formatNumber(topLanguage?.count ?? 0)}
             unit={t("dash.unit.users")}
@@ -328,6 +381,7 @@ export function Overview({
             icon={Clock}
             tone={4}
             label={t("dash.top.hour")}
+            scope={inRange}
             headline={
               peakHour.hour < 0
                 ? "—"
@@ -353,8 +407,10 @@ export function Overview({
         <RadarRates
           axes={[
             {
+              // WINDOWED — of this range's signups, who claimed. The lifetime ratio it replaced
+              // sat beside three windowed rates and did not move when the range did.
               label: t("dash.rate.conversion"),
-              value: stats.conversion_pct,
+              value: stats.conversion.value,
               title: t("dash.rate.conversionFull"),
             },
             {
@@ -369,11 +425,18 @@ export function Overview({
         />
 
         <SideHead>{t("dash.side.live")}</SideHead>
+        {/* Numerator and denominator from ONE population: the trial squad's online count over
+            the trial squad's week, or the panel's over the panel's. It used to divide the squad
+            count by the whole panel's week, which also held the operator's own users. */}
         <GaugeCard
           icon={Radio}
           label={t("dash.live.online")}
           value={stats.online_now}
-          outOf={Math.max(stats.online_now, stats.online_last_week)}
+          outOf={
+            stats.online_now == null || stats.online_week == null
+              ? null
+              : Math.max(stats.online_now, stats.online_week)
+          }
           outOfLabel={t("dash.live.onlineOf")}
         />
         <GaugeCard
@@ -392,7 +455,8 @@ export function Overview({
             <div className="text-[11px] text-content-subtle">{t("dash.live.trafficSub")}</div>
           </div>
           <span className="shrink-0 text-[1.4rem] font-bold tracking-[-0.02em] tabular-nums text-content">
-            {humanBytes(stats.total_traffic_bytes)}
+            {/* Unknown is "—": the panel being down is not the service having carried 0 B. */}
+            {stats.total_traffic_bytes == null ? "—" : humanBytes(stats.total_traffic_bytes)}
           </span>
         </div>
 
@@ -414,16 +478,26 @@ export function Overview({
             tone={WEBHOOK_TONE[hook]}
             value={t(WEBHOOK_LABEL[hook], { n: formatNumber(health?.webhook.pending ?? 0) })}
           />
+          {/* LIVE trials, with the stale remainder named: the status column is healed only by
+              the webhook or the reconcile sweep, which skips users while the panel is down, so the
+              raw count kept every expired trial of an outage in "active". */}
           <HealthRow
             label={t("dash.health.activeConfigs")}
-            tone={stats.active > 0 ? "ok" : "warn"}
-            value={`${formatNumber(stats.active)} ${t("dash.unit.users")}`}
+            hint={
+              stats.active_stale > 0
+                ? t("dash.health.activeStale", { n: formatNumber(stats.active_stale) })
+                : undefined
+            }
+            tone={stats.active_stale > 0 ? "warn" : stats.active_live > 0 ? "ok" : "warn"}
+            value={`${formatNumber(stats.active_live)} ${t("dash.unit.users")}`}
           />
           <HealthRow
             last
-            label={t("dash.health.conversion")}
-            tone={stats.conversion_pct >= 50 ? "ok" : "warn"}
-            value={faPct(stats.conversion_pct)}
+            label={t("dash.health.conversionRange", { n: formatNumber(shownDays) })}
+            tone={
+              stats.conversion.value == null ? "idle" : stats.conversion.value >= 50 ? "ok" : "warn"
+            }
+            value={stats.conversion.value == null ? "—" : faPct(stats.conversion.value)}
           />
         </div>
 
@@ -441,5 +515,16 @@ export function Overview({
         </Link>
       </SidePanel>
     </div>
+  );
+}
+
+/** A small, announced "loading the new range" mark beside the range control. */
+function RangeLoading() {
+  const { t } = useI18n();
+  return (
+    <span role="status" className="inline-flex items-center gap-1.5 text-xs text-content-subtle">
+      <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      {t("dash.range.loading")}
+    </span>
   );
 }

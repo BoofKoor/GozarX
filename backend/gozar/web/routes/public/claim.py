@@ -28,7 +28,7 @@ from gozar.services.site_trial import (
     SiteTrialService,
 )
 from gozar.web.dependencies import DbSession
-from gozar.web.routes.public.identity import CurrentDevice, client_ip
+from gozar.web.routes.public.identity import CurrentDevice, OptionalDevice, client_ip
 from gozar.web.routes.public.security import rate_limit_ok, verify_turnstile
 
 router = APIRouter(tags=["public"])
@@ -96,8 +96,10 @@ async def _maybe_credit_referrer(request: Request, session, device) -> None:
 
 @router.get("/locations", response_model=LocationsResponse)
 async def get_locations(
-    request: Request, session: DbSession, device: CurrentDevice
+    request: Request, session: DbSession, device: OptionalDevice
 ) -> LocationsResponse:
+    # OptionalDevice, not CurrentDevice: the picker needs no identity to exist, and minting one here
+    # made every cookieless page load two new devices (`/status` had already minted the first).
     result = await _service(request, session).available_locations(device)
     if isinstance(result, PanelError):
         raise HTTPException(status_code=502, detail="panel_error")

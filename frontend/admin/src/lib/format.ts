@@ -6,6 +6,7 @@
 // Gregorian dates. Both come from the browser's built-in Intl — no extra dependency.
 
 import { getLocale, localeTag } from "@/i18n";
+import { DISPLAY_TZ } from "@/lib/time";
 
 const _FA_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
 
@@ -128,19 +129,28 @@ export function shortDay(iso: string): string {
   ).format(d);
 }
 
-/** ISO date/datetime → a full date ("۲۶ تیر ۱۴۰۵" / "17 July 2026"); "—" when missing/invalid. */
+/**
+ * ISO date/datetime → a full date ("۲۶ تیر ۱۴۰۵" / "17 July 2026"); "—" when missing/invalid.
+ *
+ * Two kinds of input, two clocks. A bare "YYYY-MM-DD" is a reporting DAY the server already cut on
+ * the Tehran clock, so it is printed as that calendar date (read at UTC midnight, the only reading
+ * that cannot shift it). A full timestamp is an INSTANT, and it is printed on the Tehran clock:
+ * formatted in UTC as well, every device, push and recorder date stamped between 00:00 and 03:30
+ * local time read as the day before.
+ */
 export function faDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  const d = new Date(iso);
+  const dayOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso);
+  const d = new Date(dayOnly ? `${iso}T00:00:00Z` : iso);
   if (Number.isNaN(d.getTime())) return "—";
   return memo(
-    "date",
+    dayOnly ? "date" : "instantDate",
     () =>
       new Intl.DateTimeFormat(localeTag(), {
         year: "numeric",
         month: "long",
         day: "numeric",
-        timeZone: "UTC",
+        timeZone: dayOnly ? "UTC" : DISPLAY_TZ,
       }),
   ).format(d);
 }

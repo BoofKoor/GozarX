@@ -4,7 +4,7 @@ import { useIsDark } from "@/hooks/useIsDark";
 import { seriesColor, tokenColor } from "@/lib/chartTheme";
 import { localizeDigits } from "@/lib/format";
 
-import { areaFrom, smoothPath, type Point } from "./geometry";
+import { areaFrom, smoothPath, visibleLabels, type Point } from "./geometry";
 
 export interface TrendSeries {
   /** One value per bucket, oldest first. Every series must be the same length as `labels`. */
@@ -13,6 +13,8 @@ export interface TrendSeries {
   tone?: number;
   /** Name for the hover readout. Omitted hides this series from it. */
   label?: string;
+  /** `secondary` plots against `secondaryTicks` and the right-hand axis. */
+  axis?: "primary" | "secondary";
 }
 
 export interface AreaTrendProps {
@@ -21,6 +23,21 @@ export interface AreaTrendProps {
   labels: { primary: string; secondary?: string }[];
   /** Y-axis ticks, in data units. The TOP tick also sets the scale, so the curve never touches it. */
   ticks?: number[];
+  /**
+   * Ticks for the `secondary` series, drawn on the right. The same COUNT as `ticks`, so both sets
+   * land on the same gridlines.
+   *
+   * Signups run at about 1% of claims. On one shared scale their line was a flat stroke along the
+   * floor — a series you could see was there and could not read a single day of.
+   */
+  secondaryTicks?: number[];
+  /**
+   * The last bucket is still filling (today). Its segment is drawn DASHED: solid, a day that is
+   * four hours old read as a collapse on every chart, every morning.
+   */
+  partialLast?: boolean;
+  /** Said beside the last bucket's date in the hover readout when `partialLast` is set. */
+  partialLabel?: string;
   /** Formats a value for the hover readout. Defaults to the locale's digits. */
   formatValue?: (v: number) => string;
   ariaLabel: string;
@@ -34,6 +51,8 @@ const W = 900;
 const H = 292;
 const PAD_L = 46;
 const PAD_R = 16;
+/** Right padding when a second axis needs its labels there — the same room the left one gets. */
+const PAD_R_AXIS = 46;
 const PAD_T = 16;
 const PAD_B = 38;
 
@@ -54,6 +73,9 @@ export function AreaTrend({
   series,
   labels,
   ticks,
+  secondaryTicks,
+  partialLast = false,
+  partialLabel,
   formatValue,
   ariaLabel,
   className,
@@ -67,20 +89,39 @@ export function AreaTrend({
   const count = points[0]?.length ?? 0;
   if (points.length === 0 || count < 2) return null;
 
+  const dual = secondaryTicks != null && series.some((s) => s.axis === "secondary");
+  const padR = dual ? PAD_R_AXIS : PAD_R;
+  const onSecondary = (s: TrendSeries) => dual && s.axis === "secondary";
   // The TICKS set the ceiling, not the data. Scaling to the data max instead pins the tallest
   // curve to the very top of the plot and pushes the top gridline — which the caller rounded UP to
   // a whole hundred — clean off the canvas, taking its label with it.
-  const max = Math.max(1, ...points.flat(), ...(ticks ?? []));
-  const px = (i: number) => PAD_L + (i / (count - 1)) * (W - PAD_L - PAD_R);
-  const py = (v: number) => PAD_T + (1 - v / max) * (H - PAD_T - PAD_B);
+  const maxOf = (values: number[], axisTicks: number[] | undefined) =>
+    Math.max(1, ...values, ...(axisTicks ?? []));
+  const max = maxOf(
+    series.filter((s) => !onSecondary(s)).flatMap((s) => s.values),
+    ticks,
+  );
+  const max2 = maxOf(
+    series.filter(onSecondary).flatMap((s) => s.values),
+    secondaryTicks,
+  );
+  const plotW = W - PAD_L - padR;
+  const px = (i: number) => PAD_L + (i / (count - 1)) * plotW;
+  const yOf = (v: number, top: number) => PAD_T + (1 - v / top) * (H - PAD_T - PAD_B);
+  const py = (v: number) => yOf(v, max);
   const baseline = H - PAD_B;
+  const showLabel = visibleLabels(count, plotW);
+  // Where the still-filling last bucket begins: everything right of it is drawn dashed.
+  const splitX = partialLast ? px(count - 2) : W;
 
   const grid = tokenColor("line");
   const faint = tokenColor("text-subtle");
   const shaped = series.map((s, i) => {
-    const pts: Point[] = s.values.map((v, j) => [px(j), py(v)] as Point);
+    const top = onSecondary(s) ? max2 : max;
+    const pts: Point[] = s.values.map((v, j) => [px(j), yOf(v, top)] as Point);
     return { pts, line: smoothPath(pts), color: seriesColor(s.tone ?? i), label: s.label };
   });
+  const secondaryColor = shaped[series.findIndex(onSecondary)]?.color;
   // Painted back-to-front so series 0 — the primary metric — lands ON TOP at every crossing.
   const paintOrder = shaped.map((_, i) => i).reverse();
 
@@ -91,7 +132,7 @@ export function AreaTrend({
     const box = frame.current?.getBoundingClientRect();
     if (!box || box.width === 0) return;
     const rel = ((clientX - box.left) / box.width) * W;
-    const i = Math.round(((rel - PAD_L) / (W - PAD_L - PAD_R)) * (count - 1));
+    const i = Math.round(((rel - PAD_L) / plotW) * (count - 1));
     setHover(Math.max(0, Math.min(count - 1, i)));
   }
 
@@ -128,7 +169,7 @@ export function AreaTrend({
             gradientUnits="userSpaceOnUse"
             x1={PAD_L}
             y1="0"
-            x2={W - PAD_R}
+            x2={W - padR}
             y2="0"
           >
             <stop offset="0%" stopColor="#000" />
@@ -153,24 +194,48 @@ export function AreaTrend({
           <mask id={`${uid}-headMask`}>
             <rect x="0" y="0" width={W} height={H} fill={`url(#${uid}-head)`} />
           </mask>
+
+          {/* Complete buckets on one side of the split, the partial one on the other. */}
+          <mask id={`${uid}-done`}>
+            <rect x="0" y="0" width={splitX} height={H} fill="#fff" />
+          </mask>
+          <mask id={`${uid}-partial`}>
+            <rect x={splitX} y="0" width={Math.max(0, W - splitX)} height={H} fill="#fff" />
+          </mask>
         </defs>
 
-        {(ticks ?? []).map((t) => (
+        {(ticks ?? []).map((t, k) => (
           <g key={t}>
             <line
               x1={PAD_L}
               y1={py(t)}
-              x2={W - PAD_R}
+              x2={W - padR}
               y2={py(t)}
               stroke={grid}
               strokeWidth="1"
               opacity=".8"
             />
+            {/* Through the same formatter as the readout: «۲۰۰۰۰» without its separator is a
+                figure you have to count the zeros of. */}
             <text x={PAD_L - 8} y={py(t) + 4} textAnchor="end" fontSize="11" fill={faint}>
-              {localizeDigits(String(t))}
+              {fmt(t)}
             </text>
+            {dual && secondaryTicks?.[k] != null && (
+              <text x={W - padR + 8} y={py(t) + 4} textAnchor="start" fontSize="11" fill={faint}>
+                {fmt(secondaryTicks[k])}
+              </text>
+            )}
           </g>
         ))}
+        {/* Which axis belongs to which line: a swatch of each series' colour over its labels.
+            The labels themselves stay in the ink tier — series colours are fills, and as type
+            they would fall below AA. */}
+        {dual && (
+          <>
+            <circle cx={PAD_L - 14} cy={5} r={3} fill={shaped[0]?.color} />
+            {secondaryColor && <circle cx={W - padR + 14} cy={5} r={3} fill={secondaryColor} />}
+          </>
+        )}
 
         <g mask={`url(#${uid}-tailMask)`}>
           {paintOrder.map((i) => (
@@ -195,17 +260,35 @@ export function AreaTrend({
         )}
 
         <g mask={`url(#${uid}-headMask)`}>
-          {paintOrder.map((i) => (
-            <path
-              key={i}
-              d={shaped[i].line}
-              fill="none"
-              stroke={shaped[i].color}
-              strokeWidth={i === 0 ? 2.25 : 2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
+          <g mask={partialLast ? `url(#${uid}-done)` : undefined}>
+            {paintOrder.map((i) => (
+              <path
+                key={i}
+                d={shaped[i].line}
+                fill="none"
+                stroke={shaped[i].color}
+                strokeWidth={i === 0 ? 2.25 : 2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            ))}
+          </g>
+          {partialLast && (
+            <g mask={`url(#${uid}-partial)`}>
+              {paintOrder.map((i) => (
+                <path
+                  key={i}
+                  d={shaped[i].line}
+                  fill="none"
+                  stroke={shaped[i].color}
+                  strokeWidth={i === 0 ? 2.25 : 2}
+                  strokeDasharray="4 5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+            </g>
+          )}
         </g>
 
         {paintOrder.map((i) => {
@@ -223,25 +306,27 @@ export function AreaTrend({
           );
         })}
 
-        {labels.map((label, i) => (
-          <g key={i}>
-            <text x={px(i)} y={H - 17} textAnchor="middle" fontSize="11.5" fill={faint}>
-              {label.primary}
-            </text>
-            {label.secondary && (
-              <text
-                x={px(i)}
-                y={H - 4}
-                textAnchor="middle"
-                fontSize="9.5"
-                fill={faint}
-                opacity=".65"
-              >
-                {label.secondary}
+        {labels.map((label, i) =>
+          !showLabel[i] ? null : (
+            <g key={i}>
+              <text x={px(i)} y={H - 17} textAnchor="middle" fontSize="11.5" fill={faint}>
+                {label.primary}
               </text>
-            )}
-          </g>
-        ))}
+              {label.secondary && (
+                <text
+                  x={px(i)}
+                  y={H - 4}
+                  textAnchor="middle"
+                  fontSize="9.5"
+                  fill={faint}
+                  opacity=".65"
+                >
+                  {label.secondary}
+                </text>
+              )}
+            </g>
+          ),
+        )}
       </svg>
 
       {hover != null && named.length > 0 && (
@@ -267,6 +352,9 @@ export function AreaTrend({
               <span className="tabular-nums">{labels[hover]?.primary}</span>
               {labels[hover]?.secondary && (
                 <span className="text-content-subtle">{labels[hover].secondary}</span>
+              )}
+              {partialLast && partialLabel && hover === count - 1 && (
+                <span className="font-normal text-content-subtle">{partialLabel}</span>
               )}
             </div>
             {named.map((s) => (

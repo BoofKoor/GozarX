@@ -197,6 +197,25 @@ async def test_reset_clears_the_cooldown_but_keeps_the_history(
     # Forgiveness, not a wipe: the row and its claim history survive.
     card = (await devices_client.get("/api/admin/site/devices/dev-a")).json()
     assert card["claims"] == 2
+    # "Last claim" is read from that history, so the reset does not turn it into "—".
+    assert card["last_claimed_at"] is not None
+    row = (await devices_client.get("/api/admin/site/devices/?search=dev-a")).json()["items"][0]
+    assert row["last_claimed_at"] is not None and row["last_claim_at"] is None
+
+
+async def test_a_lapsed_streak_reads_zero(devices_client: httpx.AsyncClient, db_sessions) -> None:
+    """The stored counter is written on a claim and never on the absence of one; the list and the
+    record report the streak as it stands now."""
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-z", handle="GZ-ZZZZ", streak_count=6))
+        await s.flush()
+        old = datetime.now(UTC) - timedelta(days=5)
+        s.add(SiteClaim(device_uuid="dev-z", location="Germany", created_at=old))
+        await s.commit()
+    card = (await devices_client.get("/api/admin/site/devices/dev-z")).json()
+    assert card["streak_count"] == 0
+    row = (await devices_client.get("/api/admin/site/devices/?search=dev-z")).json()["items"][0]
+    assert row["streak_count"] == 0
 
 
 async def test_actions_404_on_an_unknown_device(devices_client: httpx.AsyncClient) -> None:

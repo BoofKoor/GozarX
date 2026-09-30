@@ -100,3 +100,26 @@ def reject_popular_outside_list(popular: str, locations: list[str]) -> None:
             status.HTTP_400_BAD_REQUEST,
             f"popular location '{popular}' is not in the offered locations: {', '.join(locations)}",
         )
+
+
+async def reject_unoffered_location(
+    request: Request, squad: str | None, stored: list[str], wanted: str | None
+) -> None:
+    """400 when ``wanted`` is not a location the site OFFERS — the stored subset, or every live name
+    when the subset is empty. No-op for a blank value, or when nothing can be established.
+
+    The fifth writer of a location name: a landing page's pre-selected location was free text, so
+    a typo (or a name the squad stopped serving) made the widget preselect nothing at all. Checked
+    against what the picker actually offers, not merely what the squad serves — a name outside the
+    subset is one the visitor cannot pick either.
+    """
+    if not wanted or not wanted.strip():
+        return
+    offered = await offered_locations(request, squad, stored)
+    if not offered:
+        return  # unverifiable (no squad, panel down) or nothing served — store what was typed
+    if unknown_names([wanted], offered):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            f"not offered by the site: {wanted} — available: {', '.join(offered)}",
+        )

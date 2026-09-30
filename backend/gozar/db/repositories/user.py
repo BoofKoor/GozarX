@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import String, cast, delete, func, or_, select, update
 from sqlalchemy.sql import Select
@@ -470,6 +470,52 @@ class UserRepository(BaseRepository):
             or 0
         )
         return at_cap, any_referrals
+
+    async def active_config_split(self, trial_hours: int, *, now: datetime) -> tuple[int, int]:
+        """``(live, stale)`` among users whose status is ``active_config``.
+
+        The bot's twin of ``SiteDeviceRepository.active_config_split``. The status column is healed
+        only by the panel webhook or the reconcile sweep, and the sweep skips a user whenever the
+        panel does not answer — so the raw count kept dead trials in "active" for as long as the
+        panel was down. "Live" is a trial whose window (``last_claim_at + trial_hours``) has not
+        elapsed; a missing anchor is stale, since nothing says the trial is still running.
+        """
+        cutoff = now - timedelta(hours=max(trial_hours, 1))
+        live = func.count().filter(User.last_claim_at > cutoff)
+        stale = func.count().filter(or_(User.last_claim_at <= cutoff, User.last_claim_at.is_(None)))
+        row = (
+            await self.session.execute(
+                select(live, stale).select_from(User).where(User.status == UserStatus.active_config)
+            )
+        ).one()
+        return int(row[0] or 0), int(row[1] or 0)
+
+    async def signup_conversion(
+        self, **windows: tuple[datetime, datetime | None]
+    ) -> dict[str, tuple[int, int]]:
+        """``{name: (signed_up, claimed)}`` for each half-open signup window, in ONE scan.
+
+        ``claimed`` counts the window's signups who have EVER taken a config. This is the windowed
+        conversion the dashboard's radar needs: the old figure divided every claimer ever by every
+        user ever, so it sat beside three windowed rates without moving when the range did.
+        """
+        claimed = select(ConfigLog.id).where(ConfigLog.user_id == User.telegram_id).exists()
+        columns = []
+        for start, end in windows.values():
+            in_window = User.created_at >= start
+            if end is not None:
+                in_window = in_window & (User.created_at < end)
+            columns.append(func.count().filter(in_window))
+            columns.append(func.count().filter(in_window & claimed))
+        earliest = min(start for start, _ in windows.values())
+        row = (
+            await self.session.execute(
+                select(*columns).select_from(User).where(User.created_at >= earliest)
+            )
+        ).one()
+        return {
+            name: (int(row[2 * i] or 0), int(row[2 * i + 1] or 0)) for i, name in enumerate(windows)
+        }
 
     async def status_breakdown(self) -> list[tuple[str, int]]:
         """Users grouped by status → ``[(status_value, count), …]``. One grouped query in place of

@@ -7,6 +7,8 @@ via aliases; ``populate_by_name`` lets tests build models with either name.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -148,6 +150,18 @@ def _coerce_int(value: object) -> int:
         return int(float(value))  # type: ignore[arg-type]
     except (TypeError, ValueError):
         return 0
+
+
+@dataclass(frozen=True, slots=True)
+class SquadActivity:
+    """Who in the trial squad(s) was online: in the last minute, and in the last seven days.
+
+    Not a panel response — the client derives it from a sweep of ``GET /api/users`` — but it is
+    what that sweep returns, so it lives beside the models it is built from.
+    """
+
+    online: int
+    week: int
 
 
 class SystemStats(_Base):

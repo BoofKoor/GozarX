@@ -6,17 +6,17 @@ import type { DashboardAnalytics } from "@/types/api";
 
 import { ActivationPanel } from "./ActivationPanel";
 
-const data = (median: number | null): DashboardAnalytics =>
+const data = (median: number | null, activation: number | null = 74): DashboardAnalytics =>
   ({
     median_hours_to_claim: { value: median, previous: null, change_pct: null },
-    activation_24h: { value: 74, previous: 71.2, change_pct: 3.9 },
-    first_claimers_in_range: 1180,
+    activation_24h: { value: activation, previous: 71.2, change_pct: null },
+    first_claimers_in_range: activation == null ? 0 : 1180,
   }) as DashboardAnalytics;
 
-function show(median: number | null) {
+function show(median: number | null, activation: number | null = 74) {
   return render(
     <I18nProvider>
-      <ActivationPanel data={data(median)} />
+      <ActivationPanel data={data(median, activation)} />
     </I18nProvider>,
   );
 }
@@ -35,5 +35,11 @@ describe("ActivationPanel", () => {
     // /start, pick a language, claim. Printed as hours it was "0" and read as a broken tile.
     show(0.0058);
     expect(screen.getByText("⁨۲۱s⁩")).toBeInTheDocument();
+  });
+
+  it("shows an em dash for the 24h share of an EMPTY cohort, not a confident 0%", () => {
+    show(null, null);
+    expect(screen.getAllByText("—")).toHaveLength(2);
+    expect(screen.queryByText("۰٪")).not.toBeInTheDocument();
   });
 });

@@ -256,8 +256,8 @@ function MessageView({
         <span>{t("si.language", { lang: langLabel(message.locale) })}</span>
         {message.device_uuid && (
           <Link
-            to={`/site/devices?search=${encodeURIComponent(message.device_uuid)}`}
-            className="inline-flex items-center gap-1 text-brand hover:underline"
+            to={`/site/devices?search=${encodeURIComponent(message.device_uuid)}&open=${encodeURIComponent(message.device_uuid)}`}
+            className="inline-flex items-center gap-1 text-brand-700 hover:underline"
           >
             {t("si.senderDevice")}
             <ExternalLink className="h-3 w-3" />

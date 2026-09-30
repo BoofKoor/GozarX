@@ -40,8 +40,11 @@ const stats = (over: Partial<DashboardStats> = {}): DashboardStats =>
     claimers_in_range: 1228,
     claimers_prev_range: 1266,
     claimers_delta_pct: -3,
+    active_live: 1228,
+    active_stale: 0,
     online_now: 312,
     online_squad_scoped: true,
+    online_week: 512,
     online_last_day: 498,
     online_last_week: 512,
     never_online: 900,
@@ -50,13 +53,15 @@ const stats = (over: Partial<DashboardStats> = {}): DashboardStats =>
     panel_total_users: 8412,
     total_traffic_bytes: 3.375e12,
     nodes_online: 4,
-    conversion_pct: 86,
+    conversion: { value: 86, previous: 80, change_pct: 7.5 },
+    conversion_pct_all_time: 71,
     reminder_enabled: 4102,
     avg_referrals: 0.42,
     claims_series: DAYS.map((day, i) => ({ day, count: 100 + i * 10 })),
     signups_series: DAYS.map((day, i) => ({ day, count: 40 + i })),
     languages: [{ label: "fa", count: 5240 }],
     top_locations: [{ label: "Germany", count: 1883 }],
+    locations_total: 1,
     top_referrers: [{ telegram_id: 7314829, referral_count: 420 }],
     ...over,
   }) as DashboardStats;
@@ -158,7 +163,8 @@ describe("Overview", () => {
     // at a glance, and absent from a screenshot.
     renderOverview();
     const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
-    expect(radar.textContent).toContain("۸۶٪"); // conversion_pct
+    expect(radar.textContent).toContain("۸۶٪"); // the WINDOWED conversion, not the lifetime 71
+    expect(radar.textContent).not.toContain("۷۱٪");
   });
 
   it("puts the two largest rates ADJACENT, not facing each other", () => {
@@ -197,5 +203,56 @@ describe("Overview", () => {
   it("says so when the panel is unreachable instead of showing a silent flat line", () => {
     renderOverview({ stats: stats({ panel_online: false }) });
     expect(screen.getByText(/پنل در دسترس نیست/)).toBeInTheDocument();
+  });
+
+  it("gauges online users against the SAME population's week", () => {
+    // Squad-scoped online over the squad's own week — never over the panel-wide week, which also
+    // counts the operator's own users (5,000 here, which would draw a near-empty ring).
+    renderOverview({ stats: stats({ online_now: 90, online_week: 300, online_last_week: 5000 }) });
+    expect(screen.getByText(/فعال هفته\s*۳۰۰/)).toBeInTheDocument();
+    expect(screen.queryByText(/۵٬۰۰۰/)).not.toBeInTheDocument();
+  });
+
+  it("says unknown rather than zero when the panel did not answer", () => {
+    renderOverview({
+      stats: stats({
+        panel_online: false,
+        online_now: null,
+        online_week: null,
+        total_traffic_bytes: null,
+      }),
+    });
+    // The traffic tile and the online gauge both read "—", not «۰ B» and «۰».
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(2);
+    expect(screen.queryByText(/B$/)).not.toBeInTheDocument();
+  });
+
+  it("labels which top cards are lifetime and which follow the range", () => {
+    renderOverview();
+    expect(screen.getAllByText(/کل دوره/)).toHaveLength(2); // top referrer + top language
+    expect(screen.getAllByText(/· ۷ روز/)).toHaveLength(2); // top location + peak hour
+  });
+
+  it("counts only LIVE trials as active and names the stale remainder", () => {
+    renderOverview({ stats: stats({ active: 1250, active_live: 1200, active_stale: 50 }) });
+    expect(screen.getByText("۱٬۲۰۰ کاربر")).toBeInTheDocument();
+    expect(screen.getByText("۵۰ منقضی‌شده هنوز همگام نشده")).toBeInTheDocument();
+  });
+
+  it("moves the range control at once and says the new range is loading", () => {
+    // The figures on screen are still the 7-day ones (`stats.range_days`) while 30 loads.
+    renderOverview({ range: 30, pending: true });
+    expect(screen.getByRole("radio", { name: "۳۰ روز" })).toHaveAttribute("aria-checked", "true");
+    expect(screen.getByRole("status")).toHaveTextContent("در حال بارگذاری بازهٔ جدید…");
+    // …and the KPI labels keep describing the window actually shown.
+    expect(screen.getByText("کانفیگ تحویل‌شده در ۷ روز")).toBeInTheDocument();
+  });
+
+  it("draws the still-filling last day dashed", () => {
+    renderOverview();
+    const chart = screen.getByRole("img", {
+      name: "کانفیگ داده‌شده و کاربران جدید در بازهٔ انتخابی",
+    });
+    expect(chart.querySelectorAll("path[stroke-dasharray]").length).toBe(2); // one per series
   });
 });

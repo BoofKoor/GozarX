@@ -7,6 +7,7 @@ import {
   Globe2,
   HeartPulse,
   LineChart,
+  Loader2,
   Repeat,
   UserPlus,
 } from "lucide-react";
@@ -161,14 +162,27 @@ export function Dashboard() {
     }
   }
 
+  // `keepPreviousData` holds the old range's figures on screen while the new one loads, which is
+  // right — but without saying so the page looked as if the click had not registered, for as long
+  // as the slower window took.
+  const rangePending =
+    (data != null && data.range_days !== days) ||
+    (analytics != null && analytics.range_days !== days);
   const rangeControl = (
-    <Segmented
-      value={days}
-      onChange={setDays}
-      options={RANGE_OPTIONS}
-      size="sm"
-      ariaLabel={t("dash.range.aria")}
-    />
+    <span className="inline-flex items-center gap-2">
+      {rangePending && (
+        <span role="status" aria-label={t("dash.range.loading")}>
+          <Loader2 className="h-3.5 w-3.5 animate-spin text-content-subtle" aria-hidden />
+        </span>
+      )}
+      <Segmented
+        value={days}
+        onChange={setDays}
+        options={RANGE_OPTIONS}
+        size="sm"
+        ariaLabel={t("dash.range.aria")}
+      />
+    </span>
   );
 
   if (isLoading) {
@@ -252,9 +266,10 @@ export function Dashboard() {
               analytics={analytics}
               retention={retention}
               health={health}
-              range={data.range_days}
+              range={days}
               ranges={RANGES}
               onRange={setDays}
+              pending={rangePending}
               onExport={exportCsv}
               exporting={exporting}
             />
@@ -363,7 +378,7 @@ export function Dashboard() {
                 )}
               />
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <TopLocations data={data.top_locations} />
+                <TopLocations data={data.top_locations} total={data.locations_total} />
                 <LanguageDonut data={data.languages} />
               </div>
               <Analytic

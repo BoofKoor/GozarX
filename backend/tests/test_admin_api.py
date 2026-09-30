@@ -223,12 +223,25 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
         assert len(series) == 14
         assert all(pt["count"] == 0 for pt in series)
         assert [pt["day"] for pt in series] == sorted(pt["day"] for pt in series)
-    # richer payload defaults: online -> active fallback (0), panel unreachable, default range
-    assert body["online_now"] == 0
     assert body["range_days"] == 14
     assert body["panel_online"] is False
-    for key in ("new_today", "new_this_week", "conversion_pct", "avg_referrals", "nodes_online"):
+    # The panel did not answer, so every figure only it can give is UNKNOWN, not zero. "Online now"
+    # used to fall back to the database's active-config count — a different quantity entirely.
+    for key in (
+        "online_now",
+        "online_week",
+        "online_last_week",
+        "nodes_online",
+        "total_traffic_bytes",
+        "panel_total_users",
+    ):
+        assert body[key] is None, key
+    for key in ("new_today", "new_this_week", "conversion_pct_all_time", "avg_referrals"):
         assert body[key] == 0
+    for key in ("active_live", "active_stale", "locations_total"):
+        assert body[key] == 0
+    # Nobody signed up in the window: a conversion rate over nobody is absent, not 0%.
+    assert body["conversion"] == {"value": None, "previous": None, "change_pct": None}
     assert body["panel_status_counts"] == {}
     for key in ("languages", "top_locations", "top_referrers"):
         assert body[key] == []
@@ -262,7 +275,10 @@ async def test_dashboard_stats_aggregations(admin_client: httpx.AsyncClient, db_
         (13, 2),
     ]  # only referrers with count > 0, biggest first
     assert body["new_today"] == 3  # all three just created
-    assert body["conversion_pct"] == round(2 / 3 * 100, 1)  # users 11 & 13 claimed, of 3 total
+    # users 11 & 13 claimed, of 3 total — lifetime, and of the window's three signups
+    assert body["conversion_pct_all_time"] == round(2 / 3 * 100, 1)
+    assert body["conversion"]["value"] == round(2 / 3 * 100, 1)
+    assert body["locations_total"] == 2
     assert body["avg_referrals"] == round(7 / 3, 2)
 
 
@@ -367,8 +383,9 @@ async def test_dashboard_analytics_aggregations(
     assert body["claimers_all_time"] == 2
     assert body["first_claimers_in_range"] == 2  # both activated inside the window
     assert body["activation_24h"]["value"] == 100.0  # both first-claimed within 24h of signup
-    # Nothing happened in the window before this one, so there is no comparison to draw.
-    assert body["activation_24h"]["previous"] == 0.0
+    # Nobody activated in the window before this one: that share is unknown, not 0%, and there is
+    # no comparison to draw.
+    assert body["activation_24h"]["previous"] is None
     assert body["activation_24h"]["change_pct"] is None
     assert body["claims_distribution"] == {"1": 1, "2-3": 1}  # u13 once, u11 twice
     assert body["referral"] == {
@@ -423,6 +440,82 @@ async def test_dashboard_surfaces_panel_system_stats(db_sessions, monkeypatch) -
     get_settings.cache_clear()
 
 
+async def test_dashboard_splits_active_configs_into_live_and_stale(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """`active` is the raw status column; the reconcile sweep skips users while the panel is down,
+    so a trial whose window elapsed can keep that status. The split says how many really run."""
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                # Claimed an hour ago on a 24h trial: running.
+                User(
+                    telegram_id=81,
+                    status=UserStatus.active_config,
+                    last_claim_at=now - timedelta(hours=1),
+                ),
+                # Claimed two days ago: its trial ended, the status was never healed.
+                User(
+                    telegram_id=82,
+                    status=UserStatus.active_config,
+                    last_claim_at=now - timedelta(days=2),
+                ),
+                # No anchor at all: nothing says it is still running.
+                User(telegram_id=83, status=UserStatus.active_config),
+                # Not active at all — in neither half.
+                User(telegram_id=84, status=UserStatus.available, last_claim_at=now),
+            ]
+        )
+        await s.commit()
+    await admin_client.put("/api/admin/settings/", json={"trial_hours": 24})
+
+    body = (await admin_client.get("/api/admin/dashboard/stats")).json()
+    assert body["active"] == 3
+    assert (body["active_live"], body["active_stale"]) == (1, 2)
+
+
+async def test_dashboard_reports_unknown_traffic_as_null(db_sessions, monkeypatch) -> None:
+    """A panel that answers WITHOUT a usable lifetime counter carried an unknown amount, not 0 B."""
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+
+    class _Panel(_StubPanel):
+        async def system_stats(self) -> SystemStats:
+            return SystemStats(online_now=3, nodes_online=1, traffic_known=False)
+
+    app.state.panel = _Panel()
+    headers = {"Authorization": f"Bearer {create_access('root')}"}
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://t", headers=headers
+    ) as c:
+        body = (await c.get("/api/admin/dashboard/stats")).json()
+    assert body["panel_online"] is True and body["nodes_online"] == 1
+    assert body["total_traffic_bytes"] is None
+    get_settings.cache_clear()
+
+
+async def test_activation_over_an_empty_cohort_is_unknown(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """Nobody activated in the window: 0% and a "-100%" delta were claims about nobody."""
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        # Activated 10 days ago — the PREVIOUS 7-day window's cohort, none in this one.
+        s.add(User(telegram_id=91, created_at=now - timedelta(days=10, hours=2)))
+        await s.flush()
+        s.add(ConfigLog(user_id=91, location="DE", created_at=now - timedelta(days=10)))
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/analytics?days=7")).json()
+    assert body["first_claimers_in_range"] == 0
+    assert body["activation_24h"] == {"value": None, "previous": 100.0, "change_pct": None}
+
+
 async def test_dashboard_reads_the_recorded_squad_count_and_never_pages_the_panel(
     db_sessions, monkeypatch
 ) -> None:
@@ -440,9 +533,9 @@ async def test_dashboard_reads_the_recorded_squad_count_and_never_pages_the_pane
 
     class _Panel(_StubPanel):
         async def system_stats(self) -> SystemStats:
-            return SystemStats(online_now=99)
+            return SystemStats(online_now=99, online_last_week=400)
 
-        async def squad_online_count(self, squads: set[str]) -> int:
+        async def squad_online_count(self, squads: set[str]) -> None:
             raise AssertionError("the dashboard must never page the panel itself")
 
     class _Arq:
@@ -464,11 +557,15 @@ async def test_dashboard_reads_the_recorded_squad_count_and_never_pages_the_pane
         # Nothing recorded yet: the panel-wide figure stands in, flagged, and a refresh is queued.
         first = (await c.get("/api/admin/dashboard/stats")).json()
         assert first["online_now"] == 99 and first["online_squad_scoped"] is False
+        # Panel-wide numerator, panel-wide denominator: never one scope over the other.
+        assert first["online_week"] == 400
         assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
         # Once the worker has recorded a count, that is what the dashboard shows — no new job.
-        await write_squad_online(app.state.redis, 12)
+        await write_squad_online(app.state.redis, 12, 80)
         second = (await c.get("/api/admin/dashboard/stats")).json()
         assert second["online_now"] == 12 and second["online_squad_scoped"] is True
+        # ...and the gauge's denominator is the SAME squad's week, not the panel's 400.
+        assert second["online_week"] == 80 and second["online_last_week"] == 400
         assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
     get_settings.cache_clear()
 
@@ -1003,10 +1100,11 @@ async def test_dashboard_retention_cohorts(admin_client: httpx.AsyncClient, db_s
         await s.flush()
         s.add_all(
             [
-                # both activate in their signup week; only u61 comes back later
+                # both activate in their signup week; only u61 comes back later — in THIS week, so
+                # the assertion holds on every weekday (two days ago is last week on a Sunday)
                 ConfigLog(user_id=61, location="DE", created_at=now - timedelta(weeks=2)),
                 ConfigLog(user_id=62, location="DE", created_at=now - timedelta(weeks=2)),
-                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(days=2)),
+                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(minutes=5)),
             ]
         )
         await s.commit()
@@ -1034,15 +1132,16 @@ async def test_cohort_row_is_as_long_as_the_weeks_that_elapsed(
             [
                 # Three weeks old, claimed once on day one and never again.
                 User(telegram_id=71, created_at=now - timedelta(weeks=3)),
-                # Two days old — its second week genuinely has not arrived.
-                User(telegram_id=72, created_at=now - timedelta(days=2)),
+                # Signed up in THIS week — its second week genuinely has not arrived. ("Two days
+                # old" was last week on a Sunday or Monday, and the row was then two columns.)
+                User(telegram_id=72, created_at=now - timedelta(minutes=10)),
             ]
         )
         await s.flush()
         s.add_all(
             [
                 ConfigLog(user_id=71, location="DE", created_at=now - timedelta(weeks=3)),
-                ConfigLog(user_id=72, location="DE", created_at=now - timedelta(days=2)),
+                ConfigLog(user_id=72, location="DE", created_at=now - timedelta(minutes=5)),
             ]
         )
         await s.commit()

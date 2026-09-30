@@ -73,10 +73,13 @@ export function SiteDevices() {
   ];
   const [params, setParams] = useSearchParams();
   const ipBucket = params.get("ip_bucket") ?? "";
-  const [search, setSearch] = useState("");
+  // Seeded from the URL, so a link from elsewhere lands FILTERED: the inbox's "sender device" link
+  // passed `?search=<uuid>`, and the page read the box from local state alone — every device, the
+  // sender's somewhere among them. `open` goes one step further and shows that device's record.
+  const [search, setSearch] = useState(() => params.get("search") ?? "");
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(() => params.get("open"));
   const deferredSearch = useDeferredValue(search);
 
   useEffect(() => setPage(1), [status, deferredSearch, ipBucket]);
@@ -110,7 +113,15 @@ export function SiteDevices() {
             icon={<Search className="h-4 w-4" />}
             placeholder={t("sd.search")}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              // Typed over, the link's filter is done: a reload should not bring it back.
+              if (params.has("search") || params.has("open")) {
+                params.delete("search");
+                params.delete("open");
+                setParams(params, { replace: true });
+              }
+            }}
           />
         </div>
         <Segmented
@@ -208,8 +219,10 @@ export function SiteDevices() {
                   </TD>
                   <TD className="tabular-nums">{formatNumber(d.referral_count)}</TD>
                   <TD className="tabular-nums">{formatNumber(d.streak_count)}</TD>
+                  {/* From the claim LOG: `last_claim_at` is the cooldown anchor, which a reset
+                      clears — the column read "—" for devices that plainly had claims. */}
                   <TD className="whitespace-nowrap text-xs text-content-muted">
-                    {faDate(d.last_claim_at)}
+                    {faDate(d.last_claimed_at)}
                   </TD>
                   <TD className="font-mono text-xs text-content-muted" dir="ltr">
                     {d.ip_bucket ?? "—"}
@@ -230,11 +243,17 @@ export function SiteDevices() {
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+/** One label/value line of the record. `ltr` is for a genuinely Latin value (a panel username, an
+ *  IP bucket); forced on EVERY value, it laid a Persian date «۲۶ تیر ۱۴۰۵» out as «۲۶ ۱۴۰۵ تیر». */
+function Row({ label, value, ltr = false }: { label: string; value: ReactNode; ltr?: boolean }) {
   return (
     <div className="flex justify-between gap-2 border-b border-line py-2 text-sm last:border-0">
       <span className="text-content-muted">{label}</span>
-      <span dir="ltr" className="text-content">
+      <span
+        dir={ltr ? "ltr" : undefined}
+        className={ltr ? "font-mono text-content" : "text-content"}
+        style={{ unicodeBidi: "isolate" }}
+      >
         {value}
       </span>
     </div>
@@ -306,15 +325,23 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
           <div>
             <Row label={t("sd.col.status")} value={<StatusBadge status={device.status} />} />
             <Row label={t("sd.detail.claims")} value={formatNumber(device.claims)} />
-            <Row label={t("sd.col.lastClaim")} value={faDate(device.last_claim_at)} />
+            <Row label={t("sd.col.lastClaim")} value={faDate(device.last_claimed_at)} />
             <Row
               label={t("sd.detail.rewardedInvites")}
               value={formatNumber(device.referral_count)}
             />
             <Row label={t("sd.detail.invited")} value={formatNumber(device.invited)} />
             <Row label={t("sd.detail.streak")} value={formatNumber(device.streak_count)} />
-            <Row label={t("sd.detail.panelAccount")} value={device.site_panel_username ?? "—"} />
-            <Row label={t("sd.col.ip")} value={device.ip_bucket ?? "—"} />
+            <Row
+              label={t("sd.detail.panelAccount")}
+              value={device.site_panel_username ?? "—"}
+              ltr={device.site_panel_username != null}
+            />
+            <Row
+              label={t("sd.col.ip")}
+              value={device.ip_bucket ?? "—"}
+              ltr={device.ip_bucket != null}
+            />
             <Row label={t("sd.col.firstSeen")} value={faDate(device.created_at)} />
           </div>
 

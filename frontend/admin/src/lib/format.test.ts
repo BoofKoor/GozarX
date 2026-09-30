@@ -85,6 +85,14 @@ describe("format helpers", () => {
     expect(faDate(null)).toBe("—");
   });
 
+  it("dates an INSTANT on the Tehran clock, not the UTC one", () => {
+    // 22:00 UTC on 17 July is 01:30 on the 18th in Tehran: the device minted then was minted on
+    // the 18th, and a UTC format put it on the 17th for the first 3.5 hours of every local day.
+    expect(faDate("2026-07-17T22:00:00Z")).toBe("۲۷ تیر ۱۴۰۵");
+    // ...while a bare reporting DAY is exactly that calendar date, never shifted.
+    expect(faDate("2026-07-18")).toBe("۲۷ تیر ۱۴۰۵");
+  });
+
   it("splits locations on ASCII or Persian comma, trimming blanks", () => {
     expect(splitLocations("آلمان، هلند ,  , فرانسه")).toEqual(["آلمان", "هلند", "فرانسه"]);
     expect(splitLocations("")).toEqual([]);

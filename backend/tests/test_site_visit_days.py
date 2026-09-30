@@ -52,12 +52,17 @@ async def test_a_new_local_day_writes_even_inside_the_throttle(session, monkeypa
     assert device.last_seen_at == _local(2026, 9, 30, 0, 10)
 
 
-async def test_the_visit_that_minted_a_device_is_recorded(session) -> None:
+async def test_a_minted_device_is_unseen_until_its_cookie_comes_back(session) -> None:
+    """The request that mints a device proves nothing — a cookieless client is minted one on EVERY
+    request — so the identity dependency writes it unseen, and the first request that carries the
+    cookie is the visit."""
     repo = SiteDeviceRepository(session)
-    device, created = await repo.get_or_create("dev-2")
-    assert created and device.last_seen_at is not None  # the server default looks "just seen"
-    await repo.touch_seen(device, minted=created)
+    device, created = await repo.get_or_create("dev-2", seen=False)
+    assert created and device.last_seen_at is None  # an explicit NULL, not the server default
+    assert await _days(session) == []
+    await repo.touch_seen(device)  # the cookie came back
     await session.flush()
+    assert device.last_seen_at is not None
     assert len(await _days(session)) == 1
 
 

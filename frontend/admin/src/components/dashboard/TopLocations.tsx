@@ -3,10 +3,14 @@ import { formatNumber } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
 import { useI18n } from "@/i18n";
 
-/** Div-based horizontal bar list (RTL-friendly, no recharts axis quirks). */
-export function TopLocations({ data }: { data: NamedCount[] }) {
+/** Div-based horizontal bar list (RTL-friendly, no recharts axis quirks).
+ *
+ *  `total` is how many distinct locations the window had. The list is capped at ten, and a capped
+ *  list that does not say what it hid reads as the whole picture. */
+export function TopLocations({ data, total }: { data: NamedCount[]; total?: number }) {
   const { t } = useI18n();
   const max = Math.max(1, ...data.map((d) => d.count));
+  const hidden = total != null ? Math.max(0, total - data.length) : 0;
 
   return (
     <Card>
@@ -33,6 +37,11 @@ export function TopLocations({ data }: { data: NamedCount[] }) {
               </div>
             </li>
           ))}
+          {hidden > 0 && (
+            <li className="text-xs text-content-subtle">
+              {t("d.topLocations.more", { n: formatNumber(hidden) })}
+            </li>
+          )}
         </ul>
       )}
     </Card>

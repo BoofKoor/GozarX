@@ -40,6 +40,12 @@ const CATEGORY_LABEL: Record<string, MessageKey> = {
   trouble: "sf.cat.trouble",
 };
 
+/** The tab name for a category id. The map holds message KEYS — printed without `t` the badge read
+ *  «sf.cat.start» on every row. An id the panel does not know shows as itself. */
+function categoryLabel(t: (key: MessageKey) => string, id: string): string {
+  return CATEGORY_LABEL[id] ? t(CATEGORY_LABEL[id]) : id;
+}
+
 const BLANK = (locale: string): SiteFaqInput => ({
   locale,
   category: "start",
@@ -202,7 +208,7 @@ export function SiteFaq() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-content">{item.question}</span>
-                      <Badge tone="neutral">{CATEGORY_LABEL[item.category] ?? item.category}</Badge>
+                      <Badge tone="neutral">{categoryLabel(t, item.category)}</Badge>
                       {!item.published && <Badge tone="warning">{t("sf.unpublished")}</Badge>}
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-content-muted">{item.answer}</p>
@@ -322,7 +328,7 @@ function FaqEditor({
           >
             {FAQ_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABEL[c] ? t(CATEGORY_LABEL[c]) : c}
+                {categoryLabel(t, c)}
               </option>
             ))}
           </Select>

@@ -186,6 +186,35 @@ async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:
     assert (await site_client.get(f"/api/admin/site/pages/{page_id}")).status_code == 404
 
 
+async def test_a_landing_preselects_only_a_location_the_site_offers(
+    site_client: httpx.AsyncClient,
+) -> None:
+    """The fifth writer of a location name. Free text, a typo — or a name the squad stopped
+    serving — saved fine and the landing's widget then preselected nothing."""
+    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    base = {"slug": "de-config", "locale": "fa", "title": "آلمان"}
+    ok = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "location_remark": "Germany"}
+    )
+    assert ok.status_code == 201
+    bad = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "slug": "mars", "location_remark": "Mars"}
+    )
+    assert bad.status_code == 400 and "Mars" in bad.json()["detail"]
+    # Blank is "no preselection" and is always fine.
+    blank = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "slug": "none", "location_remark": None}
+    )
+    assert blank.status_code == 201
+    # Changing the page's COPY does not re-check an unchanged location.
+    page_id = ok.json()["id"]
+    upd = await site_client.put(
+        f"/api/admin/site/pages/{page_id}",
+        json={**base, "title": "عنوان نو", "location_remark": "Germany"},
+    )
+    assert upd.status_code == 200
+
+
 async def test_inbox_list_and_mark_read(site_client: httpx.AsyncClient, db_sessions) -> None:
     async with db_sessions() as s:
         s.add_all(
@@ -561,7 +590,8 @@ async def test_site_analytics_aggregations(site_client: httpx.AsyncClient, db_se
     assert body["stickiness_pct"] == 100.0
     econ = {r["type"]: (r["grants"], r["total_mb"]) for r in body["reward_economy"]}
     assert econ == {"pwa": (2, 400), "push": (1, 200)}
-    assert body["streak_distribution"] == {"0": 1, "3-6": 1, "7+": 1}  # d2=0, d1=5, d3=8
+    # d2=0, d1=5 (claimed now) — and d3's stored 8 is LAPSED (it never provisioned), so it is 0.
+    assert body["streak_distribution"] == {"0": 2, "3-6": 1}
     assert body["push"]["active"] == 1 and body["push"]["inactive"] == 1
     assert body["push"]["by_locale"] == [{"label": "fa", "count": 1}]  # active only
     assert body["abuse"]["top_ip_buckets"] == [{"label": "ipA", "count": 2}]

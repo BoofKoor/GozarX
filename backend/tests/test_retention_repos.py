@@ -7,8 +7,9 @@ have no meaningful in-Python equivalent to assert on.
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, time, timedelta
 
+from gozar.config.reporting import DISPLAY_TZ, local_week_start
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -60,6 +61,43 @@ async def test_weekly_retention_cohorts(session):
     assert 1 in by_size
     assert by_size[1][0] == 1
     assert now is not None
+
+
+async def test_retention_cohorts_are_local_saturday_weeks(session):
+    """A cohort is a LOCAL week, Saturday to Friday on the display clock.
+
+    On UTC ISO weeks a signup at 02:00 Tehran time on a Monday (22:30 UTC on the Sunday) joined
+    the previous week's cohort, and every cohort started on a Monday nobody there starts a week on.
+    """
+    today = datetime.now(DISPLAY_TZ).date()
+    saturday = local_week_start(today) - timedelta(weeks=1)  # a whole local week in the past
+
+    def local(day, hour, minute=0):
+        return datetime.combine(day, time(hour, minute), tzinfo=DISPLAY_TZ)
+
+    friday_late = local(saturday - timedelta(days=1), 23, 30)  # the week BEFORE
+    saturday_early = local(saturday, 1)  # 21:30 UTC on the Friday — but locally this week
+    monday_early = local(saturday + timedelta(days=2), 2)  # 22:30 UTC on the Sunday
+    session.add_all(
+        [
+            User(telegram_id=101, created_at=friday_late),
+            User(telegram_id=102, created_at=saturday_early),
+            User(telegram_id=103, created_at=monday_early),
+        ]
+    )
+    await session.flush()
+    # u102 claims late on the local Friday that closes its week: still offset 0, not 1.
+    session.add(
+        ConfigLog(user_id=102, location="DE", created_at=local(saturday + timedelta(days=6), 23))
+    )
+    await session.commit()
+
+    cohorts = await ConfigLogRepository(session).weekly_retention_cohorts(weeks=4)
+    by_week = {week: (size, offsets) for week, size, offsets in cohorts}
+    assert saturday.weekday() == 5
+    assert by_week[saturday.isoformat()][0] == 2  # Saturday 01:00 and Monday 02:00, together
+    assert by_week[(saturday - timedelta(weeks=1)).isoformat()][0] == 1  # the Friday before
+    assert by_week[saturday.isoformat()][1] == {0: 1}
 
 
 async def test_weekly_retention_cohorts_empty(session):

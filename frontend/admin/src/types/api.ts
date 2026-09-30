@@ -86,28 +86,40 @@ export interface DashboardStats {
   claimers_in_range: number;
   claimers_prev_range: number;
   claimers_delta_pct: number | null;
-  // engagement (panel /system/stats)
-  online_now: number;
+  /** `active` split by whether the trial window has actually elapsed — the status column is healed
+   *  only by the webhook or the reconcile sweep, which skips users while the panel is down. */
+  active_live: number;
+  active_stale: number;
+  // engagement (panel /system/stats) — null wherever the panel did not answer: unknown, not zero
+  online_now: number | null;
   online_squad_scoped: boolean;
-  online_last_day: number;
-  online_last_week: number;
-  never_online: number;
+  /** Seen online in the last 7 days, in the SAME population as `online_now` (the gauge's base). */
+  online_week: number | null;
+  online_last_day: number | null;
+  online_last_week: number | null;
+  never_online: number | null;
   panel_online: boolean;
   // trial health & traffic (panel)
   panel_status_counts: Record<string, number>;
-  panel_total_users: number;
-  total_traffic_bytes: number;
-  nodes_online: number;
+  panel_total_users: number | null;
+  /** null when the panel is down OR answered without a usable counter. */
+  total_traffic_bytes: number | null;
+  nodes_online: number | null;
   // referral & conversion
-  conversion_pct: number;
+  /** Of the window's signups, the share who have claimed — windowed, with its previous twin. */
+  conversion: NullableMetric;
+  /** Every claimer ever over every user ever. */
+  conversion_pct_all_time: number;
   reminder_enabled: number;
   avg_referrals: number;
   // series + breakdowns
   claims_series: DayPoint[];
   signups_series: DayPoint[];
-  languages: NamedCount[];
-  top_locations: NamedCount[];
-  top_referrers: Referrer[];
+  languages: NamedCount[]; // lifetime
+  top_locations: NamedCount[]; // windowed, capped at ten
+  /** Distinct locations claimed in the window — what the capped list leaves out. */
+  locations_total: number;
+  top_referrers: Referrer[]; // lifetime
 }
 
 // --- Phase 7c: texts + buttons editors ---
@@ -580,7 +592,8 @@ export interface DashboardAnalytics {
    *  equally long window before it. Both used to be all-time figures under a range control that
    *  could not move them. */
   median_hours_to_claim: NullableMetric;
-  activation_24h: Metric;
+  /** null over an empty cohort: a share of nobody is not 0%. */
+  activation_24h: NullableMetric;
   first_claimers_in_range: number; // the cohort size both percentages are computed over
   claimers_all_time: number;
   referral: ReferralFunnel;
@@ -665,8 +678,12 @@ export interface SiteDeviceRow {
   site_panel_username: string | null;
   referral_count: number;
   referred_by: string | null;
+  /** The streak as it stands NOW — 0 once it has lapsed, whatever the stored counter says. */
   streak_count: number;
+  /** The cooldown anchor; an admin reset clears it. Not "when did it last claim". */
   last_claim_at: string | null;
+  /** The most recent claim in the log — what the "last claim" column shows. */
+  last_claimed_at: string | null;
   ip_bucket: string | null;
   has_fingerprint: boolean; // the hash itself is never exposed — it identifies the browser
   created_at: string | null;

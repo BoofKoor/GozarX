@@ -314,7 +314,12 @@ async def site_analytics(
     seen_7 = await devices.count_seen_since(now - timedelta(days=7))
     seen_30 = await devices.count_seen_since(now - timedelta(days=30))
     streak_days = await settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
-    active_streaks = await devices.active_streak_count(streak_days) if streak_days > 0 else 0
+    trial_hours = await settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, _DEFAULT_SITE_TRIAL_HOURS)
+    active_streaks = (
+        await devices.active_streak_count(streak_days, trial_hours, now=now)
+        if streak_days > 0
+        else 0
+    )
     active, inactive = await push.count_by_active()
 
     return SiteAnalyticsOut(
@@ -332,7 +337,7 @@ async def site_analytics(
         reward_economy=[
             RewardType(type=t, grants=g, total_mb=mb) for t, g, mb in await rewards.totals_by_type()
         ],
-        streak_distribution=await devices.streak_distribution(),
+        streak_distribution=await devices.streak_distribution(trial_hours, now=now),
         active_streaks=active_streaks,
         push=PushHealth(
             active=active,

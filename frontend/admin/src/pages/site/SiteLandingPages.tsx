@@ -22,7 +22,9 @@ import { useConfirm } from "@/components/ui/confirm";
 import {
   useCreateLanding,
   useDeleteLanding,
+  useSiteDerivableLocations,
   useSiteLandingPages,
+  useSiteSettings,
   useUpdateLanding,
 } from "@/hooks/useSite";
 import { useI18n, type MessageKey } from "@/i18n";
@@ -316,7 +318,15 @@ function LandingEditor({
     <Card>
       <CardHeader
         title={page ? t("sl.edit.title") : t("sl.new")}
-        sub={form.slug ? `/l/${form.slug}` : undefined}
+        // Its own LTR run: in the RTL header «/l/free-v2ray-config» laid out as
+        // «l/free-v2ray-config/», the slashes moving to the far end.
+        sub={
+          form.slug ? (
+            <span dir="ltr" className="font-mono">
+              /l/{form.slug}
+            </span>
+          ) : undefined
+        }
         icon={FileText}
         action={
           <div className="flex items-center gap-1">
@@ -405,13 +415,10 @@ function LandingEditor({
           )}
         </div>
 
-        <Field label={t("sl.field.location")} hint={t("sl.field.locationHint")}>
-          <Input
-            value={form.location_remark ?? ""}
-            onChange={(e) => set("location_remark", e.target.value || null)}
-            placeholder={t("loc.placeholder")}
-          />
-        </Field>
+        <LandingLocationField
+          value={form.location_remark}
+          onChange={(v) => set("location_remark", v)}
+        />
 
         <Switch
           checked={form.published}
@@ -440,5 +447,59 @@ function LandingEditor({
         </div>
       </form>
     </Card>
+  );
+}
+
+/**
+ * The landing's pre-selected location, picked from what the site's picker OFFERS.
+ *
+ * It was free text: a typo — or a name the squad has since stopped serving — saved without a word,
+ * and the widget on that landing then preselected nothing. The offered list is the site's stored
+ * subset, or every name the squad serves when that is empty (`[]` means "all"). A stored value no
+ * longer on it stays visible and marked, so opening an old page never silently changes it. With
+ * nothing to offer (no squad yet, or the panel down) it falls back to a text box; the server makes
+ * the same best-effort check on save.
+ */
+function LandingLocationField({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const { t } = useI18n();
+  const { data: settings } = useSiteSettings();
+  const squad = settings?.trial_squad ?? "";
+  const stored = settings?.locations ?? [];
+  const live = useSiteDerivableLocations(stored.length ? "" : squad);
+  const offered = stored.length ? stored : (live.data ?? []);
+  const stale = Boolean(value) && !offered.includes(value!);
+
+  if (offered.length === 0) {
+    return (
+      <Field label={t("sl.field.location")} hint={t("sl.field.locationHint")}>
+        <Input
+          value={value ?? ""}
+          onChange={(e) => onChange(e.target.value || null)}
+          placeholder={t("loc.placeholder")}
+        />
+      </Field>
+    );
+  }
+  return (
+    <Field
+      label={t("sl.field.location")}
+      hint={stale ? t("sl.field.locationStale") : t("sl.field.locationPick")}
+    >
+      <Select value={value ?? ""} onChange={(e) => onChange(e.target.value || null)}>
+        <option value="">{t("ss.popular.none")}</option>
+        {stale && <option value={value!}>{t("ss.popular.staleOption", { name: value! })}</option>}
+        {offered.map((l) => (
+          <option key={l} value={l}>
+            {l}
+          </option>
+        ))}
+      </Select>
+    </Field>
   );
 }

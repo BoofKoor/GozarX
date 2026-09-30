@@ -443,20 +443,21 @@ class SiteTrialService:
         )
 
     # --- public flow ----------------------------------------------------------------------------
-    async def available_locations(self, device: SiteDevice) -> list[str] | PanelError:
+    async def available_locations(self, device: SiteDevice | None) -> list[str] | PanelError:
         """Location names for the picker.
 
         Active device: its own live subscription map (what it can actually switch between). Fresh
-        device: the squad's LIVE names — previously a hand-maintained ``SITE_LOCATIONS`` snapshot
+        device — or none at all, for a caller with no cookie: the squad's LIVE names — previously a
+        hand-maintained ``SITE_LOCATIONS`` snapshot
         that nothing re-derived, so every host added, renamed or removed in Remnawave stayed
         invisible until an admin remembered to press a button. ``squad_locations`` falls back to the
         last successful derivation (and then to the stored list) when the panel is unreachable, so
         an outage degrades to slightly-stale rather than an empty picker.
         """
-        cached = await self._load_cache(device.uuid)
+        cached = await self._load_cache(device.uuid) if device is not None else None
         if cached is not None:
             return list(cached.links.keys())
-        if device.status == SiteDeviceStatus.active_config:
+        if device is not None and device.status == SiteDeviceStatus.active_config:
             try:
                 refreshed = await self._refresh_active(device)
             except RemnawaveError:

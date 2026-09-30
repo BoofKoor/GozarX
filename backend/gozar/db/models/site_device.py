@@ -60,9 +60,10 @@ class SiteDevice(Base):
     # hourly. Without it the site had NO visit signal at all: every "visitor" figure was really
     # "identities ever minted", which counts each cookieless client (crawlers, incognito reloads)
     # again on every request and can only ever grow.
-    # Defaulted at insert (a device was, at minimum, seen the moment it was minted) so the visitor
-    # windows never have to special-case NULL; it stays nullable only because the column was added
-    # to a live table.
+    # NULL for a device that was minted and never came back with its cookie: the minting request
+    # proves nothing (a cookieless client is minted a new identity on every request), so the site's
+    # identity dependency writes it UNSEEN and records a visit only once the cookie returns — see
+    # `SiteDeviceRepository.touch_seen`. The server default stays for rows created any other way.
     last_seen_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True, index=True, server_default=func.now()
     )

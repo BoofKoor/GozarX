@@ -984,6 +984,6 @@ async def refresh_squad_online(ctx: dict) -> None:
             }
         if not squads:
             return
-        count = await panel.squad_online_count(squads)
-        if count is not None:
-            await write_squad_online(redis, count)
+        activity = await panel.squad_online_count(squads)
+        if activity is not None:
+            await write_squad_online(redis, activity.online, activity.week)

@@ -8,7 +8,11 @@ query, so no pooled connection sits idle while the panel answers.
 "Online now" is scoped to the trial squad(s). Counting it means paging through every panel user, so
 it is never done here: the worker records it (``refresh_squad_online``) and this route reads the
 last recorded figure, asking for a fresh one when it is stale. Until one exists the panel-wide count
-stands in, flagged by ``online_squad_scoped = False``.
+stands in, flagged by ``online_squad_scoped = False``. Either way ``online_week`` comes from the
+SAME population, since the overview gauges one against the other.
+
+A panel figure the panel did not give is ``None``, never ``0``: "the panel carried 0 B" and "the
+panel did not answer" are opposite facts, and the old zeros drew the second as the first.
 """
 
 from __future__ import annotations
@@ -27,6 +31,7 @@ from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.usage_sample import UsageSampleRepository
 from gozar.db.repositories.user import UserRepository
+from gozar.remnawave.schemas import SystemStats
 from gozar.services.panel_cache import (
     SQUAD_ONLINE_FRESH,
     read_squad_online,
@@ -42,6 +47,7 @@ from gozar.services.stats import (
     zero_filled_daily,
     zero_filled_daily_pairs,
 )
+from gozar.services.trial import _DEFAULT_TRIAL_HOURS
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -64,10 +70,13 @@ def _retention_key(weeks: int) -> str:
 
 
 async def _online_now(
-    request: Request, settings: SettingsService, panel_wide: int
-) -> tuple[int, bool]:
-    """(online_now, squad_scoped): the last recorded trial-squad count when one exists, else the
-    panel-wide figure. Never pages the panel itself — see the module docstring."""
+    request: Request, settings: SettingsService, stats: SystemStats | None
+) -> tuple[int | None, int | None, bool]:
+    """``(online_now, online_week, squad_scoped)``: the last recorded trial-squad figures when they
+    exist, else the panel-wide pair — never one of each, since the gauge divides one by the other.
+    ``None`` when neither is known. Never pages the panel itself — see the module docstring."""
+    panel_now = stats.online_now if stats is not None else None
+    panel_week = stats.online_last_week if stats is not None else None
     squads = {
         s
         for s in (
@@ -77,13 +86,13 @@ async def _online_now(
         if s
     }
     if not squads:
-        return panel_wide, False
+        return panel_now, panel_week, False
     recorded = await read_squad_online(request.app.state.redis)
-    if recorded is None or recorded[1] > SQUAD_ONLINE_FRESH:
+    if recorded is None or recorded.age > SQUAD_ONLINE_FRESH:
         await request_squad_online_refresh(getattr(request.app.state, "arq", None))
     if recorded is None:
-        return panel_wide, False
-    return recorded[0], True
+        return panel_now, panel_week, False
+    return recorded.count, recorded.week, True
 
 
 class DayPoint(BaseModel):
@@ -99,6 +108,18 @@ class NamedCount(BaseModel):
 class Referrer(BaseModel):
     telegram_id: int
     referral_count: int
+
+
+class Metric(BaseModel):
+    """A windowed figure next to the same figure over the previous, equal-length window.
+
+    ``change_pct`` is ``None`` (not ``0.0``) when the baseline is zero or missing, so a first
+    window reads as "new" rather than "flat" — the frontend renders the two cases differently.
+    """
+
+    value: float | None
+    previous: float | None
+    change_pct: float | None
 
 
 class DashboardOut(BaseModel):
@@ -126,28 +147,43 @@ class DashboardOut(BaseModel):
     claimers_in_range: int
     claimers_prev_range: int
     claimers_delta_pct: float | None
-    # engagement (panel /system/stats)
-    online_now: int
+    #: ``active`` split by whether the trial window has actually elapsed. The status is healed only
+    #: by the panel webhook or the reconcile sweep, which skips users while the panel is down, so
+    #: the raw count overstates what is running (see ``UserRepository.active_config_split``).
+    active_live: int
+    active_stale: int
+    # engagement (panel /system/stats). ``None`` wherever the panel did not answer.
+    online_now: int | None
     online_squad_scoped: bool  # True: online_now counts only the trial squad(s); False: panel-wide
-    online_last_day: int
-    online_last_week: int
-    never_online: int
+    #: Seen online in the last 7 days, in the SAME population as ``online_now`` — the gauge's
+    #: denominator. The panel-wide week figure stays in ``online_last_week``.
+    online_week: int | None
+    online_last_day: int | None
+    online_last_week: int | None
+    never_online: int | None
     panel_online: bool  # whether the panel stats were reachable (frontend can dim panel-only cards)
     # trial health & traffic (panel)
     panel_status_counts: dict[str, int]
-    panel_total_users: int
-    total_traffic_bytes: int
-    nodes_online: int
+    panel_total_users: int | None
+    #: ``None`` when the panel is down OR answered without a usable traffic counter.
+    total_traffic_bytes: int | None
+    nodes_online: int | None
     # referral & conversion (DB)
-    conversion_pct: float
+    #: Of the users who signed up in the window, the share who have claimed — WINDOWED, with the
+    #: previous window's twin, because it sits on the radar beside three windowed rates.
+    conversion: Metric
+    #: Every claimer ever over every user ever. Lifetime, and named so.
+    conversion_pct_all_time: float
     reminder_enabled: int
     avg_referrals: float
     # series + breakdowns
     claims_series: list[DayPoint]
     signups_series: list[DayPoint]
-    languages: list[NamedCount]
-    top_locations: list[NamedCount]
-    top_referrers: list[Referrer]
+    languages: list[NamedCount]  # lifetime: every user's current language
+    top_locations: list[NamedCount]  # windowed, capped at ten
+    #: Distinct locations claimed in the window — what the ten-row list above leaves out.
+    locations_total: int
+    top_referrers: list[Referrer]  # lifetime: referral_count is a running total
 
 
 class HeatCell(BaseModel):
@@ -183,18 +219,6 @@ class SplitDayPoint(BaseModel):
     day: str
     new: int
     returning: int
-
-
-class Metric(BaseModel):
-    """A windowed figure next to the same figure over the previous, equal-length window.
-
-    ``change_pct`` is ``None`` (not ``0.0``) when the baseline is zero or missing, so a first
-    window reads as "new" rather than "flat" — the frontend renders the two cases differently.
-    """
-
-    value: float | None
-    previous: float | None
-    change_pct: float | None
 
 
 class ReferralCap(BaseModel):
@@ -249,6 +273,12 @@ def _pct(part: int, whole: int) -> float:
     return round(part / whole * 100, 1) if whole else 0.0
 
 
+def _pct_or_none(part: int, whole: int) -> float | None:
+    """A share of an EMPTY group is unknown, not 0%: an empty cohort's activation read as 0% and,
+    against a previous window that had one, as a 100% fall out of nothing."""
+    return round(part / whole * 100, 1) if whole else None
+
+
 @router.get("/stats", response_model=DashboardOut)
 async def dashboard_stats(
     request: Request,
@@ -288,7 +318,11 @@ async def dashboard_stats(
     signups = await user_repo.signups_daily(since)
     languages = await user_repo.language_breakdown()
     top_locations = await config_log_repo.location_counts(since)
+    locations_total = await config_log_repo.location_total(since)
     referrers = await user_repo.top_referrers()
+    conversion = await user_repo.signup_conversion(range=(since, None), prev=(prev_start, prev_end))
+    trial_hours = await settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS)
+    active_live, active_stale = await user_repo.active_config_split(trial_hours, now=now)
 
     total = users["total"]
     new_this_week = users["new_this_week"]
@@ -299,9 +333,14 @@ async def dashboard_stats(
     avg_referrals = round(users["referrals"] / total, 2) if total else 0.0
 
     # "Online now" scoped to the service's trial squad(s) — the panel-wide onlineNow also counts the
-    # operator's OWN personal squads. Read from what the worker recorded; see `_online_now`.
-    panel_wide = stats.online_now if stats is not None else users["active"]
-    online_now, online_squad_scoped = await _online_now(request, settings, panel_wide)
+    # operator's OWN personal squads. Read from what the worker recorded; see `_online_now`. With
+    # the panel down and nothing recorded it is unknown — it used to fall back to the DATABASE's
+    # active-config count, which is a different quantity drawn under the same label.
+    online_now, online_week, online_squad_scoped = await _online_now(request, settings, stats)
+    signed_up, converted = conversion["range"]
+    signed_up_prev, converted_prev = conversion["prev"]
+    conv_now = _pct_or_none(converted, signed_up)
+    conv_prev = _pct_or_none(converted_prev, signed_up_prev)
 
     return DashboardOut(
         total_users=total,
@@ -323,17 +362,25 @@ async def dashboard_stats(
         claimers_in_range=logs["claimers_in_range"],
         claimers_prev_range=logs["claimers_prev_range"],
         claimers_delta_pct=pct_change(logs["claimers_in_range"], logs["claimers_prev_range"]),
+        active_live=active_live,
+        active_stale=active_stale,
         online_now=online_now,
         online_squad_scoped=online_squad_scoped,
-        online_last_day=stats.online_last_day if stats else 0,
-        online_last_week=stats.online_last_week if stats else 0,
-        never_online=stats.never_online if stats else 0,
+        online_week=online_week,
+        online_last_day=stats.online_last_day if stats else None,
+        online_last_week=stats.online_last_week if stats else None,
+        never_online=stats.never_online if stats else None,
         panel_online=stats is not None,
         panel_status_counts=stats.status_counts if stats else {},
-        panel_total_users=stats.total_users if stats else 0,
-        total_traffic_bytes=stats.total_traffic_bytes if stats else 0,
-        nodes_online=stats.nodes_online if stats else 0,
-        conversion_pct=_pct(logs["claimers_all_time"], total),
+        panel_total_users=stats.total_users if stats else None,
+        total_traffic_bytes=(
+            stats.total_traffic_bytes if stats is not None and stats.traffic_known else None
+        ),
+        nodes_online=stats.nodes_online if stats else None,
+        conversion=Metric(
+            value=conv_now, previous=conv_prev, change_pct=pct_change(conv_now, conv_prev)
+        ),
+        conversion_pct_all_time=_pct(logs["claimers_all_time"], total),
         reminder_enabled=users["reminder_enabled"],
         avg_referrals=avg_referrals,
         claims_series=[
@@ -345,6 +392,7 @@ async def dashboard_stats(
         ],
         languages=[NamedCount(label=lang, count=n) for lang, n in languages],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
+        locations_total=locations_total,
         top_referrers=[Referrer(telegram_id=t, referral_count=n) for t, n in referrers],
     )
 
@@ -416,9 +464,11 @@ async def _compute_analytics(session: object, redis: object, window: int) -> Das
             change_pct=pct_change(median_h, median_prev),
         ),
         activation_24h=Metric(
-            value=_pct(within_24h, cohort),
-            previous=_pct(within_prev, cohort_prev),
-            change_pct=pct_change(_pct(within_24h, cohort), _pct(within_prev, cohort_prev)),
+            value=_pct_or_none(within_24h, cohort),
+            previous=_pct_or_none(within_prev, cohort_prev),
+            change_pct=pct_change(
+                _pct_or_none(within_24h, cohort), _pct_or_none(within_prev, cohort_prev)
+            ),
         ),
         first_claimers_in_range=cohort,
         claimers_all_time=claimers_all_time,
@@ -470,7 +520,8 @@ async def dashboard_retention(
             pass
     rows = await ConfigLogRepository(session).weekly_retention_cohorts(weeks)
     cohorts: list[CohortRow] = []
-    today = datetime.now(UTC).date()
+    # The LOCAL date: cohorts are local weeks, and a UTC "today" is still yesterday until 03:30.
+    today = datetime.now(DISPLAY_TZ).date()
     for week, size, offsets in rows:
         # A row is as long as the weeks that have ELAPSED for that cohort, not as long as the weeks
         # somebody happened to come back in. Sized from the data, a cohort where nobody returned in

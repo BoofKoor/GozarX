@@ -45,14 +45,15 @@ export function GaugeCard({
 }: {
   icon: LucideIcon;
   label: string;
-  value: number;
-  outOf: number;
+  /** `null`: not known right now (the panel did not answer) — drawn as "—" over an empty ring. */
+  value: number | null;
+  outOf: number | null;
   outOfLabel: string;
 }) {
   useIsDark(); // re-render on a theme flip so the ring colours re-resolve
   const r = 21;
   const c = 2 * Math.PI * r;
-  const frac = outOf > 0 ? Math.min(1, value / outOf) : 0;
+  const frac = value != null && outOf != null && outOf > 0 ? Math.min(1, value / outOf) : 0;
   return (
     <div className="flex items-center gap-3 rounded-[13px] bg-surface-raised px-[0.9rem] py-[0.8rem]">
       {/* Wraps rather than truncates — which is what the design's 1.4 line-height on this label is
@@ -77,10 +78,10 @@ export function GaugeCard({
       </div>
       <div className="shrink-0 text-end">
         <div className="text-[0.585rem] uppercase tracking-[0.085em] text-content-subtle">
-          {outOfLabel} {formatNumber(outOf)}
+          {outOfLabel} {outOf == null ? "—" : formatNumber(outOf)}
         </div>
         <div className="text-[1.4rem] font-bold leading-tight tracking-[-0.02em] tabular-nums text-content">
-          {formatNumber(value)}
+          {value == null ? "—" : formatNumber(value)}
         </div>
       </div>
     </div>
@@ -96,11 +97,14 @@ export function GaugeCard({
  */
 export function HealthRow({
   label,
+  hint,
   value,
   tone,
   last = false,
 }: {
   label: string;
+  /** A second, quieter line under the label — what the reading on the right leaves out. */
+  hint?: string;
   value: ReactNode;
   /** `idle`: no reading yet. Not `bad` — a red dot while the snapshot loads reads as an outage. */
   tone: "ok" | "warn" | "bad" | "idle";
@@ -120,7 +124,14 @@ export function HealthRow({
       )}
     >
       <span className={clsx("h-2 w-2 shrink-0 rounded-full ring-[3px]", DOT[tone])} aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-content-muted">{label}</span>
+      {hint ? (
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-content-muted">{label}</span>
+          <span className="block text-[0.7rem] leading-[1.35] text-warning-700">{hint}</span>
+        </span>
+      ) : (
+        <span className="min-w-0 flex-1 truncate text-content-muted">{label}</span>
+      )}
       {/* The reading is often a Latin unit next to a Persian sentence, so it is isolated. */}
       <b className="shrink-0 font-medium text-content" style={{ unicodeBidi: "isolate" }}>
         {value}
