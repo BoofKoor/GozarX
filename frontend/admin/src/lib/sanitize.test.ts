@@ -53,7 +53,9 @@ describe("htmlToText", () => {
   });
 
   it("never re-enables a link that leaves the site in disguise", () => {
-    for (const href of ["//evil.example", "/\\evil.example", "javascript:alert(1)"]) {
+    // A tab or newline anywhere is dropped by the URL parser: `/<TAB>/evil` is followed as `//evil`.
+    const hidden = ["/\t/evil.example", "/\n/evil.example", "https://ok.example\t@evil.example"];
+    for (const href of ["//evil.example", "/\\evil.example", "javascript:alert(1)", ...hidden]) {
       expect(sanitizeArticleHtml(`<a href="${href}">x</a>`)).not.toContain("<a href");
     }
   });

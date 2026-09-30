@@ -23,8 +23,11 @@ export function sanitizeArticleHtml(raw: string): string {
       .replace(new RegExp(`&lt;(/?(?:${TAGS}))\\s*/?&gt;`, "gi"), "<$1>")
       // Links: http(s), always opened safely — or an in-site path, which every default landing
       // uses (/locations, /faq, /guides) and which the preview used to print as raw text. Never
-      // `//host` or a backslash: browsers read `/\host` as `//host`, i.e. another site.
+      // `//host` or a backslash: browsers read `/\host` as `//host`, i.e. another site. And never
+      // with whitespace or a control character: the URL parser drops tabs and newlines ANYWHERE in
+      // a link, so `/<TAB>/evil.example` passed as in-site and was followed as `//evil.example`.
       .replace(/&lt;a\s+href=(&quot;|"|')([^"'&<>]+)\1&gt;/gi, (m, _q, href: string) => {
+        if (/[\s\u0000-\u001f\u007f]/.test(href)) return m;
         if (/^https?:\/\//i.test(href)) {
           return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">`;
         }
