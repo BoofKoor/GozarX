@@ -473,6 +473,7 @@ async def test_site_stats_compares_against_the_previous_window(
 
     body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
     assert body["visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
+    assert body["new_visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
     # change_pct is None (not 0.0) with no baseline, so a launch week reads as "new", not "flat".
     assert body["claimers"] == {"value": 1, "previous": 0, "change_pct": None}
 
@@ -512,6 +513,9 @@ async def test_visits_before_the_record_began_are_unknown_not_zero(
     body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
     assert body["visitors"] == {"value": 1, "previous": None, "change_pct": None}
     assert body["returning_visitors"]["previous"] is None
+    # Before the recorder, the mint itself counted as a visit (every cookieless page load a "new
+    # visitor"), so that window is not comparable either — unknown, not a fake drop.
+    assert body["new_visitors"] == {"value": 1, "previous": None, "change_pct": None}
     assert body["conversion_pct_prev"] is None
     assert body["visits_recorded_since"] is not None
     counts = [p["count"] for p in body["visitors_series"]]

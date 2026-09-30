@@ -222,7 +222,7 @@ class SplitDayPoint(BaseModel):
 
 
 class ReferralCap(BaseModel):
-    limit: int  # the configured reward cap (0 = uncapped)
+    limit: int  # the configured reward cap (0 = NO invite is rewarded: min(referrals, cap))
     at_cap: int  # inviters who have hit it and stopped earning
     with_referrals: int  # inviters with at least one successful invite
 

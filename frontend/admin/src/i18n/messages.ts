@@ -916,13 +916,13 @@ const FA = {
   "d.usage.mem": "حافظهٔ پنل {pct} از {total}",
   "d.usage.noBaseline": "بازهٔ قبلی برای مقایسه نیست",
   "d.usage.trafficDaily": "ترافیک روزانه",
-  "d.usage.trafficDaily.sub": "اختلاف شمارندهٔ تجمعی پنل بین دو روز",
+  "d.usage.trafficDaily.sub": "مجموع افزایش شمارندهٔ تجمعی پنل بین نمونه‌های ساعتی هر روز",
   "d.usage.online": "کاربران هم‌زمان",
   "d.usage.online.sub": "بیشترین تعداد هم‌زمان در هر روز",
   "d.usage.peakAt": "اوج {n}",
   "d.usage.resets": "{n} روز با ریست شمارنده",
   "d.usage.resets.note":
-    "شمارندهٔ ترافیک پنل در این روزها به عقب برگشته — ری‌استارت پنل، حذف و افزودن نود، یا ریست دستی ترافیک. مقدار واقعی آن روز قابل بازیابی نیست، پس صفر گزارش شده و ستون علامت خورده است.",
+    "شمارندهٔ ترافیک پنل در این روزها به عقب برگشته — ری‌استارت پنل، حذف و افزودن نود، یا ریست دستی ترافیک. ترافیکِ همان گامِ ریست قابل بازیابی نیست و صفر حساب شده، پس عدد آن روز حداقلِ ترافیک است و ستونش علامت خورده.",
   "d.usage.gap": "نمونه‌ای در این بازه ثبت نشده",
   "d.usage.gap.hint":
     "ثبت مصرف از {date} فعال است، اما در این بازه هیچ نمونه‌ای نوشته نشده. معمولاً یعنی ورکر بالا نیست یا پنل به کران ساعتی جواب نمی‌دهد — صفحهٔ سیستم را ببینید.",
@@ -1951,13 +1951,13 @@ const EN: Record<keyof typeof FA, string> = {
   "d.usage.mem": "Panel memory {pct} of {total}",
   "d.usage.noBaseline": "No previous window to compare",
   "d.usage.trafficDaily": "Daily traffic",
-  "d.usage.trafficDaily.sub": "The difference in the panel's cumulative counter between two days",
+  "d.usage.trafficDaily.sub": "How far the panel's cumulative counter climbed between each day's hourly samples",
   "d.usage.online": "Concurrent users",
   "d.usage.online.sub": "The highest number online on each day",
   "d.usage.peakAt": "Peak {n}",
   "d.usage.resets": "{n} days with a counter reset",
   "d.usage.resets.note":
-    "The panel's traffic counter went backwards on these days — a panel restart, a node removed and re-added, or a manual traffic reset. The real figure for that day cannot be recovered, so it reads zero and the bar is marked.",
+    "The panel's traffic counter went backwards on these days — a panel restart, a node removed and re-added, or a manual traffic reset. What was carried across the reset itself cannot be recovered and counts as zero, so that day's figure is a floor, and its bar is marked.",
   "d.usage.gap": "No samples recorded in this range",
   "d.usage.gap.hint":
     "Recording has been on since {date}, but nothing was written in this range. That usually means the worker is down or the panel is not answering the hourly cron — check the system page.",
