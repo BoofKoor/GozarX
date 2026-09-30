@@ -102,13 +102,15 @@ export function HealthRow({
 }: {
   label: string;
   value: ReactNode;
-  tone: "ok" | "warn" | "bad";
+  /** `idle`: no reading yet. Not `bad` — a red dot while the snapshot loads reads as an outage. */
+  tone: "ok" | "warn" | "bad" | "idle";
   last?: boolean;
 }) {
   const DOT = {
     ok: "bg-success-500 ring-success-500/20",
     warn: "bg-warning-500 ring-warning-500/20",
     bad: "bg-danger-500 ring-danger-500/20",
+    idle: "bg-content-subtle ring-content-subtle/20",
   };
   return (
     <div

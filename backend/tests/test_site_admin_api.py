@@ -124,14 +124,10 @@ async def test_site_settings_update_and_refresh_locations(site_client: httpx.Asy
     )
     assert r.status_code == 200
     assert r.json()["daily_limit_mb"] == 2048 and r.json()["streak_days"] == 5
-    # negatives are clamped to 0
-    assert (
-        await site_client.put("/api/admin/site/settings/", json={"referral_reward_mb": -9})
-    ).json()["referral_reward_mb"] == 0
-    # trial_hours is floored to 1 (never 0)
-    assert (await site_client.put("/api/admin/site/settings/", json={"trial_hours": 0})).json()[
-        "trial_hours"
-    ] == 1
+    # Out of range is refused with a 422 naming the field, never silently floored.
+    for bad in ({"referral_reward_mb": -9}, {"trial_hours": 0}, {"daily_limit_mb": 0}):
+        r = await site_client.put("/api/admin/site/settings/", json=bad)
+        assert r.status_code == 422, bad
     # refresh-locations needs a squad; 400 before setup
     assert (await site_client.post("/api/admin/site/settings/refresh-locations")).status_code == 400
     await site_client.post(

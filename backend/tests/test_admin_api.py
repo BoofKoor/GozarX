@@ -123,18 +123,31 @@ async def test_settings_put_partial_update(admin_client: httpx.AsyncClient) -> N
     assert body["trial_hours"] == 48
 
 
-async def test_settings_put_floors_negative_numerics(admin_client: httpx.AsyncClient) -> None:
-    # A negative daily_limit_mb makes compute_traffic_bytes go negative → every claim PanelError.
-    # trial_hours floors to 1; the rest to 0 (mirrors the site settings endpoint).
-    r = await admin_client.put(
-        "/api/admin/settings/",
-        json={"daily_limit_mb": -1024, "referral_reward_mb": -5, "trial_hours": 0},
+async def test_settings_put_refuses_out_of_range_numerics(admin_client: httpx.AsyncClient) -> None:
+    # A negative daily_limit_mb makes compute_traffic_bytes go negative → every claim PanelError,
+    # and 0 is UNLIMITED to Remnawave. Refused (naming the field) rather than silently floored.
+    before = (await admin_client.get("/api/admin/settings/")).json()
+    for bad in (
+        {"daily_limit_mb": -1024},
+        {"daily_limit_mb": 0},
+        {"referral_reward_mb": -5},
+        {"trial_hours": 0},
+        {"trial_hours": 10**9},  # timedelta overflow: every claim a 500
+    ):
+        r = await admin_client.put("/api/admin/settings/", json=bad)
+        assert r.status_code == 422, bad
+    assert (await admin_client.get("/api/admin/settings/")).json() == before
+
+
+async def test_the_bot_wizard_refuses_what_the_settings_page_refuses(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    # The wizard used to take anything: the same economy, reached through the other door.
+    r = await admin_client.post(
+        "/api/admin/setup/", json={"trial_squad": "sq-1", "daily_limit_mb": -1}
     )
-    assert r.status_code == 200
-    body = r.json()
-    assert body["daily_limit_mb"] == 0
-    assert body["referral_reward_mb"] == 0
-    assert body["trial_hours"] == 1
+    assert r.status_code == 422
+    assert (await admin_client.get("/api/admin/setup/status")).json()["completed"] is False
 
 
 async def test_settings_rejects_a_location_the_bot_squad_does_not_serve(

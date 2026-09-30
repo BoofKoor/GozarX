@@ -13,6 +13,13 @@ from pydantic import BaseModel
 
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.bounds import (
+    ConfigsPerPage,
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    TrialHours,
+)
 from gozar.web.routes.admin.site_locations import reject_unknown_locations
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -39,12 +46,12 @@ class SettingsOut(BaseModel):
 
 class SettingsPatch(BaseModel):
     locations: list[str] | None = None
-    daily_limit_mb: int | None = None
-    referral_reward_mb: int | None = None
-    referral_reward_limit: int | None = None
-    trial_hours: int | None = None
+    daily_limit_mb: DailyLimitMb | None = None
+    referral_reward_mb: RewardMb | None = None
+    referral_reward_limit: RewardLimit | None = None
+    trial_hours: TrialHours | None = None
     ads_enabled: bool | None = None
-    configs_per_page: int | None = None
+    configs_per_page: ConfigsPerPage | None = None
     ad_button_enabled: bool | None = None
     ad_button_text: str | None = None
     ad_button_url: str | None = None

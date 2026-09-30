@@ -19,6 +19,7 @@ import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { splitLocations } from "@/lib/format";
 import { resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -77,10 +78,10 @@ export function Setup() {
     }
     if (
       !allValidNumbers([
-        { value: econ.daily_limit_mb, min: 1 },
-        { value: econ.referral_reward_mb, min: 0 },
-        { value: econ.referral_reward_limit, min: 0 },
-        { value: econ.trial_hours, min: 1 },
+        { value: econ.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: econ.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: econ.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: econ.trial_hours, ...BOUNDS.trialHours },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -146,24 +147,28 @@ export function Setup() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("set.dailyLimit")}>
                 <NumberInput
-                  min={1}
+                  {...BOUNDS.dailyLimitMb}
                   value={econ.daily_limit_mb}
                   onChange={setNum("daily_limit_mb")}
                 />
               </Field>
               <Field label={t("set.trialHours")}>
-                <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
+                <NumberInput
+                  {...BOUNDS.trialHours}
+                  value={econ.trial_hours}
+                  onChange={setNum("trial_hours")}
+                />
               </Field>
               <Field label={t("set.rewardMb")}>
                 <NumberInput
-                  min={0}
+                  {...BOUNDS.rewardMb}
                   value={econ.referral_reward_mb}
                   onChange={setNum("referral_reward_mb")}
                 />
               </Field>
               <Field label={t("set.rewardLimit")}>
                 <NumberInput
-                  min={0}
+                  {...BOUNDS.rewardLimit}
                   value={econ.referral_reward_limit}
                   onChange={setNum("referral_reward_limit")}
                 />

@@ -17,6 +17,13 @@ from pydantic import BaseModel, Field
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.bounds import (
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    StreakDays,
+    TrialHours,
+)
 from gozar.web.routes.admin.site_locations import reject_unknown_locations, reject_unknown_squad
 
 logger = logging.getLogger("gozar.web.admin.site_setup")
@@ -35,14 +42,14 @@ class SiteSetupIn(BaseModel):
     trial_squad: str
     # Explicit allowlist (a subset of the squad's names); empty ⇒ every squad location, live.
     locations: list[str] = Field(default_factory=list)
-    trial_hours: int = 24
-    daily_limit_mb: int = 1024
-    referral_reward_mb: int = 500
-    referral_reward_limit: int = 10
-    reward_pwa_mb: int = 200
-    reward_push_mb: int = 200
-    reward_streak_mb: int = 200
-    streak_days: int = 3
+    trial_hours: TrialHours = 24
+    daily_limit_mb: DailyLimitMb = 1024
+    referral_reward_mb: RewardMb = 500
+    referral_reward_limit: RewardLimit = 10
+    reward_pwa_mb: RewardMb = 200
+    reward_push_mb: RewardMb = 200
+    reward_streak_mb: RewardMb = 200
+    streak_days: StreakDays = 3
 
 
 @router.get("/status", response_model=SiteSetupStatusOut)

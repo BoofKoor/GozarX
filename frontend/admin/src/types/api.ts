@@ -152,6 +152,8 @@ export interface ButtonAppearancePatch {
   labels: Partial<LabelMap> | null;
   is_visible: boolean;
   style?: ButtonStyle;
+  /** The screen the visibility applies to (labels and colour are always key-wide). */
+  screen?: string;
 }
 
 export interface ReorderItem {

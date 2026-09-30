@@ -111,8 +111,9 @@ async def test_referral_cap_stats(session):
     assert any_referrals == 2  # u1 (12) and u2 (3)
     assert at_cap == 1  # only u1 is at/over the cap
 
-    # A cap of 0 means "no cap configured" — nobody can be at it.
-    assert await users.referral_cap_stats(cap=0) == (0, 2)
+    # A cap of 0 rewards NO invite (the quota math is min(referrals, cap)), so every inviter is at
+    # it. It used to read as "no cap — unlimited", the opposite of what the bot does.
+    assert await users.referral_cap_stats(cap=0) == (2, 2)
 
 
 async def test_signups_hourly_weekday(session):

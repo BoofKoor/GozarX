@@ -47,6 +47,9 @@ export function ButtonEditor({ button, onClose }: { button: ButtonConfig; onClos
           labels: Object.keys(override).length ? override : null,
           is_visible: visible,
           style,
+          // Visibility belongs to the screen this was opened from; the label and colour are the
+          // button's everywhere. Key-wide, hiding change_location here hid it on two more screens.
+          screen: button.screen,
         },
       },
       {

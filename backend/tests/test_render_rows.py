@@ -113,3 +113,14 @@ def test_critical_button_can_be_colored() -> None:
     ov = ButtonOverrides({"back": Override(style="danger")})
     m = render_rows(Language.fa, structure, ov)
     assert m.inline_keyboard[0][0].style == "danger"  # criticals are pinned but still stylable
+
+
+def test_a_per_screen_override_applies_to_its_own_screen_only() -> None:
+    from gozar.ui.buttons import ButtonOverrides, Override
+
+    ov = ButtonOverrides(
+        {"menu_help": Override(screens={"other": {"visible": False, "row": 5, "position": 0}})}
+    )
+    assert ov.is_visible("menu_help", "other") is False
+    assert ov.is_visible("menu_help", "main_menu") is True
+    assert ov.row("menu_help", "other") == 5 and ov.row("menu_help") is None

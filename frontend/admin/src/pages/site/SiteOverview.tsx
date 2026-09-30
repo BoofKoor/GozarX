@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -40,8 +41,15 @@ const RANGE_DAYS = 14;
 
 export function SiteOverview() {
   const { t } = useI18n();
-  const { data: settings, isLoading: settingsLoading } = useSiteSettings();
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+    refetch: refetchSettings,
+  } = useSiteSettings();
   const { data: stats } = useSiteStats(RANGE_DAYS);
+  // A figure that has not arrived is «—», never a 0 that reads as "nobody came".
+  const n = (value: number | undefined) => (value === undefined ? "—" : formatNumber(value));
   const { data: pages } = useSiteLandingPages();
   const { data: unread } = useSiteUnreadCount();
   const { data: pushHistory } = useSitePushHistory();
@@ -71,6 +79,10 @@ export function SiteOverview() {
         <Card>
           <Skeleton className="h-24 w-full" />
         </Card>
+      ) : settingsError && !settings ? (
+        // A settings read that FAILED used to fall through to "not set up yet", sending the
+        // operator into the wizard to redo a setup that was fine.
+        <ErrorState onRetry={() => void refetchSettings()} />
       ) : !configured ? (
         <Card>
           <EmptyState
@@ -91,22 +103,24 @@ export function SiteOverview() {
                 identity count under the word "visitors", which only ever grows. */}
             <StatCard
               label={t("so.kpi.visitors", { days: formatNumber(RANGE_DAYS) })}
-              value={formatNumber(stats?.visitors.value ?? 0)}
+              value={n(stats?.visitors.value)}
               icon={Globe}
               tone="brand"
               delta={stats?.visitors.change_pct}
             />
             <StatCard
               label={t("so.kpi.claimers", { days: formatNumber(RANGE_DAYS) })}
-              value={formatNumber(stats?.claimers.value ?? 0)}
+              value={n(stats?.claimers.value)}
               icon={Download}
               tone="success"
               delta={stats?.claimers.change_pct}
-              hint={t("so.kpi.conversion", { pct: faPct(stats?.conversion_pct ?? 0) })}
+              hint={
+                stats ? t("so.kpi.conversion", { pct: faPct(stats.conversion_pct) }) : undefined
+              }
             />
             <StatCard
               label={t("so.kpi.subscribers")}
-              value={formatNumber(stats?.push_subscribers ?? 0)}
+              value={n(stats?.push_subscribers)}
               icon={BellRing}
               tone="warning"
             />
@@ -191,7 +205,7 @@ export function SiteOverview() {
                   label={t("so.reach.activeConfigs")}
                   value={
                     <span className="flex items-center gap-2">
-                      {formatNumber(stats?.active_configs_live ?? 0)}
+                      {n(stats?.active_configs_live)}
                       {(stats?.active_configs_stale ?? 0) > 0 && (
                         <Badge tone="warning">
                           {t("so.reach.stale", {

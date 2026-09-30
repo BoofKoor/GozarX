@@ -1,4 +1,5 @@
 import { Clock, Download, Globe2, Languages, MapPin, Radio, UserPlus } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { AreaTrend } from "@/components/charts/AreaTrend";
 import { HeroSparkline } from "@/components/charts/HeroSparkline";
@@ -6,8 +7,9 @@ import { RadarRates } from "@/components/charts/RadarRates";
 import { SidePanel } from "@/components/layout/chrome";
 import { Button } from "@/components/ui/Button";
 import { Segmented } from "@/components/ui/Segmented";
-import { t, useI18n } from "@/i18n";
+import { t, useI18n, type MessageKey } from "@/i18n";
 import { faPct, formatMs, formatNumber, humanBytes, langLabel, localizeDigits } from "@/lib/format";
+import { webhookState, type WebhookState } from "@/lib/health";
 import type { DashboardAnalytics, DashboardStats, Retention, SystemHealth } from "@/types/api";
 
 import { GaugeCard, HealthRow, SideHead } from "./SidePanel";
@@ -62,6 +64,26 @@ export function ticksFor(max: number): number[] {
   return [0, step, step * 2, step * 3, step * 4];
 }
 
+const WEBHOOK_TONE: Record<WebhookState, "ok" | "warn" | "bad" | "idle"> = {
+  checking: "idle",
+  off: "bad",
+  unreachable: "warn",
+  unregistered: "bad",
+  error: "warn",
+  backlog: "warn",
+  ok: "ok",
+};
+
+const WEBHOOK_LABEL: Record<WebhookState, MessageKey> = {
+  checking: "dash.health.checking",
+  off: "dash.health.webhookUnset",
+  unreachable: "dash.health.webhookUnreachable",
+  unregistered: "dash.health.webhookUnregistered",
+  error: "dash.health.webhookError",
+  backlog: "dash.health.webhookBacklog",
+  ok: "dash.health.webhookOk",
+};
+
 /**
  * The dashboard's overview: the KPI band, the activity trend, the "top" cards, and the side rail of
  * live figures.
@@ -92,6 +114,7 @@ export function Overview({
   exporting: boolean;
 }) {
   const { t } = useI18n();
+  const hook = webhookState(health);
   const claims = stats.claims_series;
   const signups = stats.signups_series;
   const maxY = Math.max(1, ...claims.map((d) => d.count), ...signups.map((d) => d.count));
@@ -119,7 +142,8 @@ export function Overview({
   // the server now sizes rows by ELAPSED weeks, so a cohort nobody returned to carries a real 0
   // instead of being dropped for looking the same as one that is two days old.
   const weekTwo = (() => {
-    const rows = (retention?.cohorts ?? []).filter((c) => c.retention.length > 1 && c.size > 0);
+    if (!retention) return null; // not loaded (or failed): no reading, not a 0%
+    const rows = retention.cohorts.filter((c) => c.retention.length > 1 && c.size > 0);
     const people = rows.reduce((a, c) => a + c.size, 0);
     if (!people) return 0;
     return rows.reduce((a, c) => a + c.retention[1] * c.size, 0) / people;
@@ -136,7 +160,8 @@ export function Overview({
   // Not chosen: the reminder opt-in rate, which measures 99.7% because the setting ships on. An
   // axis pinned to its own ceiling forever carries no information at all.
   const repeatRate = (() => {
-    const buckets = analytics?.claims_distribution ?? {};
+    if (!analytics) return null;
+    const buckets = analytics.claims_distribution;
     const claimers = Object.values(buckets).reduce((a, n) => a + n, 0);
     if (!claimers) return 0;
     return ((claimers - (buckets["1"] ?? 0)) / claimers) * 100;
@@ -334,7 +359,7 @@ export function Overview({
             },
             {
               label: t("dash.rate.activation"),
-              value: analytics?.activation_24h.value ?? 0,
+              value: analytics ? analytics.activation_24h.value : null,
               title: t("dash.rate.activationFull"),
             },
             { label: t("dash.rate.return"), value: weekTwo, title: t("dash.rate.returnFull") },
@@ -375,19 +400,19 @@ export function Overview({
         <div className="rounded-[13px] bg-surface-raised px-[0.9rem] py-1">
           <HealthRow
             label={t("dash.health.panel")}
-            tone={health?.panel.ok ? "ok" : "bad"}
-            value={health?.panel.latency_ms != null ? formatMs(health.panel.latency_ms) : "—"}
+            tone={!health ? "idle" : health.panel.ok ? "ok" : "bad"}
+            value={
+              !health
+                ? t("dash.health.checking")
+                : health.panel.latency_ms != null
+                  ? formatMs(health.panel.latency_ms)
+                  : "—"
+            }
           />
           <HealthRow
             label={t("dash.health.webhook")}
-            tone={!health?.webhook.configured ? "bad" : health.webhook.recent_error ? "warn" : "ok"}
-            value={
-              !health?.webhook.configured
-                ? t("dash.health.webhookUnset")
-                : health.webhook.recent_error
-                  ? t("dash.health.webhookError")
-                  : t("dash.health.webhookOk")
-            }
+            tone={WEBHOOK_TONE[hook]}
+            value={t(WEBHOOK_LABEL[hook], { n: formatNumber(health?.webhook.pending ?? 0) })}
           />
           <HealthRow
             label={t("dash.health.activeConfigs")}
@@ -405,13 +430,15 @@ export function Overview({
         {/* `py-1.5` takes the link from a 16px-tall target to 24 (WCAG 2.5.8's floor), and
             `text-brand-700` is the ramp's ink shade — `text-brand` is the FILL shade and measured
             3.14:1 here. */}
-        <a
-          href="/admin/system"
+        {/* A router link: an <a href> reloaded the whole console — every cached query gone, the
+            setup gate asked again — to move one page over. */}
+        <Link
+          to="/system"
           className="mt-1 inline-flex items-center gap-1.5 px-1 py-1.5 text-xs font-medium text-brand-700 hover:underline"
         >
           <Globe2 className="h-3.5 w-3.5" />
           {t("dash.health.more")}
-        </a>
+        </Link>
       </SidePanel>
     </div>
   );

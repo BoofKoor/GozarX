@@ -9,8 +9,9 @@ import { rosePath, rosePoints, spokeAngles } from "./geometry";
 
 export interface RadarAxis {
   label: string;
-  /** Percentage, 0–`max`. */
-  value: number;
+  /** Percentage, 0–`max` — or null when there is no reading (its query failed, or has not landed).
+   *  Drawn at the centre and labelled «—»: a 0% there claimed a rate nobody measured. */
+  value: number | null;
   /** Long form for the hover title. */
   title?: string;
 }
@@ -56,7 +57,9 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
   const angles = spokeAngles(axes.length);
   const at = (i: number, k: number) =>
     [CX + Math.cos(angles[i]) * R * k, CY + Math.sin(angles[i]) * R * k] as const;
-  const radii = axes.map((a) => (Math.max(0, Math.min(max, a.value)) / max) * R);
+  const clamp = (v: number | null) => Math.max(0, Math.min(max, v ?? 0));
+  const shown = (v: number | null) => (v === null ? "—" : faPct(v));
+  const radii = axes.map((a) => (clamp(a.value) / max) * R);
   const shape = rosePath(CX, CY, rosePoints(angles, radii));
 
   return (
@@ -120,10 +123,10 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
           outer ring for is a reading nobody finds when the shape stops halfway. Invisible, so the
           chart gains no marks the design does not have. */}
       {axes.map((axis, i) => {
-        const [px, py] = at(i, Math.max(0, Math.min(max, axis.value)) / max);
+        const [px, py] = at(i, clamp(axis.value) / max);
         return (
           <circle key={i} cx={px} cy={py} r="11" fill="transparent">
-            <title>{`${axis.title ?? axis.label} — ${faPct(axis.value)}`}</title>
+            <title>{`${axis.title ?? axis.label} — ${shown(axis.value)}`}</title>
           </circle>
         );
       })}
@@ -159,7 +162,7 @@ export function RadarRates({ axes, max = 100, className }: RadarRatesProps) {
               // is legible, one step smaller so the chart still reads as the design drew it.
               style={{ fontVariantNumeric: "tabular-nums" }}
             >
-              {faPct(axis.value)}
+              {shown(axis.value)}
             </text>
           </g>
         );

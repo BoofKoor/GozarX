@@ -23,6 +23,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { ButtonEditor } from "@/components/buttons/ButtonEditor";
+import { planReorder } from "@/components/buttons/reorder";
 import { TelegramPreview } from "@/components/buttons/TelegramPreview";
 import { Card } from "@/components/ui/Card";
 import { ErrorState } from "@/components/ui/ErrorState";
@@ -31,7 +32,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useButtons, useReorderButtons, useResetButton } from "@/hooks/useButtons";
 import { useI18n, type MessageKey } from "@/i18n";
 import { formatNumber } from "@/lib/format";
-import type { ButtonConfig, ReorderItem } from "@/types/api";
+import type { ButtonConfig } from "@/types/api";
 
 /** The screens the bot renders keyboards for. An unknown screen falls back to its raw key. */
 const SCREENS = [
@@ -122,7 +123,9 @@ function ScreenGroup({
       }));
   }, [buttons]);
 
-  const maxRow = rows.length ? Math.max(...rows.map((r) => r.row)) : -1;
+  // The drag list in the order the screen SHOWS. It was the API's order, so the preview animated
+  // the wrong neighbours out of the way while the drop landed somewhere else.
+  const visualKeys = rows.flatMap((r) => r.buttons.map((b) => b.key));
   // Passing an explicit list REPLACES dnd-kit's defaults rather than adding to them, so naming only
   // the pointer sensor dropped the keyboard one — and reordering is the entire job of this page.
   // The handle already announced itself as sortable (`aria-roledescription` comes from dnd-kit's
@@ -147,44 +150,16 @@ function ScreenGroup({
       return;
     }
 
-    let targetRow: number;
-    let dropAtKey: string | null = null;
-    if (overId.startsWith("rowzone-")) {
-      targetRow = Number(overId.slice("rowzone-".length));
-    } else if (overId === "newrow") {
-      targetRow = maxRow + 1;
-    } else {
-      const overBtn = buttons.find((b) => b.key === overId);
-      if (!overBtn) return;
-      targetRow = overBtn.effective_row;
-      dropAtKey = overId;
-    }
-    if (activeId === dropAtKey) return;
-
-    const layout = rows.map((r) => ({
-      row: r.row,
-      keys: r.buttons.map((b) => b.key).filter((k) => k !== activeId),
-    }));
-    let target = layout.find((r) => r.row === targetRow);
-    if (!target) {
-      target = { row: targetRow, keys: [] };
-      layout.push(target);
-    }
-    if (dropAtKey) {
-      const idx = target.keys.indexOf(dropAtKey);
-      target.keys.splice(idx < 0 ? target.keys.length : idx, 0, activeId);
-    } else {
-      target.keys.push(activeId);
-    }
-
-    const updates: ReorderItem[] = [];
-    layout
-      .filter((r) => r.keys.length > 0)
-      .sort((a, b) => a.row - b.row)
-      .forEach((r, rowIdx) =>
-        r.keys.forEach((key, posIdx) => updates.push({ key, row_index: rowIdx, position: posIdx })),
-      );
-    reorder.mutate(updates, { onError: () => toast.error(t("btn.reorderFailed")) });
+    const updates = planReorder(
+      rows.map((r) => ({ row: r.row, keys: r.buttons.map((b) => b.key) })),
+      activeId,
+      overId,
+    );
+    if (!updates) return;
+    reorder.mutate(
+      { screen, items: updates },
+      { onError: () => toast.error(t("btn.reorderFailed")) },
+    );
   }
 
   return (
@@ -212,7 +187,7 @@ function ScreenGroup({
             at the end, so on a 1440 screen the control for a row sat ~1400px from the row it acted
             on — a full horizontal traverse per edit, with only vertical alignment saying which
             pencil belonged to which button. */}
-        <SortableContext items={buttons.map((b) => b.key)} strategy={verticalListSortingStrategy}>
+        <SortableContext items={visualKeys} strategy={verticalListSortingStrategy}>
           <div className="max-w-3xl space-y-2">
             {rows.map((r) => (
               <RowZone

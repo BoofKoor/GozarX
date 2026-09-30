@@ -16,6 +16,13 @@ from pydantic import BaseModel
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.bounds import (
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    StreakDays,
+    TrialHours,
+)
 from gozar.web.routes.admin.site_locations import (
     offered_locations,
     reject_popular_outside_list,
@@ -48,14 +55,14 @@ class SiteSettingsOut(BaseModel):
 class SiteSettingsPatch(BaseModel):
     locations: list[str] | None = None
     popular_location: str | None = None  # "" clears it; None leaves it unchanged
-    trial_hours: int | None = None
-    daily_limit_mb: int | None = None
-    referral_reward_mb: int | None = None
-    referral_reward_limit: int | None = None
-    reward_pwa_mb: int | None = None
-    reward_push_mb: int | None = None
-    reward_streak_mb: int | None = None
-    streak_days: int | None = None
+    trial_hours: TrialHours | None = None
+    daily_limit_mb: DailyLimitMb | None = None
+    referral_reward_mb: RewardMb | None = None
+    referral_reward_limit: RewardLimit | None = None
+    reward_pwa_mb: RewardMb | None = None
+    reward_push_mb: RewardMb | None = None
+    reward_streak_mb: RewardMb | None = None
+    streak_days: StreakDays | None = None
 
 
 async def _read(settings: SettingsService) -> SiteSettingsOut:

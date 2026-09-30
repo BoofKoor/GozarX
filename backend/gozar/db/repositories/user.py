@@ -448,8 +448,13 @@ class UserRepository(BaseRepository):
 
     async def referral_cap_stats(self, cap: int) -> tuple[int, int]:
         """``(at_cap, any_referrals)`` for the configured reward cap — how many inviters have
-        hit the ceiling and stopped earning. A cap of 0 means "no cap configured", so nobody is
-        at it."""
+        hit the ceiling and stopped earning.
+
+        A cap of 0 means NO invite is rewarded (the quota math everywhere is
+        ``min(referrals, cap)``), so every inviter is already at it. It used to be reported as
+        "no cap configured — unlimited", the opposite of what the bot actually did: an operator who
+        set 0 for "no limit" had switched invite rewards off.
+        """
         any_referrals = int(
             await self.session.scalar(
                 select(func.count()).select_from(User).where(User.referral_count > 0)
@@ -457,7 +462,7 @@ class UserRepository(BaseRepository):
             or 0
         )
         if cap <= 0:
-            return 0, any_referrals
+            return any_referrals, any_referrals
         at_cap = int(
             await self.session.scalar(
                 select(func.count()).select_from(User).where(User.referral_count >= cap)

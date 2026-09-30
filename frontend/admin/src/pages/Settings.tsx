@@ -18,6 +18,7 @@ import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
 import { resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -112,11 +113,11 @@ export function Settings() {
     e.preventDefault();
     if (
       !allValidNumbers([
-        { value: form.daily_limit_mb, min: 1 },
-        { value: form.referral_reward_mb, min: 0 },
-        { value: form.referral_reward_limit, min: 0 },
-        { value: form.trial_hours, min: 1 },
-        { value: form.configs_per_page, min: 1 },
+        { value: form.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: form.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: form.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: form.trial_hours, ...BOUNDS.trialHours },
+        { value: form.configs_per_page, ...BOUNDS.configsPerPage },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -169,24 +170,28 @@ export function Settings() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.dailyLimit")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.dailyLimitMb}
                 value={form.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
             </Field>
             <Field label={t("set.trialHours")}>
-              <NumberInput min={1} value={form.trial_hours} onChange={setNum("trial_hours")} />
+              <NumberInput
+                {...BOUNDS.trialHours}
+                value={form.trial_hours}
+                onChange={setNum("trial_hours")}
+              />
             </Field>
             <Field label={t("set.rewardMb")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={form.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
             <Field label={t("set.rewardLimit")} hint={t("set.rewardLimit.hint")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardLimit}
                 value={form.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
@@ -199,7 +204,7 @@ export function Settings() {
           <div className="space-y-4">
             <Field label={t("set.perPage")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.configsPerPage}
                 value={form.configs_per_page}
                 onChange={setNum("configs_per_page")}
               />

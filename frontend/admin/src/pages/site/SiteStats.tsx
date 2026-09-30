@@ -77,7 +77,11 @@ export function SiteStats() {
   const [days, setDays] = useState(14);
   const { data, isError, refetch } = useSiteStats(days);
   // Same window as the funnel above — the range control moves the WHOLE page.
-  const { data: analytics } = useSiteAnalytics(days);
+  const {
+    data: analytics,
+    isError: analyticsError,
+    refetch: refetchAnalytics,
+  } = useSiteAnalytics(days);
 
   return (
     <div className="space-y-6">
@@ -118,6 +122,12 @@ export function SiteStats() {
 
           {analytics ? (
             <SiteAnalyticsSection data={analytics} />
+          ) : analyticsError ? (
+            <>
+              <Section title={t("st.deep")} />
+              {/* A failed query, not a slow one: skeletons here used to wait forever. */}
+              <ErrorState onRetry={() => void refetchAnalytics()} />
+            </>
           ) : (
             <>
               <Section title={t("st.deep")} />

@@ -243,7 +243,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 
 function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) {
   const { t } = useI18n();
-  const { data: device, isLoading } = useSiteDevice(uuid);
+  const { data: device, isLoading, isError, refetch } = useSiteDevice(uuid);
   const { data: peers } = useSiteDevicePeers(uuid);
   const action = useSiteDeviceAction();
   const confirm = useConfirm();
@@ -285,7 +285,10 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
         </Button>
       }
     >
-      {isLoading || !device ? (
+      {!device && isError ? (
+        // Failed, not slow: the spinner used to turn forever over a record that would never load.
+        <ErrorState compact onRetry={() => void refetch()} />
+      ) : isLoading || !device ? (
         <div className="flex justify-center py-10">
           <Spinner className="h-6 w-6 text-brand" />
         </div>
