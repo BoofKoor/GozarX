@@ -39,3 +39,21 @@ export function formatVolume(bytes: number, locale: Locale): string {
 export function formatMb(mb: number, locale: Locale): string {
   return formatVolume(mb * MB, locale);
 }
+
+// ONE way to name a few places in a sentence (C-53): «آلمان، هلند و فنلاند» / "Germany, Netherlands
+// and Finland", and past `max` «آلمان، هلند، فنلاند و بیشتر» / "… and more". Hand-joined rather than
+// Intl.ListFormat, whose Persian pattern is «آلمان، هلند، و فنلاند» with marks around the commas.
+// Callers pass LABELS (flags.locLabel), never remarks: the sentence is read, not matched.
+const LIST_WORDS: Record<Locale, { sep: string; and: string; more: string }> = {
+  fa: { sep: "، ", and: " و ", more: "بیشتر" },
+  en: { sep: ", ", and: " and ", more: "more" },
+};
+
+export function formatPlaces(names: string[], locale: Locale, max = 3): string | null {
+  if (names.length === 0) return null;
+  const w = LIST_WORDS[locale];
+  const shown = names.slice(0, max);
+  if (names.length > max) return `${shown.join(w.sep)}${w.and}${w.more}`;
+  if (shown.length === 1) return shown[0];
+  return `${shown.slice(0, -1).join(w.sep)}${w.and}${shown[shown.length - 1]}`;
+}

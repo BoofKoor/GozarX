@@ -5,6 +5,7 @@ import { Icon } from "@/components/Icon";
 import { translator } from "@/lib/i18n";
 import { FAQ_LABELS } from "@/lib/content";
 import { fetchFaqItems } from "@/lib/faq";
+import { fetchSiteCopy } from "@/lib/siteCopy";
 
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getLocale();
@@ -16,12 +17,15 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function FaqPage() {
+export default async function FaqPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const locale = await getLocale();
   // Panel-managed rows, falling back to the in-code list — see lib/faq.ts.
   const items = await fetchFaqItems(locale);
-  const t = translator(locale);
+  // `faq_sub` is a panel-editable key that no page read — its edits went nowhere. This is its page.
+  const t = translator(locale, (await fetchSiteCopy(locale)).overrides);
   const labels = FAQ_LABELS[locale];
+  // the 404 page's search box lands here with the words already typed
+  const q = (await searchParams).q;
   return (
     <>
       <div className="container">
@@ -31,12 +35,12 @@ export default async function FaqPage() {
             {t("nav_faq")}
           </span>
           <h1>{labels.title}</h1>
-          <p>{labels.sub}</p>
+          <p>{t("faq_sub")}</p>
         </div>
       </div>
       <section className="sec">
         <div className="container narrow">
-          <FaqList locale={locale} items={items} />
+          <FaqList locale={locale} items={items} initialQuery={typeof q === "string" ? q.slice(0, 80) : ""} />
         </div>
       </section>
     </>

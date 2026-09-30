@@ -79,6 +79,53 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "answer": "لوکیشن نزدیک‌تر را انتخاب کن و مطمئن شو حجم روزانه‌ات تمام نشده.",
         "position": 7,
     },
+    # Phase E (C-36): questions support kept answering by hand. A running install gets them from
+    # migration 5b7e2c9d4a61 — this seed runs once (the seeded_site_faq marker).
+    {
+        "locale": "fa",
+        "category": "trouble",
+        "question": "یک لوکیشن وصل نمی‌شود؛ باید تا کانفیگ بعدی صبر کنم؟",
+        "answer": (
+            "نه. تا وقتی کانفیگت فعال است، از صفحهٔ «کانفیگ من» می‌توانی لوکیشن دیگری "
+            "انتخاب کنی. لینک تازهٔ همان لوکیشن را در اپت وارد کن؛ حجم و زمان کانفیگ همان "
+            "قبلی است."
+        ),
+        "position": 8,
+    },
+    {
+        "locale": "fa",
+        "category": "trouble",
+        "question": "روی اینترنت همراه هم کار می‌کند؟",
+        "answer": (
+            "بله؛ کانفیگ به نوع اینترنت بستگی ندارد و روی وای‌فای و اینترنت همراه هر دو "
+            "قابل استفاده است. اختلال‌ها ولی بین اپراتورها فرق دارد؛ اگر روی یکی وصل نشد، "
+            "لوکیشن دیگری را امتحان کن."
+        ),
+        "position": 9,
+    },
+    {
+        "locale": "fa",
+        "category": "start",
+        "question": "چه اطلاعاتی از من نگه داشته می‌شود؟",
+        "answer": (
+            "برای دریافت کانفیگ نام، ایمیل یا شماره نمی‌گیریم. این مرورگر با یک کوکی "
+            "امضاشده شناخته می‌شود؛ یک اثر انگشت سبک مرورگر و هشی از محدودهٔ شبکه‌ات (نه "
+            "خود IP) هم فقط برای جلوگیری از سوءاستفاده نگه داشته می‌شود، و حجم مصرفی "
+            "کانفیگت برای سقف روزانه شمرده می‌شود. جزئیات در صفحهٔ حریم خصوصی است."
+        ),
+        "position": 10,
+    },
+    {
+        "locale": "fa",
+        "category": "trouble",
+        "question": "اگر سایت باز نشد، کانفیگم هم قطع می‌شود؟",
+        "answer": (
+            "نه. کانفیگی که در اپت وارد کرده‌ای به این سایت وابسته نیست و تا پایان زمانش "
+            "کار می‌کند. اگر قبلاً در همین مرورگر کانفیگ گرفته‌ای، آخرین لینکش برای صفحهٔ "
+            "آفلاین سایت هم نگه داشته می‌شود."
+        ),
+        "position": 11,
+    },
     {
         "locale": "en",
         "category": "start",
@@ -140,5 +187,51 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "question": "It's slow",
         "answer": "Pick a closer location and make sure your daily volume isn't used up.",
         "position": 7,
+    },
+    {
+        "locale": "en",
+        "category": "trouble",
+        "question": "A location won't connect — do I have to wait for my next config?",
+        "answer": (
+            "No. While your config is active you can pick another location on the “My "
+            "config” page. Import that location's new link into your app — your volume and "
+            "time stay the same."
+        ),
+        "position": 8,
+    },
+    {
+        "locale": "en",
+        "category": "trouble",
+        "question": "Does it work on mobile data?",
+        "answer": (
+            "Yes — the config doesn't depend on the kind of connection, so it works on "
+            "Wi-Fi and mobile data alike. Disruptions differ between carriers, though: if "
+            "it won't connect on one, try another location."
+        ),
+        "position": 9,
+    },
+    {
+        "locale": "en",
+        "category": "start",
+        "question": "What do you keep about me?",
+        "answer": (
+            "We take no name, email or phone number to claim a config. This browser is "
+            "recognised by a signed cookie; a light browser fingerprint and a hash of your "
+            "network range (not the IP itself) are kept only to prevent abuse, and your "
+            "config's usage is counted for the daily cap. The details are on the Privacy "
+            "page."
+        ),
+        "position": 10,
+    },
+    {
+        "locale": "en",
+        "category": "trouble",
+        "question": "If the site won't open, does my config stop working?",
+        "answer": (
+            "No. A config you've imported into your app doesn't depend on this site and "
+            "keeps working until its time is up. If you've claimed one in this browser "
+            "before, its last link is kept for the site's offline page too."
+        ),
+        "position": 11,
     },
 )

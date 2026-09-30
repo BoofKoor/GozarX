@@ -124,7 +124,9 @@ async def list_site_copy(
         stored.setdefault(row.key, {})[row.language.value] = row.body
 
     items: list[SiteCopyItem] = []
-    for group in ("seo", "hero", "widget", "sections", "push"):
+    # The order the editor shows them in. A group missing here is never listed at all — its keys
+    # stay writable but no field offers them — so a new group in SITE_COPY_GROUPS goes here too.
+    for group in ("seo", "hero", "widget", "sections", "about", "push"):
         for key, key_group in _known().items():
             if key_group != group:
                 continue

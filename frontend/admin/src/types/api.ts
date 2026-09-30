@@ -748,7 +748,7 @@ export interface SitePushLog {
 // --- Phase 5: website copy editor (/api/admin/site/content) ---
 export interface SiteCopyItem {
   key: string;
-  group: string; // seo | hero | widget | sections | push
+  group: string; // seo | hero | widget | sections | about | push
   fa: string;
   en: string;
   /** What the site renders when the row is blank — its in-code / seeded copy. */

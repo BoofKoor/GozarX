@@ -72,3 +72,26 @@ export function IosSteps({ locale, onClose }: { locale: Locale; onClose: () => v
     </Overlay>
   );
 }
+
+// Notifications blocked at the browser level: where to unblock them. Shared by the rewards card's
+// push mission and the settings switch, which used to sit disabled with no word of why (C-20).
+export function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void }) {
+  const t = translator(locale);
+  return (
+    <Overlay onClose={onClose}>
+      <div className="push-head">
+        <span className="push-ic" style={{ background: "var(--danger-surface)", color: "var(--danger-ink)" }}>
+          <Icon name="bell" sw={2} />
+        </span>
+        <div>
+          <OverlayTitle>{t("ps_bl_h")}</OverlayTitle>
+          <p className="msub">{t("ps_bl_d")}</p>
+        </div>
+      </div>
+      <p className="hint" dangerouslySetInnerHTML={{ __html: t("ps_bl_hint") }} />
+      <button className="btn ghost block" style={{ marginBlockStart: 14 }} onClick={onClose}>
+        {t("common.close")}
+      </button>
+    </Overlay>
+  );
+}

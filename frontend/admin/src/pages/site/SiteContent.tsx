@@ -24,13 +24,14 @@ const GROUP_LABELS: Record<string, { title: MessageKey; sub: MessageKey }> = {
   hero: { title: "sc.group.hero", sub: "sc.group.hero.sub" },
   widget: { title: "sc.group.widget", sub: "sc.group.widget.sub" },
   sections: { title: "sc.group.sections", sub: "sc.group.sections.sub" },
+  about: { title: "sc.group.about", sub: "sc.group.about.sub" },
   push: {
     title: "sc.group.push",
     sub: "sc.group.push.sub",
   },
 };
 
-const GROUP_ORDER = ["seo", "hero", "widget", "sections", "push"];
+const GROUP_ORDER = ["seo", "hero", "widget", "sections", "about", "push"];
 
 /** Long-form keys get a textarea; the rest a single-line input. */
 const MULTILINE = /(_sub|_description|_body)$/;

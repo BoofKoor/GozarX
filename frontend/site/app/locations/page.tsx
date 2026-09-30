@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
-import { translator } from "@/lib/i18n";
+import { fill, translator } from "@/lib/i18n";
+import { formatPlaces } from "@/lib/format";
+import { fetchPublicLocations } from "@/lib/publicData";
+import { locLabel } from "@/components/widget/flags";
 import { fetchLandings } from "@/lib/landing";
 import { breadcrumbLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
@@ -24,7 +27,13 @@ export default async function LocationsPage() {
   const locale = await getLocale();
   const t = translator(locale);
   // Location landings for the "popular location guides" cards (graceful []: grid still renders).
-  const locLandings = (await fetchLandings(locale)).filter((s) => s.location_remark);
+  const [landings, live] = await Promise.all([fetchLandings(locale), fetchPublicLocations()]);
+  const locLandings = landings.filter((s) => s.location_remark);
+  // The intro names the places the squad serves right now (C-53) — it claimed "dozens of countries,
+  // from Germany and the USA to Turkey and the UAE" whatever the squad held. Without the list the
+  // sentence goes rather than guessing.
+  const places = live ? formatPlaces(live.map((n) => locLabel(n, locale)), locale, 4) : null;
+  const intro = fill(t("loc_page_p1"), { locs: places }) ?? t("loc_page_p1_any");
 
   return (
     <section className="sec locations-page">
@@ -42,7 +51,7 @@ export default async function LocationsPage() {
         </div>
 
         <div className="loc-intro">
-          <p>{t("loc_page_p1")}</p>
+          <p>{intro}</p>
           <p>{t("loc_page_p2")}</p>
         </div>
 

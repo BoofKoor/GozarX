@@ -23,9 +23,10 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-// Contact page — faithful reproduction of the design's `vContact`: page head + a two-column layout
-// with the mission/deflect blurb (deflecting to FAQ + guides) on one side and the contact form on
-// the other. No email/social — the form is the only support channel.
+// Contact page — the design's `vContact` two-column layout: a short "write to us" blurb that
+// deflects to the FAQ and the guides on one side, the form on the other. It used to open with the
+// About page's heading and both of its paragraphs (C-33); /about is its own page now. No
+// email/social — the form is the only support channel.
 export default async function ContactPage() {
   const locale = await getLocale();
   const t = translator(locale);
@@ -37,15 +38,17 @@ export default async function ContactPage() {
             <Icon name="mail" sw={2.2} />
             {t("v_contact")}
           </span>
-          <h1>{t("about_title")}</h1>
+          <h1>{t("contact.title")}</h1>
         </div>
       </div>
       <section className="sec" style={{ paddingBlockStart: 20 }}>
         <div className="container">
           <div className="two">
             <div className="mission">
-              <p className="lead">{t("about_lead")}</p>
-              <p>{t("about_body")}</p>
+              <p className="lead">{t("contact.sub")}</p>
+              <p>
+                {t("contact.about")} <Link href="/about">{t("about_title")}</Link>
+              </p>
               <div className="deflect">
                 <h2>{t("about_deflect")}</h2>
                 <Link href="/faq">

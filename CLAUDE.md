@@ -345,6 +345,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   and language control; location names follow the visitor's language (`locLabel`: "Germany" in
   the English UI, never the Persian remark); and every volume prints through one `formatVolume`,
   which ended the reversed «GB ۱». `docs/website/audit/accept_d.py` checks all of it.
+25 The site audit's Phase E: content, information architecture and trust. The status page is «کانفیگ
+  من» — the brand is "no account", and the page was called «حساب کاربری». /about and /contact are
+  two pages (they were one text under two URLs), About's prose editable in the panel and its "how it
+  stays free" deliberately neutral until the operator says. The legal pages get the design's
+  numbered, sticky contents and a date printed from one ISO constant; a 404 with a search into the
+  FAQ, an error boundary, and an offline page that hands back the last config the browser was shown
+  (so does the widget when /status is unreachable). The home FAQ is the panel's first five, the
+  locations copy names the squad's live list, the config link has a QR code, and a restore that
+  would replace this browser's data asks first. `docs/website/audit/accept_e.py` checks all of it.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -620,9 +629,10 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   `fill()` (`lib/i18n`), which returns `null` when a value is missing — the caller hides the sentence
   rather than print a guess or a raw `{h}`. The hero promised «هر ۲۴ ساعت» and «+۱۲٬۰۰۰ کاربر»:
   constants no setting or count could ever move.
-- **A server render reads only DEVICE-INDEPENDENT endpoints** — `/config`, `/stats`, site copy,
-  landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`). Never `/status`: reading it mints
-  a device.
+- **A server render reads only DEVICE-INDEPENDENT endpoints** — `/config`, `/stats`, `/locations`,
+  site copy, landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`, `lib/faq`). Never
+  `/status`: reading it mints a device. `/locations` takes an OPTIONAL device, so a cookieless server
+  read resolves none and mints none.
 - **Seeded copy changes by MIGRATION as well as in the seed.** `add_default` inserts only what is
   absent, so a reworded default never reaches a running install. Update the rows that still hold the
   OLD text verbatim (`4a1e7c9d2f80`, `a42488f9321a`) and nothing an operator wrote. The site's in-code
@@ -732,6 +742,32 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   second; the App Store platforms say that store has no Iranian storefront and needs another
   country's Apple ID. A guide step's screenshot is an ASSET drop — `public/guides/<platform>/<n>.webp`
   appears under step n once it exists; none ship until real captures of Happ do.
+- **The site names only what the squad serves.** A sentence that lists places fills `{locs}` from
+  the live list — `formatPlaces` (`lib/format`) over `locLabel`s, «آلمان، هلند و فنلاند», then «… و
+  بیشتر» — and drops the clause when there is no list. The old copy named Ukraine, Germany and the
+  USA, and "dozens of countries … to the UAE", whatever the squad held.
+- **A panel-editable key must be read by a page, and its group listed by the editor.** `faq_sub`
+  was editable and rendered nowhere; the About group's keys were writable but `admin/site_content`
+  orders its groups by hand, so none was offered. `test_lists_every_editable_key_with_its_default`
+  fails on the second; grep the site for the first.
+- **The last config a browser was shown is kept for when the network is gone** (`lib/lastConfig`),
+  and only on what the SERVER confirmed: a live config saves it, "none" clears it, an unreachable
+  server changes nothing. `/offline` reads it from an INLINE script into an opaque slot
+  (`dangerouslySetInnerHTML`): offline, the page's JS chunks may be in no cache, and a hydration that
+  does happen deletes extra children of an ordinary element but leaves an opaque one alone. S8
+  shows it too — offline, the service worker serves the cached home and status shells, not only
+  /offline. A change to the stored shape changes both readers; a change to the shell bumps `CACHE`.
+- **A FAQ question added to the seed needs a migration as well**, because FAQ items are seeded ONCE.
+  It inserts only into a table that already has rows — on a fresh install migrations run before the
+  seeder, and a row there would make the seeder's `has_any()` skip every default — after the
+  locale's last position, `ON CONFLICT (locale, question) DO NOTHING`. A test holds the migration's
+  rows to the seed's (`5b7e2c9d4a61`).
+- **A legal date is ONE ISO constant** (`LEGAL_UPDATED_AT`), printed per locale and month first —
+  ICU's Persian month-year pattern is «۱۴۰۵ مهر». Change it in the same commit as the legal text; the
+  «تیر ۱۴۰۴» it replaced was the design mockup's placeholder, not a date anything happened on.
+- **A QR code is black on white in both themes**, one SVG path with the spec's four-module quiet
+  zone, and its encoder (`uqr`) is imported on the first open — a visitor who never asks downloads
+  nothing.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

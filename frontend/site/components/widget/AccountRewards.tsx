@@ -10,7 +10,7 @@ import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
 import { MB, formatMb, volumeParts } from "@/lib/format";
-import { IosSteps, Overlay, OverlayTitle } from "@/components/widget/Overlay";
+import { BlockedHint, IosSteps, Overlay, OverlayTitle } from "@/components/widget/Overlay";
 
 // Account rewards card — the daily-claim streak (day-dots) + the three ways to grow the daily
 // allowance (invite / install the web app / enable notifications). Unlike the old decorative strip,
@@ -463,27 +463,6 @@ function PushPrompt({
           <Icon name="bell" sw={2.2} /> {t("pre_on")}
         </button>
       </div>
-    </Overlay>
-  );
-}
-
-function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void }) {
-  const t = translator(locale);
-  return (
-    <Overlay onClose={onClose}>
-      <div className="push-head">
-        <span className="push-ic" style={{ background: "var(--danger-surface)", color: "var(--danger-ink)" }}>
-          <Icon name="bell" sw={2} />
-        </span>
-        <div>
-          <OverlayTitle>{t("ps_bl_h")}</OverlayTitle>
-          <p className="msub">{t("ps_bl_d")}</p>
-        </div>
-      </div>
-      <p className="hint" dangerouslySetInnerHTML={{ __html: t("ps_bl_hint") }} />
-      <button className="btn ghost block" style={{ marginBlockStart: 14 }} onClick={onClose}>
-        {t("common.close")}
-      </button>
     </Overlay>
   );
 }

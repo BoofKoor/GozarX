@@ -14,6 +14,7 @@
 | B | [`07-phase-b.md`](07-phase-b.md)، [`accept_b.py`](accept_b.py)، [`shots/phase-b/`](shots/phase-b/) | اجرای فاز B: پذیرش خودکار در زمان واقعی (۱۵ بررسی)، شاهدها |
 | C | [`08-phase-c.md`](08-phase-c.md)، [`accept_c.py`](accept_c.py)، [`shots/phase-c/`](shots/phase-c/) | اجرای فاز C: دکمه در صفحهٔ اول موبایل، مسیرهای ورود به ویجت، پذیرش خودکار (۳۶ بررسی)، شاهدها |
 | D | [`09-phase-d.md`](09-phase-d.md)، [`accept_d.py`](accept_d.py)، [`shots/phase-d/`](shots/phase-d/) | اجرای فاز D: تلهٔ فوکوس، هدف لمسی ۴۴px، تم سه‌حالته، نام بومی لوکیشن، یک فرمت‌گر حجم (۱۲ بررسی)، شاهدها |
+| E | [`10-phase-e.md`](10-phase-e.md)، [`accept_e.py`](accept_e.py)، [`shots/phase-e/`](shots/phase-e/) | اجرای فاز E: «کانفیگ من»، دربارهٔ ما/تماس جدا، صفحات حقوقی، ۴۰۴/خطا/آفلاین، یک منبع FAQ، متن صادق، QR (۱۱ بررسی)، شاهدها |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -32,9 +33,11 @@ python3 docs/website/audit/probe_extra.py /tmp/shots
 python3 docs/website/audit/accept_b.py /tmp/shots     # رفتار جریان دریافت در طول زمان (~۲ دقیقه)
 python3 docs/website/audit/accept_c.py /tmp/shots     # فولد موبایل و مسیرهای ورود به ویجت (~۲ دقیقه)
 python3 docs/website/audit/accept_d.py /tmp/shots     # کیبورد، هدف لمسی، تم، زبان و حجم (~۳ دقیقه)
+pip install zxing-cpp                                 # اختیاری: accept_e کد QR را واقعاً رمزگشایی می‌کند
+python3 docs/website/audit/accept_e.py /tmp/shots     # نام‌ها، صفحات محتوا، ۴۰۴/آفلاین، FAQ، QR (~۲ دقیقه)
 ```
 
-`mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`، `mock_refs`)
+`mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`، `mock_refs`، `mock_hist`)
 — جدول کامل در docstring همان فایل. دو عددی که صفحهٔ اول **سمت سرور** می‌خواند از کوکی نمی‌آیند و با
 متغیر محیطی تنظیم می‌شوند: `MOCK_TRIAL_HOURS` (پیش‌فرض ۲۴) و `MOCK_DELIVERED` (پیش‌فرض ۴۸۲۱۳؛ زیر ۱۰۰۰ چیپ
 پنهان می‌شود).
