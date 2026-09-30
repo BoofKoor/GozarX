@@ -6,11 +6,19 @@ default beside every field so the operator can see what a key currently says and
 
 Two families live here:
 
-* ``site_hero_*`` / ``site_meta_*`` — the original four keys, kept under their existing names so
-  nothing that already reads them changes.
+* ``site_hero_*`` / ``site_meta_*`` / ``site_push_*`` — SEEDED keys, kept under their existing
+  names so nothing that already reads them changes. The seed writes their default into the row on
+  install, so the default is a stored STRING: clearing one writes that string back, and "custom"
+  means "differs from it" rather than "non-blank".
 * ``site_copy_<designKey>`` — overrides for the allowlisted design-copy strings. An absent or blank
   row means "use the site's in-code copy", which is why clearing a box RESTORES the default instead
   of blanking a heading on the live site.
+
+The two families used to share the second rule, and for a seeded key it is wrong twice over. Every
+seeded key read as "custom" on a fresh install (its row is non-blank from day one), each with a
+reset button — and the reset stored ``""``, which blanked the homepage's title, meta description
+and hero subtitle and made the expired/limited push nudges render as ``[site_push_…]``: a push
+has no in-code copy to fall back to.
 """
 
 from __future__ import annotations
@@ -70,6 +78,10 @@ class SiteCopyPatch(BaseModel):
     en: str | None = None
 
 
+#: The keys whose default is a stored string rather than the absence of a row.
+_SEEDED_KEYS = frozenset(k for ks in _SEEDED_GROUPS.values() for k in ks)
+
+
 def _known() -> dict[str, str]:
     """``{content key: group}`` for everything this editor may touch."""
     keys = {k: group for group, ks in _SEEDED_GROUPS.items() for k in ks}
@@ -77,12 +89,29 @@ def _known() -> dict[str, str]:
     return keys
 
 
-def _defaults(key: str, group: str) -> tuple[str, str]:
-    if key in {k for ks in _SEEDED_GROUPS.values() for k in ks}:
+def _defaults(key: str) -> tuple[str, str]:
+    if key in _SEEDED_KEYS:
         seeded = DEFAULT_SITE_CONTENT.get(key, {})
         return seeded.get(Language.fa, ""), seeded.get(Language.en, "")
     design = key.removeprefix("site_copy_")
     return default_for(design, Language.fa), default_for(design, Language.en)
+
+
+def _item(key: str, group: str, fa: str, en: str) -> SiteCopyItem:
+    default_fa, default_en = _defaults(key)
+    if key in _SEEDED_KEYS:
+        overridden = (fa.strip(), en.strip()) != (default_fa.strip(), default_en.strip())
+    else:
+        overridden = bool(fa.strip() or en.strip())
+    return SiteCopyItem(
+        key=key,
+        group=group,
+        fa=fa,
+        en=en,
+        default_fa=default_fa,
+        default_en=default_en,
+        overridden=overridden,
+    )
 
 
 @router.get("/", response_model=list[SiteCopyItem])
@@ -99,20 +128,9 @@ async def list_site_copy(
         for key, key_group in _known().items():
             if key_group != group:
                 continue
-            default_fa, default_en = _defaults(key, group)
             fa = stored.get(key, {}).get("fa", "")
             en = stored.get(key, {}).get("en", "")
-            items.append(
-                SiteCopyItem(
-                    key=key,
-                    group=group,
-                    fa=fa,
-                    en=en,
-                    default_fa=default_fa,
-                    default_en=default_en,
-                    overridden=bool(fa.strip() or en.strip()),
-                )
-            )
+            items.append(_item(key, group, fa, en))
     return items
 
 
@@ -130,22 +148,21 @@ async def update_site_copy(
         raise HTTPException(404, "unknown site copy key")
 
     content = ContentService(session, request.app.state.redis)
-    for lang, value in ((Language.fa, body.fa), (Language.en, body.en)):
-        if value is not None:
-            # An empty string is stored as-is; the public endpoint treats a blank row as "not
-            # overridden", so clearing the box is how the operator reverts to the site's own copy.
-            await content.set(key, lang, value.strip(), True)
+    default_fa, default_en = _defaults(key)
+    for lang, value, default in (
+        (Language.fa, body.fa, default_fa),
+        (Language.en, body.en, default_en),
+    ):
+        if value is None:
+            continue
+        value = value.strip()
+        if not value and key in _SEEDED_KEYS:
+            # Clearing a seeded key restores its seed default. A blank design-copy row means "use
+            # the in-code copy"; a seeded key has none behind it on the push path.
+            value = default
+        await content.set(key, lang, value, True)
 
-    rows = [r for r in await ContentRepository(session).all() if r.key == key]
-    fa = next((r.body for r in rows if r.language is Language.fa), "")
-    en = next((r.body for r in rows if r.language is Language.en), "")
-    default_fa, default_en = _defaults(key, known[key])
-    return SiteCopyItem(
-        key=key,
-        group=known[key],
-        fa=fa,
-        en=en,
-        default_fa=default_fa,
-        default_en=default_en,
-        overridden=bool(fa.strip() or en.strip()),
-    )
+    repo = ContentRepository(session)
+    fa = await repo.get_body(key, Language.fa) or ""
+    en = await repo.get_body(key, Language.en) or ""
+    return _item(key, known[key], fa, en)

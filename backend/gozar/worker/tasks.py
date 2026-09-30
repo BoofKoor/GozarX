@@ -72,6 +72,8 @@ logger = logging.getLogger("gozar.worker.tasks")
 # latency; the chunk is then paced so the running average stays at _SEND_RATE.
 _CONCURRENCY = 20
 _SEND_RATE = 25  # messages/second ceiling
+#: How often a logged broadcast writes its running counts back to its row (sends between writes).
+_CHECKPOINT_EVERY = 500
 
 
 def _should_remove(exc: Exception) -> bool:
@@ -131,6 +133,9 @@ async def _broadcast_loop(
     only_active: bool = False,
     only_referrers: bool = False,
     refine: bool = False,
+    progress: dict[str, int] | None = None,
+    on_start: object | None = None,
+    on_checkpoint: object | None = None,
 ) -> tuple[int, int, int]:
     """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
     applying the strict removal allowlist + a bounded-concurrency, rate-capped throttle + progress.
@@ -144,6 +149,11 @@ async def _broadcast_loop(
     endpoint that showed the operator a recipient count, so the number they read before pressing
     send is the number of people this walks. The BOT's own fan-out keeps its historical audience —
     literally every user — because narrowing it here would silently change what ``/admin`` does.
+
+    ``progress`` (if given) holds the running ``sent``/``failed``/``removed`` counts as they
+    change, so a caller whose job is CANCELLED mid-send — a worker restart, which every deploy is —
+    can still record how far it got. ``on_start(total)`` and ``on_checkpoint()`` are awaited once
+    the audience is known and every few hundred sends, for callers that persist those counts.
     """
     async with sessionmaker() as session:  # type: ignore[operator]
         repo = UserRepository(session)
@@ -159,8 +169,13 @@ async def _broadcast_loop(
     total = len(ids)
     sent = failed = removed = 0
     to_remove: list[int] = []
-    progress = await _send(bot, admin_id, f"📣 Sending to {total} users…")
+    counts = progress if progress is not None else {}
+    counts.update(sent=0, failed=0, removed=0)
+    if on_start is not None:
+        await on_start(total)  # type: ignore[operator]
+    progress_msg = await _send(bot, admin_id, f"📣 Sending to {total} users…")
     last_edit = 0
+    last_checkpoint = 0
 
     for start in range(0, total, _CONCURRENCY):
         chunk = ids[start : start + _CONCURRENCY]
@@ -196,13 +211,17 @@ async def _broadcast_loop(
                     failed += 1
 
         done = sent + failed + removed
+        counts.update(sent=sent, failed=failed, removed=removed)
         if done - last_edit >= 100:
             last_edit = done
             await _edit(
                 bot,
-                progress,
+                progress_msg,
                 f"📣 {done}/{total} · sent {sent} · failed {failed} · removed {removed}",
             )
+        if on_checkpoint is not None and done - last_checkpoint >= _CHECKPOINT_EVERY:
+            last_checkpoint = done
+            await on_checkpoint()  # type: ignore[operator]
 
         # Rate cap: hold each chunk to at least len(chunk)/_SEND_RATE seconds so the running average
         # stays under Telegram's ceiling even though the chunk itself was sent concurrently.
@@ -220,7 +239,7 @@ async def _broadcast_loop(
 
     await _edit(
         bot,
-        progress,
+        progress_msg,
         f"✅ Done · {total} users · sent {sent} · failed {failed} · removed {removed}",
     )
     return sent, failed, removed
@@ -285,7 +304,14 @@ async def broadcast_text(
     async def send_one(uid: int) -> None:
         await bot.send_message(uid, text, parse_mode="HTML", reply_markup=markup)
 
-    await _mark_broadcast_sending(sessionmaker, log_id)
+    counts: dict[str, int] = {}
+
+    async def started(total: int) -> None:
+        await _mark_broadcast_sending(sessionmaker, log_id, recipients=total)
+
+    async def checkpoint() -> None:
+        await _record_broadcast_progress(sessionmaker, log_id, counts)
+
     try:
         sent, failed, removed = await _broadcast_loop(
             bot,
@@ -296,22 +322,55 @@ async def broadcast_text(
             only_active=only_active,
             only_referrers=only_referrers,
             refine=True,
+            progress=counts,
+            on_start=started,
+            on_checkpoint=checkpoint,
         )
-    except Exception:
-        # The fan-out could not run at all. Recording that is the whole point of the row: without
-        # it the history would sit on "sending" forever and look like a job still in flight.
-        logger.exception("broadcast_text: fan-out failed")
-        await _finish_broadcast_log(sessionmaker, log_id, 0, 0, 0, ok=False)
+    except BaseException:
+        # BaseException, not Exception: a worker restart CANCELS the job (CancelledError is not an
+        # Exception), and every deploy restarts the worker. Catching only Exception left the row on
+        # "sending" with 0/0/0 forever, so nobody could tell how many of the audience got it. The
+        # counts reached so far are what gets recorded; the job is never re-run (max_tries=1).
+        logger.warning("broadcast_text: fan-out stopped before finishing")
+        await _finish_broadcast_log(
+            sessionmaker,
+            log_id,
+            counts.get("sent", 0),
+            counts.get("failed", 0),
+            counts.get("removed", 0),
+            ok=False,
+        )
         raise
     await _finish_broadcast_log(sessionmaker, log_id, sent, failed, removed)
 
 
-async def _mark_broadcast_sending(sessionmaker: object, log_id: int | None) -> None:
+async def _mark_broadcast_sending(
+    sessionmaker: object, log_id: int | None, *, recipients: int | None = None
+) -> None:
     if sessionmaker is None or log_id is None:
         return
     async with sessionmaker() as session:  # type: ignore[operator]
-        await BroadcastLogRepository(session).mark_sending(log_id)
+        await BroadcastLogRepository(session).mark_sending(log_id, recipients=recipients)
         await session.commit()
+
+
+async def _record_broadcast_progress(
+    sessionmaker: object, log_id: int | None, counts: dict[str, int]
+) -> None:
+    """Best-effort: a bookkeeping write must never take the broadcast down with it."""
+    if sessionmaker is None or log_id is None:
+        return
+    try:
+        async with sessionmaker() as session:  # type: ignore[operator]
+            await BroadcastLogRepository(session).record_progress(
+                log_id,
+                sent=counts.get("sent", 0),
+                failed=counts.get("failed", 0),
+                removed=counts.get("removed", 0),
+            )
+            await session.commit()
+    except Exception:
+        logger.warning("broadcast_text: could not record progress for log %s", log_id)
 
 
 async def _finish_broadcast_log(
@@ -385,6 +444,73 @@ def _reconcile_tokens(user: PanelUser) -> dict[str, str]:
     }
 
 
+#: Consecutive panel failures after which a pending-revoke pass stops: a panel that is down fails
+#: every attempt, and each one costs a full request timeout the trial sweep behind it is waiting on.
+_REVOKE_FAILURES_BEFORE_STOP = 3
+
+
+async def _finish_pending_revokes(
+    sessionmaker: object,
+    panel: object,
+    list_pending: object,
+    clear: object,
+) -> int:
+    """Delete the panel accounts a ban/block could not reach at the time; returns how many landed.
+
+    A ban keeps the user's panel handle when the delete fails — forgetting it made the account
+    impossible to revoke ever, since nothing maps a panel user back to a row without it. This is the
+    retry that the admin panel's "revoke pending" warning promises: one bounded attempt per account
+    per sweep, never a loop. ``clear(session, key, username)`` re-checks the row under a fresh
+    session and drops the handle only if it is still the same pending revoke.
+    """
+    async with sessionmaker() as session:  # type: ignore[operator]
+        pending = await list_pending(session)  # type: ignore[operator]
+    done = failures = 0
+    for key, username in pending:
+        try:
+            await panel.delete_user_by_username(username)  # type: ignore[attr-defined]
+        except RemnawaveError:
+            failures += 1
+            if failures >= _REVOKE_FAILURES_BEFORE_STOP:
+                logger.warning("pending revokes: panel unreachable; the next sweep retries")
+                break
+            continue
+        failures = 0
+        async with sessionmaker() as session:  # type: ignore[operator]
+            if await clear(session, key, username):  # type: ignore[operator]
+                await session.commit()
+                done += 1
+    return done
+
+
+async def _list_user_revokes(session: object) -> list[tuple[int, str]]:
+    return await UserRepository(session).list_revoke_pending()  # type: ignore[arg-type]
+
+
+async def _clear_user_revoke(session: object, telegram_id: int, username: str) -> bool:
+    user = await UserRepository(session).get(telegram_id)  # type: ignore[arg-type]
+    if user is None or user.status is not UserStatus.banned or user.panel_username != username:
+        return False
+    user.panel_username = None
+    return True
+
+
+async def _list_device_revokes(session: object) -> list[tuple[str, str]]:
+    return await SiteDeviceRepository(session).list_revoke_pending()  # type: ignore[arg-type]
+
+
+async def _clear_device_revoke(session: object, uuid: str, username: str) -> bool:
+    device = await SiteDeviceRepository(session).get(uuid)  # type: ignore[arg-type]
+    if (
+        device is None
+        or device.status != SiteDeviceStatus.blocked
+        or device.site_panel_username != username
+    ):
+        return False
+    device.site_panel_username = None
+    return True
+
+
 async def reconcile_trials(ctx: dict) -> None:
     """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose panel
     account is TERMINAL (time-expired / disabled / missing), reset them to claimable and send the
@@ -408,6 +534,12 @@ async def reconcile_trials(ctx: dict) -> None:
     if sessionmaker is None or panel is None or redis is None:
         logger.warning("reconcile_trials: worker missing sessionmaker/panel/redis; skipping")
         return
+
+    revoked = await _finish_pending_revokes(
+        sessionmaker, panel, _list_user_revokes, _clear_user_revoke
+    )
+    if revoked:
+        logger.info("reconcile_trials: finished %d pending ban revoke(s)", revoked)
 
     async with sessionmaker() as session:
         targets = await UserRepository(session).list_active_with_panel()
@@ -538,6 +670,12 @@ async def site_reconcile(ctx: dict) -> None:
     if sessionmaker is None or panel is None or redis is None:
         logger.warning("site_reconcile: worker missing sessionmaker/panel/redis; skipping")
         return
+
+    revoked = await _finish_pending_revokes(
+        sessionmaker, panel, _list_device_revokes, _clear_device_revoke
+    )
+    if revoked:
+        logger.info("site_reconcile: finished %d pending block revoke(s)", revoked)
 
     async with sessionmaker() as session:
         targets = await SiteDeviceRepository(session).list_active_with_panel()

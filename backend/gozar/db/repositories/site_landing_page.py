@@ -100,6 +100,9 @@ class SiteLandingPageRepository(BaseRepository):
         await self.session.delete(page)
         await self.session.flush()
 
+    async def has_any(self) -> bool:
+        return (await self.session.scalar(select(SiteLandingPage.id).limit(1))) is not None
+
     async def add_default(
         self,
         *,

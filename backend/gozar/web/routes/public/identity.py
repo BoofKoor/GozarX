@@ -180,13 +180,13 @@ async def current_device(request: Request, response: Response, session: DbSessio
             return device
 
     new_uuid = str(uuid_lib.uuid4())
-    device, _ = await repo.get_or_create(
+    device, created = await repo.get_or_create(
         new_uuid,
         fingerprint_hash=fingerprint_hash(request),
         ip_bucket=ip_bucket(request, secret),
         referred_by=await _referrer(request, repo, new_uuid),
     )
-    await repo.touch_seen(device)
+    await repo.touch_seen(device, minted=created)
     set_device_cookie(response, request, new_uuid)
     return device
 

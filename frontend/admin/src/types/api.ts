@@ -175,6 +175,9 @@ export interface BotUser {
   last_location: string | null;
   /** When that claim was provisioned — the row's recency signal. Null until they have claimed. */
   last_claim_at: string | null;
+  /** Banned, but the panel did not answer the revoke: the config still works until the reconcile
+   *  sweep gets the delete through. A ban must never read as done when it is not. */
+  revoke_pending: boolean;
 }
 
 /** The record dialog's payload: the row, plus this user's history and live usage. */
@@ -457,18 +460,34 @@ export interface NullableMetric {
   change_pct: number | null;
 }
 
+/** A `Metric` whose previous window can be UNKNOWN: visits are recorded per day only from the day
+ *  that recorder shipped, and a window before it has no visit data — which is not zero visitors. */
+export interface VisitMetric {
+  value: number;
+  previous: number | null;
+  change_pct: number | null;
+}
+
+/** A day on the visitor series; `count` is null for a day the visit record does not cover. */
+export interface VisitPoint {
+  day: string;
+  count: number | null;
+}
+
 export interface SiteStats {
   range_days: number;
 
   // Windowed — these move with the range control.
-  visitors: Metric; // devices seen in the window
+  visitors: VisitMetric; // devices seen in the window
   new_visitors: Metric; // identities minted in the window
-  returning_visitors: Metric; // seen in the window, minted before it
+  returning_visitors: VisitMetric; // seen in the window, minted before it
   claimers: Metric; // distinct devices that provisioned in the window
   claims: Metric; // provisions in the window (change-location re-picks excluded)
   conversion_pct: number; // claimers / visitors, both windowed
-  conversion_pct_prev: number;
+  conversion_pct_prev: number | null; // null while the previous window's visits are unknown
   location_changes: number;
+  /** First instant the per-day visit record holds; null before any visit is recorded. */
+  visits_recorded_since: string | null;
 
   // Lifetime — deliberately OUTSIDE the range control, and named so the UI can say so.
   total_devices_all_time: number;
@@ -483,7 +502,7 @@ export interface SiteStats {
   status_counts: Record<string, number>;
 
   claims_series: DayPoint[];
-  visitors_series: DayPoint[];
+  visitors_series: VisitPoint[];
   top_locations: NamedCount[];
   locations_total: number; // distinct locations in the window (top_locations is capped at 10)
 }
@@ -642,6 +661,9 @@ export interface SiteDeviceRow {
   ip_bucket: string | null;
   has_fingerprint: boolean; // the hash itself is never exposed — it identifies the browser
   created_at: string | null;
+  /** Blocked, but the panel did not answer the revoke: the trial still works until the sweep
+   *  deletes it. */
+  revoke_pending: boolean;
 }
 
 export interface SiteDevicePage {

@@ -15,6 +15,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
 import { Textarea } from "@/components/ui/Textarea";
 import { useI18n } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { formatNumber, joinList, langLabel } from "@/lib/format";
 import { previewText, useTexts, useUpdateText } from "@/hooks/useTexts";
 import type { BotText, Lang } from "@/types/api";
@@ -261,7 +262,10 @@ function TextEditor({ text }: { text: BotText }) {
       },
       {
         onSuccess: () => toast.success(t("texts.saved")),
-        onError: () => toast.error(t("texts.saveFailed")),
+        // Persian is what every other language falls back to, so the server refuses a blank one
+        // (422): the bot would otherwise send nothing, which Telegram rejects.
+        onError: (err) =>
+          toast.error(apiErrorMessage(err, t("texts.saveFailed"), { 422: t("texts.faRequired") })),
       },
     );
   }

@@ -8,8 +8,13 @@ needed; every number is local site data, so the endpoint never depends on Remnaw
 * *"Visits" counted identities, forever.* The headline was ``site_devices.count()`` — every identity
   ever minted. Because ``/status`` resolves a device on every page load, a client that refuses
   cookies mints a fresh row per request, so the number drifted up on its own and dragged
-  ``conversion_pct`` down with it. Visitors are now measured from ``last_seen_at`` inside the
-  selected window; the lifetime figure is still reported, but explicitly named ``*_all_time``.
+  ``conversion_pct`` down with it. Visitors are now measured inside the selected window; the
+  lifetime figure is still reported, but explicitly named ``*_all_time``.
+* *A past window was counted from a column that is overwritten.* ``last_seen_at`` holds a device's
+  LATEST visit, so the previous period counted only the devices that never came back, and the daily
+  series put each device on its last day alone — 1,000 loyal daily visitors read as 0 last week and
+  a cliff today. Past windows and the series now read ``site_device_days``, and anything from before
+  that record began is reported as unknown (``None``), never as a zero.
 * *No range applied to the KPI row.* A 7/14/30/90 control sat above numbers that were all-time or
   today-only, so changing it moved nothing. Every KPI here is now windowed, with the previous,
   equal-length window alongside it for an honest delta.
@@ -23,11 +28,12 @@ needed; every number is local site data, so the endpoint never depends on Remnaw
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 
 from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
@@ -55,6 +61,13 @@ class DayPoint(BaseModel):
     count: int
 
 
+class VisitPoint(BaseModel):
+    day: str
+    #: None for a day the visit record does not cover — before it began, or the partial day it began
+    #: on. A zero there would read as "nobody came".
+    count: int | None
+
+
 class NamedCount(BaseModel):
     label: str
     count: int
@@ -72,6 +85,15 @@ class Metric(BaseModel):
     change_pct: float | None
 
 
+class VisitMetric(BaseModel):
+    """A :class:`Metric` whose previous window may be UNKNOWN: visits are recorded per day only from
+    the day the recorder shipped, and a window before that has no visit data rather than zero."""
+
+    value: int
+    previous: int | None
+    change_pct: float | None
+
+
 class SiteStatsOut(BaseModel):
     """The site funnel for the selected window, plus the lifetime figures it sits inside.
 
@@ -83,13 +105,16 @@ class SiteStatsOut(BaseModel):
     range_days: int
 
     # --- windowed funnel ---
-    visitors: Metric  # devices seen in the window (last_seen_at)
+    visitors: VisitMetric  # devices seen in the window
     new_visitors: Metric  # devices whose identity was minted in the window
-    returning_visitors: Metric  # seen in the window, minted before it
+    returning_visitors: VisitMetric  # seen in the window, minted before it
     claimers: Metric  # distinct devices that provisioned in the window
     claims: Metric  # provisions in the window (change-location re-picks excluded)
     conversion_pct: float  # claimers / visitors, both windowed
-    conversion_pct_prev: float
+    conversion_pct_prev: float | None  # None while the previous window's visits are unknown
+    #: The first instant the per-day visit record holds (None before any visit is recorded). Every
+    #: visit figure for a window before it is unknown, and the page says so.
+    visits_recorded_since: datetime | None
     location_changes: int  # change-location re-picks — excluded everywhere else
 
     # --- lifetime ---
@@ -106,7 +131,7 @@ class SiteStatsOut(BaseModel):
 
     # --- series + breakdown ---
     claims_series: list[DayPoint]
-    visitors_series: list[DayPoint]
+    visitors_series: list[VisitPoint]
     top_locations: list[NamedCount]
     locations_total: int  # distinct locations claimed in the window (top_locations is capped)
 
@@ -168,6 +193,14 @@ def _metric(value: int, previous: int) -> Metric:
     return Metric(value=value, previous=previous, change_pct=pct_change(value, previous))
 
 
+def _visit_metric(value: int, previous: int | None) -> VisitMetric:
+    return VisitMetric(value=value, previous=previous, change_pct=pct_change(value, previous))
+
+
+def _local_midnight(day: str) -> datetime:
+    return datetime.combine(date.fromisoformat(day), time(0), tzinfo=DISPLAY_TZ)
+
+
 @router.get("/", response_model=SiteStatsOut)
 async def site_stats(
     request: Request,
@@ -187,8 +220,17 @@ async def site_stats(
     now = datetime.now(UTC)
     prev_start, prev_end = previous_window(window)
 
-    visitors = await devices.count_seen_between(since, now)
-    visitors_prev = await devices.count_seen_between(prev_start, prev_end)
+    # The current window runs to now, which ``last_seen_at`` answers exactly. The previous one has
+    # ended, so only the per-day record can count it — and only once that record covers all of it.
+    recorded_since = await devices.visits_recorded_since()
+    prev_known = recorded_since is not None and recorded_since <= prev_start
+    visitors = await devices.count_seen_since(since)
+    visitors_prev = (
+        await devices.count_visited_between(prev_start, prev_end) if prev_known else None
+    )
+    returning_prev = (
+        await devices.count_returning_between(prev_start, prev_end) if prev_known else None
+    )
     claimers = await claims.distinct_device_count_between(since, now)
     claimers_prev = await claims.distinct_device_count_between(prev_start, prev_end)
 
@@ -204,21 +246,23 @@ async def site_stats(
 
     return SiteStatsOut(
         range_days=window,
-        visitors=_metric(visitors, visitors_prev),
+        visitors=_visit_metric(visitors, visitors_prev),
         new_visitors=_metric(
             await devices.count_new_between(since, now),
             await devices.count_new_between(prev_start, prev_end),
         ),
-        returning_visitors=_metric(
-            await devices.count_returning_between(since, now),
-            await devices.count_returning_between(prev_start, prev_end),
+        returning_visitors=_visit_metric(
+            await devices.count_returning_since(since), returning_prev
         ),
         claimers=_metric(claimers, claimers_prev),
         claims=_metric(
             await claims.count_since(since), await claims.count_between(prev_start, prev_end)
         ),
         conversion_pct=_pct(claimers, visitors),
-        conversion_pct_prev=_pct(claimers_prev, visitors_prev),
+        conversion_pct_prev=(
+            _pct(claimers_prev, visitors_prev) if visitors_prev is not None else None
+        ),
+        visits_recorded_since=recorded_since,
         location_changes=await claims.change_count_since(since),
         total_devices_all_time=total_devices,
         devices_claimed_all_time=devices_claimed,
@@ -231,8 +275,16 @@ async def site_stats(
         claims_series=[
             DayPoint(day=d, count=n) for d, n in zero_filled_daily(daily, since=since, days=window)
         ],
+        # A day is recorded only if the recorder ran from its local midnight: the day it shipped is
+        # partial, and a partial day would read as a dip.
         visitors_series=[
-            DayPoint(day=d, count=n) for d, n in zero_filled_daily(seen, since=since, days=window)
+            VisitPoint(
+                day=d,
+                count=n
+                if recorded_since is not None and recorded_since <= _local_midnight(d)
+                else None,
+            )
+            for d, n in zero_filled_daily(seen, since=since, days=window)
         ],
         top_locations=[NamedCount(label=loc, count=n) for loc, n in top_locations],
         locations_total=await claims.location_total(since),
@@ -258,9 +310,9 @@ async def site_analytics(
     dau = await devices.active_since(now - timedelta(days=1))
     wau = await devices.active_since(now - timedelta(days=7))
     mau = await devices.active_since(now - timedelta(days=30))
-    seen_1 = await devices.count_seen_between(now - timedelta(days=1), now)
-    seen_7 = await devices.count_seen_between(now - timedelta(days=7), now)
-    seen_30 = await devices.count_seen_between(now - timedelta(days=30), now)
+    seen_1 = await devices.count_seen_since(now - timedelta(days=1))
+    seen_7 = await devices.count_seen_since(now - timedelta(days=7))
+    seen_30 = await devices.count_seen_since(now - timedelta(days=30))
     streak_days = await settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0)
     active_streaks = await devices.active_streak_count(streak_days) if streak_days > 0 else 0
     active, inactive = await push.count_by_active()

@@ -23,7 +23,6 @@ from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.stats import start_of_today
-from gozar.services.trial import _DEFAULT_TRIAL_HOURS, cooldown_start
 
 logger = logging.getLogger("gozar.services.admin")
 
@@ -38,6 +37,16 @@ class AdminStats:
     banned: int
     configs_today: int
     referrals: int
+
+
+class ReclaimRefused(Exception):
+    """A reclaim that must not happen. ``reason`` is ``"banned"`` (reclaiming would silently lift
+    the ban) or ``"panel"`` (the live account could not be revoked, so clearing the cooldown would
+    hand the user a second trial while the first still works)."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(reason)
+        self.reason = reason
 
 
 @dataclass(frozen=True)
@@ -82,14 +91,23 @@ class AdminService:
         return UserCard(user=user, configs=await self._logs.count_for_user(target_id))
 
     async def ban(self, target_id: int) -> User | None:
-        """Block in the bot AND revoke access now: best-effort delete the live panel user, then flip
-        ``status -> banned`` (the middleware blocks every future update from a banned user)."""
+        """Block in the bot AND revoke access now: delete the live panel user, then flip
+        ``status -> banned`` (the middleware blocks every future update from a banned user).
+
+        The ban itself always applies. The panel handle is cleared ONLY once the account is gone:
+        when the panel cannot be reached the user keeps a working config until the delete lands, and
+        forgetting the handle then (as this used to) made that account impossible to revoke ever —
+        nothing maps a panel user back to a row without it. A banned user who still carries a
+        ``panel_username`` is therefore exactly "revoke pending"; the reconcile sweep retries it and
+        the panel shows it to the operator.
+        """
         user = await self._users.get(target_id)
         if user is None:
             return None
-        await self._revoke_panel(user)
+        revoked = await self._revoke_panel(user)
         user.status = UserStatus.banned
-        user.panel_username = None
+        if revoked:
+            user.panel_username = None
         return user
 
     async def unban(self, target_id: int) -> User | None:
@@ -101,18 +119,27 @@ class AdminService:
 
     async def reclaim(self, target_id: int) -> User | None:
         """Forgiveness: clear the rolling claim cooldown + heal back to ``available`` so a stuck
-        user can claim a fresh config again right away. Also DELETES the live panel account (best
-        effort): a data-limited trial now keeps its account far longer, so reclaiming one without
-        revoking it would orphan a live Remnawave user."""
+        user can claim a fresh config again right away. Also DELETES the live panel account: a
+        data-limited trial keeps its account far longer, so reclaiming one without revoking it would
+        orphan a live Remnawave user.
+
+        Refused (``ReclaimRefused``) for a banned user — it used to flip them to ``available``,
+        which is an unban nobody asked for — and when the panel cannot be reached, because clearing
+        the cooldown while the old account still works hands out a second concurrent trial.
+
+        The claim HISTORY is left alone. Clearing ``last_claim_at`` is what frees the cooldown; the
+        rows this used to delete were the dashboard's record of claims that really happened.
+        """
         user = await self._users.get(target_id)
         if user is None:
             return None
-        hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
-        await self._logs.delete_for_user_since(target_id, cooldown_start(hours))
-        await self._revoke_panel(user)  # delete the live panel account + drop the cached sub
+        if user.status is UserStatus.banned:
+            raise ReclaimRefused("banned")
+        if not await self._revoke_panel(user):  # delete the live account + drop the cached sub
+            raise ReclaimRefused("panel")
         user.status = UserStatus.available
         user.panel_username = None
-        user.last_claim_at = None  # clear the cooldown anchor too, so the guard frees them at once
+        user.last_claim_at = None  # the cooldown anchor: clearing it frees the guard at once
         await self._redis.delete(limited_notified_key(target_id))
         return user
 
@@ -139,16 +166,19 @@ class AdminService:
         await self._settings.set(SettingKey.LOCATIONS, json.dumps(names))
         return names
 
-    async def _revoke_panel(self, user: User) -> None:
-        """Best-effort: drop the user's cached sub + delete their live panel account so a ban takes
-        effect at once. Bounded single attempt — a panel error never blocks the ban."""
+    async def _revoke_panel(self, user: User) -> bool:
+        """Drop the user's cached sub + delete their live panel account. True once no live account
+        remains (deleted, already gone, or never had one); False when the panel could not be
+        reached. Bounded single attempt — the caller decides what a failure means."""
         await self._redis.delete(sub_cache_key(user.telegram_id))
         username = user.panel_username
         if not username:
-            return
+            return True
         try:
-            panel_user = await self._panel.get_user(username)
+            panel_user = await self._panel.get_user(username)  # None on 404: already gone
             if panel_user is not None and panel_user.ref:  # uuid on panel 2.x, numeric id on 3.x
                 await self._panel.delete_user(panel_user.ref)
         except RemnawaveError:
-            logger.warning("ban: panel revoke failed for %s (left to expire)", user.telegram_id)
+            logger.warning("admin: panel revoke failed for %s (kept pending)", user.telegram_id)
+            return False
+        return True

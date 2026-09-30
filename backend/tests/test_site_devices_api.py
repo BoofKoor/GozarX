@@ -203,3 +203,42 @@ async def test_actions_404_on_an_unknown_device(devices_client: httpx.AsyncClien
     for action in ("block", "unblock", "reset"):
         r = await devices_client.post(f"/api/admin/site/devices/nope/{action}")
         assert r.status_code == 404
+
+
+async def test_block_with_the_panel_down_keeps_the_handle_as_revoke_pending(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    from gozar.remnawave.errors import RemnawaveError
+
+    class _DownPanel(_StubPanel):
+        async def delete_user_by_username(self, username: str) -> bool:
+            raise RemnawaveError("panel DELETE failed")
+
+    await _seed(db_sessions)
+    devices_client._transport.app.state.panel = _DownPanel()  # type: ignore[attr-defined]
+    body = (await devices_client.post("/api/admin/site/devices/dev-a/block")).json()
+    # Blocked regardless — but the live account is not forgotten, or it could never be revoked.
+    assert body["status"] == "blocked" and body["site_panel_username"] == "s-aaa_1"
+    assert body["revoke_pending"] is True
+
+
+async def test_reset_refuses_a_blocked_device(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    # "Allow another claim" used to set `available` unconditionally — an unblock by accident.
+    await _seed(db_sessions)
+    r = await devices_client.post("/api/admin/site/devices/dev-c/reset")
+    assert r.status_code == 409
+    async with db_sessions() as s:
+        assert (await s.get(SiteDevice, "dev-c")).status == SiteDeviceStatus.blocked
+
+
+async def test_unblock_refuses_a_device_that_is_not_blocked(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    # Forcing an active device to `available` hid its live config from /status and the sweep.
+    await _seed(db_sessions)
+    r = await devices_client.post("/api/admin/site/devices/dev-a/unblock")
+    assert r.status_code == 409
+    async with db_sessions() as s:
+        assert (await s.get(SiteDevice, "dev-a")).status == SiteDeviceStatus.active_config

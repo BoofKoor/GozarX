@@ -20,7 +20,7 @@ from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
-from gozar.services.site_admin import SiteAdminService
+from gozar.services.site_admin import DeviceActionRefused, SiteAdminService
 from gozar.web.dependencies import AdminUser, DbSession
 
 router = APIRouter(prefix="/site/devices", tags=["site-devices"])
@@ -47,6 +47,9 @@ class DeviceOut(BaseModel):
     handle: str | None
     status: str
     site_panel_username: str | None
+    #: Blocked, but the panel did not answer the revoke: its config still works until the sweep
+    #: (or another block) gets the delete through.
+    revoke_pending: bool = False
     referral_count: int
     referred_by: str | None
     streak_count: int
@@ -89,6 +92,7 @@ def _out(d: SiteDevice) -> DeviceOut:
         handle=d.handle,
         status=d.status,
         site_panel_username=d.site_panel_username,
+        revoke_pending=d.status == SiteDeviceStatus.blocked and bool(d.site_panel_username),
         referral_count=d.referral_count,
         referred_by=d.referred_by,
         streak_count=d.streak_count,
@@ -163,24 +167,36 @@ async def device_peers(
     ]
 
 
+_REFUSED = {
+    "blocked": (409, "This device is blocked. Unblock it first, then allow another claim."),
+    "not_blocked": (409, "This device is not blocked."),
+    "panel": (502, "The panel did not answer, so the current config was not revoked. Try again."),
+}
+
+
+async def _act(request: Request, session: object, uuid: str, method: str) -> DeviceOut:
+    try:
+        device = await getattr(_service(request, session), method)(uuid)
+    except DeviceActionRefused as refused:
+        code, detail = _REFUSED[refused.reason]
+        raise HTTPException(code, detail) from refused
+    if device is None:
+        raise HTTPException(404, "device not found")
+    return _out(device)
+
+
 @router.post("/{uuid}/block", response_model=DeviceOut)
 async def block_device(
     uuid: str, request: Request, session: DbSession, admin: AdminUser
 ) -> DeviceOut:
-    device = await _service(request, session).block(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "block")
 
 
 @router.post("/{uuid}/unblock", response_model=DeviceOut)
 async def unblock_device(
     uuid: str, request: Request, session: DbSession, admin: AdminUser
 ) -> DeviceOut:
-    device = await _service(request, session).unblock(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "unblock")
 
 
 @router.post("/{uuid}/reset", response_model=DeviceOut)
@@ -189,7 +205,4 @@ async def reset_device_trial(
 ) -> DeviceOut:
     """Free the current trial and clear the cooldown so the device can claim again now. The row,
     its claim history and its rewards are kept — this is forgiveness, not a wipe."""
-    device = await _service(request, session).reset_trial(uuid)
-    if device is None:
-        raise HTTPException(404, "device not found")
-    return _out(device)
+    return await _act(request, session, uuid, "reset_trial")

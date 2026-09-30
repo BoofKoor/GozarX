@@ -218,3 +218,21 @@ async def test_site_push_broadcast_without_a_log_id_still_sends(db_sessions, mon
     monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
     await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b")
     assert sent == ["https://e/x"]
+
+
+async def test_site_reconcile_finishes_a_block_the_panel_did_not_answer(db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add(
+            SiteDevice(uuid="d-blocked", status=SiteDeviceStatus.blocked, site_panel_username="s-b")
+        )
+        await s.commit()
+
+    panel = _ReconcilePanel({})
+    await site_reconcile(
+        {"sessionmaker": db_sessions, "panel": panel, "cache_redis": await _cache_redis()}
+    )
+
+    assert panel.deleted == ["s-b"]
+    async with db_sessions() as s:
+        device = await s.get(SiteDevice, "d-blocked")
+        assert device.status == SiteDeviceStatus.blocked and device.site_panel_username is None

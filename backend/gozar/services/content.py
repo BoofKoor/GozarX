@@ -67,6 +67,10 @@ class RenderedMessage:
     link_preview: bool
 
 
+def _blank(row: tuple[str, bool] | None) -> bool:
+    return row is None or not (row[0] or "").strip()
+
+
 class ContentService:
     def __init__(self, session: AsyncSession, redis: Redis) -> None:
         self._repo = ContentRepository(session)
@@ -91,11 +95,17 @@ class ContentService:
         return row
 
     async def message(self, key: str, lang: Language, **tokens: object) -> RenderedMessage:
-        """The rendered body + its link-preview flag (Farsi fallback like ``text``)."""
+        """The rendered body + its link-preview flag (Farsi fallback like ``text``).
+
+        A BLANK body counts as missing. The panel's text editor saves all three languages together,
+        so clearing one box stores ``""`` — and falling back only on an absent row made the bot send
+        that empty string, which Telegram rejects: the screen stopped answering for everyone who
+        speaks that language, while the editor showed the key as merely "untranslated".
+        """
         row = await self._row(key, lang)
-        if row is None and lang is not _FALLBACK_LANG:
+        if _blank(row) and lang is not _FALLBACK_LANG:
             row = await self._row(key, _FALLBACK_LANG)
-        if row is None:
+        if row is None or _blank(row):
             logger.warning("content missing: key=%s lang=%s", key, lang.value)
             return RenderedMessage(f"[{key}]", True)
         return RenderedMessage(render(row[0], tokens), row[1])

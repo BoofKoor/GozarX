@@ -179,8 +179,8 @@ async def test_claim_not_ready_without_squad(session) -> None:
 async def test_claim_cooldown_guard_blocks_within_window(session) -> None:
     panel = FakePanel([(_sub(), _TWO)])
     trial = await _service(session, panel)
-    user = await _user(session)
-    await ConfigLogRepository(session).add(user.telegram_id, "Germany")  # claimed just now
+    user = await _user(session, last_claim_at=datetime.now(UTC))  # provisioned just now
+    await ConfigLogRepository(session).add(user.telegram_id, "Germany")
 
     result = await trial.claim(user)
     assert isinstance(result, AlreadyClaimedToday)
@@ -193,11 +193,23 @@ async def test_claim_cooldown_blocks_just_under_window(session) -> None:
     # calendar day — so a claim 23h ago stays blocked (the near-midnight re-claim regression).
     panel = FakePanel([(_sub(), _TWO)])
     trial = await _service(session, panel)
-    user = await _user(session)
+    user = await _user(session, last_claim_at=datetime.now(UTC) - timedelta(hours=23))
     await _log_at(session, user.telegram_id, hours_ago=23)
 
     assert isinstance(await trial.claim(user), AlreadyClaimedToday)
     assert not panel.created
+
+
+async def test_a_cleared_anchor_frees_the_cooldown_whatever_the_history_says(session) -> None:
+    # An admin reclaim clears `last_claim_at`. The guard used to fall back to the newest claim-log
+    # row when the anchor was unset — re-imposing the cooldown the reclaim had just lifted, which
+    # is why reclaim deleted the user's claim history (and the dashboard's record) to work at all.
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel)
+    user = await _user(session, last_claim_at=None)
+    await _log_at(session, user.telegram_id, hours_ago=1)
+
+    assert isinstance(await trial.claim(user), Provisioned)
 
 
 async def test_claim_cooldown_freed_after_window(session) -> None:

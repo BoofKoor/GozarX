@@ -117,6 +117,42 @@ class UserRepository(BaseRepository):
         result = await self.session.scalars(stmt)
         return list(result.all())
 
+    @staticmethod
+    def export_statement(
+        *,
+        status: UserStatus | None = None,
+        search: str | None = None,
+        location: str | None = None,
+    ) -> Select:
+        """The export's rows (user columns + latest location + lifetime claims), filtered like the
+        page.
+
+        One statement with both extras as correlated subqueries (index probes on
+        ``config_logs (user_id, created_at, id)``) — so the export needs no second query keyed by a
+        list of ids, which is what broke it past 32,767 users.
+        """
+        claims = (
+            select(func.count())
+            .select_from(ConfigLog)
+            .where(ConfigLog.user_id == User.telegram_id)
+            .correlate(User)
+            .scalar_subquery()
+        )
+        # Plain columns, not ORM entities: at 100k+ rows the identity map was most of the cost.
+        stmt = select(
+            User.telegram_id,
+            User.status,
+            User.language,
+            User.referral_count,
+            User.panel_username,
+            _latest_claim_location().label("location"),
+            claims.label("claims"),
+            User.last_claim_at,
+            User.created_at,
+        )
+        stmt = _filtered(stmt, status, search, location)
+        return stmt.order_by(User.created_at.desc(), User.telegram_id.desc())
+
     async def count_filtered(
         self,
         *,
@@ -298,6 +334,17 @@ class UserRepository(BaseRepository):
         rows = await self.session.execute(
             select(User.telegram_id, User.panel_username).where(
                 User.status == UserStatus.active_config, User.panel_username.is_not(None)
+            )
+        )
+        return [(int(tid), name) for tid, name in rows.all() if name]
+
+    async def list_revoke_pending(self) -> list[tuple[int, str]]:
+        """``(telegram_id, panel_username)`` for every BANNED user still holding a panel handle: the
+        ban could not reach the panel, so the account still works until someone deletes it. The
+        reconcile sweep does, and clears the handle once it is gone."""
+        rows = await self.session.execute(
+            select(User.telegram_id, User.panel_username).where(
+                User.status == UserStatus.banned, User.panel_username.is_not(None)
             )
         )
         return [(int(tid), name) for tid, name in rows.all() if name]

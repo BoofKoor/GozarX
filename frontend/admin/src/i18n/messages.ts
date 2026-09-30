@@ -111,6 +111,17 @@ const FA = {
   "users.action.confirmLabel": "بله، انجام بده",
   "users.action.done": "انجام شد.",
   "users.action.failed": "ناموفق بود.",
+  "users.action.reclaimConfirm":
+    "کانفیگ فعلی این کاربر از پنل حذف می‌شود و می‌تواند همین حالا یکی دیگر بگیرد. ادامه می‌دهید؟",
+  "users.action.revokePending":
+    "مسدود شد، ولی پنل جواب نداد و کانفیگ فعلی هنوز کار می‌کند؛ جاروی دوره‌ای دوباره تلاش می‌کند.",
+  "users.detail.revokePending":
+    "این کاربر مسدود است، ولی پنل درخواست حذف کانفیگش را نپذیرفت؛ کانفیگ تا وقتی جاروی دوره‌ای (هر ۱۵ دقیقه) آن را حذف کند کار می‌کند.",
+  "users.row.revokePending": "کانفیگ هنوز از پنل حذف نشده",
+  "users.action.refusedBanned":
+    "این کاربر مسدود است. اول مسدودی را بردارید، بعد اجازهٔ دریافت مجدد بدهید.",
+  "users.action.refusedPanel":
+    "پنل جواب نداد، پس کانفیگ فعلی حذف نشد و چیزی تغییر نکرد. کمی بعد دوباره امتحان کنید.",
 
   // ── broadcast ───────────────────────────────────────────────────────────
   "bc.title": "پیام همگانی",
@@ -208,6 +219,8 @@ const FA = {
   "texts.discard": "بازگرداندن",
   "texts.saved": "ذخیره شد.",
   "texts.saveFailed": "ذخیره نشد.",
+  "texts.faRequired":
+    "متن فارسی نمی‌تواند خالی باشد: زبان‌های دیگر وقتی ترجمه ندارند به همین برمی‌گردند.",
 
   // ── bot buttons ─────────────────────────────────────────────────────────
   "btn.title": "دکمه‌ها",
@@ -569,6 +582,16 @@ const FA = {
   "sd.action.confirmLabel": "بله، انجام بده",
   "sd.action.done": "انجام شد.",
   "sd.action.failed": "ناموفق بود.",
+  "sd.action.resetConfirm":
+    "کانفیگ فعلی این دستگاه از پنل حذف می‌شود و می‌تواند همین حالا یکی دیگر بگیرد. ادامه می‌دهید؟",
+  "sd.action.revokePending":
+    "مسدود شد، ولی پنل جواب نداد و کانفیگ فعلی هنوز کار می‌کند؛ جاروی دوره‌ای دوباره تلاش می‌کند.",
+  "sd.detail.revokePending":
+    "این دستگاه مسدود است، ولی پنل درخواست حذف کانفیگش را نپذیرفت؛ کانفیگ تا وقتی جاروی دوره‌ای (هر ۱۵ دقیقه) آن را حذف کند کار می‌کند.",
+  "sd.row.revokePending": "کانفیگ هنوز از پنل حذف نشده",
+  "sd.action.refusedState": "این عمل برای وضعیت فعلی این دستگاه مجاز نیست؛ صفحه را تازه کنید.",
+  "sd.action.refusedPanel":
+    "پنل جواب نداد، پس کانفیگ فعلی حذف نشد و چیزی تغییر نکرد. کمی بعد دوباره امتحان کنید.",
 
   // ── website: FAQ ────────────────────────────────────────────────────────
   "sf.title": "سوال‌های پرتکرار",
@@ -670,6 +693,7 @@ const FA = {
   "st.range.days": "{n} روز",
   "st.rangeLabel": "{n} روز اخیر",
   "st.prev": "دورهٔ قبل: {n}",
+  "st.prevUnrecorded": "دورهٔ قبل: هنوز ثبت نمی‌شد",
   "st.kpi.visitors": "بازدیدکننده ({range})",
   "st.kpi.newVisitors": "بازدیدکنندهٔ تازه ({range})",
   "st.kpi.returning": "بازگشتی ({range})",
@@ -684,6 +708,10 @@ const FA = {
   "st.daily": "بازدید و دریافت روزانه",
   "st.daily.visitors": "بازدیدکننده",
   "st.daily.claims": "دریافت کانفیگ",
+  "st.daily.since":
+    "بازدیدها از {date} روزبه‌روز ثبت می‌شوند؛ روزهای پیش از آن دادهٔ بازدید ندارند، نه بازدید صفر.",
+  "st.daily.notRecording":
+    "بازدیدها از اولین روز کامل پس از این به‌روزرسانی روزبه‌روز ثبت می‌شوند؛ این بازه هنوز روز ثبت‌شده‌ای ندارد.",
   "st.top": "پرطرفدارترین لوکیشن‌ها",
   "st.top.hidden": "{n} روز اخیر · {hidden} لوکیشن دیگر نمایش داده نشده",
   "st.noData": "داده‌ای نیست.",
@@ -1050,6 +1078,17 @@ const EN: Record<keyof typeof FA, string> = {
   "users.action.confirmLabel": "Yes, do it",
   "users.action.done": "Done.",
   "users.action.failed": "That did not work.",
+  "users.action.reclaimConfirm":
+    "This deletes the user's current config from the panel and lets them claim another right away. Continue?",
+  "users.action.revokePending":
+    "Blocked, but the panel did not answer and the current config still works; the sweep will retry.",
+  "users.detail.revokePending":
+    "This user is blocked, but the panel did not accept the delete for their config; it keeps working until the reconcile sweep (every 15 minutes) removes it.",
+  "users.row.revokePending": "Config not yet removed from the panel",
+  "users.action.refusedBanned":
+    "This user is blocked. Unblock them first, then allow another claim.",
+  "users.action.refusedPanel":
+    "The panel did not answer, so the current config was not removed and nothing changed. Try again shortly.",
 
   "bc.title": "Broadcast",
   "bc.sub": "Sent from the worker, so the bot stays responsive on its webhook",
@@ -1148,6 +1187,8 @@ const EN: Record<keyof typeof FA, string> = {
   "texts.discard": "Discard",
   "texts.saved": "Saved.",
   "texts.saveFailed": "Could not save.",
+  "texts.faRequired":
+    "The Persian text can't be empty: every other language falls back to it when untranslated.",
 
   // ── bot buttons ─────────────────────────────────────────────────────────
   "btn.title": "Buttons",
@@ -1512,6 +1553,17 @@ const EN: Record<keyof typeof FA, string> = {
   "sd.action.confirmLabel": "Yes, do it",
   "sd.action.done": "Done.",
   "sd.action.failed": "That failed.",
+  "sd.action.resetConfirm":
+    "This deletes the device's current config from the panel and lets it claim another right away. Continue?",
+  "sd.action.revokePending":
+    "Blocked, but the panel did not answer and the current config still works; the sweep will retry.",
+  "sd.detail.revokePending":
+    "This device is blocked, but the panel did not accept the delete for its config; it keeps working until the reconcile sweep (every 15 minutes) removes it.",
+  "sd.row.revokePending": "Config not yet removed from the panel",
+  "sd.action.refusedState":
+    "That action is not allowed in this device's current state; refresh the page.",
+  "sd.action.refusedPanel":
+    "The panel did not answer, so the current config was not removed and nothing changed. Try again shortly.",
 
   // ── website: FAQ ────────────────────────────────────────────────────────
   "sf.title": "FAQ",
@@ -1612,6 +1664,7 @@ const EN: Record<keyof typeof FA, string> = {
   "st.range.days": "{n} days",
   "st.rangeLabel": "last {n} days",
   "st.prev": "previous period: {n}",
+  "st.prevUnrecorded": "previous period: not recorded yet",
   "st.kpi.visitors": "Visitors ({range})",
   "st.kpi.newVisitors": "New visitors ({range})",
   "st.kpi.returning": "Returning ({range})",
@@ -1626,6 +1679,10 @@ const EN: Record<keyof typeof FA, string> = {
   "st.daily": "Visits and claims per day",
   "st.daily.visitors": "Visitors",
   "st.daily.claims": "Configs claimed",
+  "st.daily.since":
+    "Visits are recorded per day from {date}; earlier days have no visit data, which is not zero visits.",
+  "st.daily.notRecording":
+    "Visits are recorded per day from the first full day after this update; this range has none yet.",
   "st.top": "Most popular locations",
   "st.top.hidden": "last {n} days · {hidden} more locations not shown",
   "st.noData": "No data.",

@@ -81,6 +81,13 @@ class Delivered:
 
 
 @dataclass(frozen=True)
+class Blocked:
+    """The operator blocked this device. It gets nothing, whatever its cooldown says — before this
+    existed the claim path never looked at the status, so a blocked device claimed again as soon as
+    its cooldown ran out, and that very claim flipped it back to ``active_config``."""
+
+
+@dataclass(frozen=True)
 class LocationUnavailable:
     """The picked location isn't one the squad serves right now (renamed/disabled/stale tab).
 
@@ -93,7 +100,13 @@ class LocationUnavailable:
 
 # Reuses the bot's storage-agnostic result variants for the shared states.
 SiteClaimResult = (
-    Delivered | AlreadyClaimedToday | NotReady | NoLocations | PanelError | LocationUnavailable
+    Delivered
+    | AlreadyClaimedToday
+    | NotReady
+    | NoLocations
+    | PanelError
+    | LocationUnavailable
+    | Blocked
 )
 
 
@@ -421,6 +434,9 @@ class SiteTrialService:
         return await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
 
     async def claim(self, device: SiteDevice, location_name: str) -> SiteClaimResult:
+        # 0. Blocked by the operator: nothing is provisioned, and the status is left as it is.
+        if device.status == SiteDeviceStatus.blocked:
+            return Blocked()
         # 1. Already holding a live config? Re-read (self-heals an ended trial). If still valid,
         #    this is a change-location: deliver the chosen link from the account (no new provision).
         if device.status == SiteDeviceStatus.active_config:
@@ -551,7 +567,7 @@ class SiteTrialService:
             usage_bytes=usage_bytes,
             remaining=remaining,
             cooldown=cooldown_remaining(device.last_claim_at, hours) if cooling else "",
-            can_claim=not cooling,
+            can_claim=not cooling and device.status != SiteDeviceStatus.blocked,
             configs=await self._claims.count_for_device(device.uuid),
             referral_count=device.referral_count,
             referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),

@@ -178,3 +178,50 @@ async def test_reconcile_skips_user_disabled_reminders(db_sessions) -> None:
     # Still reset (so they can claim again), but no message when reminders are off.
     assert await _status(db_sessions, 3) is UserStatus.available
     assert bot.sent == []
+
+
+class _DownPanel(FakePanel):
+    async def delete_user_by_username(self, username: str) -> bool:
+        from gozar.remnawave import RemnawaveError
+
+        raise RemnawaveError("panel down")
+
+
+async def test_the_sweep_finishes_a_ban_the_panel_did_not_answer(db_sessions) -> None:
+    """A ban keeps the handle when the delete fails; the sweep is the retry the panel promises."""
+    async with db_sessions() as session:
+        session.add(User(telegram_id=7, status=UserStatus.banned, panel_username="g7"))
+        session.add(User(telegram_id=8, status=UserStatus.banned, panel_username=None))
+        await session.commit()
+
+    panel = FakePanel({})
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": panel,
+        "bot": FakeBot(),
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    assert panel.deleted == ["g7"]
+    async with db_sessions() as session:
+        user = await UserRepository(session).get(7)
+        assert user.status is UserStatus.banned and user.panel_username is None
+
+
+async def test_a_pending_revoke_survives_a_panel_that_is_still_down(db_sessions) -> None:
+    async with db_sessions() as session:
+        session.add(User(telegram_id=9, status=UserStatus.banned, panel_username="g9"))
+        await session.commit()
+
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": _DownPanel({}),
+        "bot": FakeBot(),
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    # Still pending: forgetting the handle would leave the account impossible to revoke.
+    async with db_sessions() as session:
+        assert (await UserRepository(session).get(9)).panel_username == "g9"

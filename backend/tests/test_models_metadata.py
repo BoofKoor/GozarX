@@ -24,6 +24,7 @@ def test_all_tables_registered() -> None:
         "broadcast_logs",
         # website (separate product, shared infra)
         "site_devices",
+        "site_device_days",
         "site_claims",
         "site_rewards",
         "push_subscriptions",

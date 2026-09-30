@@ -33,6 +33,7 @@ const STATS = {
   conversion_pct: 20,
   conversion_pct_prev: 37.5,
   location_changes: 4,
+  visits_recorded_since: "2026-06-01T00:00:00Z",
   total_devices_all_time: 9999,
   devices_claimed_all_time: 1200,
   conversion_all_time_pct: 12,
@@ -99,6 +100,23 @@ describe("SiteStats", () => {
     expect(await screen.findByText(/دورهٔ قبل: ۸۰/)).toBeInTheDocument();
     // A fall in claimers must read as a fall, not as an unqualified number.
     expect(screen.getByText(/۲۰٪/, { selector: "span" })).toBeInTheDocument();
+  });
+
+  it("says the previous window is unrecorded rather than calling it zero", async () => {
+    // A past window is counted from the per-day visit record; before that record began there is
+    // no figure, and «۰» there would read as a collapse in traffic.
+    const days = series(14).map((p, i) => ({ ...p, count: i < 10 ? null : p.count }));
+    mock.onGet("/admin/site/stats/").reply(200, {
+      ...STATS,
+      visitors: { value: 120, previous: null, change_pct: null },
+      conversion_pct_prev: null,
+      visits_recorded_since: "2026-07-10T09:00:00Z",
+      visitors_series: days,
+    });
+    renderPage();
+    expect(await screen.findByText("دورهٔ قبل: هنوز ثبت نمی‌شد")).toBeInTheDocument();
+    expect(screen.getByText(/قبل: —/)).toBeInTheDocument();
+    expect(screen.getByText(/بازدیدها از .* روزبه‌روز ثبت می‌شوند/)).toBeInTheDocument();
   });
 
   it("separates live active configs from ones the reconcile sweep hasn't caught up with", async () => {

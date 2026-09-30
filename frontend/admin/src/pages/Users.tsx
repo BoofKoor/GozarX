@@ -1,4 +1,13 @@
-import { Database, Download, Gift, MapPin, Search, Ticket, UserX } from "lucide-react";
+import {
+  AlertTriangle,
+  Database,
+  Download,
+  Gift,
+  MapPin,
+  Search,
+  Ticket,
+  UserX,
+} from "lucide-react";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -26,6 +35,7 @@ import {
   useUsers,
 } from "@/hooks/useUsers";
 import { useI18n, type MessageKey } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { faRelative, formatNumber, humanBytes, langLabel } from "@/lib/format";
 import type { UserAction } from "@/types/api";
 
@@ -194,7 +204,16 @@ export function Users() {
                     </span>
                   </TD>
                   <TD>
-                    <StatusBadge status={u.status} />
+                    <span className="flex items-center gap-1.5">
+                      <StatusBadge status={u.status} />
+                      {u.revoke_pending && (
+                        <AlertTriangle
+                          className="h-3.5 w-3.5 text-warning-700"
+                          role="img"
+                          aria-label={t("users.row.revokePending")}
+                        />
+                      )}
+                    </span>
                   </TD>
                   <TD className="whitespace-nowrap text-sm text-content-muted">
                     {u.last_location ?? "—"}
@@ -270,11 +289,11 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
   const action = useUserAction();
   const confirm = useConfirm();
 
-  async function run(name: UserAction, destructive = false) {
+  async function run(name: UserAction, message?: MessageKey) {
     if (
-      destructive &&
+      message &&
       !(await confirm({
-        message: t("users.action.confirm"),
+        message: t(message),
         tone: "danger",
         confirmLabel: t("users.action.confirmLabel"),
       }))
@@ -284,8 +303,20 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
     action.mutate(
       { id, action: name },
       {
-        onSuccess: () => toast.success(t("users.action.done")),
-        onError: () => toast.error(t("users.action.failed")),
+        onSuccess: (updated) =>
+          updated.revoke_pending
+            ? toast.warning(t("users.action.revokePending"))
+            : toast.success(t("users.action.done")),
+        // The server says WHY: a banned user cannot be given another claim (409), and a panel that
+        // did not answer means nothing changed (502). One generic toast made both read as a glitch
+        // to retry.
+        onError: (err) =>
+          toast.error(
+            apiErrorMessage(err, t("users.action.failed"), {
+              409: t("users.action.refusedBanned"),
+              502: t("users.action.refusedPanel"),
+            }),
+          ),
       },
     );
   }
@@ -311,17 +342,28 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
                 {t("users.action.unban")}
               </Button>
             ) : (
-              <Button variant="danger" onClick={() => run("ban", true)} loading={action.isPending}>
+              <Button
+                variant="danger"
+                onClick={() => run("ban", "users.action.confirm")}
+                loading={action.isPending}
+              >
                 {t("users.action.ban")}
               </Button>
             )}
-            <Button variant="outline" onClick={() => run("reclaim")} loading={action.isPending}>
-              {t("users.action.reclaim")}
-            </Button>
+            {/* Not offered to a banned user: it used to lift the ban as a side effect, silently. */}
+            {user.status !== "banned" && (
+              <Button
+                variant="outline"
+                onClick={() => run("reclaim", "users.action.reclaimConfirm")}
+                loading={action.isPending}
+              >
+                {t("users.action.reclaim")}
+              </Button>
+            )}
             <span className="flex-1" />
             <Button
               variant="ghost"
-              onClick={() => run("zero_referrals", true)}
+              onClick={() => run("zero_referrals", "users.action.confirm")}
               loading={action.isPending}
             >
               {t("users.action.zeroReferrals")}
@@ -336,6 +378,15 @@ function UserDetail({ id, onClose }: { id: number; onClose: () => void }) {
         </div>
       ) : (
         <div className="space-y-4">
+          {user.revoke_pending && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("users.detail.revokePending")}
+            </p>
+          )}
           <div className="grid grid-cols-3 gap-2">
             <StatTile
               icon={Ticket}

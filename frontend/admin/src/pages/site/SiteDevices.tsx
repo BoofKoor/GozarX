@@ -1,4 +1,13 @@
-import { Fingerprint, Gift, MonitorSmartphone, Network, Search, ShieldOff, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Fingerprint,
+  Gift,
+  MonitorSmartphone,
+  Network,
+  Search,
+  ShieldOff,
+  X,
+} from "lucide-react";
 import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -186,7 +195,16 @@ export function SiteDevices() {
                     )}
                   </TD>
                   <TD>
-                    <StatusBadge status={d.status} />
+                    <span className="flex items-center gap-1.5">
+                      <StatusBadge status={d.status} />
+                      {d.revoke_pending && (
+                        <AlertTriangle
+                          className="h-3.5 w-3.5 text-warning-700"
+                          role="img"
+                          aria-label={t("sd.row.revokePending")}
+                        />
+                      )}
+                    </span>
                   </TD>
                   <TD className="tabular-nums">{formatNumber(d.referral_count)}</TD>
                   <TD className="tabular-nums">{formatNumber(d.streak_count)}</TD>
@@ -240,8 +258,17 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
     action.mutate(
       { uuid, action: name },
       {
-        onSuccess: () => toast.success(t("sd.action.done")),
-        onError: (err) => toast.error(apiErrorMessage(err, t("sd.action.failed"))),
+        onSuccess: (updated) =>
+          updated.revoke_pending
+            ? toast.warning(t("sd.action.revokePending"))
+            : toast.success(t("sd.action.done")),
+        onError: (err) =>
+          toast.error(
+            apiErrorMessage(err, t("sd.action.failed"), {
+              409: t("sd.action.refusedState"),
+              502: t("sd.action.refusedPanel"),
+            }),
+          ),
       },
     );
   }
@@ -264,6 +291,15 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
         </div>
       ) : (
         <div className="space-y-5">
+          {device.revoke_pending && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("sd.detail.revokePending")}
+            </p>
+          )}
           <div>
             <Row label={t("sd.col.status")} value={<StatusBadge status={device.status} />} />
             <Row label={t("sd.detail.claims")} value={formatNumber(device.claims)} />
@@ -361,9 +397,17 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                 {t("sd.action.block")}
               </Button>
             )}
-            <Button variant="outline" onClick={() => run("reset")} loading={action.isPending}>
-              {t("sd.action.reset")}
-            </Button>
+            {/* Not offered to a blocked device: it used to lift the block as a side effect. And
+                on an active one it deletes a working config, so it asks first. */}
+            {device.status !== "blocked" && (
+              <Button
+                variant="outline"
+                onClick={() => run("reset", t("sd.action.resetConfirm"))}
+                loading={action.isPending}
+              >
+                {t("sd.action.reset")}
+              </Button>
+            )}
           </div>
         </div>
       )}

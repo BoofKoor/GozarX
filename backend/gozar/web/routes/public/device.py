@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel
 
 from gozar.config.settings import get_settings
+from gozar.db.models.site_device import SiteDeviceStatus
 from gozar.db.repositories.site_device import SiteDeviceRepository
 from gozar.services.site_device import SiteDeviceService
 from gozar.web.dependencies import DbSession
@@ -53,7 +54,10 @@ async def reset_device(request: Request, response: Response, session: DbSession)
 
     if device_uuid is not None:
         device = await SiteDeviceRepository(session).get(device_uuid)
-        if device is not None:
+        # A BLOCKED device keeps its row: the reset hard-deletes it, and with it the fingerprint,
+        # IP bucket and claim history the block exists to preserve. The caller still gets a fresh
+        # identity (the cookie is cleared below) — which clearing cookies would give them anyway.
+        if device is not None and device.status != SiteDeviceStatus.blocked:
             await SiteDeviceService(
                 SiteDeviceRepository(session), request.app.state.panel, redis
             ).reset(device)

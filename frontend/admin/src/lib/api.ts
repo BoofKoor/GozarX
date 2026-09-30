@@ -110,9 +110,19 @@ api.interceptors.response.use(
  * exactly which location the squad doesn't serve, a 409 ("the squad matched no enabled host") and a
  * 502 ("panel unreachable") all read as "ذخیره نشد." — three different problems, one useless
  * message. FastAPI puts the reason in `detail`; surface it.
+ *
+ * `byStatus` names a refusal the page KNOWS in the operator's language. The server writes its
+ * reasons in English, so a Persian console that surfaced them verbatim toasted English; a status
+ * the page has no sentence for still shows the server's own words rather than the fallback.
  */
-export function apiErrorMessage(error: unknown, fallback: string): string {
+export function apiErrorMessage(
+  error: unknown,
+  fallback: string,
+  byStatus?: Partial<Record<number, string>>,
+): string {
   if (!axios.isAxiosError(error)) return fallback;
+  const known = error.response ? byStatus?.[error.response.status] : undefined;
+  if (known) return known;
   const detail = (error.response?.data as { detail?: unknown } | undefined)?.detail;
   if (typeof detail === "string" && detail.trim()) return detail;
   // 422 bodies are a list of per-field errors; show the first message rather than "[object Object]".

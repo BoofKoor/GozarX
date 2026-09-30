@@ -364,12 +364,12 @@ class TrialService:
     async def _last_claim_at(self, user: User) -> datetime | None:
         """The rolling-cooldown anchor: when the user last PROVISIONED a trial.
 
-        Prefers the durable ``last_claim_at`` (set at provision, so it lines up with the trial's own
-        expiry); falls back to the newest delivered-config time for a user whose field is still
-        unset (the migration backfills existing rows, so this only covers a pre-backfill edge)."""
-        if user.last_claim_at is not None:
-            return user.last_claim_at
-        return await self._config_log_repo.latest_created_at_for_user(user.telegram_id)
+        ``last_claim_at`` alone. It used to fall back to the newest delivered-config time for an
+        unset row, but the column's migration backfilled every existing user, so the only rows left
+        unset are ones an admin RECLAIM cleared on purpose — and the fallback then re-imposed the
+        very cooldown the reclaim lifted, which is why reclaim had to delete claim history to work.
+        """
+        return user.last_claim_at
 
     # --- public flow ----------------------------------------------------------------------------
     async def claim(self, user: User) -> ClaimResult:

@@ -19,6 +19,7 @@ from gozar.services.settings_service import SettingsService
 from gozar.services.site_referral import SiteReferralService
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
+    Blocked,
     Delivered,
     LocationUnavailable,
     NoLocations,
@@ -142,6 +143,8 @@ async def post_claim(
                 size=result.size,
                 changed=result.changed,
             )
+        if isinstance(result, Blocked):
+            return ClaimResponse(ok=False, reason="blocked")
         if isinstance(result, AlreadyClaimedToday):
             return ClaimResponse(ok=False, reason="cooldown", retry_after=result.retry_after)
         if isinstance(result, NotReady):

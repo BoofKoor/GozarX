@@ -16,10 +16,12 @@ import httpx
 import pytest_asyncio
 from httpx import ASGITransport
 
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.config.settings import get_settings
 from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice
+from gozar.db.models.site_device_day import SiteDeviceDay
 from gozar.db.models.site_message import SiteMessage
 from gozar.db.models.site_reward import SiteReward
 from gozar.web.app import create_app
@@ -27,6 +29,11 @@ from gozar.web.auth.jwt import create_access
 
 _SECRET = "test-admin-secret-0123456789-abcdef-ghijkl"  # >=32 bytes for PyJWT
 _DAY = timedelta(days=1)
+
+
+def _visit(uuid: str, when: datetime) -> SiteDeviceDay:
+    """A recorded visit, as ``touch_seen`` writes it: the local day, and the first request in it."""
+    return SiteDeviceDay(device_uuid=uuid, day=when.astimezone(DISPLAY_TZ).date(), first_at=when)
 
 
 class _StubPanel:
@@ -399,7 +406,18 @@ async def test_site_stats_compares_against_the_previous_window(
         for n, uuid in ((9, "p1"), (10, "p2")):
             when = now - timedelta(days=n)
             s.add(SiteDevice(uuid=uuid, created_at=when, last_seen_at=when))
+        # The visit record has been running since before both windows.
+        month_ago = now - timedelta(days=30)
+        s.add(SiteDevice(uuid="early", created_at=month_ago, last_seen_at=month_ago))
         await s.flush()
+        s.add_all(
+            [
+                _visit("early", month_ago),
+                _visit("p1", now - timedelta(days=9)),
+                _visit("p2", now - timedelta(days=10)),
+                _visit("cur", now - _DAY),
+            ]
+        )
         s.add(SiteClaim(device_uuid="cur", location="Germany", created_at=now - _DAY))
         await s.commit()
 
@@ -407,6 +425,48 @@ async def test_site_stats_compares_against_the_previous_window(
     assert body["visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
     # change_pct is None (not 0.0) with no baseline, so a launch week reads as "new", not "flat".
     assert body["claimers"] == {"value": 1, "previous": 0, "change_pct": None}
+
+
+async def test_a_loyal_visitor_is_counted_in_the_previous_window_too(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """A device that visits every day was 0 last week and a cliff today.
+
+    ``last_seen_at`` holds only the LATEST visit, so a past window counted just the devices that
+    never came back, and the daily series put each device on its last day alone.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="loyal", created_at=now - timedelta(days=40), last_seen_at=now))
+        await s.flush()
+        s.add_all([_visit("loyal", now - timedelta(days=n)) for n in range(40)])
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"] == {"value": 1, "previous": 1, "change_pct": 0.0}
+    assert body["returning_visitors"] == {"value": 1, "previous": 1, "change_pct": 0.0}
+    assert [p["count"] for p in body["visitors_series"]] == [1] * 7
+
+
+async def test_visits_before_the_record_began_are_unknown_not_zero(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="d", created_at=now - timedelta(days=3), last_seen_at=now))
+        await s.flush()
+        # The recorder shipped two days ago.
+        s.add_all([_visit("d", now - timedelta(days=2)), _visit("d", now)])
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"] == {"value": 1, "previous": None, "change_pct": None}
+    assert body["returning_visitors"]["previous"] is None
+    assert body["conversion_pct_prev"] is None
+    assert body["visits_recorded_since"] is not None
+    counts = [p["count"] for p in body["visitors_series"]]
+    # The day the record began is partial, so it and every day before it have no figure at all.
+    assert counts == [None] * 5 + [0, 1]
 
 
 async def test_site_stats_splits_live_from_stale_active_configs(

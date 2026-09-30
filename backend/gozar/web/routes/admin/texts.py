@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from gozar.db.models.enums import Language
@@ -94,6 +94,9 @@ async def list_texts(request: Request, session: DbSession, admin: AdminUser) -> 
 async def update_text(
     key: str, body: TextPatch, request: Request, session: DbSession, admin: AdminUser
 ) -> TextOut:
+    if body.fa is not None and not body.fa.strip():
+        # Persian is what every other language falls back to; a blank one leaves nothing to send.
+        raise HTTPException(422, "Persian text can't be empty: other languages fall back to it.")
     content = ContentService(session, request.app.state.redis)
     # The editor saves all three languages together, so the per-key link_preview lands on every row.
     # sanitize_tokens strips any stray bidi/zero-width marks an RTL edit slipped inside ``{token}``.

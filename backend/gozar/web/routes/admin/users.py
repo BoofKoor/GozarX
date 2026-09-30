@@ -9,17 +9,18 @@ from __future__ import annotations
 import csv
 import io
 import logging
+from collections.abc import AsyncIterator
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
-from gozar.services.admin import AdminService
+from gozar.services.admin import AdminService, ReclaimRefused
 from gozar.services.settings_service import SettingsService
 from gozar.services.stats import window_start, zero_filled_daily
 from gozar.web.dependencies import AdminUser, DbSession
@@ -30,8 +31,8 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 #: How far back the record dialog's mini chart looks.
 _DETAIL_DAYS = 30
-#: A ceiling on the export, so one click can never stream the whole table into a request thread.
-_EXPORT_LIMIT = 50_000
+#: Rows per database round trip while streaming the export.
+_EXPORT_BATCH = 2_000
 
 
 def _admin_service(request: Request, session: object) -> AdminService:
@@ -62,6 +63,10 @@ class UserOut(BaseModel):
     last_location: str | None = None
     #: When that claim was provisioned — the rolling-cooldown anchor, and the row's recency signal.
     last_claim_at: datetime | None = None
+    #: Banned, but the panel did not answer the revoke: their config still works until the reconcile
+    #: sweep (or another ban) gets the delete through. Shown so a ban never reads as done when it
+    #: is not.
+    revoke_pending: bool = False
 
 
 class UserPage(BaseModel):
@@ -106,6 +111,7 @@ def _out(user: User, configs: int | None = None, last_location: str | None = Non
         configs=configs,
         last_location=last_location,
         last_claim_at=user.last_claim_at,
+        revoke_pending=user.status is UserStatus.banned and user.panel_username is not None,
     )
 
 
@@ -150,46 +156,70 @@ async def claimed_locations(session: DbSession, admin: AdminUser) -> list[str]:
     return await ConfigLogRepository(session).distinct_locations()
 
 
-@router.get("/export.csv", response_class=PlainTextResponse)
+@router.get("/export.csv")
 async def export_users(
-    session: DbSession,
+    request: Request,
     admin: AdminUser,
     status: UserStatus | None = None,
     search: str | None = None,
     location: str | None = None,
-) -> PlainTextResponse:
-    """The CURRENT filter's users as CSV.
+) -> StreamingResponse:
+    """The CURRENT filter's users as CSV — all of them, streamed.
 
     It exports what the table is showing, not the whole table: an operator filters to a case and
     then wants that case out, and an export that silently ignores the filters is a different
     question's answer. Written with `csv` rather than string joins so a location containing a comma
     can never shift the columns.
-    """
-    repo = UserRepository(session)
-    rows = await repo.list_page(
-        limit=_EXPORT_LIMIT, offset=0, status=status, search=search, location=location
-    )
-    places = await ConfigLogRepository(session).latest_locations([u.telegram_id for u in rows])
 
-    buffer = io.StringIO()
-    writer = csv.writer(buffer)
-    writer.writerow(
-        ["telegram_id", "status", "language", "referrals", "panel_username", "location", "joined"]
-    )
-    for user in rows:
+    Each row's location and claim count come from the SAME query, never from a second one keyed by
+    a list of ids: that list used to be 50,000 bind parameters, which asyncpg refuses past 32,767,
+    so the unfiltered export of the live install always failed with a 500. The old 50,000-row
+    ceiling is gone with it — the file is streamed in batches, so size costs no process memory.
+    It reads through its own session because the response outlives the request's.
+    """
+    stmt = UserRepository.export_statement(status=status, search=search, location=location)
+    sessionmaker = request.app.state.sessionmaker
+
+    async def rows() -> AsyncIterator[str]:
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
         writer.writerow(
             [
-                user.telegram_id,
-                user.status.value,
-                user.language.value,
-                user.referral_count,
-                user.panel_username or "",
-                places.get(user.telegram_id, ""),
-                user.created_at.isoformat() if user.created_at else "",
+                "telegram_id",
+                "status",
+                "language",
+                "referrals",
+                "panel_username",
+                "location",
+                "claims",
+                "last_claim",
+                "joined",
             ]
         )
-    return PlainTextResponse(
-        buffer.getvalue(),
+        async with sessionmaker() as session:
+            result = await session.stream(stmt.execution_options(yield_per=_EXPORT_BATCH))
+            async for tid, state, lang, refs, handle, place, claims, last, joined in result:
+                writer.writerow(
+                    [
+                        tid,
+                        getattr(state, "value", state),
+                        getattr(lang, "value", lang),
+                        refs,
+                        handle or "",
+                        place or "",
+                        claims or 0,
+                        last.isoformat() if last else "",
+                        joined.isoformat() if joined else "",
+                    ]
+                )
+                if buffer.tell() > 64 * 1024:
+                    yield buffer.getvalue()
+                    buffer.seek(0)
+                    buffer.truncate()
+        yield buffer.getvalue()
+
+    return StreamingResponse(
+        rows(),
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": 'attachment; filename="gozar-users.csv"'},
     )
@@ -245,9 +275,20 @@ async def get_user(
     return _out(card.user, configs=card.configs)
 
 
+_REFUSED = {
+    "banned": "This user is banned. Unban them first, then allow another claim.",
+    "panel": "The panel did not answer, so the current config was not revoked and nothing changed.",
+}
+
+
 async def _run_action(request: Request, session: object, telegram_id: int, method: str) -> UserOut:
     svc = _admin_service(request, session)
-    user = await getattr(svc, method)(telegram_id)
+    try:
+        user = await getattr(svc, method)(telegram_id)
+    except ReclaimRefused as refused:
+        # 409 for a state conflict (banned), 502 when the panel is what failed.
+        code = 409 if refused.reason == "banned" else 502
+        raise HTTPException(code, _REFUSED[refused.reason]) from refused
     if user is None:
         raise HTTPException(404, "user not found")
     card = await svc.lookup(telegram_id)

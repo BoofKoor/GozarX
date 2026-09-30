@@ -8,12 +8,14 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import case, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql import Select
 
-from gozar.config.reporting import DISPLAY_TZ_NAME
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
+from gozar.db.models.site_device_day import SiteDeviceDay
 from gozar.db.repositories.base import BaseRepository
 
 # How stale a `last_seen_at` may be before the next request refreshes it. Coarse on purpose: the
@@ -116,6 +118,17 @@ class SiteDeviceRepository(BaseRepository):
             select(SiteDevice).where(SiteDevice.site_panel_username == username)
         )
 
+    async def list_revoke_pending(self) -> list[tuple[str, str]]:
+        """``(uuid, site_panel_username)`` for every BLOCKED device still holding a panel handle —
+        the block could not reach the panel, so its trial works until the sweep deletes it."""
+        rows = await self.session.execute(
+            select(SiteDevice.uuid, SiteDevice.site_panel_username).where(
+                SiteDevice.status == SiteDeviceStatus.blocked,
+                SiteDevice.site_panel_username.is_not(None),
+            )
+        )
+        return [(str(uuid), name) for uuid, name in rows.all() if name]
+
     async def list_active_with_panel(self) -> list[tuple[str, str]]:
         """``(uuid, site_panel_username)`` for every ``active_config`` device with a live panel
         account — the audience the site reconcile sweep (P7) probes for ended/limited trials."""
@@ -191,30 +204,67 @@ class SiteDeviceRepository(BaseRepository):
         return [(str(b), int(n)) for b, n in rows.all()]
 
     # --- visit tracking ---------------------------------------------------------------------------
-    async def touch_seen(self, device: SiteDevice, *, throttle: timedelta = _SEEN_THROTTLE) -> None:
-        """Record that this device was just seen, at most once per ``throttle``.
+    async def touch_seen(
+        self, device: SiteDevice, *, throttle: timedelta = _SEEN_THROTTLE, minted: bool = False
+    ) -> None:
+        """Record that this device was just seen: ``last_seen_at``, and the local day it was seen.
 
         Called from the identity dependency, so it fires on every identity-bearing request — hence
-        the throttle: an unconditional UPDATE would turn every page load into a row write. A
-        one-hour resolution is far finer than the daily buckets that consume it.
+        the throttle: an unconditional UPDATE would turn every page load into a row write. A new
+        LOCAL day always writes, whatever the throttle says, so the day's ``site_device_days`` row
+        (and its ``first_at``) is exact rather than up to an hour late — or missing entirely for a
+        device that visited once just after midnight.
+
+        ``minted`` is for a device created in this request: its ``last_seen_at`` comes from the
+        column's server default, so the throttle alone would skip the visit that minted it.
         """
         now = datetime.now(UTC)
-        if device.last_seen_at is not None and now - device.last_seen_at < throttle:
+        today = now.astimezone(DISPLAY_TZ).date()
+        last = device.last_seen_at
+        if (
+            not minted
+            and last is not None
+            and now - last < throttle
+            and last.astimezone(DISPLAY_TZ).date() == today
+        ):
             return
         device.last_seen_at = now
+        # Flushed first: a device minted in this request must exist before a row can reference it.
         await self.session.flush()
+        await self.session.execute(
+            pg_insert(SiteDeviceDay)
+            .values(device_uuid=device.uuid, day=today, first_at=now)
+            .on_conflict_do_nothing(index_elements=[SiteDeviceDay.device_uuid, SiteDeviceDay.day])
+        )
 
-    async def count_seen_between(self, start: datetime, end: datetime) -> int:
-        """Devices seen in ``[start, end)`` — the honest "visitors in this window" figure.
+    async def count_seen_since(self, start: datetime) -> int:
+        """Devices seen at/after ``start`` — a window that runs to NOW.
 
-        The old "visits" number was ``count()``: every identity ever minted, which grows forever and
-        counts each cookieless client once per request.
+        ``last_seen_at`` answers this exactly (a device seen in the window has its latest visit in
+        it), to the throttle's resolution — and exactly when ``start`` is a local midnight, since
+        the first request of a day always writes. It can NOT answer a window that has ended: see
+        ``count_visited_between``.
         """
         return int(
             await self.session.scalar(
-                select(func.count())
-                .select_from(SiteDevice)
-                .where(SiteDevice.last_seen_at >= start, SiteDevice.last_seen_at < end)
+                select(func.count()).select_from(SiteDevice).where(SiteDevice.last_seen_at >= start)
+            )
+            or 0
+        )
+
+    async def count_visited_between(self, start: datetime, end: datetime) -> int:
+        """Devices seen in ``[start, end)``, from the per-day record — the only honest count of a
+        window that has ENDED. ``last_seen_at`` is overwritten on every visit, so counting a past
+        window from it counted only the devices that never came back.
+
+        ``start`` must be a local midnight (every windowed caller's is); ``end`` may fall mid-day,
+        because ``first_at`` says whether the device had already been seen by then.
+        """
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteDeviceDay.device_uuid))).where(
+                    SiteDeviceDay.first_at >= start, SiteDeviceDay.first_at < end
+                )
             )
             or 0
         )
@@ -230,34 +280,52 @@ class SiteDeviceRepository(BaseRepository):
             or 0
         )
 
-    async def count_returning_between(self, start: datetime, end: datetime) -> int:
-        """Devices seen in the window that already existed BEFORE it — real returning visitors.
+    async def count_returning_since(self, start: datetime) -> int:
+        """Devices seen at/after ``start`` that already existed BEFORE it — real returning visitors.
         This is the number that says whether the site keeps anyone, and nothing reported it."""
         return int(
             await self.session.scalar(
                 select(func.count())
                 .select_from(SiteDevice)
+                .where(SiteDevice.last_seen_at >= start, SiteDevice.created_at < start)
+            )
+            or 0
+        )
+
+    async def count_returning_between(self, start: datetime, end: datetime) -> int:
+        """``count_returning_since`` for a window that has ended, from the per-day record."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteDeviceDay.device_uuid)))
+                .join(SiteDevice, SiteDevice.uuid == SiteDeviceDay.device_uuid)
                 .where(
-                    SiteDevice.last_seen_at >= start,
-                    SiteDevice.last_seen_at < end,
+                    SiteDeviceDay.first_at >= start,
+                    SiteDeviceDay.first_at < end,
                     SiteDevice.created_at < start,
                 )
             )
             or 0
         )
 
+    async def visits_recorded_since(self) -> datetime | None:
+        """The first instant the per-day record holds, or None before the first visit is recorded.
+
+        Visit history starts when the recorder shipped: a window before this has no visit data,
+        which is a different sentence from "nobody visited".
+        """
+        return await self.session.scalar(select(func.min(SiteDeviceDay.first_at)))
+
     async def seen_daily(self, since: datetime) -> list[tuple[str, int]]:
         """Distinct devices seen per LOCAL day at/after ``since`` → ``[(day, devices), …]``.
 
-        Resolution is bounded by ``touch_seen``'s throttle: a device seen several times in a day
-        counts once, which is exactly what a daily visitor series wants.
+        One row per device per day by construction, so a count of rows is a count of devices.
         """
-        day = func.date(func.timezone(DISPLAY_TZ_NAME, SiteDevice.last_seen_at)).label("day")
+        first_day = since.astimezone(DISPLAY_TZ).date()
         rows = await self.session.execute(
-            select(day, func.count())
-            .where(SiteDevice.last_seen_at >= since)
-            .group_by(day)
-            .order_by(day)
+            select(SiteDeviceDay.day, func.count())
+            .where(SiteDeviceDay.day >= first_day)
+            .group_by(SiteDeviceDay.day)
+            .order_by(SiteDeviceDay.day)
         )
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
