@@ -22,16 +22,19 @@ import { useIsDark } from "@/hooks/useIsDark";
 import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { useI18n } from "@/i18n";
 import { chartTheme, seriesColor } from "@/lib/chartTheme";
-import { formatNumber } from "@/lib/format";
+import { formatNumber, localizeDigits } from "@/lib/format";
 import type { HealthSample } from "@/types/api";
 
 const RANGES = [60, 360, 1440];
 
+/** The sample's clock time, in the locale's digits — it is both the x tick and the tooltip label. */
 function hhmm(iso: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime())
     ? ""
-    : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    : localizeDigits(
+        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      );
 }
 
 export function HistoryChart({

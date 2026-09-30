@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { t } from "@/i18n";
+import { dirFor, getLocale, t } from "@/i18n";
 import type { ChartTheme } from "@/lib/chartTheme";
 import { localizeDigits } from "@/lib/format";
 
@@ -56,7 +56,7 @@ export function ChartFrame({
       {empty ? (
         <div
           className="flex h-full items-center justify-center text-sm text-content-subtle"
-          dir="rtl"
+          dir={dirFor(getLocale())}
         >
           {emptyLabel ?? t("d.heat.empty")}
         </div>

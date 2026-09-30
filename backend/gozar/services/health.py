@@ -9,6 +9,7 @@ instead of raising, so one flaky dependency never blanks the whole page. Reused 
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
@@ -25,12 +26,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from gozar.cache.redis import HEALTH_HISTORY_KEY, HEALTH_HISTORY_MAX
 from gozar.remnawave import RemnawaveClient
 from gozar.remnawave.schemas import SystemStats
+from gozar.services.panel_cache import read_system_stats, refresh_system_stats
 
 logger = logging.getLogger("gozar.services.health")
 
 _RECENT_ERROR_SECONDS = 300  # a webhook error within 5 min counts against "live" health
 _PENDING_BACKLOG = 50  # pending updates above this is a degraded webhook
 _RESOURCE_PRESSURE_PCT = 90.0  # mem/disk at/above this is degraded
+#: Telegram's getWebhookInfo, bounded well under aiogram's 60s default so one slow answer cannot
+#: stall a page that polls every few seconds.
+_TELEGRAM_TIMEOUT = 5
+#: The live route shares one Telegram reading for this long; the worker's per-minute sample always
+#: asks afresh (it is the history), and the route polls every 10s on the System page.
+_TELEGRAM_CACHE_TTL = 30
+_TELEGRAM_CACHE_KEY = "cache:health:telegram"
 
 
 class Probe(BaseModel):
@@ -139,15 +148,24 @@ async def _probe_redis(redis: Redis) -> Probe:
     return Probe(ok=True, latency_ms=_ms(start))
 
 
-async def _probe_panel(panel: RemnawaveClient) -> tuple[Probe, SystemStats | None]:
-    start = time.monotonic()
+async def _probe_panel(
+    panel: RemnawaveClient, redis: Redis, *, fresh: bool
+) -> tuple[Probe, SystemStats | None]:
+    """The panel's ``/system/stats`` through the shared reading cache (``services.panel_cache``).
+
+    ``fresh`` (the worker's per-minute sample) always asks the panel and refreshes the cache for
+    everyone else; the live route reuses a recent reading, so polling this page no longer costs one
+    panel call per poll. The latency shown is the one measured on the call that produced it.
+    """
     try:
-        stats = await panel.system_stats()  # already swallows RemnawaveError -> None
-    except Exception:
+        reading = await (
+            refresh_system_stats(panel, redis) if fresh else read_system_stats(panel, redis)
+        )
+    except Exception:  # never raise out of a health probe
         return Probe(ok=False, detail="unreachable"), None
-    if stats is None:
-        return Probe(ok=False, latency_ms=_ms(start), detail="unreachable"), None
-    return Probe(ok=True, latency_ms=_ms(start)), stats
+    if reading.stats is None:
+        return Probe(ok=False, latency_ms=reading.latency_ms, detail="unreachable"), None
+    return Probe(ok=True, latency_ms=reading.latency_ms), reading.stats
 
 
 def _to_dt(value: object) -> datetime | None:
@@ -163,12 +181,24 @@ def _to_dt(value: object) -> datetime | None:
     return None
 
 
-async def _probe_telegram(bot: Bot | None) -> tuple[Probe, WebhookHealth]:
+async def _probe_telegram(
+    bot: Bot | None, redis: Redis | None = None, *, fresh: bool = True
+) -> tuple[Probe, WebhookHealth]:
     if bot is None:
         return Probe(ok=False, detail="bot disabled"), WebhookHealth(configured=False)
+    if not fresh and redis is not None:
+        try:
+            raw = await redis.get(_TELEGRAM_CACHE_KEY)
+            if raw is not None:
+                data = json.loads(raw)
+                return Probe.model_validate(data["probe"]), WebhookHealth.model_validate(
+                    data["webhook"]
+                )
+        except Exception:  # an unreadable entry is a miss
+            pass
     start = time.monotonic()
     try:
-        info = await bot.get_webhook_info()
+        info = await bot.get_webhook_info(request_timeout=_TELEGRAM_TIMEOUT)
         # Parsing stays INSIDE the try: aiogram returns last_error_date as a datetime, so a stray
         # type/shape must never escape and 500 the whole monitoring page — degrade gracefully.
         last_dt = _to_dt(info.last_error_date)
@@ -183,10 +213,20 @@ async def _probe_telegram(bot: Bot | None) -> tuple[Probe, WebhookHealth]:
             last_error_at=last_dt.isoformat() if last_dt else None,
             last_error=info.last_error_message,
         )
+        probe = Probe(ok=True, latency_ms=_ms(start))
     except Exception:
         logger.warning("health: telegram webhook probe failed")
-        return Probe(ok=False, detail="unreachable"), WebhookHealth(configured=True)
-    return Probe(ok=True, latency_ms=_ms(start)), webhook
+        probe, webhook = Probe(ok=False, detail="unreachable"), WebhookHealth(configured=True)
+    if redis is not None:
+        try:
+            await redis.set(
+                _TELEGRAM_CACHE_KEY,
+                json.dumps({"probe": probe.model_dump(), "webhook": webhook.model_dump()}),
+                ex=_TELEGRAM_CACHE_TTL,
+            )
+        except Exception:
+            pass
+    return probe, webhook
 
 
 def _overall(
@@ -197,6 +237,9 @@ def _overall(
     degraded = (
         not panel.ok
         or (webhook.configured and not tg.ok)
+        # A bot with NO webhook registered receives nothing at all — Telegram answering the probe
+        # is not the same as Telegram delivering updates.
+        or (webhook.configured and tg.ok and not webhook.url_set)
         or webhook.pending > _PENDING_BACKLOG
         or webhook.recent_error
         or host.mem_pct >= _RESOURCE_PRESSURE_PCT
@@ -206,13 +249,27 @@ def _overall(
 
 
 async def build_snapshot(
-    session: AsyncSession, redis: Redis, panel: RemnawaveClient, bot: Bot | None
+    session: AsyncSession,
+    redis: Redis,
+    panel: RemnawaveClient,
+    bot: Bot | None,
+    *,
+    fresh: bool = False,
 ) -> HealthSnapshot:
-    """Probe every dependency + read host resources, then derive an overall ok/degraded/down."""
+    """Probe every dependency + read host resources, then derive an overall ok/degraded/down.
+
+    The remote probes (Redis, the panel, Telegram) run CONCURRENTLY and before the database probe:
+    the session checks out its pooled connection on its first statement, so probing the database
+    first held that connection idle for as long as the panel and Telegram took to answer — on a
+    route polled from every page. ``fresh`` is the worker's sampler (always asks, refreshes the
+    shared readings); the live route reuses recent ones.
+    """
+    rds, (panel_probe, stats), (tg, webhook) = await asyncio.gather(
+        _probe_redis(redis),
+        _probe_panel(panel, redis, fresh=fresh),
+        _probe_telegram(bot, redis, fresh=fresh),
+    )
     db = await _probe_db(session)
-    rds = await _probe_redis(redis)
-    panel_probe, stats = await _probe_panel(panel)
-    tg, webhook = await _probe_telegram(bot)
     host = read_host_resources()
     return HealthSnapshot(
         status=_overall(db, rds, panel_probe, tg, webhook, host),

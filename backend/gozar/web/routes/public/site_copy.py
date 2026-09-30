@@ -52,10 +52,16 @@ async def get_site_copy(
         if value and value.strip():
             overrides[key] = value
 
+    async def seeded(key: str) -> str | None:
+        # Blank is "unset" here too. The site falls back with `??`, which treats "" as a value, so a
+        # cleared row used to ship an empty <title> and an empty hero subtitle to every visitor.
+        value = await content.raw(key, lang)
+        return value if value and value.strip() else None
+
     return SiteCopyOut(
-        hero_title=await content.raw("site_hero_title", lang),
-        hero_sub=await content.raw("site_hero_sub", lang),
-        meta_title=await content.raw("site_meta_title", lang),
-        meta_description=await content.raw("site_meta_description", lang),
+        hero_title=await seeded("site_hero_title"),
+        hero_sub=await seeded("site_hero_sub"),
+        meta_title=await seeded("site_meta_title"),
+        meta_description=await seeded("site_meta_description"),
         overrides=overrides,
     )

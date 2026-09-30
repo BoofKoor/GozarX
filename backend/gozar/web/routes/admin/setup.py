@@ -16,7 +16,13 @@ from pydantic import BaseModel, Field
 from gozar.remnawave import RemnawaveError
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.web.dependencies import AdminUser, DbSession
-from gozar.web.routes.admin.site_locations import reject_unknown_locations
+from gozar.web.routes.admin.bounds import (
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    TrialHours,
+)
+from gozar.web.routes.admin.site_locations import reject_unknown_locations, reject_unknown_squad
 
 router = APIRouter(prefix="/setup", tags=["setup"])
 
@@ -37,10 +43,10 @@ class SquadOut(BaseModel):
 class SetupIn(BaseModel):
     trial_squad: str
     locations: list[str] = Field(default_factory=list)
-    daily_limit_mb: int = 1024
-    referral_reward_mb: int = 500
-    referral_reward_limit: int = 10
-    trial_hours: int = 24
+    daily_limit_mb: DailyLimitMb = 1024
+    referral_reward_mb: RewardMb = 500
+    referral_reward_limit: RewardLimit = 10
+    trial_hours: TrialHours = 24
     ads_enabled: bool = False
 
 
@@ -68,6 +74,7 @@ async def complete_setup(
     # Validated against the squad being chosen right here, the same way the settings PUT and both
     # website writers are — a wizard that stores an unserved name hands the bot a location it can
     # never match to a config.
+    await reject_unknown_squad(request, body.trial_squad)
     await reject_unknown_locations(request, body.trial_squad, body.locations)
     await settings.set(SettingKey.TRIAL_SQUAD, body.trial_squad)
     await settings.set(SettingKey.LOCATIONS, json.dumps(body.locations))

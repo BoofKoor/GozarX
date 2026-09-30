@@ -20,7 +20,7 @@ database the WHERE clauses match nothing. No cache flush is needed: the content 
 ISR both expire within five minutes of the deploy.
 
 Revision ID: a42488f9321a
-Revises: c9a2e64b1f38
+Revises: a7d3e9f1c2b5
 Create Date: 2026-09-30
 """
 
@@ -30,7 +30,9 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "a42488f9321a"
-down_revision: str | None = "c9a2e64b1f38"
+# Re-parented onto main's head (a7d3e9f1c2b5) when the admin audit's migrations landed first — this
+# is a data-only UPDATE with no dependency on them, and it had not run anywhere yet.
+down_revision: str | None = "a7d3e9f1c2b5"
 branch_labels: str | None = None
 depends_on: str | None = None
 

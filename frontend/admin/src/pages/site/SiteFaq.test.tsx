@@ -61,6 +61,9 @@ describe("SiteFaq", () => {
     renderPage();
     expect(await screen.findByText("سوال یک")).toBeInTheDocument();
     expect(screen.getByText("۱ مورد منتشرنشده")).toBeInTheDocument();
+    // The category badge is the TRANSLATED tab name, not the message key it is looked up by.
+    expect(screen.getAllByText("شروع").length).toBeGreaterThan(0);
+    expect(screen.queryByText("sf.cat.start")).not.toBeInTheDocument();
   });
 
   it("sends the whole new order in one reorder call", async () => {

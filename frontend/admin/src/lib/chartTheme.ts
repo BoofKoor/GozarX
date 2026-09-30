@@ -1,3 +1,6 @@
+import { dirFor, getLocale } from "@/i18n";
+import { formatNumber, localizeDigits } from "@/lib/format";
+
 // Theme-aware colours for recharts, which can't read Tailwind's `dark:` variants or the token
 // classes. Everything here resolves the SAME CSS custom properties the rest of the panel uses
 // (src/styles/tokens.css) at call time, so charts follow a retheme automatically instead of
@@ -54,6 +57,8 @@ export interface ChartTheme {
     labelStyle: React.CSSProperties;
     itemStyle: React.CSSProperties;
     cursor: { fill: string };
+    formatter: (value: unknown) => string;
+    labelFormatter: (label: unknown) => string;
   };
 }
 
@@ -76,11 +81,23 @@ export function chartTheme(_isDark: boolean): ChartTheme {
         color: text,
         fontSize: 12,
         boxShadow: "var(--shadow-raised)",
-        direction: "rtl",
+        // The READING direction, not a fixed RTL: hardcoded, every English tooltip laid its
+        // "name : value" rows out right to left.
+        direction: dirFor(getLocale()),
       },
       labelStyle: { color: text, fontWeight: 600 },
       itemStyle: { color: text },
       cursor: { fill: tokenColor("text", 0.06) },
+      // recharts prints raw numbers here too, so a Persian page's tooltips read «140 ms». The axis
+      // ticks already went through `localizeDigits`; the readout under the cursor did not.
+      // A gap (a day nothing was recorded) is null, and reads «—» rather than "null".
+      formatter: (value: unknown) =>
+        value == null
+          ? "—"
+          : typeof value === "number"
+            ? formatNumber(value)
+            : localizeDigits(String(value)),
+      labelFormatter: (label: unknown) => localizeDigits(String(label)),
     },
   };
 }

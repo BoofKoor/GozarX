@@ -36,4 +36,13 @@ describe("MobileNav", () => {
     expect(shell).not.toHaveAttribute("inert");
     expect(shell).toHaveAttribute("aria-hidden", "false");
   });
+
+  it("moves focus INTO the drawer when it opens", async () => {
+    // It said aria-modal while focus stayed on the menu button behind the overlay, and Tab walked
+    // the page underneath it.
+    const shell = mount(true);
+    const dialog = screen.getByRole("dialog");
+    await vi.waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+    expect(shell.contains(document.activeElement)).toBe(true);
+  });
 });

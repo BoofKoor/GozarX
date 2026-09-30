@@ -120,6 +120,9 @@ class SiteFaqItemRepository(BaseRepository):
         await self.session.delete(item)
         await self.session.flush()
 
+    async def has_any(self) -> bool:
+        return (await self.session.scalar(select(SiteFaqItem.id).limit(1))) is not None
+
     async def add_default(
         self,
         *,

@@ -34,7 +34,7 @@ from gozar.bot.keyboards import (
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.user import UserRepository
-from gozar.services.admin import AdminService, UserCard
+from gozar.services.admin import AdminService, ReclaimRefused, UserCard
 from gozar.services.content import ContentService
 from gozar.ui.buttons import ButtonOverrides
 
@@ -402,10 +402,12 @@ async def user_reclaim(
     if target_id is None:
         await _to_menu(callback, user, content, state, buttons)
         return
-    await admin.reclaim(target_id)
-    await _show_card(
-        callback, user, content, admin, target_id, buttons, note_key="admin_reclaim_done"
-    )
+    note = "admin_reclaim_done"
+    try:
+        await admin.reclaim(target_id)
+    except ReclaimRefused as refused:
+        note = "admin_reclaim_banned" if refused.reason == "banned" else "admin_reclaim_panel_down"
+    await _show_card(callback, user, content, admin, target_id, buttons, note_key=note)
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_BAN, StateFilter(UserActionFlow.viewing))
@@ -469,8 +471,10 @@ async def user_confirm(
     target_id = int(target_id)
     note = None
     if pending == "ban":
-        await admin.ban(target_id)
-        note = "admin_ban_done"
+        banned = await admin.ban(target_id)
+        # A handle still set on a banned user is a revoke the panel did not answer for.
+        pending_revoke = banned is not None and banned.panel_username is not None
+        note = "admin_ban_revoke_pending" if pending_revoke else "admin_ban_done"
     elif pending == "zero_referrals":
         await admin.zero_referrals(target_id)
         note = "admin_zero_done"

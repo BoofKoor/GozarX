@@ -6,12 +6,14 @@ import json
 from datetime import UTC, datetime
 
 import fakeredis.aioredis
+import pytest
 
 from gozar.cache.redis import sub_cache_key
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
+from gozar.remnawave import RemnawaveError
 from gozar.remnawave.schemas import PanelUser
-from gozar.services.admin import AdminService
+from gozar.services.admin import AdminService, ReclaimRefused
 from gozar.services.settings_service import SettingKey
 
 
@@ -76,12 +78,17 @@ class FakeSettings:
 
 
 class FakePanel:
-    def __init__(self, panel_user: object = None, locations: list[str] | None = None) -> None:
+    def __init__(
+        self, panel_user: object = None, locations: list[str] | None = None, down: bool = False
+    ) -> None:
         self._panel_user = panel_user
         self._locations = locations or []
+        self._down = down
         self.deleted: list[str] = []
 
     async def get_user(self, username: str) -> object:
+        if self._down:
+            raise RemnawaveError("panel GET /users failed")
         return self._panel_user
 
     async def delete_user(self, ref: str) -> bool:
@@ -167,8 +174,43 @@ async def test_reclaim_clears_today_and_heals_to_available() -> None:
     assert user.status is UserStatus.available
     assert user.panel_username is None
     assert user.last_claim_at is None  # cooldown anchor cleared so the guard frees them at once
-    assert logs.deleted and logs.deleted[0][0] == 7  # rolling claim cooldown cleared
+    # The claim HISTORY stays: clearing the anchor is what frees the cooldown, and the rows this
+    # used to delete were the dashboard's record of claims that really happened.
+    assert logs.deleted == []
     assert await redis.get(sub_cache_key(7)) is None
+
+
+async def test_reclaim_refuses_a_banned_user() -> None:
+    # It used to flip a banned user to `available` — an unban nobody asked for.
+    user = User(telegram_id=9, status=UserStatus.banned)
+    with pytest.raises(ReclaimRefused) as refused:
+        await _svc(users=FakeUsers(user=user)).reclaim(9)
+    assert refused.value.reason == "banned" and user.status is UserStatus.banned
+
+
+async def test_reclaim_refuses_while_the_live_account_cannot_be_revoked() -> None:
+    # Clearing the cooldown with the old account still working hands out a second trial.
+    anchor = datetime.now(UTC)
+    user = User(
+        telegram_id=10,
+        status=UserStatus.active_config,
+        panel_username="g10",
+        last_claim_at=anchor,
+    )
+    with pytest.raises(ReclaimRefused) as refused:
+        await _svc(users=FakeUsers(user=user), panel=FakePanel(down=True)).reclaim(10)
+    assert refused.value.reason == "panel"
+    assert user.status is UserStatus.active_config and user.panel_username == "g10"
+    assert user.last_claim_at == anchor
+
+
+async def test_ban_with_the_panel_down_keeps_the_handle_so_the_revoke_can_finish() -> None:
+    # Forgetting the handle made the live account impossible to revoke ever: nothing maps a panel
+    # user back to a row without it. Banned + a handle is exactly "revoke pending".
+    user = User(telegram_id=11, status=UserStatus.active_config, panel_username="g11")
+    result = await _svc(users=FakeUsers(user=user), panel=FakePanel(down=True)).ban(11)
+    assert result is user and user.status is UserStatus.banned
+    assert user.panel_username == "g11"
 
 
 async def test_zero_referrals_resets_count() -> None:
@@ -177,12 +219,20 @@ async def test_zero_referrals_resets_count() -> None:
     assert user.referral_count == 0
 
 
-async def test_refresh_locations_writes_allowlist() -> None:
+async def test_refresh_locations_offers_every_squad_location_from_now_on() -> None:
+    # It stores "all of them" ([]), not today's names: a snapshot froze out every host added
+    # afterwards and went stale — blocking the next settings save — once a named host was renamed.
     settings = FakeSettings({SettingKey.TRIAL_SQUAD: "sq1"})
     panel = FakePanel(locations=["NL", "DE"])
     names = await _svc(settings=settings, panel=panel).refresh_locations()
     assert names == ["NL", "DE"]
-    assert (SettingKey.LOCATIONS, json.dumps(["NL", "DE"])) in settings.sets
+    assert (SettingKey.LOCATIONS, json.dumps([])) in settings.sets
+
+
+async def test_refresh_locations_leaves_the_list_when_the_squad_serves_nothing() -> None:
+    settings = FakeSettings({SettingKey.TRIAL_SQUAD: "sq1"})
+    names = await _svc(settings=settings, panel=FakePanel(locations=[])).refresh_locations()
+    assert names == [] and settings.sets == []
 
 
 async def test_refresh_locations_without_squad_returns_none() -> None:

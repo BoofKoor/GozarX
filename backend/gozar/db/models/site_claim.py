@@ -29,4 +29,6 @@ class SiteClaim(Base):
     # provisions — matching the bot, whose config_logs only records the claim. Without this a heavy
     # location-switcher would inflate every site funnel number.
     is_change: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), index=True
+    )

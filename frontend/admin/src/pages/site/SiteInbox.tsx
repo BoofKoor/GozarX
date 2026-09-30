@@ -17,6 +17,7 @@ import { Pagination } from "@/components/ui/Pagination";
 import { Segmented } from "@/components/ui/Segmented";
 import { Spinner } from "@/components/ui/Spinner";
 import { useConfirm } from "@/components/ui/confirm";
+import { useDebouncedValue, useFilterPage } from "@/hooks/useDebouncedValue";
 import {
   useDeleteMessage,
   useMarkMessageRead,
@@ -58,12 +59,20 @@ export function SiteInbox() {
     { value: "fa", label: langLabel("fa") },
     { value: "en", label: langLabel("en") },
   ];
-  const [page, setPage] = useState(1);
   const [unreadOnly, setUnreadOnly] = useState(false);
   const [search, setSearch] = useState("");
   const [locale, setLocale] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const { data, isLoading, isError, refetch } = useSiteMessages(page, unreadOnly, search, locale);
+  // One request when the typing stops (not one per keystroke), and page 1 in the same render as a
+  // filter change — see `useDebouncedValue` / `useFilterPage`.
+  const settledSearch = useDebouncedValue(search.trim());
+  const [page, setPage] = useFilterPage(JSON.stringify([unreadOnly, settledSearch, locale]));
+  const { data, isLoading, isError, refetch } = useSiteMessages(
+    page,
+    unreadOnly,
+    settledSearch,
+    locale,
+  );
   const markRead = useMarkMessageRead();
 
   const items = data?.items ?? [];
@@ -78,12 +87,9 @@ export function SiteInbox() {
       setPage(totalPages);
       setSelectedId(null);
     }
-  }, [totalPages, page]);
+  }, [totalPages, page, setPage]);
 
-  useEffect(() => {
-    setPage(1);
-    setSelectedId(null);
-  }, [unreadOnly, search, locale]);
+  useEffect(() => setSelectedId(null), [unreadOnly, settledSearch, locale]);
 
   function open(m: SiteMessage) {
     setSelectedId(m.id);
@@ -245,8 +251,16 @@ function MessageView({
             <Mail className="h-4 w-4" />
             {t("si.markUnread")}
           </Button>
-          <Button variant="ghost" size="sm" onClick={remove} loading={del.isPending}>
-            <Trash2 className="h-4 w-4 text-danger-600" />
+          {/* Icon-only, so it carries its name: it was announced as "button" and nothing else. */}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={remove}
+            loading={del.isPending}
+            aria-label={t("si.delete")}
+            title={t("si.delete")}
+          >
+            <Trash2 className="h-4 w-4 text-danger-600" aria-hidden />
           </Button>
         </div>
       </div>
@@ -256,8 +270,8 @@ function MessageView({
         <span>{t("si.language", { lang: langLabel(message.locale) })}</span>
         {message.device_uuid && (
           <Link
-            to={`/site/devices?search=${encodeURIComponent(message.device_uuid)}`}
-            className="inline-flex items-center gap-1 text-brand hover:underline"
+            to={`/site/devices?search=${encodeURIComponent(message.device_uuid)}&open=${encodeURIComponent(message.device_uuid)}`}
+            className="inline-flex items-center gap-1 text-brand-700 hover:underline"
           >
             {t("si.senderDevice")}
             <ExternalLink className="h-3 w-3" />

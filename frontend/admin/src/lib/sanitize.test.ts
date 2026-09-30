@@ -47,4 +47,14 @@ describe("htmlToText", () => {
     expect(htmlToText("<p>یک   دو</p>\n<p>سه</p>")).toBe("یک دو سه");
     expect(htmlToText("<p>a&nbsp;b</p>")).toBe("a b");
   });
+
+  it("keeps an in-site link — every default landing links to /locations and /faq", () => {
+    expect(sanitizeArticleHtml('<a href="/locations">L</a>')).toBe('<a href="/locations">L</a>');
+  });
+
+  it("never re-enables a link that leaves the site in disguise", () => {
+    for (const href of ["//evil.example", "/\\evil.example", "javascript:alert(1)"]) {
+      expect(sanitizeArticleHtml(`<a href="${href}">x</a>`)).not.toContain("<a href");
+    }
+  });
 });

@@ -129,5 +129,15 @@ async def send_site_push(
     log_id = log.id
     await session.commit()
 
-    await arq.enqueue_job("site_push_broadcast", body.title, body.body, url, body.locale, log_id)
+    try:
+        await arq.enqueue_job(
+            "site_push_broadcast", body.title, body.body, url, body.locale, log_id
+        )
+    except Exception as exc:
+        # The queue (Redis) refused it: nothing will ever pick this row up, so it is closed as
+        # failed here — left on "queued", the history polled it every five seconds, forever.
+        repo = SitePushLogRepository(session)
+        await repo.complete(log_id, sent=0, failed=0, pruned=0, ok=False)
+        await session.commit()
+        raise HTTPException(503, "the push queue is unreachable — nothing was sent") from exc
     return PushOut(queued=True, recipients=recipients, log_id=log_id)

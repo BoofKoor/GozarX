@@ -84,7 +84,11 @@ async def panel_webhook(
             panel,
         )
         outcome = await service.apply_event(event, _reminder_tokens(event.data))
-        if outcome is not None and outcome.user.reminder_enabled:
+        if (
+            outcome is not None
+            and outcome.user.reminder_enabled
+            and outcome.user.unreachable_at is None  # the chat is gone; the send would fail
+        ):
             msg = await ContentService(session, redis).message(
                 outcome.content_key, outcome.user.language, **outcome.tokens
             )

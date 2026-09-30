@@ -9,7 +9,7 @@ would pass for 20.5 hours a day and fail for the other 3.5.
 
 from __future__ import annotations
 
-from datetime import UTC, timedelta
+from datetime import UTC, datetime, timedelta
 
 from gozar.services.stats import (
     day_keys,
@@ -53,11 +53,15 @@ def test_day_keys_are_local_dates_ending_today() -> None:
     assert keys[0] == (local_now().date() - timedelta(days=6)).isoformat()
 
 
-def test_previous_window_is_adjacent_and_the_same_length() -> None:
+def test_previous_window_is_the_same_length_at_any_hour_and_disjoint() -> None:
     # A "vs last period" chip is meaningless unless the two windows are equal-length and disjoint.
-    start, end = previous_window(7)
-    assert end == window_start(7)
-    assert end - start == timedelta(days=7)
+    # The current window runs to NOW, so a previous window of N FULL days read a flat series as
+    # ~14% down at 00:30 on a 7-day range.
+    now = datetime.now(UTC)
+    start, end = previous_window(7, now=now)
+    assert end - start == now - window_start(7)  # the same span as the current window
+    assert start == window_start(7) - timedelta(days=7)
+    assert end <= window_start(7)  # and it ends before the current one begins
 
 
 def test_zero_filled_daily_returns_exactly_n_ascending_points() -> None:

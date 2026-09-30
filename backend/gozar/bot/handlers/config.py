@@ -26,6 +26,7 @@ from gozar.bot.notifications import PendingNotifications
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
+from gozar.services.button_links import is_button_url
 from gozar.services.content import ContentService
 from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingKey, SettingsService
@@ -62,11 +63,6 @@ async def _per_page(settings: SettingsService) -> int:
     return await settings.get_int(SettingKey.CONFIGS_PER_PAGE, 8)
 
 
-def _is_button_url(url: str) -> bool:
-    # Telegram URL buttons accept http(s) and tg:// links; anything else would be rejected on send.
-    return url.startswith(("http://", "https://", "tg://"))
-
-
 async def _ad_button(settings: SettingsService, lang: Language) -> AdButton | None:
     """The Persian-only promo button beside 'change location' on the delivered-config screen.
 
@@ -78,7 +74,7 @@ async def _ad_button(settings: SettingsService, lang: Language) -> AdButton | No
         return None
     text = (await settings.get(SettingKey.AD_BUTTON_TEXT) or "").strip()
     url = (await settings.get(SettingKey.AD_BUTTON_URL) or "").strip()
-    if not text or not _is_button_url(url):
+    if not text or not is_button_url(url):
         return None
     emoji_id = (await settings.get(SettingKey.AD_BUTTON_EMOJI_ID) or "").strip() or None
     return AdButton(text=text, url=url, emoji_id=emoji_id)

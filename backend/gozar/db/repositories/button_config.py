@@ -26,6 +26,7 @@ class ButtonConfigRepository(BaseRepository):
         row_index: int | None,
         position: int | None,
         style: str | None = None,
+        screens: dict[str, dict] | None = None,
     ) -> None:
         stmt = pg_insert(ButtonConfig).values(
             key=key,
@@ -34,6 +35,7 @@ class ButtonConfigRepository(BaseRepository):
             row_index=row_index,
             position=position,
             style=style,
+            screens=screens,
         )
         stmt = stmt.on_conflict_do_update(
             index_elements=[ButtonConfig.key],
@@ -43,6 +45,7 @@ class ButtonConfigRepository(BaseRepository):
                 "row_index": stmt.excluded.row_index,
                 "position": stmt.excluded.position,
                 "style": stmt.excluded.style,
+                "screens": stmt.excluded.screens,
                 "updated_at": func.now(),
             },
         )
