@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
@@ -102,17 +103,26 @@ const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) =
   streisand: { n: "Streisand", icon: "/icons/streisand.webp", deeplink: (l) => `streisand://import/${l}` },
   happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${l}` },
 };
-const PLATFORM_APPS: Record<string, string[]> = {
+// Only apps that exist on THIS system: a Windows visitor was offered v2rayNG (Android only) and
+// Streisand (Apple only), and a deep link into an app that is not installed does nothing at all.
+type Platform = "ios" | "android" | "macos" | "windows" | "linux" | "desktop";
+const PLATFORM_APPS: Record<Platform, string[]> = {
   ios: ["streisand", "happ"],
   android: ["v2rayng", "happ"],
-  desktop: ["happ", "v2rayng", "streisand"],
+  macos: ["happ", "streisand"],
+  windows: ["happ"],
+  linux: ["happ"],
+  desktop: ["happ", "v2rayng", "streisand"], // unrecognised — offer everything
 };
-function detectPlatform(): "ios" | "android" | "desktop" {
+function detectPlatform(): Platform {
   if (typeof navigator === "undefined") return "desktop";
   const ua = navigator.userAgent;
-  if (/android/i.test(ua)) return "android";
+  if (/android|cros/i.test(ua)) return "android"; // ChromeOS runs the Android apps
   if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1))
-    return "ios";
+    return "ios"; // iPadOS reports itself as a Mac with touch
+  if (/macintosh|mac os x/i.test(ua)) return "macos";
+  if (/windows/i.test(ua)) return "windows";
+  if (/linux/i.test(ua)) return "linux";
   return "desktop";
 }
 
@@ -122,7 +132,7 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   // config state, after the fetch resolves; the SSR pass shows the skeleton), so navigator is already
   // available on first render. Detecting in an effect instead made the row render 3 apps (column) then
   // flip to 2 (row) on mobile, shrinking the card ~100px under the user's finger (a CLS jump).
-  const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
+  const [platform] = useState<Platform>(detectPlatform);
   // Each button is purely the deep link — tapping opens the app and imports the config. It does NOT
   // copy anything to the clipboard (the separate "copy" field is there for manual paste).
   return (
@@ -142,6 +152,11 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
           </a>
         ))}
       </div>
+      {/* the deep links assume the app is installed — this is the way out when it is not */}
+      <Link className="app-get" href={platform === "desktop" ? "/guides" : `/guides/${platform}`}>
+        {t("app_get")}
+        <Icon name="chevr" sw={2.4} cls="ic-dir" />
+      </Link>
     </div>
   );
 }
@@ -220,56 +235,41 @@ export function UsageMeter({
   );
 }
 
-// ---- Countdown: parse "Xh Ym Zs" (incl. Persian digits) → live segmented HH:MM:SS (design `.cd`) ----
-function toSeconds(s: string): number {
-  const norm = s.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
-  const h = /(\d+)\s*(h|ساعت)/.exec(norm);
-  const m = /(\d+)\s*(m|دقیقه|min)/.exec(norm);
-  const sec = /(\d+)\s*(s|ثانیه|sec)/.exec(norm);
-  return (h ? +h[1] * 3600 : 0) + (m ? +m[1] * 60 : 0) + (sec ? +sec[1] : 0);
+// ---- Countdown: a live segmented HH:MM:SS to an absolute deadline (design `.cd`) ----
+// `deadline` is a client-clock millisecond (lib/time turns the server's instant into one). Seconds
+// left are recomputed from the wall clock on every tick, never decremented: background tabs are
+// throttled to about one tick a minute, and a counter that decremented would fall minutes behind.
+// What happens at zero is the caller's business (see lib/usePoll) — this only draws the time.
+function useSecondsLeft(deadline: number): number {
+  const [left, setLeft] = useState(() => Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => {
+      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setLeft(next);
+      if (next <= 0) window.clearInterval(id);
+    };
+    const id = window.setInterval(tick, 1000);
+    tick();
+    return () => window.clearInterval(id);
+  }, [deadline]);
+  return left;
 }
+
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-// Seconds remaining, derived from an absolute deadline anchored once per `from` — NOT decremented
-// per interval fire. Background tabs are throttled to ~1 tick/minute; a per-fire counter would drift
-// minutes slow and fire onDone late. Recomputing from wall-clock every tick stays correct across
-// throttling/sleep. The deadline is set in an effect (client-only), so there's no SSR/hydration skew.
-function useCountdown(from: string, onDone?: () => void): number {
-  const [left, setLeft] = useState(() => toSeconds(from));
-  const doneRef = useRef(false);
-  useEffect(() => {
-    const deadline = Date.now() + toSeconds(from) * 1000;
-    doneRef.current = false;
-    const tick = () => {
-      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-      setLeft(next);
-      if (next <= 0 && !doneRef.current) {
-        doneRef.current = true;
-        onDone?.();
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [from, onDone]);
-  return left;
-}
-
 export function Countdown({
-  from,
+  deadline,
   label,
   locale,
-  onDone,
 }: {
-  from: string;
+  deadline: number;
   label: string;
   locale: Locale;
-  onDone?: () => void;
 }) {
   const t = translator(locale);
-  const left = useCountdown(from, onDone);
+  const left = useSecondsLeft(deadline);
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;

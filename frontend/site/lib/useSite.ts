@@ -17,11 +17,15 @@ import { hasPushSubscription } from "@/lib/push";
 export interface SiteState {
   locale: Locale;
   status: StatusResponse | null;
+  /** Date.now() when `status` arrived — the anchor lib/time uses to correct for the device clock. */
+  statusAt: number;
   config: PublicConfig | null;
   locations: string[] | null;
   loading: boolean;
   offline: boolean;
-  reload: () => Promise<void>;
+  /** Re-read /status. `quiet` is for background polls: a failed poll keeps the current view instead
+   *  of flipping the widget to its error screen mid-countdown — the next poll simply tries again. */
+  reload: (opts?: { quiet?: boolean }) => Promise<void>;
   refreshLocations: () => Promise<void>;
   // Push state lives here (not per-card) so the status page's Settings switch and the Rewards
   // card's push mission stay in sync — enabling from one must flip the other. `pushOn` = permission
@@ -40,7 +44,12 @@ const SiteContext = createContext<SiteState | null>(null);
 //     /status is awaited FIRST (it mints + Set-Cookie), then /config + /locations carry that cookie.
 //   - stale state: a claim's reload() now updates the one shared status, so every stat re-renders.
 export function SiteProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
-  const [status, setStatus] = useState<StatusResponse | null>(null);
+  const [status, setStatusRaw] = useState<StatusResponse | null>(null);
+  const [statusAt, setStatusAt] = useState(0);
+  const setStatus = useCallback((next: StatusResponse) => {
+    setStatusRaw(next);
+    setStatusAt(Date.now());
+  }, []);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [locations, setLocations] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,14 +76,17 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
     }
   }, []);
 
-  const reload = useCallback(async () => {
-    try {
-      setStatus(await api.status());
-      setOffline(false);
-    } catch {
-      setOffline(true);
-    }
-  }, []);
+  const reload = useCallback(
+    async (opts?: { quiet?: boolean }) => {
+      try {
+        setStatus(await api.status());
+        setOffline(false);
+      } catch {
+        if (!opts?.quiet) setOffline(true);
+      }
+    },
+    [setStatus],
+  );
 
   const bootstrap = useCallback(async () => {
     try {
@@ -100,7 +112,7 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
       loadLocations(),
     ]);
     setLoading(false);
-  }, [loadLocations]);
+  }, [loadLocations, setStatus]);
 
   useEffect(() => {
     if (started.current) return; // guard against StrictMode double-invoke (would mint twice)
@@ -112,6 +124,7 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
   const value: SiteState = {
     locale,
     status,
+    statusAt,
     config,
     locations,
     loading,

@@ -16,6 +16,11 @@ export interface StatusResponse {
   usage_bytes: number;
   remaining: string;
   cooldown: string;
+  // The instants behind `remaining` / `cooldown` (UTC ISO) and the server's clock at response time.
+  // Optional: an older backend sends only the rounded strings, which lib/time falls back to.
+  expires_at?: string | null;
+  cooldown_until?: string | null;
+  server_time?: string;
   can_claim: boolean;
   configs: number;
   referral_count: number;
@@ -45,6 +50,9 @@ export interface ClaimResponse {
   size?: string | null;
   changed: boolean;
   retry_after?: string | null;
+  expires_at?: string | null;
+  cooldown_until?: string | null;
+  server_time?: string;
   // Sent only with reason "location_unavailable": the locations the squad serves RIGHT NOW, so the
   // picker can re-sync instead of the server quietly handing back a different country's config.
   locations?: string[] | null;

@@ -18,13 +18,20 @@ The browser picks a scenario with cookies (Next's `/api` rewrite forwards them h
 |---------------|-------------------------------------------------------------------|----------|
 | `mock_state`  | new · active · fresh · cooldown · cooldown0 · exhausted · error    | new      |
 | `mock_claim`  | ok · not_ready · no_locations · location_unavailable ·             | ok       |
-|               | rate_limited · turnstile_failed · panel_error                      |          |
+|               | rate_limited · rate_limited_once · turnstile_failed · panel_error  |          |
 | `mock_locs`   | fa (22 Persian remarks) · en (English remarks) · few (3) · none    | fa       |
 | `mock_delay`  | milliseconds to stall GET /status (skeleton / loading capture)     | 0        |
+| `mock_claim_ms` | milliseconds POST /claim takes (the "taking longer" label at 3s) | 900      |
+| `mock_turnstile` | 1 = /config reports Turnstile on (Cloudflare's always-pass test key) | off   |
 | `mock_hist`   | 0 · 3                                                              | 3 if used|
 
 State is per `mock_sid` cookie (set on first contact), so a claim moves THAT browser from `new` to
-a delivered config exactly like the real flow does.
+a delivered config exactly like the real flow does. Changing the `mock_state` cookie mid-session
+re-applies it — that is how a test flips `exhausted` to `active` under a page that is polling.
+
+Timing is real: `cooldown` lifts 7h12m after the session starts and `cooldown0` 20s after, at which
+point `/status` answers claimable — so a countdown can be watched reaching zero and recovering.
+Both endpoints carry `expires_at` / `cooldown_until` / `server_time` like the backend.
 """
 
 from __future__ import annotations
@@ -36,15 +43,16 @@ import pathlib
 import threading
 import time
 import uuid
+from datetime import UTC, datetime
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import parse_qs, unquote, urlparse
 
 # The two figures the homepage renders SERVER-side. Next reads /config and /stats from its own
 # process, so no browser cookie can pick them per scenario — set these to prove a chip follows the
 # backend rather than a constant (e.g. MOCK_TRIAL_HOURS=12, MOCK_DELIVERED=900 hides the count chip).
 TRIAL_HOURS = int(os.environ.get("MOCK_TRIAL_HOURS", "24"))
 DELIVERED = int(os.environ.get("MOCK_DELIVERED", "48213"))
-from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 PORT = int(os.environ.get("MOCK_PORT", "8000"))
@@ -85,7 +93,28 @@ SESSIONS: dict[str, dict] = {}
 LOCK = threading.Lock()
 
 
+def _iso(t: float) -> str:
+    return datetime.fromtimestamp(t, UTC).isoformat()
+
+
+def _human(seconds: float) -> str:
+    """The backend's rounded human duration ("7h 12m", "0m")."""
+    total = int(seconds)
+    if total <= 0:
+        return "0m"
+    h, m = total // 3600, (total % 3600) // 60
+    return f"{h}h {m}m" if h and m else (f"{h}h" if h else f"{m}m")
+
+
+COOLDOWN_FOR = {"cooldown": 7 * 3600 + 12 * 60, "cooldown0": 20}
+EXPIRES_IN = 14 * 3600 + 50 * 60
+
+
 def _status(sess: dict) -> dict:
+    now = time.time()
+    # a cooldown session whose window has passed is simply a fresh, claimable device
+    if sess["state"] in COOLDOWN_FOR and now >= sess["until"]:
+        sess["state"] = "new"
     state = sess["state"]
     loc = sess.get("location") or "آلمان"
     base = {
@@ -100,6 +129,9 @@ def _status(sess: dict) -> dict:
         "usage_bytes": 0,
         "remaining": "—",
         "cooldown": "",
+        "expires_at": None,
+        "cooldown_until": None,
+        "server_time": _iso(now),
         "can_claim": True,
         "configs": 0,
         "referral_count": 3,
@@ -128,9 +160,11 @@ def _status(sess: dict) -> dict:
             data_exhausted=state == "exhausted",
             usage="380 MB" if state == "active" else ("0 B" if state == "fresh" else "1 GB"),
             usage_bytes=used,
-            remaining="14h 50m",
+            remaining=_human(sess["expires"] - now),
+            expires_at=_iso(sess["expires"]),
             can_claim=False,
-            cooldown="14h 50m",
+            cooldown=_human(sess["expires"] - now),
+            cooldown_until=_iso(sess["expires"]),
             configs=4,
             location=loc,
             link=LINK,
@@ -139,10 +173,13 @@ def _status(sess: dict) -> dict:
     elif state in ("cooldown", "cooldown0"):
         base.update(
             can_claim=False,
-            cooldown="7h 12m" if state == "cooldown" else "0m",
+            cooldown=_human(sess["until"] - now),
+            cooldown_until=_iso(sess["until"]),
             configs=4,
             history=hist,
         )
+    if sess.get("bonus"):
+        base.update(referral_count=4, daily_limit="1.5 GB", daily_limit_bytes=LIMIT + 500 * MB)
     if sess.get("hist") == "0":
         base["history"] = []
     return base
@@ -165,15 +202,25 @@ class Handler(BaseHTTPRequestHandler):
         c = self._cookies()
         sid = c.get("mock_sid")
         new_cookie = None
+        wanted = c.get("mock_state", "new")
         with LOCK:
             if not sid or sid not in SESSIONS:
                 sid = sid or uuid.uuid4().hex
-                SESSIONS[sid] = {"state": c.get("mock_state", "new"), "location": None}
+                SESSIONS[sid] = {"location": None}
                 new_cookie = sid
             sess = SESSIONS[sid]
+            if sess.get("cookie_state") != wanted:  # first contact, or the test flipped the cookie
+                now = time.time()
+                # exhausted → active under a live page is the revive a friend's first claim causes:
+                # one more invite and the referral reward on the allowance, like the backend
+                revive = sess.get("cookie_state") == "exhausted" and wanted == "active"
+                sess.update(cookie_state=wanted, state=wanted, expires=now + EXPIRES_IN,
+                            until=now + COOLDOWN_FOR.get(wanted, 0), attempts=0, bonus=revive)
         sess["claim"] = c.get("mock_claim", "ok")
         sess["locs"] = c.get("mock_locs", "fa")
         sess["delay"] = int(c.get("mock_delay", "0") or 0)
+        sess["claim_ms"] = int(c.get("mock_claim_ms", "900") or 900)
+        sess["turnstile"] = c.get("mock_turnstile") == "1"
         sess["hist"] = c.get("mock_hist")
         return sess, new_cookie
 
@@ -237,9 +284,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, _status(sess), sid)
         if path == "/config":
             return self._send(200, {
-                "turnstile_site_key": "",
+                # Cloudflare's documented always-pass test key: the widget really loads and answers
+                "turnstile_site_key": "1x00000000000000000000AA" if sess["turnstile"] else "",
                 "vapid_public_key": "BMockVapidPublicKeyForRenderingOnly0000000000000000000000000000000000000000000",
-                "turnstile_enabled": False,
+                "turnstile_enabled": sess["turnstile"],
                 "popular_location": "آلمان" if sess["locs"] != "en" else "Germany",
                 "reward_referral_mb": 500,
                 "reward_pwa_mb": 200,
@@ -260,9 +308,10 @@ class Handler(BaseHTTPRequestHandler):
         body = self._body()
         sess, sid = self._session()
         if path == "/claim":
-            time.sleep(0.9)  # long enough to screenshot the provisioning state
+            time.sleep(sess["claim_ms"] / 1000)  # long enough to screenshot the provisioning state
             outcome = sess["claim"]
-            if outcome == "rate_limited":
+            sess["attempts"] = sess.get("attempts", 0) + 1
+            if outcome == "rate_limited" or (outcome == "rate_limited_once" and sess["attempts"] == 1):
                 return self._send(429, {"detail": "rate_limited"}, sid)
             if outcome == "turnstile_failed":
                 return self._send(403, {"detail": "turnstile_failed"}, sid)
@@ -271,11 +320,21 @@ class Handler(BaseHTTPRequestHandler):
             if outcome == "location_unavailable":
                 return self._send(200, {"ok": False, "reason": "location_unavailable",
                                         "changed": False, "locations": LOCS["few"]}, sid)
-            changed = sess["state"] in ("active", "fresh")
+            if sess["state"] in COOLDOWN_FOR:
+                return self._send(200, {"ok": False, "reason": "cooldown", "changed": False,
+                                        "retry_after": _human(sess["until"] - time.time()),
+                                        "cooldown_until": _iso(sess["until"]),
+                                        "server_time": _iso(time.time())}, sid)
+            changed = sess["state"] in ("active", "fresh", "exhausted")
+            if not changed:
+                sess["expires"] = time.time() + 24 * 3600 - 60
             sess["state"] = "fresh" if not changed else "active"
             sess["location"] = body.get("location") or "آلمان"
             return self._send(200, {"ok": True, "location": sess["location"], "link": LINK,
-                                    "expires": "23h 59m", "size": "1 GB", "changed": changed}, sid)
+                                    "expires": _human(sess["expires"] - time.time()),
+                                    "expires_at": _iso(sess["expires"]),
+                                    "server_time": _iso(time.time()),
+                                    "size": "1 GB", "changed": changed}, sid)
         if path == "/rewards/claim":
             return self._send(200, {"ok": True, "reward_type": body.get("reward_type"),
                                     "amount_mb": 150, "streak_active": False,

@@ -11,6 +11,7 @@
 | ۴ | [`03-visual-review.md`](03-visual-review.md)، [`04-probes.md`](04-probes.md)، [`shots/`](shots/) | سنجش نقدها روی تصویر، ۱۴ یافتهٔ بصری تازه (`V-xx`)، اندازه‌گیری‌ها، ۲۴ تصویر شاهد |
 | ۵ | [`05-fix-plan.md`](05-fix-plan.md)، [`report.html`](report.html) | گزارش نهایی، تصمیم‌های مالک، پلن ۶ فازی با معیار پذیرش |
 | A | [`06-phase-a.md`](06-phase-a.md)، [`shots/phase-a/`](shots/phase-a/) | اجرای فاز A: سنجش قبل/بعد، انحراف‌ها، ۹ تصویر شاهد |
+| B | [`07-phase-b.md`](07-phase-b.md)، [`accept_b.py`](accept_b.py)، [`shots/phase-b/`](shots/phase-b/) | اجرای فاز B: پذیرش خودکار در زمان واقعی (۱۵ بررسی)، شاهدها |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -26,6 +27,7 @@ BACKEND_ORIGIN=http://127.0.0.1:8000 npx next start -p 3100 &
 pip install playwright pillow            # Chromium از قبل روی ماشین هست
 python3 docs/website/audit/audit.py /tmp/shots [--only home-]
 python3 docs/website/audit/probe_extra.py /tmp/shots
+python3 docs/website/audit/accept_b.py /tmp/shots     # رفتار جریان دریافت در طول زمان (~۲ دقیقه)
 ```
 
 `mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`)

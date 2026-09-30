@@ -265,6 +265,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   AA contrast, the active-page marker, and reward toasts that said «✓». The hero's two frozen
   numbers («۲۴ ساعت», «+۱۲٬۰۰۰ کاربر») now come from `/config.trial_hours` and the real
   delivered-configs count, and a data migration takes them out of the live FAQ as well.
+21 The site audit's Phase B: the claim flow made correct over TIME. `/status` and `/claim` carry the
+  instants behind their rounded strings (`cooldown_until`, `expires_at`) plus `server_time`, so a
+  countdown reaches zero on time on a phone whose clock is wrong and, at zero, asks the server
+  until the state actually changes — under a minute the old one read "0m" and froze on 00:00:00.
+  Every claim outcome has its own screen instead of the generic error; a config revived by a
+  friend's first claim is noticed by polling and celebrated with the amount it gained; the picker
+  is a real radio group in two rows (7 Tab presses to the CTA, was 27); switching location names
+  the target and can be cancelled. `docs/website/audit/accept_b.py` checks all of it against the
+  mock, over real time.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -543,6 +552,25 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **Feedback is a sentence.** A reward toast says what was added (with the real amount), that it was
   already taken, or that it failed — never «✓»/«—». A toast's `role="status"` wrapper stays mounted:
   a live region inserted together with its text is not announced.
+- **Count down to an INSTANT, never from a rounded duration.** `/status`/`/claim` send
+  `cooldown_until`/`expires_at` with `server_time`; `lib/time.clientDeadline` takes the device
+  clock's offset out (phones with a wrong clock are common enough that the FAQ mentions them). The
+  human strings stay for the bot and older clients; the site uses them only as a fallback.
+- **A deadline passing is a question for the server, asked with backoff and QUIETLY.**
+  `useBackoffPoll` asks right away, then at 2s…30s, until the state the deadline implies arrives
+  (the cooldown lifted, the config ended); `useVisiblePoll` waits on other people (a friend reviving
+  the config) only while the tab is visible. Background polls use `reload({ quiet: true })`: one
+  failed poll must not throw the widget onto its error screen mid-countdown.
+- **Every claim outcome has a screen.** Only `panel_error`/5xx is S8. `not_ready`/`no_locations` is
+  S7 with a retry, `location_unavailable`/`turnstile_failed` stay on S1 with an inline notice, and a
+  429 (almost always our own single-flight lock) gets one automatic retry. Each widget root carries
+  `data-view` and a notice `data-notice`, so tests name states instead of copy.
+- **A user-caused outcome takes focus; a background one is announced.** After a tap the outcome's
+  `<h2>` is focused; a cooldown lifting or a revive arriving with nobody's hand on the widget goes
+  through the `role="status"` region, which is mounted OUTSIDE the per-state roots for that reason.
+- **Never hand `<Turnstile>` an inline callback.** It re-renders the Cloudflare widget when its
+  callbacks change identity, so an inline arrow rebuilt the challenge on every render of the claim
+  widget.
 - **Offer an action only where it can succeed.** The push mission hides once notifications are on,
   once the visitor has blocked them, and where `PushManager` does not exist (iOS Safari outside an
   installed web app) — there it was a button that could only fail.
