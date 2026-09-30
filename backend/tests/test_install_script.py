@@ -17,7 +17,9 @@ import pytest
 SCRIPT = Path(__file__).with_name("install_rerun.sh")
 
 
-@pytest.mark.skipif(not (shutil.which("bash") and shutil.which("openssl")), reason="needs bash + openssl")
+@pytest.mark.skipif(
+    not (shutil.which("bash") and shutil.which("openssl")), reason="needs bash + openssl"
+)
 def test_installer_rerun_keeps_env_keys_and_the_password_and_restarts_nginx() -> None:
     result = subprocess.run(
         ["bash", str(SCRIPT)], capture_output=True, text=True, timeout=120, check=False

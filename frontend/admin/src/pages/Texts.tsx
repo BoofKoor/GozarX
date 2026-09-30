@@ -293,18 +293,22 @@ function TextEditor({
   }
 
   function save() {
+    const sent = { fa: bodies.fa, en: bodies.en, ru: bodies.ru };
+    const sentPreview = linkPreview;
     update.mutate(
-      {
-        key: text.key,
-        patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru, link_preview: linkPreview },
-      },
+      { key: text.key, patch: { ...sent, link_preview: sentPreview } },
       {
         // The SAVED text, not what was typed: the server strips stray bidi marks out of `{token}`
         // placeholders, and comparing against the typed version left a successful save reading
-        // «ذخیره‌نشده» for good.
+        // «ذخیره‌نشده» for good. Only where nothing was typed since pressing save, though: replacing
+        // those too dropped the new keystrokes — silently, since the field then matched the server.
         onSuccess: (saved) => {
-          setBodies({ fa: saved.fa, en: saved.en, ru: saved.ru });
-          setLinkPreview(saved.link_preview);
+          setBodies((b) => ({
+            fa: b.fa === sent.fa ? saved.fa : b.fa,
+            en: b.en === sent.en ? saved.en : b.en,
+            ru: b.ru === sent.ru ? saved.ru : b.ru,
+          }));
+          setLinkPreview((p) => (p === sentPreview ? saved.link_preview : p));
           toast.success(t("texts.saved"));
         },
         // Persian is what every other language falls back to, so the server refuses a blank one
