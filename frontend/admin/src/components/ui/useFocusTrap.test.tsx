@@ -18,7 +18,36 @@ function Dialog({ label, onClose }: { label: string; onClose: () => void }) {
   );
 }
 
+function Palette() {
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, noop);
+  return (
+    <div ref={ref} role="dialog" aria-label="palette">
+      <input aria-label="search" />
+      {/* Options out of the tab order, as the command palette renders them. */}
+      <button type="button" tabIndex={-1}>
+        option one
+      </button>
+      <button type="button" tabIndex={-1}>
+        option last
+      </button>
+    </div>
+  );
+}
+
 describe("useFocusTrap", () => {
+  it("wraps on the TABBABLE elements, not on controls taken out of the tab order", async () => {
+    // The selector matched every button, so an untabbable option was the trap's last element:
+    // Shift+Tab from the input landed on it (Enter then ran it), and Tab walked out of the dialog.
+    render(<Palette />);
+    const input = screen.getByLabelText("search");
+    expect(document.activeElement).toBe(input);
+    await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(input);
+    await userEvent.tab();
+    expect(document.activeElement).toBe(input);
+  });
+
   it("keeps focus where it is when the parent re-renders with a new onClose", async () => {
     // Callers pass an inline `() => setX(null)`: a new function every render. As an effect
     // dependency it rebuilt the trap on each render and dropped focus back on the first button.
