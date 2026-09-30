@@ -208,7 +208,7 @@ const FA = {
   "bc.hist.failed": "ناموفق",
   "bc.hist.sent": "رسید",
   "bc.hist.failedN": "ناموفق",
-  "bc.hist.removed": "حذف‌شده (بلاک‌کرده)",
+  "bc.hist.removed": "غیرقابل‌دسترس (بلاک یا حذف حساب)",
 
   // ── bot texts ───────────────────────────────────────────────────────────
   "texts.title": "متن‌ها",
@@ -1238,7 +1238,7 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.hist.failed": "Failed",
   "bc.hist.sent": "Delivered",
   "bc.hist.failedN": "Failed",
-  "bc.hist.removed": "Removed (blocked)",
+  "bc.hist.removed": "Unreachable (blocked or gone)",
 
   // ── bot texts ───────────────────────────────────────────────────────────
   "texts.title": "Texts",
