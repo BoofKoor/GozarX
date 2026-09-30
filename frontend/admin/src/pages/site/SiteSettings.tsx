@@ -130,6 +130,10 @@ export function SiteSettings() {
   const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
+  // Nothing about the locations can be judged while the picker loads. Resolved against an empty
+  // list, every saved name read as stale and the save went out as `[]` — "all of them" — so a
+  // numbers-only save made in that second silently offered every location that had been unticked.
+  const pickerLoading = !pickerUnavailable && !picker;
   const selection = resolveSelection(form.locations, picker ?? []);
   // What the popular-location select may offer: whatever the form currently says is on the picker.
   const offered = pickerUnavailable
@@ -174,8 +178,20 @@ export function SiteSettings() {
         reward_streak_mb: form.reward_streak_mb,
         streak_days: form.streak_days,
         // Never a name the squad stopped serving: those are shown in the picker, then dropped.
-        locations: pickerUnavailable ? splitLocations(form.locationsText) : selection.save,
-        popular_location: popularStale ? "" : form.popular_location,
+        // Left out while the picker loads, so the server keeps what it has — and the star too,
+        // unless the operator changed it, since it cannot be judged stale yet either.
+        locations: pickerUnavailable
+          ? splitLocations(form.locationsText)
+          : pickerLoading
+            ? undefined
+            : selection.save,
+        popular_location: pickerLoading
+          ? form.popular_location === (data?.popular_location ?? "")
+            ? undefined
+            : form.popular_location
+          : popularStale
+            ? ""
+            : form.popular_location,
       },
       {
         onSuccess: () => toast.success(t("ss.saved")),

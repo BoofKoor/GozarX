@@ -40,9 +40,9 @@ class AdminStats:
 
 
 class ReclaimRefused(Exception):
-    """A reclaim that must not happen. ``reason`` is ``"banned"`` (reclaiming would silently lift
-    the ban) or ``"panel"`` (the live account could not be revoked, so clearing the cooldown would
-    hand the user a second trial while the first still works)."""
+    """A reclaim — or an unban — that must not happen. ``reason`` is ``"banned"`` (reclaiming would
+    silently lift the ban) or ``"panel"`` (the live account could not be revoked, so going ahead
+    would hand the user a second trial while the first still works)."""
 
     def __init__(self, reason: str) -> None:
         super().__init__(reason)
@@ -111,9 +111,24 @@ class AdminService:
         return user
 
     async def unban(self, target_id: int) -> User | None:
+        """Lift a ban. A revoke still pending from the ban (the handle kept because the panel did
+        not answer) has to land first: unbanned with it, the user was ``available`` while the old
+        account still worked — and the sweep only retries a BANNED user's revoke, so nothing ever
+        would — and their next claim gave them a second live trial beside it. Refused
+        (``ReclaimRefused("panel")``, nothing changed) while the panel still cannot be reached.
+
+        A user who is not banned is left as they are: forcing an ``active_config`` user to
+        ``available`` hid their live config from ``/status`` and from the reconcile sweep.
+        """
         user = await self._users.get(target_id)
         if user is None:
             return None
+        if user.status is not UserStatus.banned:
+            return user
+        if user.panel_username:
+            if not await self._revoke_panel(user):
+                raise ReclaimRefused("panel")
+            user.panel_username = None
         user.status = UserStatus.available
         return user
 

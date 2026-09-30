@@ -171,7 +171,11 @@ function FunnelKpis({ data, days }: { data: SiteStatsData; days: number }) {
         icon={UserPlus}
         tone="info"
         delta={data.new_visitors.change_pct}
-        hint={t("st.prev", { n: formatNumber(data.new_visitors.previous) })}
+        hint={
+          data.new_visitors.previous === null
+            ? t("st.prevUnrecorded")
+            : t("st.prev", { n: formatNumber(data.new_visitors.previous) })
+        }
       />
       <StatCard
         label={t("st.kpi.returning", { range: rangeLabel })}

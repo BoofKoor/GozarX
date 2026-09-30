@@ -382,10 +382,12 @@ async def user_unban(
     if target_id is None:
         await _to_menu(callback, user, content, state, buttons)
         return
-    await admin.unban(target_id)
-    await _show_card(
-        callback, user, content, admin, target_id, buttons, note_key="admin_unban_done"
-    )
+    try:
+        await admin.unban(target_id)
+        note = "admin_unban_done"
+    except ReclaimRefused:  # a revoke pending from the ban, and the panel still not answering
+        note = "admin_reclaim_panel_down"
+    await _show_card(callback, user, content, admin, target_id, buttons, note_key=note)
 
 
 @router.callback_query(F.data == cb.ADMIN_USER_RECLAIM, StateFilter(UserActionFlow.viewing))

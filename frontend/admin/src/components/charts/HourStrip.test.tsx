@@ -35,6 +35,25 @@ describe("HourStrip", () => {
     expect(onPick).toHaveBeenLastCalledWith(0);
   });
 
+  it("keeps a radio group's keys: Down is later, Up is earlier, and the clock wraps", async () => {
+    const picks: number[] = [];
+    const { rerender } = render(
+      <I18nProvider>
+        <HourStrip counts={COUNTS} mark={21} onPick={(h) => picks.push(h)} />
+      </I18nProvider>,
+    );
+    screen.getAllByRole("radio")[21].focus();
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{ArrowUp}");
+    rerender(
+      <I18nProvider>
+        <HourStrip counts={COUNTS} mark={23} onPick={(h) => picks.push(h)} />
+      </I18nProvider>,
+    );
+    await userEvent.keyboard("{ArrowRight}");
+    expect(picks).toEqual([22, 20, 0]);
+  });
+
   it("stays out of the tab order as a read-only chart", () => {
     render(
       <I18nProvider>

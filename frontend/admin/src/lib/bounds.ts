@@ -11,5 +11,7 @@ export const BOUNDS = {
   /** 0 rewards no invite at all — the quota is min(referrals, cap). */
   rewardLimit: { min: 0, max: 100_000 },
   configsPerPage: { min: 1, max: 50 },
-  streakDays: { min: 1, max: 365 },
+  /** From 0: 0 switches the streak bonus off. From 1, a stored 0 failed the form's own check, and
+   *  the whole site settings page could not be saved. */
+  streakDays: { min: 0, max: 365 },
 } as const;

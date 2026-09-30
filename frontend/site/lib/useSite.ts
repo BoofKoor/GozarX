@@ -39,9 +39,10 @@ const SiteContext = createContext<SiteState | null>(null);
 
 // ONE provider for the whole app (mounted in the root layout), so every component shares a SINGLE
 // device-status/config/locations load instead of each fetching its own. Two things this fixes:
-//   - the first-visit device-mint RACE: /status and /locations both mint a device when no cookie
-//     exists; firing them in parallel from separate hooks minted several competing identities. Here
-//     /status is awaited FIRST (it mints + Set-Cookie), then /config + /locations carry that cookie.
+//   - the first-visit device-mint RACE: separate hooks fired /status and /locations in parallel,
+//     and both minted a device when no cookie existed. The server's /locations no longer mints (it
+//     reads the cookie, never creates one), and /status — the one call that mints + Set-Cookie — is
+//     still awaited FIRST, so /config + /locations carry the cookie it set.
 //   - stale state: a claim's reload() now updates the one shared status, so every stat re-renders.
 export function SiteProvider({ locale, children }: { locale: Locale; children: ReactNode }) {
   const [status, setStatusRaw] = useState<StatusResponse | null>(null);
@@ -91,7 +92,7 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
   const bootstrap = useCallback(async () => {
     try {
       // /status FIRST: it mints the device + sets the cookie. Awaiting it means the device exists
-      // (exactly once) before anything else that also resolves the device runs. Forward a ?ref=
+      // (exactly once) before anything else that reads the device runs. Forward a ?ref=
       // invite code (inviter's handle/uuid) on THIS mint call so the referral is credited — the
       // relative /status fetch would otherwise drop the landing URL's query string.
       const ref =

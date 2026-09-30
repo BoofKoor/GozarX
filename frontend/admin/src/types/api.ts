@@ -496,7 +496,7 @@ export interface SiteStats {
 
   // Windowed — these move with the range control.
   visitors: VisitMetric; // devices seen in the window
-  new_visitors: Metric; // identities minted in the window
+  new_visitors: VisitMetric; // minted in the window AND came back with the cookie
   returning_visitors: VisitMetric; // seen in the window, minted before it
   claimers: Metric; // distinct devices that provisioned in the window
   claims: Metric; // provisions in the window (change-location re-picks excluded)

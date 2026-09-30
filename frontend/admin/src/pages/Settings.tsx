@@ -108,6 +108,10 @@ export function Settings() {
   const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
+  // Nothing about the locations can be judged while the picker loads. Resolved against an empty
+  // list, every saved name read as stale and the save went out as `[]` — "all of them" — so a
+  // numbers-only save made in that second silently offered every location that had been unticked.
+  const pickerLoading = !pickerUnavailable && !picker;
 
   // The bot's own rule for a URL button (`services/button_links`): anything else it silently drops.
   const adUrl = form.ad_button_url.trim();
@@ -140,9 +144,12 @@ export function Settings() {
         configs_per_page: form.configs_per_page,
         ads_enabled: form.ads_enabled,
         // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        // Left out entirely while the picker loads, so the server keeps what it has.
         locations: pickerUnavailable
           ? splitLocations(form.locationsText)
-          : resolveSelection(form.locations, picker ?? []).save,
+          : pickerLoading
+            ? undefined
+            : resolveSelection(form.locations, picker ?? []).save,
         ad_button_enabled: form.ad_button_enabled,
         ad_button_text: form.ad_button_text.trim(),
         ad_button_url: form.ad_button_url.trim(),

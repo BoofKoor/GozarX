@@ -1,9 +1,10 @@
 """arq worker tasks — bulk fan-out and the nightly DB backup, none of which may run in a handler.
 
 ``fanout`` delivers one message to every user (broadcast = ``copy_message``, no "Forwarded from";
-forward = ``forward_message``, keeps the header). It removes a user **only** on a genuine permanent
-delivery failure (blocked / deactivated / chat-not-found) — never on a transient error (v1 lesson
-#4). ``reset_all_active`` zeroes panel traffic consumption for every active user. Both report
+forward = ``forward_message``, keeps the header). It marks a user unreachable **only** on a genuine
+permanent delivery failure (blocked / deactivated / chat-not-found) — never on a transient error
+(v1 lesson #4) — and never deletes one. ``reset_all_active`` zeroes panel traffic consumption for
+every active user. Both report
 progress to the admin's chat and make a single bounded panel/send attempt per user.
 ``backup_database`` is the arq cron job: it shells out to ``pg_dump``, gzips the dump, and ships it
 to the configured Telegram channel — a failed backup is logged and swallowed, never raised.
@@ -61,10 +62,10 @@ from gozar.services.trial import TrialService, human_bytes, human_remaining
 
 logger = logging.getLogger("gozar.worker.tasks")
 
-# The ONLY delivery failures that remove a user. Anything else (rate limit, network, 5xx, any other
-# Forbidden/NotFound description) is transient → keep the user. The classification lives in
-# services/telegram_errors so the bot's dispatcher error handler decides "permanently unreachable"
-# by exactly the same rule this fan-out does.
+# The ONLY delivery failures that mark a user unreachable. Anything else (rate limit, network, 5xx,
+# any other Forbidden/NotFound description) is transient → the user stays in the audience. The
+# classification lives in services/telegram_errors so the bot's dispatcher error handler decides
+# "permanently unreachable" by exactly the same rule this fan-out does.
 
 # Fan-out throughput: send in bounded-concurrency chunks, rate-capped under Telegram's ~30/s
 # broadcast ceiling. A fully SEQUENTIAL loop (one awaited send at a time) overlapped nothing, so the
@@ -77,9 +78,9 @@ _SEND_RATE = 25  # messages/second ceiling
 _CHECKPOINT_EVERY = 500
 
 
-def _should_remove(exc: Exception) -> bool:
+def _should_remove(exc: Exception, *, names_source_chat: bool = False) -> bool:
     """True only for the three permanent 'this user is unreachable forever' delivery failures."""
-    return is_unreachable(exc)
+    return is_unreachable(exc, names_source_chat=names_source_chat)
 
 
 async def _deliver(bot: Bot, action: str, chat_id: int, src_chat: int, message_id: int) -> None:
@@ -105,10 +106,13 @@ async def _edit(bot: Bot, message: Message | None, text: str) -> None:
         pass
 
 
-async def _attempt(send_one: object, uid: int) -> tuple[str, float]:
+async def _attempt(
+    send_one: object, uid: int, *, names_source_chat: bool = False
+) -> tuple[str, float]:
     """One send attempt mapped to an outcome (never raises): ``('sent',0)`` · ``('flood',retry)`` ·
-    ``('remove',0)`` · ``('failed',0)``. The strict removal allowlist (blocked/deactivated/chat-not-
-    found only — the v1 mass-deletion lesson) lives here, so a transient failure keeps the user.
+    ``('remove',0)`` · ``('failed',0)``. The strict allowlist (blocked/deactivated/chat-not-found
+    only — the v1 mass-deletion lesson) lives here, so a transient failure keeps the user.
+    ``names_source_chat`` is set for a copy/forward — see ``services/telegram_errors``.
     """
     try:
         await send_one(uid)  # type: ignore[operator]
@@ -118,7 +122,8 @@ async def _attempt(send_one: object, uid: int) -> tuple[str, float]:
     except (TelegramForbiddenError, TelegramNotFound, TelegramBadRequest) as exc:
         # BadRequest too: "chat not found" is a 400 — see `services/telegram_errors`. Any other bad
         # request (a message too long, markup Telegram refused) still keeps the user.
-        return ("remove", 0) if _should_remove(exc) else ("failed", 0)
+        gone = _should_remove(exc, names_source_chat=names_source_chat)
+        return ("remove", 0) if gone else ("failed", 0)
     except TelegramAPIError:
         return ("failed", 0)  # transient API error (incl. other BadRequests) → keep the user
     except Exception:
@@ -139,14 +144,20 @@ async def _broadcast_loop(
     progress: dict[str, int] | None = None,
     on_start: object | None = None,
     on_checkpoint: object | None = None,
+    names_source_chat: bool = False,
 ) -> tuple[int, int, int]:
     """Shared fan-out: send to every user via ``send_one(uid)`` (which raises on a failed send),
-    applying the strict removal allowlist + a bounded-concurrency, rate-capped throttle + progress.
-    ``languages`` (empty/None ⇒ all) narrows the audience for a language-targeted panel broadcast.
-    Removals are batched and committed once, after the loop, so a long send never holds a write
-    transaction open. See ``_CONCURRENCY``/``_SEND_RATE`` for why this isn't a sequential loop.
+    applying the strict unreachable allowlist + a bounded-concurrency, rate-capped throttle +
+    progress. ``languages`` (empty/None ⇒ all) narrows the audience for a language-targeted panel
+    broadcast. See ``_CONCURRENCY``/``_SEND_RATE`` for why this isn't a sequential loop.
 
-    Returns ``(sent, failed, removed)`` so a caller with a log row can record what happened.
+    Gone chats are marked in short transactions every ``_CHECKPOINT_EVERY`` sends and once more on
+    the way out — normal end, crash or cancel alike. Marked only after the loop, a job cancelled
+    mid-send (every deploy restarts the worker) recorded them as "removed" in its log row and never
+    marked one, so the next broadcast walked them all again.
+
+    Returns ``(sent, failed, removed)`` so a caller with a log row can record what happened;
+    ``removed`` counts the chats marked unreachable.
 
     ``refine`` picks the audience query: the panel's broadcast shares ``count_audience`` with the
     endpoint that showed the operator a recipient count, so the number they read before pressing
@@ -171,7 +182,7 @@ async def _broadcast_loop(
 
     total = len(ids)
     sent = failed = removed = 0
-    to_remove: list[int] = []
+    unmarked: list[int] = []  # gone chats found since the last mark
     counts = progress if progress is not None else {}
     counts.update(sent=0, failed=0, removed=0)
     if on_start is not None:
@@ -180,73 +191,92 @@ async def _broadcast_loop(
     last_edit = 0
     last_checkpoint = 0
 
-    for start in range(0, total, _CONCURRENCY):
-        chunk = ids[start : start + _CONCURRENCY]
-        t0 = time.monotonic()
-        results = await asyncio.gather(*[_attempt(send_one, uid) for uid in chunk])
+    try:
+        for start in range(0, total, _CONCURRENCY):
+            chunk = ids[start : start + _CONCURRENCY]
+            t0 = time.monotonic()
+            results = await asyncio.gather(
+                *[_attempt(send_one, uid, names_source_chat=names_source_chat) for uid in chunk]
+            )
 
-        flooded: list[int] = []
-        flood_waits: list[float] = []
-        for uid, (tag, wait) in zip(chunk, results, strict=True):
-            if tag == "sent":
-                sent += 1
-            elif tag == "remove":
-                to_remove.append(uid)
-                removed += 1
-            elif tag == "flood":
-                flooded.append(uid)
-                flood_waits.append(wait)
-            else:
-                failed += 1
-
-        # A flood-control hit signals to slow the WHOLE broadcast: back off once for the longest
-        # requested wait, then retry the flooded users once (a second flood → keep the user).
-        if flooded:
-            await asyncio.sleep(max(flood_waits))
-            for uid in flooded:
-                tag, _ = await _attempt(send_one, uid)
+            flooded: list[int] = []
+            flood_waits: list[float] = []
+            for uid, (tag, wait) in zip(chunk, results, strict=True):
                 if tag == "sent":
                     sent += 1
                 elif tag == "remove":
-                    to_remove.append(uid)
+                    unmarked.append(uid)
                     removed += 1
+                elif tag == "flood":
+                    flooded.append(uid)
+                    flood_waits.append(wait)
                 else:
                     failed += 1
 
-        done = sent + failed + removed
-        counts.update(sent=sent, failed=failed, removed=removed)
-        if done - last_edit >= 100:
-            last_edit = done
-            await _edit(
-                bot,
-                progress_msg,
-                f"📣 {done}/{total} · sent {sent} · failed {failed} · removed {removed}",
-            )
-        if on_checkpoint is not None and done - last_checkpoint >= _CHECKPOINT_EVERY:
-            last_checkpoint = done
-            await on_checkpoint()  # type: ignore[operator]
+            # A flood-control hit signals to slow the WHOLE broadcast: back off once for the
+            # longest requested wait, then retry the flooded users once (a second flood → keep).
+            if flooded:
+                await asyncio.sleep(max(flood_waits))
+                for uid in flooded:
+                    tag, _ = await _attempt(send_one, uid, names_source_chat=names_source_chat)
+                    if tag == "sent":
+                        sent += 1
+                    elif tag == "remove":
+                        unmarked.append(uid)
+                        removed += 1
+                    else:
+                        failed += 1
 
-        # Rate cap: hold each chunk to at least len(chunk)/_SEND_RATE seconds so the running average
-        # stays under Telegram's ceiling even though the chunk itself was sent concurrently.
-        elapsed = time.monotonic() - t0
-        pace = len(chunk) / _SEND_RATE
-        if elapsed < pace:
-            await asyncio.sleep(pace - elapsed)
+            done = sent + failed + removed
+            counts.update(sent=sent, failed=failed, removed=removed)
+            if done - last_edit >= 100:
+                last_edit = done
+                await _edit(
+                    bot,
+                    progress_msg,
+                    f"📣 {done}/{total} · sent {sent} · failed {failed} · unreachable {removed}",
+                )
+            if done - last_checkpoint >= _CHECKPOINT_EVERY:
+                last_checkpoint = done
+                await _mark_unreachable(sessionmaker, unmarked)
+                if on_checkpoint is not None:
+                    await on_checkpoint()  # type: ignore[operator]
 
-    if to_remove:
-        # MARKED, never deleted: a delete cascaded the user's claim history away (every past day's
-        # figures shrank after each broadcast) and orphaned their live panel account, which only the
-        # row can map back for the expiry cleanup. Marked, they leave every audience instead.
-        async with sessionmaker() as session:  # type: ignore[operator]
-            await UserRepository(session).mark_unreachable(to_remove, datetime.now(UTC))
-            await session.commit()
+            # Rate cap: hold each chunk to at least len(chunk)/_SEND_RATE seconds so the running
+            # average stays under Telegram's ceiling even though the chunk was sent concurrently.
+            elapsed = time.monotonic() - t0
+            pace = len(chunk) / _SEND_RATE
+            if elapsed < pace:
+                await asyncio.sleep(pace - elapsed)
+    finally:
+        await _mark_unreachable(sessionmaker, unmarked)
 
     await _edit(
         bot,
         progress_msg,
-        f"✅ Done · {total} users · sent {sent} · failed {failed} · removed {removed}",
+        f"✅ Done · {total} users · sent {sent} · failed {failed} · unreachable {removed}",
     )
     return sent, failed, removed
+
+
+async def _mark_unreachable(sessionmaker: object, ids: list[int]) -> None:
+    """Write the gone chats found so far back to their rows, then forget them (``ids`` is emptied).
+
+    MARKED, never deleted: a delete cascaded the user's claim history away (every past day's figures
+    shrank after each broadcast) and orphaned their live panel account, which only the row can map
+    back for the expiry cleanup. Marked, they leave every audience instead. Best-effort — the
+    messages already went out, and a chat this fails to mark is simply tried again next time.
+    """
+    if not ids:
+        return
+    batch = list(ids)
+    ids.clear()
+    try:
+        async with sessionmaker() as session:  # type: ignore[operator]
+            await UserRepository(session).mark_unreachable(batch, datetime.now(UTC))
+            await session.commit()
+    except Exception:
+        logger.warning("broadcast: could not mark %d unreachable chats", len(batch))
 
 
 async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id: int) -> None:
@@ -262,7 +292,9 @@ async def fanout(ctx: dict, action: str, chat_id: int, message_id: int, admin_id
     async def send_one(uid: int) -> None:
         await _deliver(bot, action, uid, chat_id, message_id)
 
-    await _broadcast_loop(bot, sessionmaker, admin_id, send_one)
+    # A copy/forward names the admin's chat as its source, so "chat not found" cannot be trusted
+    # to be about the recipient here.
+    await _broadcast_loop(bot, sessionmaker, admin_id, send_one, names_source_chat=True)
 
 
 def _inline_keyboard(buttons: list[dict] | None) -> InlineKeyboardMarkup | None:
@@ -289,7 +321,7 @@ async def broadcast_text(
     """Send a composed HTML message to the panel's broadcast audience (it has no source message to
     copy). ``languages`` (empty/None ⇒ everyone) targets specific language groups, and the two
     ``only_*`` flags narrow it further — the same query the endpoint counted with. Same strict
-    removal allowlist as ``fanout``: a user is dropped only on a permanent delivery failure.
+    allowlist as ``fanout``: a user is marked unreachable only on a permanent delivery failure.
 
     ``log_id`` points at the ``broadcast_logs`` row written when the job was enqueued; the outcome
     is written back into it so the history can say what happened rather than only that it started.

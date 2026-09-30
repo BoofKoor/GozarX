@@ -17,9 +17,11 @@ from gozar.bot.handlers.admin import (
     reset_all_confirm,
     start_broadcast,
     user_ban_prompt,
+    user_unban,
 )
 from gozar.db.models.enums import Language
 from gozar.db.models.user import User
+from gozar.services.admin import ReclaimRefused
 from gozar.services.content import ContentService
 from gozar.ui.buttons import EMPTY_OVERRIDES
 
@@ -117,3 +119,21 @@ async def test_reset_all_confirm_enqueues_bulk_job() -> None:
     arq = FakeArq()
     await reset_all_confirm(_callback(uid=5), _user(), content, arq, buttons=EMPTY_OVERRIDES)
     assert arq.jobs == [("reset_all_active", (5,))]
+
+
+async def test_unban_says_the_panel_did_not_answer_instead_of_done(monkeypatch) -> None:
+    # A revoke still pending from the ban must land before the unban: when it can't, the card must
+    # not claim "unbanned" over a user who is still banned.
+    notes: list[object] = []
+
+    async def show_card(*args: object, note_key: object = None) -> None:
+        notes.append(note_key)
+
+    class Admin:
+        async def unban(self, target_id: int) -> None:
+            raise ReclaimRefused("panel")
+
+    monkeypatch.setattr("gozar.bot.handlers.admin._show_card", show_card)
+    state = FakeState({"target_id": 9}, UserActionFlow.viewing)
+    await user_unban(_callback(), _user(), await _content(), state, Admin(), EMPTY_OVERRIDES)
+    assert notes == ["admin_reclaim_panel_down"]

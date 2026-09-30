@@ -159,7 +159,9 @@ export function Overview({
     if (!retention) return null; // not loaded (or failed): no reading, not a 0%
     const rows = retention.cohorts.filter((c) => c.retention.length > 1 && c.size > 0);
     const people = rows.reduce((a, c) => a + c.size, 0);
-    if (!people) return 0;
+    // No cohort old enough to HAVE a week two: nothing was measured, so «—», not «۰٪» — the same
+    // answer the activation axis beside it gives for an empty cohort.
+    if (!people) return null;
     return rows.reduce((a, c) => a + c.retention[1] * c.size, 0) / people;
   })();
   // Of everyone who has ever claimed, the share who claimed more than once. Read off the claims
@@ -177,7 +179,7 @@ export function Overview({
     if (!analytics) return null;
     const buckets = analytics.claims_distribution;
     const claimers = Object.values(buckets).reduce((a, n) => a + n, 0);
-    if (!claimers) return 0;
+    if (!claimers) return null; // nobody has claimed yet: no reading, not a 0% habit
     return ((claimers - (buckets["1"] ?? 0)) / claimers) * 100;
   })();
 

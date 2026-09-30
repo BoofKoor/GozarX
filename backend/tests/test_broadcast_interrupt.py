@@ -11,6 +11,8 @@ import asyncio
 from types import SimpleNamespace
 
 import pytest
+from aiogram.exceptions import TelegramForbiddenError
+from sqlalchemy import select
 
 from gozar.db.models.broadcast_log import BroadcastStatus
 from gozar.db.models.user import User
@@ -80,3 +82,43 @@ async def test_worker_start_closes_rows_left_sending(db_sessions) -> None:
     async with db_sessions() as session:
         row = await BroadcastLogRepository(session).get(log_id)
     assert row.status == BroadcastStatus.failed and (row.sent, row.failed) == (7, 1)
+
+
+class _GoneThenStopped:
+    """The first chunk finds two blocked chats; the worker is then 'stopped' on the second."""
+
+    async def send_message(self, chat_id: int, text: str, **kw: object) -> SimpleNamespace:
+        if chat_id < 0:  # the operator's progress message
+            return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+        if chat_id >= 1020:
+            raise asyncio.CancelledError
+        if chat_id in (1003, 1005):
+            exc = TelegramForbiddenError.__new__(TelegramForbiddenError)
+            exc.message = "Forbidden: bot was blocked by the user"
+            raise exc
+        return SimpleNamespace(chat=SimpleNamespace(id=chat_id), message_id=1)
+
+    async def edit_message_text(self, *args: object, **kw: object) -> None:
+        return None
+
+
+async def test_a_cancelled_broadcast_marks_the_gone_chats_it_found(
+    db_sessions, monkeypatch
+) -> None:
+    # Marked only after the loop, these were recorded as "removed" in the row and never marked, so
+    # every later broadcast walked them again and the history's figure described nothing.
+    async def _no_sleep(*_: object) -> None:
+        return None
+
+    monkeypatch.setattr("gozar.worker.tasks.asyncio.sleep", _no_sleep)
+    log_id = await _seed(db_sessions, 45)
+    ctx = {"bot": _GoneThenStopped(), "sessionmaker": db_sessions}
+    with pytest.raises(asyncio.CancelledError):
+        await broadcast_text(ctx, "hi", admin_id=-1, log_id=log_id)
+    async with db_sessions() as session:
+        row = await BroadcastLogRepository(session).get(log_id)
+        marked = await session.scalars(
+            select(User.telegram_id).where(User.unreachable_at.is_not(None))
+        )
+        assert sorted(marked.all()) == [1003, 1005]
+    assert (row.sent, row.removed) == (18, 2)

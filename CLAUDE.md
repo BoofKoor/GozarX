@@ -50,7 +50,11 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 - **Broadcasts run in the arq worker**, never inside a handler. A broadcast MARKS a user unreachable
   (`users.unreachable_at`) **only** on a genuine "bot blocked / deactivated / chat not found" error —
   never on transient failures — and never deletes the row. "Chat not found" arrives as a 400
-  (`TelegramBadRequest`): aiogram picks the class by HTTP status (`services/telegram_errors`).
+  (`TelegramBadRequest`): aiogram picks the class by HTTP status (`services/telegram_errors`). It
+  counts only on a DIRECT send: a copy/forward also names the admin's chat as its source, so its
+  "chat not found" may be about that chat — trusted, one bad source marks the whole audience. Marks
+  are written as the send goes (every checkpoint, and on the way out — cancel included) and in
+  batches: an `IN` list binds a parameter per id, and asyncpg refuses more than 32,767.
 - **Admin multi-step flows use aiogram FSM (Redis)**, never a module-global dict.
 - **Use the configured referral reward everywhere** — never hardcode reward/cap numbers.
 - **Remnawave: VERIFY every endpoint** against the live OpenAPI (`{PANEL_BASE_URL}/api`) before wiring;
@@ -67,7 +71,8 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 1. No destructive side effects on import (old `config.py` ran `delete_user()` + `create_tables()`).
 2. No process-global mutable per-user state (old global location list → race → wrong config).
 3. Match location → config by remark NAME, not `links[index]`.
-4. No mass-deletion on errors (broadcast removes a user only on blocked/deactivated, never transient).
+4. No mass-deletion on errors (a broadcast marks a user unreachable only on blocked / deactivated /
+   chat not found — never on a transient error — and never deletes the row).
 5. No unbounded panel retry loops (old `while result is None: retry` hung when the panel was down).
 6. Derive locations from the trial squad, not a hardcoded "template user".
 7. Admin multi-step flows in aiogram FSM, not a module-global dict.
@@ -110,10 +115,10 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   audience refinements · buttons JSON · status · recipients/sent/failed/**removed** ·
   scheduled_for/created_at/finished_at). Written at ENQUEUE time by the route and completed by the
   arq worker — the fan-out is async, so without the row a broadcast that never ran would vanish
-  instead of showing as stuck on `queued`. `removed` is its own column, never folded into `failed`:
-  a user is dropped ONLY on blocked/deactivated, and that distinction has to be visible to be
-  trusted. Mirrors `site_push_logs` on purpose — two broadcast surfaces that report differently
-  would be two things to learn.
+  instead of showing as stuck on `queued`. `removed` (the chats marked unreachable) is its own
+  column, never folded into `failed`: a user is marked ONLY on blocked / deactivated / chat not
+  found, and that distinction has to be visible to be trusted. Mirrors `site_push_logs` on purpose
+  — two broadcast surfaces that report differently would be two things to learn.
 - `broadcast_drafts`: a broadcast written and not yet sent (title derived from the body · body ·
   languages · the two audience refinements · buttons JSON · `send_hour` · created/updated). In the
   DB rather than the browser because the console is SHARED — one person drafts an announcement and
@@ -149,8 +154,9 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   answers "ever" and nothing else; a per-day figure only exists if something writes readings down.
   Store the reading verbatim and difference at READ time — a stored delta has already decided what
   a reset means, and it always decides wrong. A panel restart, a node removed and re-added, or a
-  manual traffic reset all drop the counter: report that day as 0 AND flag it, because a negative
-  bar is nonsense and a silently absorbed jump is a lie in the total.
+  manual traffic reset all drop the counter: count that STEP as 0 AND flag its day, because a
+  negative bar is nonsense and a silently absorbed jump is a lie in the total. The day's other steps
+  still count, so its figure is a floor — and the copy under the chart has to say floor, not zero.
 - **A window's traffic anchors on the reading BEFORE the window, not the first one inside it.**
   Otherwise everything carried between the last sample of the previous window and the first of this
   one falls down the gap between them and is never counted anywhere.
@@ -212,9 +218,15 @@ sleep 8
 curl -sS -o /dev/null -w "%{http_code}\n" https://gozarx.gozarxservices.com/health   # expect 200
 ```
 When a change needs a server deploy, hand the owner exactly these commands. A change to the nginx
-config also needs `sudo ./install.sh` re-run on the server: the live `nginx/nginx.tls.conf` is written
-from the installer's OWN template (keep it in step with `nginx/nginx.conf`), and a `git pull` never
-touches it (re-running is safe — secrets are reused). The admin panel
+config also needs `sudo ./install.sh --tls-only` on the server, after the commands above: the live
+`nginx/nginx.tls.conf` is written from the installer's OWN template (keep it in step with
+`nginx/nginx.conf`), a `git pull` never touches it, and `--tls-only` re-renders it from `.env` and
+restarts nginx without asking for anything else. The restart is not optional — nginx reads its config,
+and resolves `app:8000`, only at start, and `up -d` leaves an unchanged container running — which is
+why the deploy commands restart it too, and why the installer now does so itself. A full re-run is
+safe as well: secrets are reused, `.env` keys the installer does not manage are carried over, and a
+BLANK admin password keeps the current hash (a freshly minted one, even of the same password, ends
+every admin session — the tokens' credential version, see Security). The admin panel
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
@@ -230,7 +242,9 @@ prompts for the **domain first, then a TLS certificate** (Cloudflare Origin Cert
 collects the Telegram/panel/admin details, generates all secrets, writes a chmod-600 `.env`, builds +
 starts the stack behind TLS (`docker-compose.tls.yml` + `nginx/nginx.tls.conf`, both server-only and
 git-ignored), and verifies health, admin login, and the Telegram webhook. Re-running is safe — secrets
-and the Postgres password are reused, never rotated. In Cloudflare: the DNS record must be **Proxied**
+and the Postgres password are reused, never rotated; a blank admin password keeps the current one; and
+`.env` keys it does not manage survive (it regenerates the file from a fixed list, which used to drop
+`GOOGLE_SITE_VERIFICATION` and anything added by hand). In Cloudflare: the DNS record must be **Proxied**
 (orange cloud) and SSL/TLS mode **Full (strict)**.
 
 ## Build phases
@@ -300,16 +314,16 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   answers with placeholder links) became a 404 "account gone" and deleted a live trial.
 20 The admin panel audited end to end — measured on a copy at the live install's volume (108k users,
   1.3M claims, a 12k-user mock panel) and rendered in Chromium — and all 76 findings fixed, in four
-  packages. Speed: the dashboard stopped paging every panel user inline (24.6s → 1.5s; the squad
-  online count moved to the worker), panel readings are shared and bounded, nginx caches hashed
-  assets and 404s a missing chunk. Correctness: user actions no longer crash the panel, bans and
-  blocks survive a dead panel (revoke pending + retry), gone chats are marked not deleted, commits
-  land before the response and inside the claim locks, Telegram-refused HTML is caught before a
-  send, location lists store `[]` for "all" (the reported "29 of 25 selected" save error), buttons
-  are per screen, sweeps resume within a time budget. Reporting: past website windows from
-  `site_device_days`, a mint is not a visit, windows shift back, traffic steps across counter
-  resets, gauges and rates keep one population and one window, unknowns are «—». Security: tokens
-  carry a credential version and a 30-day session cap.
+  packages. Speed: the dashboard stopped paging every panel user inline (25.8s → 1.5s for the page,
+  `/stats` 24.6s → 0.6–1.1s; the squad online count moved to the worker), panel readings are shared
+  and bounded, nginx caches hashed assets and 404s a missing chunk. Correctness: user actions no
+  longer crash the panel, bans and blocks survive a dead panel (revoke pending + retry), gone chats
+  are marked not deleted, commits land before the response and inside the claim locks,
+  Telegram-refused HTML is caught before a send, location lists store `[]` for "all" (the reported
+  "29 of 25 selected" save error), buttons are per screen, sweeps resume within a time budget.
+  Reporting: past website windows from `site_device_days`, a mint is not a visit, windows shift
+  back, traffic steps across counter resets, gauges and rates keep one population and one window,
+  unknowns are «—». Security: tokens carry a credential version and a 30-day session cap.
 21 The public site audited the way phase 18 audited the panel — by rendering it (`docs/website/
   audit/`: 68 code findings, 14 visual, measured probes, a six-phase fix plan A–F) — and its Phase A
   shipped: skeletons that painted nothing, a reduced-motion override a duplicate rule outranked, the
@@ -345,6 +359,14 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   and language control; location names follow the visitor's language (`locLabel`: "Germany" in
   the English UI, never the Persian remark); and every volume prints through one `formatVolume`,
   which ended the reversed «GB ۱». `docs/website/audit/accept_d.py` checks all of it.
+25 Phase 20's own mistakes, found by reviewing it after merge. Its list became a real filter, so a
+  migration resets the wizard's stale `site_locations` snapshot to `[]` — every host added since was
+  vanishing from the site. Gone chats are marked as a broadcast goes and in batches, and a copy's
+  "chat not found" no longer counts. Unban finishes a pending revoke. A save made while the picker
+  loads no longer turns a subset into "all". The installer's re-run keeps unmanaged `.env` keys and
+  the password hash, restarts nginx, and gains `--tls-only`; the worker waits for the migrated app.
+  Plus the focus trap, the hour strip's keys, dense button rows, sanitiser whitespace, bidi
+  isolates, and the copy that still described the old maths.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -606,8 +628,20 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **A link that looks like a button is `LinkButton` / `ExternalLinkButton`**, never `<Link><Button>`
   — invalid HTML, two tab stops, "link, button".
 - **`role="radiogroup"` is the same promise as `tablist`**: one tab stop on the checked option,
-  arrows that step and select (swapped in RTL), Home/End — `Segmented` and the broadcast
-  `HourStrip` keep it. A target is the whole column, not a bar that can be 2px tall.
+  arrows that step and select — Down/Right to the next, Up/Left to the previous, both ends wrapping —
+  and Home/End. `Segmented` swaps Left/Right in RTL; the broadcast `HourStrip` does NOT, because it
+  is a clock laid out left to right in both languages. A target is the whole column, not a bar that
+  can be 2px tall.
+- **A save made before its picker has loaded leaves that field OUT of the request.** Resolved
+  against a list that has not arrived, every saved name reads as stale, and `[]` means "all": a
+  numbers-only save silently turned a chosen subset of locations into every location. `undefined`
+  is dropped from the JSON, and the server keeps what it has.
+- **A focus trap wraps on TABBABLE elements, not focusable ones.** `button` matches the selector at
+  `tabIndex={-1}` too, so the command palette's options — out of the tab order on purpose — became
+  the trap's ends: Tab walked out of the dialog and Shift+Tab landed on an option Enter then ran.
+- **A mirror kept by hand is checked against its source.** `lib/bounds` "mirrors" the server's
+  `bounds.py` and drifted (`streakDays` refused the server's 0); `bounds.test.ts` now reads the
+  Python file.
 - **A global shortcut stands down while the operator is typing.** Ctrl+K then Enter in the
   composer navigated away with the message.
 - **`faDate` prints an INSTANT on the Tehran clock and a DAY KEY as that date.** Formatted in UTC, a
