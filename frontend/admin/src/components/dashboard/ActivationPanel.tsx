@@ -27,8 +27,10 @@ export function ActivationPanel({ data }: { data: DashboardAnalytics }) {
           <div className="mt-1 text-xs text-content-muted">{t("d.activation.median")}</div>
         </div>
         <div className="rounded-xl bg-surface-raised p-4">
-          <div className="text-2xl font-bold tabular-nums text-brand">
-            {faPct(data.activation_24h.value)}
+          {/* `text-brand-700`: the ink shade — `text-brand` is the fill and fails AA as type. An
+              empty cohort has no rate at all, and `faPct(null)` would print a confident 0%. */}
+          <div className="text-2xl font-bold tabular-nums text-brand-700">
+            {data.activation_24h.value == null ? "—" : faPct(data.activation_24h.value)}
           </div>
           <div className="mt-1 text-xs text-content-muted">{t("d.activation.24h")}</div>
         </div>

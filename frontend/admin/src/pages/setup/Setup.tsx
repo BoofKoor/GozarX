@@ -5,19 +5,19 @@ import { toast } from "sonner";
 
 import { BrandTile } from "@/components/layout/Brand";
 import { LanguagePill } from "@/components/layout/LanguagePill";
+import { SquadSelect } from "@/components/setup/SquadSelect";
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { NumberInput } from "@/components/ui/NumberInput";
-import { Select } from "@/components/ui/Select";
-import { Spinner } from "@/components/ui/Spinner";
 import { useCompleteSetup, useSetupStatus, useSquads } from "@/hooks/useSetup";
 import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -38,7 +38,7 @@ export function Setup() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const { data: status } = useSetupStatus();
-  const { data: squads, isLoading, isError } = useSquads();
+  const { data: squads } = useSquads();
   const complete = useCompleteSetup();
   const [trialSquad, setTrialSquad] = useState("");
   const [econ, setEcon] = useState<Econ>(DEFAULT_ECON);
@@ -76,10 +76,10 @@ export function Setup() {
     }
     if (
       !allValidNumbers([
-        { value: econ.daily_limit_mb, min: 1 },
-        { value: econ.referral_reward_mb, min: 0 },
-        { value: econ.referral_reward_limit, min: 0 },
-        { value: econ.trial_hours, min: 1 },
+        { value: econ.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: econ.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: econ.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: econ.trial_hours, ...BOUNDS.trialHours },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -88,7 +88,9 @@ export function Setup() {
     complete.mutate(
       {
         trial_squad: trialSquad,
-        locations: pickerUnavailable ? splitLocations(locationsText) : locations,
+        locations: pickerUnavailable
+          ? splitLocations(locationsText)
+          : resolveSelection(locations, picker ?? []).save,
         ...econ,
         ads_enabled: false,
       },
@@ -123,44 +125,34 @@ export function Setup() {
         <Card>
           <form onSubmit={submit} className="space-y-4">
             <Field label={t("setup.squad")} hint={t("setup.squad.hint")}>
-              {isLoading ? (
-                <div className="flex justify-center py-4">
-                  <Spinner className="h-5 w-5 text-brand" />
-                </div>
-              ) : isError ? (
-                <ErrorState compact message={t("setup.squadsUnreachable")} />
-              ) : (
-                <Select value={trialSquad} onChange={(e) => setTrialSquad(e.target.value)}>
-                  {(squads ?? []).map((s) => (
-                    <option key={s.uuid} value={s.uuid}>
-                      {s.name}
-                    </option>
-                  ))}
-                </Select>
-              )}
+              <SquadSelect value={trialSquad} onChange={setTrialSquad} />
             </Field>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label={t("set.dailyLimit")}>
                 <NumberInput
-                  min={1}
+                  {...BOUNDS.dailyLimitMb}
                   value={econ.daily_limit_mb}
                   onChange={setNum("daily_limit_mb")}
                 />
               </Field>
               <Field label={t("set.trialHours")}>
-                <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
+                <NumberInput
+                  {...BOUNDS.trialHours}
+                  value={econ.trial_hours}
+                  onChange={setNum("trial_hours")}
+                />
               </Field>
               <Field label={t("set.rewardMb")}>
                 <NumberInput
-                  min={0}
+                  {...BOUNDS.rewardMb}
                   value={econ.referral_reward_mb}
                   onChange={setNum("referral_reward_mb")}
                 />
               </Field>
               <Field label={t("set.rewardLimit")}>
                 <NumberInput
-                  min={0}
+                  {...BOUNDS.rewardLimit}
                   value={econ.referral_reward_limit}
                   onChange={setNum("referral_reward_limit")}
                 />

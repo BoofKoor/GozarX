@@ -9,10 +9,21 @@ from __future__ import annotations
 from sqlalchemy import func, select
 
 from gozar.db.models.content import Content
+from gozar.db.models.enums import Language
 from gozar.db.models.setting import Setting
 from gozar.db.repositories.content import ContentRepository
 from gozar.db.repositories.settings import SettingsRepository
-from gozar.seed import DEFAULT_SITE_CONTENT, DEFAULT_SITE_SETTINGS
+from gozar.db.repositories.site_faq_item import SiteFaqItemRepository
+from gozar.db.repositories.site_landing_page import SiteLandingPageRepository
+from gozar.seed import (
+    DEFAULT_SITE_CONTENT,
+    DEFAULT_SITE_SETTINGS,
+    FAQ_SEEDED,
+    LANDINGS_SEEDED,
+    seed_defaults,
+)
+from gozar.seed_faq import DEFAULT_SITE_FAQ
+from gozar.seed_landings import DEFAULT_SITE_LANDINGS
 from gozar.services.settings_service import SiteSettingKey
 
 _EXPECTED_CONTENT_ROWS = sum(len(bodies) for bodies in DEFAULT_SITE_CONTENT.values())
@@ -68,3 +79,87 @@ async def test_site_content_is_bilingual_only(session) -> None:
     """Site copy is fa/en — never the bot's ru — so the two content namespaces stay disjoint."""
     langs = {lang.value for bodies in DEFAULT_SITE_CONTENT.values() for lang in bodies}
     assert langs == {"fa", "en"}
+
+
+async def test_a_blank_seeded_row_is_restored_but_an_edit_is_not(session) -> None:
+    """An older site-copy editor's reset stored "" — the seed puts the default back, and ONLY there.
+
+    A blank push title has nothing behind it: the nudge rendered as ``[site_push_expired_title]``.
+    """
+    repo = ContentRepository(session)
+    await repo.upsert("site_push_expired_title", Language.fa, "  ")
+    await repo.upsert("site_hero_title", Language.fa, "عنوان من")
+    await session.flush()
+
+    restored = await repo.restore_blank(
+        "site_push_expired_title",
+        Language.fa,
+        DEFAULT_SITE_CONTENT["site_push_expired_title"][Language.fa],
+    )
+    untouched = await repo.restore_blank(
+        "site_hero_title", Language.fa, DEFAULT_SITE_CONTENT["site_hero_title"][Language.fa]
+    )
+    await session.flush()
+
+    assert restored is True and untouched is False
+    assert (
+        await repo.get_body("site_push_expired_title", Language.fa)
+        == (DEFAULT_SITE_CONTENT["site_push_expired_title"][Language.fa])
+    )
+    assert await repo.get_body("site_hero_title", Language.fa) == "عنوان من"
+
+
+async def test_faq_and_landings_are_seeded_once_and_stay_deleted(session) -> None:
+    """A default the operator deleted used to come back on the next boot (16 → 15 → 16)."""
+    await seed_defaults(session)
+    await session.flush()
+    faq = SiteFaqItemRepository(session)
+    landings = SiteLandingPageRepository(session)
+    assert len(await faq.list()) == len(DEFAULT_SITE_FAQ)
+    assert len(await landings.list()) == len(DEFAULT_SITE_LANDINGS)
+
+    await faq.delete((await faq.list())[0])
+    await landings.delete((await landings.list())[0])
+    await session.flush()
+    await seed_defaults(session)  # the next boot
+    await session.flush()
+
+    assert len(await faq.list()) == len(DEFAULT_SITE_FAQ) - 1
+    assert len(await landings.list()) == len(DEFAULT_SITE_LANDINGS) - 1
+
+
+async def test_an_install_seeded_by_an_older_build_only_gains_the_marker(session) -> None:
+    # No marker yet, but rows exist: an older build seeded them, and what is left is the operator's.
+    faq = SiteFaqItemRepository(session)
+    await faq.add_default(**DEFAULT_SITE_FAQ[0])  # type: ignore[arg-type]
+    await session.flush()
+
+    await seed_defaults(session)
+    await session.flush()
+
+    assert len(await faq.list()) == 1
+    assert await SettingsRepository(session).get(FAQ_SEEDED) == "1"
+    assert await SettingsRepository(session).get(LANDINGS_SEEDED) == "1"
+
+
+async def test_a_reworded_default_question_is_not_duplicated(session) -> None:
+    await seed_defaults(session)
+    await session.flush()
+    faq = SiteFaqItemRepository(session)
+    item = (await faq.list())[0]
+    await faq.update(
+        item,
+        locale=item.locale,
+        category=item.category,
+        question="سؤالی که بازنویسی شد",
+        answer=item.answer,
+        position=item.position,
+        published=item.published,
+    )
+    await session.flush()
+
+    await seed_defaults(session)
+    await session.flush()
+
+    # Keyed on (locale, question), the original wording used to be re-inserted beside the edit.
+    assert len(await faq.list()) == len(DEFAULT_SITE_FAQ)

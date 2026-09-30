@@ -197,9 +197,67 @@ async def test_reset_clears_the_cooldown_but_keeps_the_history(
     # Forgiveness, not a wipe: the row and its claim history survive.
     card = (await devices_client.get("/api/admin/site/devices/dev-a")).json()
     assert card["claims"] == 2
+    # "Last claim" is read from that history, so the reset does not turn it into "—".
+    assert card["last_claimed_at"] is not None
+    row = (await devices_client.get("/api/admin/site/devices/?search=dev-a")).json()["items"][0]
+    assert row["last_claimed_at"] is not None and row["last_claim_at"] is None
+
+
+async def test_a_lapsed_streak_reads_zero(devices_client: httpx.AsyncClient, db_sessions) -> None:
+    """The stored counter is written on a claim and never on the absence of one; the list and the
+    record report the streak as it stands now."""
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-z", handle="GZ-ZZZZ", streak_count=6))
+        await s.flush()
+        old = datetime.now(UTC) - timedelta(days=5)
+        s.add(SiteClaim(device_uuid="dev-z", location="Germany", created_at=old))
+        await s.commit()
+    card = (await devices_client.get("/api/admin/site/devices/dev-z")).json()
+    assert card["streak_count"] == 0
+    row = (await devices_client.get("/api/admin/site/devices/?search=dev-z")).json()["items"][0]
+    assert row["streak_count"] == 0
 
 
 async def test_actions_404_on_an_unknown_device(devices_client: httpx.AsyncClient) -> None:
     for action in ("block", "unblock", "reset"):
         r = await devices_client.post(f"/api/admin/site/devices/nope/{action}")
         assert r.status_code == 404
+
+
+async def test_block_with_the_panel_down_keeps_the_handle_as_revoke_pending(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    from gozar.remnawave.errors import RemnawaveError
+
+    class _DownPanel(_StubPanel):
+        async def delete_user_by_username(self, username: str) -> bool:
+            raise RemnawaveError("panel DELETE failed")
+
+    await _seed(db_sessions)
+    devices_client._transport.app.state.panel = _DownPanel()  # type: ignore[attr-defined]
+    body = (await devices_client.post("/api/admin/site/devices/dev-a/block")).json()
+    # Blocked regardless — but the live account is not forgotten, or it could never be revoked.
+    assert body["status"] == "blocked" and body["site_panel_username"] == "s-aaa_1"
+    assert body["revoke_pending"] is True
+
+
+async def test_reset_refuses_a_blocked_device(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    # "Allow another claim" used to set `available` unconditionally — an unblock by accident.
+    await _seed(db_sessions)
+    r = await devices_client.post("/api/admin/site/devices/dev-c/reset")
+    assert r.status_code == 409
+    async with db_sessions() as s:
+        assert (await s.get(SiteDevice, "dev-c")).status == SiteDeviceStatus.blocked
+
+
+async def test_unblock_refuses_a_device_that_is_not_blocked(
+    devices_client: httpx.AsyncClient, db_sessions
+) -> None:
+    # Forcing an active device to `available` hid its live config from /status and the sweep.
+    await _seed(db_sessions)
+    r = await devices_client.post("/api/admin/site/devices/dev-a/unblock")
+    assert r.status_code == 409
+    async with db_sessions() as s:
+        assert (await s.get(SiteDevice, "dev-a")).status == SiteDeviceStatus.active_config

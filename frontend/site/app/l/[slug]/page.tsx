@@ -82,8 +82,9 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
           {row.heading ?? row.title}
         </h1>
 
-        {/* Body is TRUSTED admin-authored HTML: rows come only from the JWT-gated admin CRUD
-            (backend admin/landing.py documents the contract) — no user input ever reaches it. */}
+        {/* Admin-authored HTML, SANITISED by the backend on the way out (services/article_html):
+            this origin is the admin panel's too, so a handler in a pasted body would run where the
+            admin tokens live. Only bare article tags and vetted links survive. */}
         <div
           className="landing-body"
           lang={row.locale}

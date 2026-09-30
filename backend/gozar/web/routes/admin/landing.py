@@ -17,7 +17,9 @@ from sqlalchemy.exc import IntegrityError
 
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.repositories.site_landing_page import SiteLandingPageRepository
+from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.site_locations import reject_unoffered_location
 
 router = APIRouter(prefix="/site/pages", tags=["site-pages"])
 
@@ -77,6 +79,19 @@ def _out(p: SiteLandingPage) -> LandingOut:
     )
 
 
+async def _require_offered_location(request: Request, session: object, remark: str | None) -> None:
+    """The landing's pre-selected location must be one the site's picker offers."""
+    if not remark or not remark.strip():
+        return
+    settings = SettingsService(session, request.app.state.redis)  # type: ignore[arg-type]
+    await reject_unoffered_location(
+        request,
+        await settings.get(SiteSettingKey.SITE_TRIAL_SQUAD),
+        await settings.get_list(SiteSettingKey.SITE_LOCATIONS),
+        remark,
+    )
+
+
 def _require_locale(locale: str) -> None:
     if locale not in _LOCALES:
         raise HTTPException(422, "locale must be 'fa' or 'en'")
@@ -99,6 +114,7 @@ async def create_page(
 ) -> LandingOut:
     _require_locale(body.locale)
     _require_slug(body.slug)
+    await _require_offered_location(request, session, body.location_remark)
     repo = SiteLandingPageRepository(session)
     if await repo.get_by_slug(body.slug, body.locale) is not None:
         raise HTTPException(status.HTTP_409_CONFLICT, "a page with this slug+locale already exists")
@@ -140,6 +156,10 @@ async def update_page(
     page = await repo.get(page_id)
     if page is None:
         raise HTTPException(404, "page not found")
+    # Only a CHANGED location is checked: a page saved before its location stopped being served
+    # must stay editable (its copy, its slug) without first being made to drop it.
+    if body.location_remark != page.location_remark:
+        await _require_offered_location(request, session, body.location_remark)
     clash = await repo.get_by_slug(body.slug, body.locale)
     if clash is not None and clash.id != page_id:
         raise HTTPException(status.HTTP_409_CONFLICT, "a page with this slug+locale already exists")

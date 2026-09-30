@@ -2,14 +2,31 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, time, timedelta
 
-from sqlalchemy import case, delete, func, select
+from sqlalchemy import Integer, case, cast, delete, func, select
+from sqlalchemy.sql.elements import ColumnElement
 
-from gozar.config.reporting import DISPLAY_TZ_NAME
+from gozar.config.reporting import (
+    DISPLAY_TZ,
+    DISPLAY_TZ_NAME,
+    WEEK_START_WEEKDAY,
+    local_week_start,
+)
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.user import User
 from gozar.db.repositories.base import BaseRepository
+
+
+def _local_week(instant: ColumnElement) -> ColumnElement:
+    """The local date of the Saturday that opens ``instant``'s week — SQL for ``local_week_start``.
+
+    ``date - integer`` is a date in Postgres, and ``extract(isodow)`` is 1 (Monday) … 7 (Sunday),
+    so ``isodow - 1`` is Python's ``weekday()`` and the same modulo picks the same Saturday.
+    """
+    day = func.date(func.timezone(DISPLAY_TZ_NAME, instant))
+    weekday = cast(func.extract("isodow", day), Integer) - 1
+    return day - func.mod(weekday - WEEK_START_WEEKDAY + 7, 7)
 
 
 class ConfigLogRepository(BaseRepository):
@@ -85,6 +102,19 @@ class ConfigLogRepository(BaseRepository):
             .limit(limit)
         )
         return [(loc, int(n)) for loc, n in rows.all()]
+
+    async def location_total(self, since: datetime) -> int:
+        """How many distinct locations were claimed at/after ``since`` — what a capped
+        ``location_counts`` list hid, so the card can say "and N more" instead of reading as the
+        whole picture."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(ConfigLog.location))).where(
+                    ConfigLog.created_at >= since
+                )
+            )
+            or 0
+        )
 
     async def distinct_locations(self, limit: int = 100) -> list[str]:
         """Every location a config has ever been claimed from, alphabetically.
@@ -172,6 +202,110 @@ class ConfigLogRepository(BaseRepository):
         )
         return int(result.rowcount or 0)
 
+    # --- one-scan summaries ----------------------------------------------------------------------
+    async def window_counts(
+        self,
+        *,
+        today_start: datetime,
+        since: datetime,
+        prev_start: datetime,
+        prev_end: datetime,
+    ) -> dict[str, int]:
+        """Every claim count the dashboard headline needs, from ONE pass over ``config_logs``.
+
+        The headline used to ask for these six figures one query at a time — six sequential scans
+        of the largest table, each a full scan because the windows were separate statements.
+        ``claimers_all_time`` is the distinct users who ever claimed (the conversion numerator).
+        """
+        in_range = ConfigLog.created_at >= since
+        in_prev = (ConfigLog.created_at >= prev_start) & (ConfigLog.created_at < prev_end)
+        distinct_users = func.count(func.distinct(ConfigLog.user_id))
+        row = (
+            await self.session.execute(
+                select(
+                    func.count().filter(ConfigLog.created_at >= today_start),
+                    func.count().filter(in_range),
+                    func.count().filter(in_prev),
+                    distinct_users.filter(in_range),
+                    distinct_users.filter(in_prev),
+                    distinct_users,
+                ).select_from(ConfigLog)
+            )
+        ).one()
+        keys = (
+            "claims_today",
+            "claims_in_range",
+            "claims_prev_range",
+            "claimers_in_range",
+            "claimers_prev_range",
+            "claimers_all_time",
+        )
+        return {key: int(value or 0) for key, value in zip(keys, row, strict=True)}
+
+    async def active_user_counts(self, **since: datetime) -> dict[str, int]:
+        """Distinct claimers at/after each named bound, from one scan (DAU/WAU/MAU)."""
+        if not since:
+            return {}
+        distinct_users = func.count(func.distinct(ConfigLog.user_id))
+        row = (
+            await self.session.execute(
+                select(
+                    *(
+                        distinct_users.filter(ConfigLog.created_at >= bound)
+                        for bound in since.values()
+                    )
+                ).select_from(ConfigLog)
+            )
+        ).one()
+        return {name: int(value or 0) for name, value in zip(since, row, strict=True)}
+
+    async def first_claim_windows(
+        self, windows: dict[str, tuple[datetime | None, datetime | None]]
+    ) -> dict[str, tuple[float | None, int, int]]:
+        """``first_claim_stats`` for several windows at once: ``{name: (median_h, within_24h, n)}``.
+
+        Each call to ``first_claim_stats`` recomputed every user's first claim over the whole table;
+        the analytics view made three of them per request. This derives the first claims once and
+        filters the three aggregates per window (``FILTER`` works on ordered-set aggregates too).
+        """
+        firsts = (
+            select(
+                ConfigLog.user_id.label("uid"),
+                func.min(ConfigLog.created_at).label("fc"),
+            )
+            .group_by(ConfigLog.user_id)
+            .subquery()
+        )
+        delta_h = func.extract("epoch", firsts.c.fc - User.created_at) / 3600.0
+        columns = []
+        for since, until in windows.values():
+            conds = []
+            if since is not None:
+                conds.append(firsts.c.fc >= since)
+            if until is not None:
+                conds.append(firsts.c.fc < until)
+            median = func.percentile_cont(0.5).within_group(delta_h.asc())
+            within = func.count().filter(delta_h <= 24, *conds)
+            total = func.count()
+            if conds:
+                median = median.filter(*conds)
+                total = total.filter(*conds)
+            columns += [median, within, total]
+        row = (
+            await self.session.execute(
+                select(*columns).select_from(firsts.join(User, User.telegram_id == firsts.c.uid))
+            )
+        ).one()
+        out: dict[str, tuple[float | None, int, int]] = {}
+        for i, name in enumerate(windows):
+            median, within, total = row[i * 3 : i * 3 + 3]
+            out[name] = (
+                round(float(median), 4) if median is not None else None,
+                int(within or 0),
+                int(total or 0),
+            )
+        return out
+
     # --- analytics (Phase B) ---------------------------------------------------------------------
     async def active_user_count_since(self, since: datetime) -> int:
         """Distinct users who claimed at/after ``since`` — backs the DAU/WAU/MAU active-user tiles
@@ -198,6 +332,21 @@ class ConfigLogRepository(BaseRepository):
             select(dow, hour, func.count()).where(ConfigLog.created_at >= since).group_by(dow, hour)
         )
         return [(int(d), int(h), int(n)) for d, h, n in rows.all()]
+
+    async def hourly_counts(self, since: datetime, tz: str = DISPLAY_TZ_NAME) -> list[int]:
+        """Claims per LOCAL hour of day at/after ``since`` → 24 counts, index = hour.
+
+        The broadcast composer's hour strip. It used to fetch the dashboard's whole analytics
+        payload (and re-fetch it every minute) to sum one heatmap into these 24 numbers.
+        """
+        hour = func.extract("hour", func.timezone(tz, ConfigLog.created_at)).label("hour")
+        rows = await self.session.execute(
+            select(hour, func.count()).where(ConfigLog.created_at >= since).group_by(hour)
+        )
+        out = [0] * 24
+        for h, n in rows.all():
+            out[int(h) % 24] = int(n)
+        return out
 
     async def claims_per_user_buckets(self) -> dict[str, int]:
         """Histogram of lifetime claims per user → ``{"1": n, "2-3": n, "4-6": n, "7+": n}`` (only
@@ -300,16 +449,21 @@ class ConfigLogRepository(BaseRepository):
         answers "do people come back?" — every existing panel measured a single moment instead.
 
         Only cohorts inside the last ``weeks`` weeks are returned, newest cohort last.
-        """
-        cohort_start = func.date_trunc("week", User.created_at)
-        # The window boundary is computed in Python and bound as a normal parameter. Building it in
-        # SQL needed an INTERVAL cast, which asyncpg rejects (it wants a timedelta, not a string).
-        oldest = datetime.now(UTC) - timedelta(weeks=max(weeks, 1) - 1)
-        window_start = func.date_trunc("week", oldest)
 
+        Weeks are LOCAL weeks — Saturday to Friday on the display clock (``config/reporting``).
+        They were ISO weeks on UTC, so a signup at 02:00 Tehran time on a Monday joined the
+        previous week's cohort, and a claim late on a local Friday counted in the week after.
+        """
+        # First week kept, as a local date and as the instant it starts. The bound on the column
+        # itself (rather than on the derived week) lets the planner use the created_at index.
+        this_week = local_week_start(datetime.now(DISPLAY_TZ).date())
+        oldest = this_week - timedelta(weeks=max(weeks, 1) - 1)
+        oldest_at = datetime.combine(oldest, time.min, tzinfo=DISPLAY_TZ)
+
+        cohort_start = _local_week(User.created_at)
         sizes = await self.session.execute(
             select(cohort_start.label("cohort"), func.count())
-            .where(cohort_start >= window_start)
+            .where(User.created_at >= oldest_at)
             .group_by(cohort_start)
             .order_by(cohort_start)
         )
@@ -317,11 +471,9 @@ class ConfigLogRepository(BaseRepository):
         if not cohort_sizes:
             return []
 
-        claim_week = func.date_trunc("week", ConfigLog.created_at)
-        # Whole weeks between the cohort's week and the claim's week.
-        offset = func.floor(
-            func.extract("epoch", claim_week - cohort_start) / (7 * 24 * 3600)
-        ).label("offset")
+        claim_week = _local_week(ConfigLog.created_at)
+        # Both ends are Saturdays, so the day difference is an exact multiple of seven.
+        offset = (cast(claim_week - cohort_start, Integer) // 7).label("offset")
         rows = await self.session.execute(
             select(
                 cohort_start.label("cohort"),
@@ -330,15 +482,14 @@ class ConfigLogRepository(BaseRepository):
             )
             .select_from(User)
             .join(ConfigLog, ConfigLog.user_id == User.telegram_id)
-            .where(cohort_start >= window_start, claim_week >= cohort_start)
+            .where(User.created_at >= oldest_at, claim_week >= cohort_start)
             .group_by(cohort_start, offset)
         )
         by_cohort: dict[object, dict[int, int]] = {}
         for cohort, off, n in rows.all():
             by_cohort.setdefault(cohort, {})[int(off)] = int(n)
         return [
-            (cohort.date().isoformat(), size, by_cohort.get(cohort, {}))
-            for cohort, size in cohort_sizes
+            (cohort.isoformat(), size, by_cohort.get(cohort, {})) for cohort, size in cohort_sizes
         ]
 
     async def first_claim_stats(

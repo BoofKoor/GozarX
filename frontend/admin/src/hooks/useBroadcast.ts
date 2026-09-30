@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { stillInFlight } from "@/lib/inflight";
 import type {
+  ActivityHours,
   BroadcastAudience,
   BroadcastDraft,
   BroadcastDraftSave,
@@ -18,8 +20,12 @@ export interface AudienceFilter {
   only_referrers?: boolean;
 }
 
+const LANG_ORDER: Lang[] = ["fa", "en", "ru"];
+
 export function useAudience(languages: Lang[], filter: AudienceFilter = {}) {
-  const param = languages.join(",");
+  // In one fixed order: the SET is the audience, not the order it was ticked in — toggling fa off
+  // and on gave "en,ru,fa", a second cache key and a second request for a count already on screen.
+  const param = LANG_ORDER.filter((l) => languages.includes(l)).join(",");
   const only_active = filter.only_active ?? false;
   const only_referrers = filter.only_referrers ?? false;
   return useQuery({
@@ -33,15 +39,32 @@ export function useAudience(languages: Lang[], filter: AudienceFilter = {}) {
   });
 }
 
-/** Past broadcasts. Polled while one is in flight, so the row fills in without a reload. */
+/** Claims per local hour of day over the last 30 days — the composer's scheduling strip.
+ *
+ * Its own endpoint rather than the dashboard's analytics: the strip needs 24 numbers, and pulling
+ * the whole analytics payload (and re-pulling it every minute) cost ~20 aggregate queries each time.
+ * An hour-of-day profile over a month does not move while a message is being written. */
+export function useActivityHours() {
+  return useQuery({
+    queryKey: ["broadcast-hours"],
+    queryFn: async () => (await api.get<ActivityHours>("/admin/broadcast/hours")).data,
+    staleTime: 10 * 60_000,
+  });
+}
+
+/** Past broadcasts. Polled while one is in flight, so the row fills in without a reload — and,
+ *  more slowly, while one is SCHEDULED: that row used to sit on «زمان‌بندی‌شده» until the page was
+ *  reopened, long after it had gone out. */
 export function useBroadcastHistory() {
   return useQuery({
     queryKey: ["broadcast-history"],
     queryFn: async () => (await api.get<BroadcastLog[]>("/admin/broadcast/history")).data,
-    refetchInterval: (q) =>
-      (q.state.data ?? []).some((r) => r.status === "sending" || r.status === "queued")
-        ? 5_000
-        : false,
+    refetchInterval: (q) => {
+      const rows = q.state.data ?? [];
+      if (stillInFlight(rows)) return 5_000;
+      if (rows.some((r) => r.status === "scheduled")) return 30_000;
+      return false;
+    },
   });
 }
 

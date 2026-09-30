@@ -70,3 +70,17 @@ async def test_default_locale_and_invalid_locale(copy_client: httpx.AsyncClient)
     default = await copy_client.get("/api/public/site-copy")
     assert default.json()["hero_sub"] == "زیرتیتر ویرایش‌شده"
     assert (await copy_client.get("/api/public/site-copy?locale=ru")).status_code == 422
+
+
+async def test_a_blank_row_reads_as_unset(db_sessions) -> None:
+    # The site falls back with `??`, which keeps "" — a cleared row shipped an empty <title>.
+    async with db_sessions() as s:
+        s.add(_c("site_meta_title", Language.fa, "   "))
+        await s.commit()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = None
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as c:
+        data = (await c.get("/api/public/site-copy?locale=fa")).json()
+    assert data["meta_title"] is None

@@ -65,10 +65,9 @@ class ReminderService:
 
     async def _cooldown_remaining(self, user: User) -> str:
         # Anchor on the provision time (`last_claim_at`) so the "claim again in …" wait lines up
-        # with the trial's expiry; fall back to the last delivered-config time for an unset row.
+        # with the trial's expiry. Unset means no cooldown (see TrialService._last_claim_at).
         hours = max(await self._settings.get_int(SettingKey.TRIAL_HOURS, _DEFAULT_TRIAL_HOURS), 1)
-        last = user.last_claim_at or await self._logs.latest_created_at_for_user(user.telegram_id)
-        return cooldown_remaining(last, hours)
+        return cooldown_remaining(user.last_claim_at, hours)
 
     async def _delete_panel_user(self, user: User) -> None:
         """Best-effort: delete the ended trial's Remnawave account so expired users don't pile up in

@@ -56,6 +56,10 @@ class ContextMiddleware(BaseMiddleware):
         async with self._sessionmaker() as session:
             user_repo = UserRepository(session)
             user, created = await user_repo.get_or_create(tg_user.id)
+            if user.unreachable_at is not None:
+                # They are talking to the bot again, so the chat is back: a broadcast marked it gone
+                # when they had blocked the bot, and the mark must not outlive the block.
+                user.unreachable_at = None
             content = ContentService(session, self._redis)
             settings = SettingsService(session, self._redis)
             config_log_repo = ConfigLogRepository(session)
@@ -72,7 +76,11 @@ class ContextMiddleware(BaseMiddleware):
                 config_log_repo=config_log_repo,
                 buttons=buttons,
                 panel=self._panel,
-                trial=TrialService(self._panel, settings, config_log_repo, self._redis),
+                # The service ends the transaction before each panel call (and inside the claim
+                # lock); the session and its final commit stay here.
+                trial=TrialService(
+                    self._panel, settings, config_log_repo, self._redis, commit=session.commit
+                ),
                 referral=ReferralService(user_repo, settings, self._panel, self._redis),
                 admin=AdminService(user_repo, config_log_repo, settings, self._panel, self._redis),
                 arq=self._arq,

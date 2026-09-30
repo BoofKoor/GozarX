@@ -27,6 +27,7 @@ from gozar.remnawave.schemas import PanelUser, Subscription, SubscriptionUser
 from gozar.services.settings_service import SettingsService, SiteSettingKey
 from gozar.services.site_trial import (
     AlreadyClaimedToday,
+    Blocked,
     Delivered,
     LocationUnavailable,
     NoLocations,
@@ -155,6 +156,21 @@ _TWO = {"Germany": "vless://de#Germany", "Ukraine": "vless://ua#Ukraine"}
 
 
 # --- service ------------------------------------------------------------------------------------
+
+
+async def test_a_blocked_device_cannot_claim_and_stays_blocked(session) -> None:
+    # The claim path never looked at the status: a blocked device claimed again once its cooldown
+    # ran out, and that claim flipped it back to active_config — the block undid itself.
+    panel = FakePanel([(_sub(), _TWO)])
+    svc = await _service(session, panel)
+    device = await _device(session, status=SiteDeviceStatus.blocked)
+
+    result = await svc.claim(device, "Germany")
+
+    assert isinstance(result, Blocked)
+    assert device.status == SiteDeviceStatus.blocked
+    assert panel.created == []  # nothing provisioned
+    assert (await svc.status(device)).can_claim is False
 
 
 async def test_claim_provisions_and_delivers_by_name(session) -> None:
@@ -372,6 +388,16 @@ async def test_available_locations_fresh_is_live_from_the_squad(session) -> None
     svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: "Stale,Wrong"})
     device = await _device(session)
     assert await svc.available_locations(device) == ["Germany", "Ukraine"]
+
+
+async def test_available_locations_honour_the_ticked_subset(session) -> None:
+    """Unticking a location in the settings used to save, say "saved", and change nothing: the
+    picker read the live list and ignored the stored one. The subset is matched by NORMALISED name
+    and keeps the squad's own spelling."""
+    panel = FakePanel([], squad_locations=["Germany", "Ukraine"])
+    svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: '[" germany"]'})
+    device = await _device(session)
+    assert await svc.available_locations(device) == ["Germany"]
 
 
 async def test_available_locations_fresh_falls_back_when_panel_is_down(session) -> None:

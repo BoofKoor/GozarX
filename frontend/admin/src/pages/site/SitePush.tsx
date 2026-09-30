@@ -4,7 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { SiteTabs } from "@/components/site/SiteTabs";
-import { Badge, type BadgeTone } from "@/components/ui/Badge";
+import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -14,18 +14,14 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Segmented } from "@/components/ui/Segmented";
 import { Textarea } from "@/components/ui/Textarea";
 import { useConfirm } from "@/components/ui/confirm";
+import { PUSH_STATUS } from "@/components/site/pushStatus";
 import { useSendSitePush, useSitePushAudience, useSitePushHistory } from "@/hooks/useSite";
-import { useI18n, type MessageKey } from "@/i18n";
+import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { faDate, formatNumber, langLabel } from "@/lib/format";
 import type { SitePushLog } from "@/types/api";
 
-const STATUS: Record<string, { label: MessageKey; tone: BadgeTone }> = {
-  queued: { label: "sp.status.queued", tone: "neutral" },
-  sending: { label: "sp.status.sending", tone: "info" },
-  done: { label: "sp.status.done", tone: "success" },
-  failed: { label: "sp.status.failed", tone: "danger" },
-};
+const STATUS = PUSH_STATUS;
 
 export function SitePush() {
   const { t } = useI18n();

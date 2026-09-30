@@ -5,12 +5,17 @@ Run: ``python -m gozar.seed`` — the container entrypoint runs this after migra
 Uses ``add_default`` (INSERT ... ON CONFLICT DO NOTHING), so it fills in defaults for MISSING keys only
 and never overwrites values an admin has edited in the panel. The trial squad + locations are NOT seeded
 (they are panel-specific and set in the first-run wizard).
+
+FAQ items and landing pages are seeded ONCE (``FAQ_SEEDED`` / ``LANDINGS_SEEDED``), not per row: once
+they exist they are the operator's, and a missing one is a deletion rather than a gap to fill.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
@@ -280,6 +285,21 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.en: "🔄 Today's claim was cleared; the user can claim a config again.",
         Language.ru: "🔄 Дневной лимит сброшен; пользователь может снова получить конфиг.",
     },
+    "admin_reclaim_banned": {
+        Language.fa: "⚠️ این کاربر مسدود است. اول مسدودی را بردارید، بعد اجازهٔ دریافت مجدد بدهید.",
+        Language.en: "⚠️ This user is banned. Unban them first, then allow another claim.",
+        Language.ru: "⚠️ Пользователь заблокирован. Сначала разблокируйте его, затем разрешите новый конфиг.",
+    },
+    "admin_reclaim_panel_down": {
+        Language.fa: "⚠️ پنل جواب نداد و کانفیگ فعلی حذف نشد؛ چیزی تغییر نکرد. کمی بعد دوباره امتحان کنید.",
+        Language.en: "⚠️ The panel didn't answer, so the current config wasn't revoked and nothing changed. Try again shortly.",
+        Language.ru: "⚠️ Панель не ответила, текущий конфиг не отозван, ничего не изменено. Повторите чуть позже.",
+    },
+    "admin_ban_revoke_pending": {
+        Language.fa: "⛔ کاربر مسدود شد، اما پنل جواب نداد و کانفیگ فعلی‌اش هنوز کار می‌کند. حذف آن در بررسی دوره‌ای بعدی دوباره امتحان می‌شود.",
+        Language.en: "⛔ User banned, but the panel didn't answer and their current config still works. The revoke is retried by the next periodic check.",
+        Language.ru: "⛔ Пользователь заблокирован, но панель не ответила, и текущий конфиг ещё работает. Отзыв повторится при следующей проверке.",
+    },
     "admin_zero_confirm": {
         Language.fa: "0️⃣ شمار دعوت‌های این کاربر صفر می‌شود و حجم روزانه‌اش به مقدار پایه برمی‌گردد. این عمل بازگشت‌پذیر نیست. ادامه می‌دهید؟",
         Language.en: "0️⃣ This zeroes the user's referrals and drops their daily allowance to base. This is not reversible. Continue?",
@@ -355,6 +375,50 @@ DEFAULT_SITE_CONTENT: dict[str, dict[Language, str]] = {
 }
 
 
+#: Settings rows recording that a table's defaults were written. Seeding FAQ items and landings per
+#: row on every boot — keyed by (locale, question) and (slug, locale) — brought a deleted question
+#: back on the next restart, turned a reworded one into a duplicate beside the edit, and re-published
+#: a landing under the slug it had been moved off. Settings and content stay per-row on purpose: a
+#: missing one is a gap to heal, not a choice.
+FAQ_SEEDED = "seeded_site_faq"
+LANDINGS_SEEDED = "seeded_site_landings"
+
+
+async def seed_defaults(session: AsyncSession) -> int:
+    """Write every missing default; the caller commits. Returns how many blank rows were restored."""
+    settings_repo = SettingsRepository(session)
+    content_repo = ContentRepository(session)
+    landing_repo = SiteLandingPageRepository(session)
+    faq_repo = SiteFaqItemRepository(session)
+    for key, value in {**DEFAULT_SETTINGS, **DEFAULT_SITE_SETTINGS}.items():
+        await settings_repo.add_default(key, value)
+    for bodies_by_key in (DEFAULT_CONTENT, DEFAULT_SITE_CONTENT):
+        for key, bodies in bodies_by_key.items():
+            for lang, body in bodies.items():
+                await content_repo.add_default(key, lang, body)
+    # The site-copy editor's reset used to store "" for these, which blanked the live homepage title
+    # and made the push nudges render as "[site_push_…]". The editor now writes the default back;
+    # this heals rows an older build already emptied.
+    restored = 0
+    for key, bodies in DEFAULT_SITE_CONTENT.items():
+        for lang, body in bodies.items():
+            restored += await content_repo.restore_blank(key, lang, body)
+
+    # An install with no marker but existing rows was seeded by an older build: what is there now is
+    # what the operator left, deletions included, so it only gains the marker.
+    if await settings_repo.get(LANDINGS_SEEDED) is None:
+        if not await landing_repo.has_any():
+            for landing in DEFAULT_SITE_LANDINGS:
+                await landing_repo.add_default(**landing)  # type: ignore[arg-type]
+        await settings_repo.set(LANDINGS_SEEDED, "1")
+    if await settings_repo.get(FAQ_SEEDED) is None:
+        if not await faq_repo.has_any():
+            for faq in DEFAULT_SITE_FAQ:
+                await faq_repo.add_default(**faq)  # type: ignore[arg-type]
+        await settings_repo.set(FAQ_SEEDED, "1")
+    return restored
+
+
 async def _run() -> None:
     settings = get_settings()
     configure_logging(settings.log_level, settings.log_json)
@@ -362,24 +426,13 @@ async def _run() -> None:
     sessionmaker = create_sessionmaker(engine)
     try:
         async with sessionmaker() as session:
-            settings_repo = SettingsRepository(session)
-            content_repo = ContentRepository(session)
-            landing_repo = SiteLandingPageRepository(session)
-            faq_repo = SiteFaqItemRepository(session)
-            for key, value in {**DEFAULT_SETTINGS, **DEFAULT_SITE_SETTINGS}.items():
-                await settings_repo.add_default(key, value)
-            for bodies_by_key in (DEFAULT_CONTENT, DEFAULT_SITE_CONTENT):
-                for key, bodies in bodies_by_key.items():
-                    for lang, body in bodies.items():
-                        await content_repo.add_default(key, lang, body)
-            for landing in DEFAULT_SITE_LANDINGS:
-                await landing_repo.add_default(**landing)  # type: ignore[arg-type]
-            for faq in DEFAULT_SITE_FAQ:
-                await faq_repo.add_default(**faq)  # type: ignore[arg-type]
+            restored = await seed_defaults(session)
             await session.commit()
+        if restored:
+            logger.info("seed: restored %d blank site-copy rows to their defaults", restored)
         logger.info(
-            "seed: ensured %d settings (%d bot + %d site) + %d content keys + %d landings "
-            "+ %d faq items (defaults only, existing rows untouched)",
+            "seed: ensured %d settings (%d bot + %d site) + %d content keys; %d landings "
+            "+ %d faq items on first boot only (existing rows untouched)",
             len(DEFAULT_SETTINGS) + len(DEFAULT_SITE_SETTINGS),
             len(DEFAULT_SETTINGS),
             len(DEFAULT_SITE_SETTINGS),

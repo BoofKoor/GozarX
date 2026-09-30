@@ -3,6 +3,7 @@ import { Eye, FileText, Save, Search, Undo2 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { describeHtmlProblem } from "@/components/broadcast/htmlProblem";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
@@ -14,8 +15,11 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
 import { Textarea } from "@/components/ui/Textarea";
+import { useDiscardGuard } from "@/components/ui/confirm";
 import { useI18n } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import { formatNumber, joinList, langLabel } from "@/lib/format";
+import { checkTelegramHtml } from "@/lib/telegramHtml";
 import { previewText, useTexts, useUpdateText } from "@/hooks/useTexts";
 import type { BotText, Lang } from "@/types/api";
 
@@ -67,6 +71,19 @@ export function Texts() {
   const { data: texts = [], isLoading, isError, refetch } = useTexts();
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  // Whether the open editor holds unsaved text. A ref: the editor reports it as it changes, and
+  // nothing here needs to re-render for it.
+  const editorDirty = useRef(false);
+  const guard = useDiscardGuard();
+
+  function select(key: string) {
+    if (key === activeKey) return;
+    // Switching key remounts the editor; with edits in it that used to be a silent discard.
+    void guard(editorDirty.current, () => {
+      editorDirty.current = false;
+      setActiveKey(key);
+    });
+  }
 
   const visible = useMemo(() => {
     const f = filter.trim().toLowerCase();
@@ -133,7 +150,7 @@ export function Texts() {
                           <KeyRow
                             text={x}
                             active={activeKey === x.key}
-                            onClick={() => setActiveKey(x.key)}
+                            onClick={() => select(x.key)}
                           />
                         </li>
                       ))}
@@ -147,7 +164,11 @@ export function Texts() {
 
         <div className="lg:col-span-2">
           {active ? (
-            <TextEditor key={active.key} text={active} />
+            <TextEditor
+              key={active.key}
+              text={active}
+              onDirtyChange={(d) => (editorDirty.current = d)}
+            />
           ) : (
             <Card className="flex h-64 items-center justify-center">
               <EmptyState
@@ -205,7 +226,13 @@ function KeyRow({
   );
 }
 
-function TextEditor({ text }: { text: BotText }) {
+function TextEditor({
+  text,
+  onDirtyChange,
+}: {
+  text: BotText;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const { t } = useI18n();
   const update = useUpdateText();
   const [bodies, setBodies] = useState<Record<Lang, string>>({
@@ -229,11 +256,23 @@ function TextEditor({ text }: { text: BotText }) {
     return () => clearTimeout(id);
   }, [bodies.fa, text.placeholders]);
 
+  // Every bot message is sent as HTML; a body Telegram cannot parse silences that screen for
+  // everyone reading it in that language. Named here as it is typed; the server refuses it too.
+  const problems = {
+    fa: checkTelegramHtml(bodies.fa),
+    en: checkTelegramHtml(bodies.en),
+    ru: checkTelegramHtml(bodies.ru),
+  };
+  const markupOk = !problems.fa && !problems.en && !problems.ru;
+
   const dirty =
     bodies.fa !== text.fa ||
     bodies.en !== text.en ||
     bodies.ru !== text.ru ||
     linkPreview !== text.link_preview;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
 
   function insertPlaceholder(token: string) {
     const lang = focused.current;
@@ -260,8 +299,18 @@ function TextEditor({ text }: { text: BotText }) {
         patch: { fa: bodies.fa, en: bodies.en, ru: bodies.ru, link_preview: linkPreview },
       },
       {
-        onSuccess: () => toast.success(t("texts.saved")),
-        onError: () => toast.error(t("texts.saveFailed")),
+        // The SAVED text, not what was typed: the server strips stray bidi marks out of `{token}`
+        // placeholders, and comparing against the typed version left a successful save reading
+        // «ذخیره‌نشده» for good.
+        onSuccess: (saved) => {
+          setBodies({ fa: saved.fa, en: saved.en, ru: saved.ru });
+          setLinkPreview(saved.link_preview);
+          toast.success(t("texts.saved"));
+        },
+        // Persian is what every other language falls back to, so the server refuses a blank one
+        // (422): the bot would otherwise send nothing, which Telegram rejects.
+        onError: (err) =>
+          toast.error(apiErrorMessage(err, t("texts.saveFailed"), { 422: t("texts.faRequired") })),
       },
     );
   }
@@ -294,6 +343,7 @@ function TextEditor({ text }: { text: BotText }) {
       {LANGS.map(({ code, dir }) => (
         <Field
           key={code}
+          error={problems[code] ? describeHtmlProblem(t, problems[code]) : undefined}
           label={
             <span className="flex items-center gap-2">
               {langLabel(code)}
@@ -341,7 +391,7 @@ function TextEditor({ text }: { text: BotText }) {
             {t("texts.discard")}
           </Button>
         )}
-        <Button onClick={save} loading={update.isPending} disabled={!dirty}>
+        <Button onClick={save} loading={update.isPending} disabled={!dirty || !markupOk}>
           <Save className="h-4 w-4" />
           {t("texts.save")}
         </Button>

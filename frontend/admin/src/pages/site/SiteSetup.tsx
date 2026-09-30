@@ -1,8 +1,9 @@
-import { Coins, Gift, MapPin, Server } from "lucide-react";
+import { AlertTriangle, Coins, Gift, MapPin, Server } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
+import { SquadSelect } from "@/components/setup/SquadSelect";
 import { LocationPicker } from "@/components/site/LocationPicker";
 import { SiteTabs } from "@/components/site/SiteTabs";
 import { Button } from "@/components/ui/Button";
@@ -11,13 +12,14 @@ import { ErrorState } from "@/components/ui/ErrorState";
 import { Field } from "@/components/ui/Field";
 import { NumberInput } from "@/components/ui/NumberInput";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { useSquads } from "@/hooks/useSetup";
 import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
+import { BOUNDS } from "@/lib/bounds";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -45,7 +47,7 @@ const DEFAULT_ECON: Econ = {
 export function SiteSetup() {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const { data: squads, isLoading, isError } = useSquads();
+  const { data: squads, isError } = useSquads();
   // pre-fill so re-running never clobbers live values; must LOAD before the form is usable, or a
   // submit would POST DEFAULT_ECON over the live economy on a failed GET (H1).
   const { data: current, isError: settingsError, refetch: refetchSettings } = useSiteSettings();
@@ -79,11 +81,26 @@ export function SiteSetup() {
     }
   }, [current]);
 
+  // The saved squad is only kept if the panel still has it. A deleted one used to stay in state
+  // while the select — which has no option for it — showed the first live squad, so the form read
+  // one squad and saved another, and the site could no longer provision anyone.
+  const savedSquad = current?.trial_squad ?? "";
+  const squadGone = Boolean(savedSquad && squads && !squads.some((s) => s.uuid === savedSquad));
   useEffect(() => {
-    if (trialSquad) return;
-    if (current?.trial_squad) setTrialSquad(current.trial_squad);
-    else if (squads && squads.length > 0) setTrialSquad(squads[0].uuid);
-  }, [squads, current, trialSquad]);
+    if (trialSquad || !current) return;
+    if (squads) {
+      if (savedSquad && !squadGone) {
+        setTrialSquad(savedSquad);
+      } else if (squads.length > 0) {
+        setTrialSquad(squads[0].uuid);
+        // Locations saved for a squad that is gone mean nothing for this one.
+        setLocations([]);
+        setLocationsText("");
+      }
+    } else if (isError && savedSquad) {
+      setTrialSquad(savedSquad); // the panel cannot be asked; keep what was saved
+    }
+  }, [squads, isError, current, savedSquad, squadGone, trialSquad]);
 
   // Don't render the form until current settings load — otherwise DEFAULT_ECON could be saved over
   // a customised live economy on a failed GET (H1).
@@ -118,14 +135,14 @@ export function SiteSetup() {
     }
     if (
       !allValidNumbers([
-        { value: econ.trial_hours, min: 1 },
-        { value: econ.daily_limit_mb, min: 1 },
-        { value: econ.referral_reward_mb, min: 0 },
-        { value: econ.referral_reward_limit, min: 0 },
-        { value: econ.reward_pwa_mb, min: 0 },
-        { value: econ.reward_push_mb, min: 0 },
-        { value: econ.reward_streak_mb, min: 0 },
-        { value: econ.streak_days, min: 1 },
+        { value: econ.trial_hours, ...BOUNDS.trialHours },
+        { value: econ.daily_limit_mb, ...BOUNDS.dailyLimitMb },
+        { value: econ.referral_reward_mb, ...BOUNDS.rewardMb },
+        { value: econ.referral_reward_limit, ...BOUNDS.rewardLimit },
+        { value: econ.reward_pwa_mb, ...BOUNDS.rewardMb },
+        { value: econ.reward_push_mb, ...BOUNDS.rewardMb },
+        { value: econ.reward_streak_mb, ...BOUNDS.rewardMb },
+        { value: econ.streak_days, ...BOUNDS.streakDays },
       ])
     ) {
       toast.error(t("set.invalidNumbers"));
@@ -134,7 +151,10 @@ export function SiteSetup() {
     complete.mutate(
       {
         trial_squad: trialSquad,
-        locations: pickerUnavailable ? splitLocations(locationsText) : locations,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable
+          ? splitLocations(locationsText)
+          : resolveSelection(locations, picker ?? []).save,
         ...econ,
       },
       {
@@ -170,28 +190,25 @@ export function SiteSetup() {
       <form id="site-setup" onSubmit={submit} className="space-y-6">
         <Card className="max-w-2xl">
           <CardHeader title={t("ssu.squad")} icon={Server} />
+          {squadGone && (
+            <p
+              role="status"
+              className="mb-3 flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("ssu.squadGone")}
+            </p>
+          )}
           <Field label={t("ssu.squad.field")}>
-            {isLoading ? (
-              <Spinner className="h-5 w-5 text-brand" />
-            ) : isError ? (
-              <ErrorState compact message={t("setup.squadsUnreachable")} />
-            ) : (
-              <Select
-                value={trialSquad}
-                onChange={(e) => {
-                  setTrialSquad(e.target.value);
-                  // A new squad has its own locations; clearing means "derive them all".
-                  setLocations([]);
-                  setLocationsText("");
-                }}
-              >
-                {(squads ?? []).map((s) => (
-                  <option key={s.uuid} value={s.uuid}>
-                    {s.name}
-                  </option>
-                ))}
-              </Select>
-            )}
+            <SquadSelect
+              value={trialSquad}
+              onChange={(uuid) => {
+                setTrialSquad(uuid);
+                // A new squad has its own locations; clearing means "derive them all".
+                setLocations([]);
+                setLocationsText("");
+              }}
+            />
           </Field>
         </Card>
 
@@ -199,11 +216,15 @@ export function SiteSetup() {
           <CardHeader title={t("ss.economy")} icon={Coins} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.trialHours")}>
-              <NumberInput min={1} value={econ.trial_hours} onChange={setNum("trial_hours")} />
+              <NumberInput
+                {...BOUNDS.trialHours}
+                value={econ.trial_hours}
+                onChange={setNum("trial_hours")}
+              />
             </Field>
             <Field label={t("set.dailyLimit")}>
               <NumberInput
-                min={1}
+                {...BOUNDS.dailyLimitMb}
                 value={econ.daily_limit_mb}
                 onChange={setNum("daily_limit_mb")}
               />
@@ -216,37 +237,45 @@ export function SiteSetup() {
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label={t("set.rewardMb")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={econ.referral_reward_mb}
                 onChange={setNum("referral_reward_mb")}
               />
             </Field>
             <Field label={t("set.rewardLimit")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardLimit}
                 value={econ.referral_reward_limit}
                 onChange={setNum("referral_reward_limit")}
               />
             </Field>
             <Field label={t("ss.reward.pwa")}>
-              <NumberInput min={0} value={econ.reward_pwa_mb} onChange={setNum("reward_pwa_mb")} />
+              <NumberInput
+                {...BOUNDS.rewardMb}
+                value={econ.reward_pwa_mb}
+                onChange={setNum("reward_pwa_mb")}
+              />
             </Field>
             <Field label={t("ss.reward.push")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={econ.reward_push_mb}
                 onChange={setNum("reward_push_mb")}
               />
             </Field>
             <Field label={t("ss.reward.streak")}>
               <NumberInput
-                min={0}
+                {...BOUNDS.rewardMb}
                 value={econ.reward_streak_mb}
                 onChange={setNum("reward_streak_mb")}
               />
             </Field>
             <Field label={t("ss.reward.streakDays")}>
-              <NumberInput min={1} value={econ.streak_days} onChange={setNum("streak_days")} />
+              <NumberInput
+                {...BOUNDS.streakDays}
+                value={econ.streak_days}
+                onChange={setNum("streak_days")}
+              />
             </Field>
           </div>
         </Card>

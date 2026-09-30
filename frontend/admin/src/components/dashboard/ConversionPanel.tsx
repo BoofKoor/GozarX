@@ -1,5 +1,5 @@
 import { Card, CardHeader } from "@/components/ui/Card";
-import { formatNumber } from "@/lib/format";
+import { faPct, formatNumber } from "@/lib/format";
 import type { DashboardStats } from "@/types/api";
 import { useI18n } from "@/i18n";
 
@@ -11,7 +11,7 @@ export function ConversionPanel({ data }: { data: DashboardStats }) {
   const bars = [
     {
       label: t("d.conv.rate"),
-      pct: data.conversion_pct,
+      pct: data.conversion_pct_all_time,
       hint: t("d.conv.rateHint"),
       color: "bg-brand",
     },
@@ -31,7 +31,9 @@ export function ConversionPanel({ data }: { data: DashboardStats }) {
           <div key={b.label}>
             <div className="mb-1 flex items-center justify-between text-sm">
               <span className="text-content-muted">{b.label}</span>
-              <span className="font-bold tabular-nums">{b.pct}%</span>
+              {/* Through the formatter: a bare `{pct}%` printed Latin digits and a Latin sign
+                  in the Persian console. */}
+              <span className="font-bold tabular-nums">{faPct(b.pct)}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface-sunken">
               <div
@@ -44,7 +46,7 @@ export function ConversionPanel({ data }: { data: DashboardStats }) {
         ))}
         <div className="flex items-center justify-between border-t border-line pt-3">
           <span className="text-sm text-content-muted">{t("d.conv.avgReferrals")}</span>
-          <span className="text-lg font-bold tabular-nums">{data.avg_referrals}</span>
+          <span className="text-lg font-bold tabular-nums">{formatNumber(data.avg_referrals)}</span>
         </div>
       </div>
     </Card>

@@ -123,18 +123,31 @@ async def test_settings_put_partial_update(admin_client: httpx.AsyncClient) -> N
     assert body["trial_hours"] == 48
 
 
-async def test_settings_put_floors_negative_numerics(admin_client: httpx.AsyncClient) -> None:
-    # A negative daily_limit_mb makes compute_traffic_bytes go negative → every claim PanelError.
-    # trial_hours floors to 1; the rest to 0 (mirrors the site settings endpoint).
-    r = await admin_client.put(
-        "/api/admin/settings/",
-        json={"daily_limit_mb": -1024, "referral_reward_mb": -5, "trial_hours": 0},
+async def test_settings_put_refuses_out_of_range_numerics(admin_client: httpx.AsyncClient) -> None:
+    # A negative daily_limit_mb makes compute_traffic_bytes go negative → every claim PanelError,
+    # and 0 is UNLIMITED to Remnawave. Refused (naming the field) rather than silently floored.
+    before = (await admin_client.get("/api/admin/settings/")).json()
+    for bad in (
+        {"daily_limit_mb": -1024},
+        {"daily_limit_mb": 0},
+        {"referral_reward_mb": -5},
+        {"trial_hours": 0},
+        {"trial_hours": 10**9},  # timedelta overflow: every claim a 500
+    ):
+        r = await admin_client.put("/api/admin/settings/", json=bad)
+        assert r.status_code == 422, bad
+    assert (await admin_client.get("/api/admin/settings/")).json() == before
+
+
+async def test_the_bot_wizard_refuses_what_the_settings_page_refuses(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    # The wizard used to take anything: the same economy, reached through the other door.
+    r = await admin_client.post(
+        "/api/admin/setup/", json={"trial_squad": "sq-1", "daily_limit_mb": -1}
     )
-    assert r.status_code == 200
-    body = r.json()
-    assert body["daily_limit_mb"] == 0
-    assert body["referral_reward_mb"] == 0
-    assert body["trial_hours"] == 1
+    assert r.status_code == 422
+    assert (await admin_client.get("/api/admin/setup/status")).json()["completed"] is False
 
 
 async def test_settings_rejects_a_location_the_bot_squad_does_not_serve(
@@ -197,6 +210,25 @@ async def test_settings_ad_button_round_trip(admin_client: httpx.AsyncClient) ->
     assert (await admin_client.get("/api/admin/settings/")).json()["ad_button_enabled"] is True
 
 
+async def test_a_promo_link_the_bot_would_drop_is_refused(admin_client: httpx.AsyncClient) -> None:
+    """`t.me/x` saved without a word, and the bot then silently left the button off every
+    delivered config. The rule the bot renders by is now checked on save — and a refused save
+    writes nothing, not the half before the bad field."""
+    r = await admin_client.put(
+        "/api/admin/settings/",
+        json={"ad_button_text": "کانال", "ad_button_url": "t.me/x"},
+    )
+    assert r.status_code == 400 and "https://" in r.json()["detail"]
+    assert (await admin_client.get("/api/admin/settings/")).json()["ad_button_text"] == ""
+    # The emoji id is a number; one typed on a Persian keyboard is taken, in ASCII.
+    ok = await admin_client.put(
+        "/api/admin/settings/", json={"ad_button_emoji_id": "۵۳۶۸۳۲۴۱۷۰۶۷۱۲۰۲۲۸۶"}
+    )
+    assert ok.status_code == 200 and ok.json()["ad_button_emoji_id"] == "5368324170671202286"
+    bad = await admin_client.put("/api/admin/settings/", json={"ad_button_emoji_id": "🔥"})
+    assert bad.status_code == 400
+
+
 async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.get("/api/admin/dashboard/stats")
     assert r.status_code == 200
@@ -210,12 +242,25 @@ async def test_dashboard_stats_shape_on_empty_db(admin_client: httpx.AsyncClient
         assert len(series) == 14
         assert all(pt["count"] == 0 for pt in series)
         assert [pt["day"] for pt in series] == sorted(pt["day"] for pt in series)
-    # richer payload defaults: online -> active fallback (0), panel unreachable, default range
-    assert body["online_now"] == 0
     assert body["range_days"] == 14
     assert body["panel_online"] is False
-    for key in ("new_today", "new_this_week", "conversion_pct", "avg_referrals", "nodes_online"):
+    # The panel did not answer, so every figure only it can give is UNKNOWN, not zero. "Online now"
+    # used to fall back to the database's active-config count — a different quantity entirely.
+    for key in (
+        "online_now",
+        "online_week",
+        "online_last_week",
+        "nodes_online",
+        "total_traffic_bytes",
+        "panel_total_users",
+    ):
+        assert body[key] is None, key
+    for key in ("new_today", "new_this_week", "conversion_pct_all_time", "avg_referrals"):
         assert body[key] == 0
+    for key in ("active_live", "active_stale", "locations_total"):
+        assert body[key] == 0
+    # Nobody signed up in the window: a conversion rate over nobody is absent, not 0%.
+    assert body["conversion"] == {"value": None, "previous": None, "change_pct": None}
     assert body["panel_status_counts"] == {}
     for key in ("languages", "top_locations", "top_referrers"):
         assert body[key] == []
@@ -249,7 +294,10 @@ async def test_dashboard_stats_aggregations(admin_client: httpx.AsyncClient, db_
         (13, 2),
     ]  # only referrers with count > 0, biggest first
     assert body["new_today"] == 3  # all three just created
-    assert body["conversion_pct"] == round(2 / 3 * 100, 1)  # users 11 & 13 claimed, of 3 total
+    # users 11 & 13 claimed, of 3 total — lifetime, and of the window's three signups
+    assert body["conversion_pct_all_time"] == round(2 / 3 * 100, 1)
+    assert body["conversion"]["value"] == round(2 / 3 * 100, 1)
+    assert body["locations_total"] == 2
     assert body["avg_referrals"] == round(7 / 3, 2)
 
 
@@ -354,8 +402,9 @@ async def test_dashboard_analytics_aggregations(
     assert body["claimers_all_time"] == 2
     assert body["first_claimers_in_range"] == 2  # both activated inside the window
     assert body["activation_24h"]["value"] == 100.0  # both first-claimed within 24h of signup
-    # Nothing happened in the window before this one, so there is no comparison to draw.
-    assert body["activation_24h"]["previous"] == 0.0
+    # Nobody activated in the window before this one: that share is unknown, not 0%, and there is
+    # no comparison to draw.
+    assert body["activation_24h"]["previous"] is None
     assert body["activation_24h"]["change_pct"] is None
     assert body["claims_distribution"] == {"1": 1, "2-3": 1}  # u13 once, u11 twice
     assert body["referral"] == {
@@ -407,6 +456,136 @@ async def test_dashboard_surfaces_panel_system_stats(db_sessions, monkeypatch) -
     assert body["online_last_day"] == 30 and body["never_online"] == 1
     assert body["panel_status_counts"] == {"ACTIVE": 9, "EXPIRED": 2}
     assert body["total_traffic_bytes"] == 9876543210 and body["nodes_online"] == 2
+    get_settings.cache_clear()
+
+
+async def test_dashboard_splits_active_configs_into_live_and_stale(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """`active` is the raw status column; the reconcile sweep skips users while the panel is down,
+    so a trial whose window elapsed can keep that status. The split says how many really run."""
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                # Claimed an hour ago on a 24h trial: running.
+                User(
+                    telegram_id=81,
+                    status=UserStatus.active_config,
+                    last_claim_at=now - timedelta(hours=1),
+                ),
+                # Claimed two days ago: its trial ended, the status was never healed.
+                User(
+                    telegram_id=82,
+                    status=UserStatus.active_config,
+                    last_claim_at=now - timedelta(days=2),
+                ),
+                # No anchor at all: nothing says it is still running.
+                User(telegram_id=83, status=UserStatus.active_config),
+                # Not active at all — in neither half.
+                User(telegram_id=84, status=UserStatus.available, last_claim_at=now),
+            ]
+        )
+        await s.commit()
+    await admin_client.put("/api/admin/settings/", json={"trial_hours": 24})
+
+    body = (await admin_client.get("/api/admin/dashboard/stats")).json()
+    assert body["active"] == 3
+    assert (body["active_live"], body["active_stale"]) == (1, 2)
+
+
+async def test_dashboard_reports_unknown_traffic_as_null(db_sessions, monkeypatch) -> None:
+    """A panel that answers WITHOUT a usable lifetime counter carried an unknown amount, not 0 B."""
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+
+    class _Panel(_StubPanel):
+        async def system_stats(self) -> SystemStats:
+            return SystemStats(online_now=3, nodes_online=1, traffic_known=False)
+
+    app.state.panel = _Panel()
+    headers = {"Authorization": f"Bearer {create_access('root')}"}
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://t", headers=headers
+    ) as c:
+        body = (await c.get("/api/admin/dashboard/stats")).json()
+    assert body["panel_online"] is True and body["nodes_online"] == 1
+    assert body["total_traffic_bytes"] is None
+    get_settings.cache_clear()
+
+
+async def test_activation_over_an_empty_cohort_is_unknown(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """Nobody activated in the window: 0% and a "-100%" delta were claims about nobody."""
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        # Activated 10 days ago — the PREVIOUS 7-day window's cohort, none in this one.
+        s.add(User(telegram_id=91, created_at=now - timedelta(days=10, hours=2)))
+        await s.flush()
+        s.add(ConfigLog(user_id=91, location="DE", created_at=now - timedelta(days=10)))
+        await s.commit()
+
+    body = (await admin_client.get("/api/admin/dashboard/analytics?days=7")).json()
+    assert body["first_claimers_in_range"] == 0
+    assert body["activation_24h"] == {"value": None, "previous": 100.0, "change_pct": None}
+
+
+async def test_dashboard_reads_the_recorded_squad_count_and_never_pages_the_panel(
+    db_sessions, monkeypatch
+) -> None:
+    """The regression behind the slow dashboard: `/stats` used to sweep EVERY panel user inline.
+    It now serves the worker's recorded figure, and asks for a refresh only when that is stale."""
+    from gozar.db.repositories.settings import SettingsRepository
+    from gozar.services.panel_cache import SQUAD_ONLINE_JOB, write_squad_online
+
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    async with db_sessions() as session:
+        await SettingsRepository(session).set("trial_internal_squad", "sq-1")
+        await session.commit()
+
+    class _Panel(_StubPanel):
+        async def system_stats(self) -> SystemStats:
+            return SystemStats(online_now=99, online_last_week=400)
+
+        async def squad_online_count(self, squads: set[str]) -> None:
+            raise AssertionError("the dashboard must never page the panel itself")
+
+    class _Arq:
+        def __init__(self) -> None:
+            self.jobs: list[str | None] = []
+
+        async def enqueue_job(self, name: str, *args: object, _job_id: str | None = None) -> None:
+            self.jobs.append(_job_id)
+
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    app.state.redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    app.state.panel = _Panel()
+    app.state.arq = _Arq()
+    headers = {"Authorization": f"Bearer {create_access('root')}"}
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://t", headers=headers
+    ) as c:
+        # Nothing recorded yet: the panel-wide figure stands in, flagged, and a refresh is queued.
+        first = (await c.get("/api/admin/dashboard/stats")).json()
+        assert first["online_now"] == 99 and first["online_squad_scoped"] is False
+        # Panel-wide numerator, panel-wide denominator: never one scope over the other.
+        assert first["online_week"] == 400
+        assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
+        # Once the worker has recorded a count, that is what the dashboard shows — no new job.
+        await write_squad_online(app.state.redis, 12, 80)
+        second = (await c.get("/api/admin/dashboard/stats")).json()
+        assert second["online_now"] == 12 and second["online_squad_scoped"] is True
+        # ...and the gauge's denominator is the SAME squad's week, not the panel's 400.
+        assert second["online_week"] == 80 and second["online_last_week"] == 400
+        assert app.state.arq.jobs == [SQUAD_ONLINE_JOB]
     get_settings.cache_clear()
 
 
@@ -506,6 +685,41 @@ async def test_texts_list_update_preview(admin_client: httpx.AsyncClient) -> Non
     assert body["missing_placeholders"] == ["x"]
 
 
+async def test_texts_are_the_bots_own_keys(admin_client: httpx.AsyncClient, db_sessions) -> None:
+    """The website's copy shares the table but not the screen: listed here, each site key read as
+    permanently "untranslated" (the site has no Russian) and a save wrote it an empty ru row."""
+    from gozar.db.models.content import Content
+
+    async with db_sessions() as s:
+        s.add(Content(key="site_hero_title", language=Language.fa, body="سلام"))
+        await s.commit()
+    keys = {t["key"] for t in (await admin_client.get("/api/admin/texts/")).json()}
+    assert "welcome" in keys and not any(k.startswith("site_") for k in keys)
+    assert (
+        await admin_client.put("/api/admin/texts/site_hero_title", json={"fa": "x"})
+    ).status_code == 404
+    # A key nobody reads is refused — and one over the column's width is a 404, not a 500.
+    for key in ("no_such_key", "k" * 200):
+        r = await admin_client.put(f"/api/admin/texts/{key}", json={"fa": "x"})
+        assert r.status_code == 404
+
+
+async def test_a_blank_untranslated_language_writes_no_row(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    from sqlalchemy import select
+
+    from gozar.db.models.content import Content
+
+    r = await admin_client.put("/api/admin/texts/welcome", json={"fa": "سلام", "ru": ""})
+    assert r.status_code == 200
+    async with db_sessions() as s:
+        langs = set(
+            (await s.scalars(select(Content.language).where(Content.key == "welcome"))).all()
+        )
+    assert Language.ru not in langs  # absent (falls back to Persian), not an empty row
+
+
 async def test_texts_link_preview_roundtrips(admin_client: httpx.AsyncClient) -> None:
     r = await admin_client.put(
         "/api/admin/texts/required_apps",
@@ -546,6 +760,25 @@ async def test_users_list_filter_search(admin_client: httpx.AsyncClient, db_sess
 
     r = await admin_client.get("/api/admin/users/", params={"search": "g_1002"})
     assert {u["telegram_id"] for u in r.json()["items"]} == {1002}  # panel_username match
+
+
+async def test_users_search_takes_wildcards_literally(
+    admin_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """`_` and `%` are characters to find, not LIKE wildcards: "g_1" used to match "gx1" too, and a
+    lone "%" returned every user."""
+    async with db_sessions() as s:
+        s.add_all(
+            [
+                User(telegram_id=3001, panel_username="g_1"),
+                User(telegram_id=3002, panel_username="gx1"),
+            ]
+        )
+        await s.commit()
+    r = await admin_client.get("/api/admin/users/", params={"search": "g_1"})
+    assert {u["telegram_id"] for u in r.json()["items"]} == {3001}
+    r = await admin_client.get("/api/admin/users/", params={"search": "%"})
+    assert r.json()["total"] == 0
 
 
 async def test_users_pagination(admin_client: httpx.AsyncClient, db_sessions) -> None:
@@ -682,13 +915,15 @@ async def test_broadcast_drafts_round_trip(admin_client: httpx.AsyncClient) -> N
     assert again["title"] == "بازنویسی"
     assert (await admin_client.get("/api/admin/broadcast/drafts")).json() == [again]
 
-    # A button URL Telegram would reject is refused here too — a draft restored months later
-    # should not be the first time anyone finds out.
-    bad = await admin_client.post(
+    # A half-typed button is KEPT as typed: a draft is unfinished by definition, and refusing it
+    # lost the whole message at the moment it was being saved. Sending is what validates it.
+    loose = await admin_client.post(
         "/api/admin/broadcast/drafts",
-        json={"text": "x", "buttons": [{"text": "y", "url": "http://insecure"}]},
+        json={"text": "x", "buttons": [{"text": "y", "url": "t.me/x"}]},
     )
-    assert bad.status_code == 422
+    assert loose.status_code == 200
+    assert loose.json()["buttons"] == [{"text": "y", "url": "t.me/x"}]
+    await admin_client.delete(f"/api/admin/broadcast/drafts/{loose.json()['id']}")
 
     assert (
         await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
@@ -698,6 +933,18 @@ async def test_broadcast_drafts_round_trip(admin_client: httpx.AsyncClient) -> N
     assert (
         await admin_client.delete(f"/api/admin/broadcast/drafts/{saved['id']}")
     ).status_code == 404
+
+
+async def test_a_repeated_language_collapses_instead_of_overflowing(
+    admin_client: httpx.AsyncClient,
+) -> None:
+    """The list is stored joined in a 32-character column; a crafted repeat of one code used to
+    overflow it into a 500. Repeats mean the language once."""
+    r = await admin_client.post(
+        "/api/admin/broadcast/drafts", json={"text": "x", "languages": ["fa"] * 20 + ["en"]}
+    )
+    assert r.status_code == 200
+    assert r.json()["languages"] == "fa,en"
 
 
 async def test_broadcast_enqueue_targets_languages(db_sessions, monkeypatch) -> None:
@@ -940,10 +1187,11 @@ async def test_dashboard_retention_cohorts(admin_client: httpx.AsyncClient, db_s
         await s.flush()
         s.add_all(
             [
-                # both activate in their signup week; only u61 comes back later
+                # both activate in their signup week; only u61 comes back later — in THIS week, so
+                # the assertion holds on every weekday (two days ago is last week on a Sunday)
                 ConfigLog(user_id=61, location="DE", created_at=now - timedelta(weeks=2)),
                 ConfigLog(user_id=62, location="DE", created_at=now - timedelta(weeks=2)),
-                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(days=2)),
+                ConfigLog(user_id=61, location="DE", created_at=now - timedelta(minutes=5)),
             ]
         )
         await s.commit()
@@ -971,15 +1219,16 @@ async def test_cohort_row_is_as_long_as_the_weeks_that_elapsed(
             [
                 # Three weeks old, claimed once on day one and never again.
                 User(telegram_id=71, created_at=now - timedelta(weeks=3)),
-                # Two days old — its second week genuinely has not arrived.
-                User(telegram_id=72, created_at=now - timedelta(days=2)),
+                # Signed up in THIS week — its second week genuinely has not arrived. ("Two days
+                # old" was last week on a Sunday or Monday, and the row was then two columns.)
+                User(telegram_id=72, created_at=now - timedelta(minutes=10)),
             ]
         )
         await s.flush()
         s.add_all(
             [
                 ConfigLog(user_id=71, location="DE", created_at=now - timedelta(weeks=3)),
-                ConfigLog(user_id=72, location="DE", created_at=now - timedelta(days=2)),
+                ConfigLog(user_id=72, location="DE", created_at=now - timedelta(minutes=5)),
             ]
         )
         await s.commit()

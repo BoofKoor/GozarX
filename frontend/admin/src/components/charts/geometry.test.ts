@@ -7,6 +7,7 @@ import {
   smoothPath,
   spokeAngles,
   underCurve,
+  visibleLabels,
   type Point,
 } from "./geometry";
 
@@ -112,5 +113,28 @@ describe("spokeAngles", () => {
     expect(Math.cos(top)).toBeCloseTo(0);
     expect(Math.sin(top)).toBeCloseTo(-1); // y grows downward, so -1 is up
     expect(Math.cos(right)).toBeCloseTo(1);
+  });
+});
+
+describe("visibleLabels", () => {
+  it("keeps every label while they fit", () => {
+    // 14 days across the trend's 838-unit plot: ~64 units apart.
+    expect(visibleLabels(14, 838).every(Boolean)).toBe(true);
+    expect(visibleLabels(30, 838).every(Boolean)).toBe(true);
+  });
+
+  it("steps a whole week at a time once they do not, keeping the newest day", () => {
+    const shown = visibleLabels(90, 838);
+    expect(shown).toHaveLength(90);
+    expect(shown[89]).toBe(true); // today always keeps its label
+    const idx = shown.flatMap((on, i) => (on ? [i] : []));
+    // Every gap is exactly seven buckets, so each label is the same weekday.
+    expect(idx.slice(1).map((v, i) => v - idx[i])).toEqual(Array(idx.length - 1).fill(7));
+    expect(idx.length).toBe(13);
+  });
+
+  it("copes with the degenerate cases", () => {
+    expect(visibleLabels(0, 838)).toEqual([]);
+    expect(visibleLabels(1, 838)).toEqual([true]);
   });
 });

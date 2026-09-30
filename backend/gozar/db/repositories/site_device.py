@@ -7,14 +7,16 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import case, func, or_, select
+from sqlalchemy import case, func, null, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.sql import Select
 
-from gozar.config.reporting import DISPLAY_TZ_NAME
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.db.handles import new_handle, normalize_handle
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
-from gozar.db.repositories.base import BaseRepository
+from gozar.db.models.site_device_day import SiteDeviceDay
+from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
 # How stale a `last_seen_at` may be before the next request refreshes it. Coarse on purpose: the
 # column feeds daily buckets, and an unthrottled write would land on every page load.
@@ -32,12 +34,12 @@ def _device_filter(
     if ip_bucket:
         stmt = stmt.where(SiteDevice.ip_bucket == ip_bucket)
     if search and search.strip():
-        like = f"%{search.strip()}%"
+        like = contains_pattern(search.strip())
         stmt = stmt.where(
             or_(
-                SiteDevice.handle.ilike(like),
-                SiteDevice.uuid.ilike(like),
-                SiteDevice.site_panel_username.ilike(like),
+                SiteDevice.handle.ilike(like, escape=LIKE_ESCAPE),
+                SiteDevice.uuid.ilike(like, escape=LIKE_ESCAPE),
+                SiteDevice.site_panel_username.ilike(like, escape=LIKE_ESCAPE),
             )
         )
     return stmt
@@ -72,7 +74,13 @@ class SiteDeviceRepository(BaseRepository):
         fingerprint_hash: str | None = None,
         ip_bucket: str | None = None,
         referred_by: str | None = None,
+        seen: bool = True,
     ) -> SiteDevice:
+        """``seen=False`` inserts the row UNSEEN (``last_seen_at`` NULL) — see ``touch_seen``.
+
+        An explicit SQL ``NULL``, because a Python ``None`` is taken as "no value" and the column's
+        server default (now) would be written instead.
+        """
         device = SiteDevice(
             uuid=uuid,
             handle=await self._unique_handle(),
@@ -80,6 +88,8 @@ class SiteDeviceRepository(BaseRepository):
             ip_bucket=ip_bucket,
             referred_by=referred_by,
         )
+        if not seen:
+            device.last_seen_at = null()  # type: ignore[assignment]
         self.session.add(device)
         await self.session.flush()
         return device
@@ -91,6 +101,7 @@ class SiteDeviceRepository(BaseRepository):
         fingerprint_hash: str | None = None,
         ip_bucket: str | None = None,
         referred_by: str | None = None,
+        seen: bool = True,
     ) -> tuple[SiteDevice, bool]:
         """Return (device, created). ``created`` is True only when a new row was inserted."""
         device = await self.get(uuid)
@@ -101,6 +112,7 @@ class SiteDeviceRepository(BaseRepository):
             fingerprint_hash=fingerprint_hash,
             ip_bucket=ip_bucket,
             referred_by=referred_by,
+            seen=seen,
         )
         return created, True
 
@@ -115,6 +127,17 @@ class SiteDeviceRepository(BaseRepository):
         return await self.session.scalar(
             select(SiteDevice).where(SiteDevice.site_panel_username == username)
         )
+
+    async def list_revoke_pending(self) -> list[tuple[str, str]]:
+        """``(uuid, site_panel_username)`` for every BLOCKED device still holding a panel handle —
+        the block could not reach the panel, so its trial works until the sweep deletes it."""
+        rows = await self.session.execute(
+            select(SiteDevice.uuid, SiteDevice.site_panel_username).where(
+                SiteDevice.status == SiteDeviceStatus.blocked,
+                SiteDevice.site_panel_username.is_not(None),
+            )
+        )
+        return [(str(uuid), name) for uuid, name in rows.all() if name]
 
     async def list_active_with_panel(self) -> list[tuple[str, str]]:
         """``(uuid, site_panel_username)`` for every ``active_config`` device with a live panel
@@ -153,26 +176,49 @@ class SiteDeviceRepository(BaseRepository):
             or 0
         )
 
-    async def streak_distribution(self) -> dict[str, int]:
-        """Histogram of the current daily-claim streak → ``{"0","1-2","3-6","7+"}`` → devices.
+    def _live_streak(self, trial_hours: int, now: datetime):  # a SQL expression
+        """``streak_count`` while the streak is still LIVE, else 0.
+
+        The stored counter is written on a claim and never on the absence of one, so a device that
+        stopped claiming kept its old streak forever: the panel counted every lapsed streak as
+        active and the histogram could only grow. A streak lapses once the newest real provision is
+        older than the grace window (two trial windows — ``streak_from_claim_times``, which is what
+        the site itself shows the user). Read off the claim log rather than ``last_claim_at``,
+        which an admin reset clears without the claims having un-happened.
+        """
+        grace = timedelta(hours=max(trial_hours, 1) * 2)
+        latest = (
+            select(func.max(SiteClaim.created_at))
+            .where(SiteClaim.device_uuid == SiteDevice.uuid, SiteClaim.is_change.is_(False))
+            .correlate(SiteDevice)
+            .scalar_subquery()
+        )
+        return case((latest >= now - grace, SiteDevice.streak_count), else_=0)
+
+    async def streak_distribution(self, trial_hours: int, *, now: datetime) -> dict[str, int]:
+        """Histogram of the current LIVE daily-claim streak → ``{"0","1-2","3-6","7+"}`` → devices.
         Shows how far the streak incentive actually reaches."""
+        streak = self._live_streak(trial_hours, now)
         bucket = case(
-            (SiteDevice.streak_count == 0, "0"),
-            (SiteDevice.streak_count <= 2, "1-2"),
-            (SiteDevice.streak_count <= 6, "3-6"),
+            (streak == 0, "0"),
+            (streak <= 2, "1-2"),
+            (streak <= 6, "3-6"),
             else_="7+",
         ).label("bucket")
         rows = await self.session.execute(select(bucket, func.count()).group_by(bucket))
         return {str(b): int(n) for b, n in rows.all()}
 
-    async def active_streak_count(self, min_days: int) -> int:
-        """Devices currently on a qualifying streak (``streak_count >= min_days``) — how many are
-        earning the streak reward right now."""
+    async def active_streak_count(self, min_days: int, trial_hours: int, *, now: datetime) -> int:
+        """Devices on a qualifying LIVE streak (``>= min_days``) — how many are earning the streak
+        reward right now."""
         return int(
             await self.session.scalar(
                 select(func.count())
                 .select_from(SiteDevice)
-                .where(SiteDevice.streak_count >= max(min_days, 1))
+                .where(
+                    SiteDevice.streak_count >= max(min_days, 1),
+                    self._live_streak(trial_hours, now) >= max(min_days, 1),
+                )
             )
             or 0
         )
@@ -192,72 +238,135 @@ class SiteDeviceRepository(BaseRepository):
 
     # --- visit tracking ---------------------------------------------------------------------------
     async def touch_seen(self, device: SiteDevice, *, throttle: timedelta = _SEEN_THROTTLE) -> None:
-        """Record that this device was just seen, at most once per ``throttle``.
+        """Record that this device was just seen: ``last_seen_at``, and the local day it was seen.
 
-        Called from the identity dependency, so it fires on every identity-bearing request — hence
-        the throttle: an unconditional UPDATE would turn every page load into a row write. A
-        one-hour resolution is far finer than the daily buckets that consume it.
+        Called from the identity dependency for a request that carried the device's COOKIE — never
+        for the request that minted it. That request proves nothing: a client that refuses cookies
+        (a crawler, a locked-down private window) is minted a fresh identity on every request, and
+        counting the mint made each of its page loads a new visitor — two, in fact, since the site
+        resolves an identity on `/status` and again on `/locations`. A real browser returns the
+        cookie on the very next request of the same page load, so a genuine first visit, a bounce
+        included, is still seen. A device minted and never heard from again stays NULL here.
+
+        Throttled, because an unconditional UPDATE would turn every page load into a row write. A
+        new LOCAL day always writes, whatever the throttle says, so the day's ``site_device_days``
+        row (and its ``first_at``) is exact rather than up to an hour late — or missing entirely for
+        a device that visited once just after midnight.
         """
         now = datetime.now(UTC)
-        if device.last_seen_at is not None and now - device.last_seen_at < throttle:
+        today = now.astimezone(DISPLAY_TZ).date()
+        last = device.last_seen_at
+        same_day = last is not None and last.astimezone(DISPLAY_TZ).date() == today
+        if last is not None and now - last < throttle and same_day:
             return
         device.last_seen_at = now
+        # Flushed first: a device minted in this request must exist before a row can reference it.
         await self.session.flush()
+        await self.session.execute(
+            pg_insert(SiteDeviceDay)
+            .values(device_uuid=device.uuid, day=today, first_at=now)
+            .on_conflict_do_nothing(index_elements=[SiteDeviceDay.device_uuid, SiteDeviceDay.day])
+        )
 
-    async def count_seen_between(self, start: datetime, end: datetime) -> int:
-        """Devices seen in ``[start, end)`` — the honest "visitors in this window" figure.
+    async def count_seen_since(self, start: datetime) -> int:
+        """Devices seen at/after ``start`` — a window that runs to NOW.
 
-        The old "visits" number was ``count()``: every identity ever minted, which grows forever and
-        counts each cookieless client once per request.
+        ``last_seen_at`` answers this exactly (a device seen in the window has its latest visit in
+        it), to the throttle's resolution — and exactly when ``start`` is a local midnight, since
+        the first request of a day always writes. It can NOT answer a window that has ended: see
+        ``count_visited_between``.
         """
         return int(
             await self.session.scalar(
-                select(func.count())
-                .select_from(SiteDevice)
-                .where(SiteDevice.last_seen_at >= start, SiteDevice.last_seen_at < end)
+                select(func.count()).select_from(SiteDevice).where(SiteDevice.last_seen_at >= start)
+            )
+            or 0
+        )
+
+    async def count_visited_between(self, start: datetime, end: datetime) -> int:
+        """Devices seen in ``[start, end)``, from the per-day record — the only honest count of a
+        window that has ENDED. ``last_seen_at`` is overwritten on every visit, so counting a past
+        window from it counted only the devices that never came back.
+
+        ``start`` must be a local midnight (every windowed caller's is); ``end`` may fall mid-day,
+        because ``first_at`` says whether the device had already been seen by then.
+        """
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteDeviceDay.device_uuid))).where(
+                    SiteDeviceDay.first_at >= start, SiteDeviceDay.first_at < end
+                )
             )
             or 0
         )
 
     async def count_new_between(self, start: datetime, end: datetime) -> int:
-        """Devices whose identity was minted in ``[start, end)`` — first-time visitors."""
-        return int(
-            await self.session.scalar(
-                select(func.count())
-                .select_from(SiteDevice)
-                .where(SiteDevice.created_at >= start, SiteDevice.created_at < end)
-            )
-            or 0
-        )
+        """First-time visitors: devices minted in ``[start, end)`` that came back with their cookie.
 
-    async def count_returning_between(self, start: datetime, end: datetime) -> int:
-        """Devices seen in the window that already existed BEFORE it — real returning visitors.
-        This is the number that says whether the site keeps anyone, and nothing reported it."""
+        Not every identity minted: a client that refuses cookies is minted one per request and is
+        never seen with it again (``touch_seen`` leaves it NULL), so counting mints counted its
+        page loads. A real browser returns the cookie within the same page load, so "ever seen" is
+        the same thing as "seen in the window it was minted in".
+        """
         return int(
             await self.session.scalar(
                 select(func.count())
                 .select_from(SiteDevice)
                 .where(
-                    SiteDevice.last_seen_at >= start,
-                    SiteDevice.last_seen_at < end,
+                    SiteDevice.created_at >= start,
+                    SiteDevice.created_at < end,
+                    SiteDevice.last_seen_at.is_not(None),
+                )
+            )
+            or 0
+        )
+
+    async def count_returning_since(self, start: datetime) -> int:
+        """Devices seen at/after ``start`` that already existed BEFORE it — real returning visitors.
+        This is the number that says whether the site keeps anyone, and nothing reported it."""
+        return int(
+            await self.session.scalar(
+                select(func.count())
+                .select_from(SiteDevice)
+                .where(SiteDevice.last_seen_at >= start, SiteDevice.created_at < start)
+            )
+            or 0
+        )
+
+    async def count_returning_between(self, start: datetime, end: datetime) -> int:
+        """``count_returning_since`` for a window that has ended, from the per-day record."""
+        return int(
+            await self.session.scalar(
+                select(func.count(func.distinct(SiteDeviceDay.device_uuid)))
+                .join(SiteDevice, SiteDevice.uuid == SiteDeviceDay.device_uuid)
+                .where(
+                    SiteDeviceDay.first_at >= start,
+                    SiteDeviceDay.first_at < end,
                     SiteDevice.created_at < start,
                 )
             )
             or 0
         )
 
+    async def visits_recorded_since(self) -> datetime | None:
+        """The first instant the per-day record holds, or None before the first visit is recorded.
+
+        Visit history starts when the recorder shipped: a window before this has no visit data,
+        which is a different sentence from "nobody visited".
+        """
+        return await self.session.scalar(select(func.min(SiteDeviceDay.first_at)))
+
     async def seen_daily(self, since: datetime) -> list[tuple[str, int]]:
         """Distinct devices seen per LOCAL day at/after ``since`` → ``[(day, devices), …]``.
 
-        Resolution is bounded by ``touch_seen``'s throttle: a device seen several times in a day
-        counts once, which is exactly what a daily visitor series wants.
+        One row per device per day by construction, so a count of rows is a count of devices.
         """
-        day = func.date(func.timezone(DISPLAY_TZ_NAME, SiteDevice.last_seen_at)).label("day")
+        first_day = since.astimezone(DISPLAY_TZ).date()
         rows = await self.session.execute(
-            select(day, func.count())
-            .where(SiteDevice.last_seen_at >= since)
-            .group_by(day)
-            .order_by(day)
+            select(SiteDeviceDay.day, func.count())
+            .where(SiteDeviceDay.day >= first_day)
+            .group_by(SiteDeviceDay.day)
+            .order_by(SiteDeviceDay.day)
         )
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 

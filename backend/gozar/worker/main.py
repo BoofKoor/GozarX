@@ -24,6 +24,8 @@ from arq.cron import cron
 from gozar.cache.redis import create_redis_pool
 from gozar.config.logging import configure_logging
 from gozar.config.settings import get_settings
+from gozar.db.repositories.broadcast_log import BroadcastLogRepository
+from gozar.db.repositories.site_push_log import SitePushLogRepository
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
 from gozar.worker.tasks import (
@@ -31,6 +33,7 @@ from gozar.worker.tasks import (
     broadcast_text,
     fanout,
     reconcile_trials,
+    refresh_squad_online,
     reset_all_active,
     sample_health,
     sample_usage,
@@ -61,7 +64,25 @@ async def _startup(ctx: dict) -> None:
     )
     if ctx["bot"] is None:
         logger.warning("worker started without BOT_TOKEN — fan-out tasks will no-op")
+    await _close_interrupted_sends(ctx)
     logger.info("arq worker started")
+
+
+async def _close_interrupted_sends(ctx: dict) -> None:
+    """Nothing can be sending while a worker is starting, so a log row still marked ``sending`` is
+    one whose worker died mid-send (a SIGKILL skips the job's own bookkeeping). Close it as failed,
+    keeping the counts it last recorded, or the history polls it as "in flight" forever."""
+    try:
+        async with ctx["sessionmaker"]() as session:
+            bot_rows = await BroadcastLogRepository(session).fail_interrupted()
+            site_rows = await SitePushLogRepository(session).fail_interrupted()
+            await session.commit()
+        if bot_rows or site_rows:
+            logger.warning(
+                "closed %d broadcast(s) and %d push send(s) left mid-send", bot_rows, site_rows
+            )
+    except Exception:
+        logger.warning("could not close interrupted sends (ignored)")
 
 
 async def _shutdown(ctx: dict) -> None:
@@ -86,6 +107,10 @@ class WorkerSettings:
         func(fanout, timeout=_BROADCAST_TIMEOUT, max_tries=1),
         func(broadcast_text, timeout=_BROADCAST_TIMEOUT, max_tries=1),
         func(site_push_broadcast, timeout=_BROADCAST_TIMEOUT, max_tries=1),
+        # Queued by the dashboard under a FIXED job id so concurrent dashboards collapse into one
+        # sweep; keep_result=0 frees that id the moment the sweep ends, so the next stale read can
+        # queue again. One try: a failed sweep is simply retried by the next stale read.
+        func(refresh_squad_online, keep_result=0, max_tries=1),
         # The rest keep arq's defaults (300s timeout, retry) — they're short, bounded per-item work.
         reset_all_active,
         reconcile_trials,

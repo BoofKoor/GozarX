@@ -1,10 +1,13 @@
-// A conservative HTML allowlist for previewing admin-authored landing-page bodies.
+// A conservative HTML allowlist for admin-authored landing-page bodies.
 //
-// The public site renders these rows with `dangerouslySetInnerHTML` (they are trusted, admin-only
-// content). The PANEL is a different matter: it holds the admin JWTs in localStorage, so pasting a
-// body containing `<img onerror=…>` and hitting preview must not be able to run anything in this
-// origin. Everything is escaped first, then only the small tag set a landing article actually needs
-// is re-enabled — the same shape as `telegramPreviewHtml` in lib/format.ts.
+// The PANEL holds the admin JWTs in localStorage, so pasting a body containing `<img onerror=…>` and
+// hitting preview must not be able to run anything in this origin. Everything is escaped first, then
+// only the small tag set a landing article actually needs is re-enabled — the same shape as
+// `telegramPreviewHtml` in lib/format.ts.
+//
+// The public site used to render bodies unsanitised, and it is served from the SAME origin. The
+// server now applies this exact algorithm on the way out (`gozar/services/article_html.py`), so the
+// preview is what the site shows; keep the two in step.
 
 // Block + inline tags a keyword landing legitimately uses. Attribute-less; `<a href>` is handled
 // separately so the scheme can be checked.
@@ -18,12 +21,18 @@ export function sanitizeArticleHtml(raw: string): string {
       // Opening/closing tags with no attributes at all — anything carrying an attribute (and
       // therefore a possible event handler) stays escaped and visible as text.
       .replace(new RegExp(`&lt;(/?(?:${TAGS}))\\s*/?&gt;`, "gi"), "<$1>")
-      // Links: only http(s), and always opened safely.
-      .replace(/&lt;a\s+href=(&quot;|"|')([^"'&<>]+)\1&gt;/gi, (m, _q, href) =>
-        /^https?:\/\//i.test(href)
-          ? `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">`
-          : m,
-      )
+      // Links: http(s), always opened safely — or an in-site path, which every default landing
+      // uses (/locations, /faq, /guides) and which the preview used to print as raw text. Never
+      // `//host` or a backslash: browsers read `/\host` as `//host`, i.e. another site.
+      .replace(/&lt;a\s+href=(&quot;|"|')([^"'&<>]+)\1&gt;/gi, (m, _q, href: string) => {
+        if (/^https?:\/\//i.test(href)) {
+          return `<a href="${href}" target="_blank" rel="noopener noreferrer nofollow">`;
+        }
+        if (href.startsWith("/") && !href.startsWith("//") && !href.includes("\\")) {
+          return `<a href="${href}">`;
+        }
+        return m;
+      })
       .replace(/&lt;\/a&gt;/gi, "</a>")
   );
 }

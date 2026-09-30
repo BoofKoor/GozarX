@@ -76,6 +76,7 @@ def _service(request: Request, session) -> SiteTrialService:
         SiteClaimRepository(session),
         SiteRewardRepository(session),
         state.redis,
+        commit=session.commit,  # the live-traffic read must not hold a pooled connection
     )
 
 

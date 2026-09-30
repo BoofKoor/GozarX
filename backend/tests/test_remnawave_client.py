@@ -324,15 +324,20 @@ async def test_squad_online_count_only_counts_recent_members_of_the_squad() -> N
         assert request.url.path == "/api/users"
         return httpx.Response(200, json={"response": {"users": users, "total": len(users)}})
 
-    count = await _client(handler).squad_online_count({"trial"})
-    assert count == 2
+    activity = await _client(handler).squad_online_count({"trial"})
+    assert activity is not None
+    assert activity.online == 2
+    # The week figure is the SAME squad seen in the last 7 days: c (2 minutes ago) joins a and b;
+    # d never connected and e belongs to another squad, so neither counts in either figure.
+    assert activity.week == 3
 
 
 async def test_squad_online_count_empty_squads_is_zero_no_call() -> None:
     def handler(request: httpx.Request) -> httpx.Response:  # pragma: no cover - must not be hit
         raise AssertionError("panel must not be called when no squad is configured")
 
-    assert await _client(handler).squad_online_count(set()) == 0
+    activity = await _client(handler).squad_online_count(set())
+    assert activity is not None and (activity.online, activity.week) == (0, 0)
 
 
 async def test_squad_online_count_returns_none_on_panel_error() -> None:

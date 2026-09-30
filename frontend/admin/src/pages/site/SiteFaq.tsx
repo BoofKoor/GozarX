@@ -17,7 +17,7 @@ import { Select } from "@/components/ui/Select";
 import { Spinner } from "@/components/ui/Spinner";
 import { Switch } from "@/components/ui/Switch";
 import { Textarea } from "@/components/ui/Textarea";
-import { useConfirm } from "@/components/ui/confirm";
+import { useConfirm, useDiscardGuard } from "@/components/ui/confirm";
 import {
   useCreateFaq,
   useDeleteFaq,
@@ -39,6 +39,12 @@ const CATEGORY_LABEL: Record<string, MessageKey> = {
   apps: "sf.cat.apps",
   trouble: "sf.cat.trouble",
 };
+
+/** The tab name for a category id. The map holds message KEYS — printed without `t` the badge read
+ *  «sf.cat.start» on every row. An id the panel does not know shows as itself. */
+function categoryLabel(t: (key: MessageKey) => string, id: string): string {
+  return CATEGORY_LABEL[id] ? t(CATEGORY_LABEL[id]) : id;
+}
 
 const BLANK = (locale: string): SiteFaqInput => ({
   locale,
@@ -202,7 +208,7 @@ export function SiteFaq() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-content">{item.question}</span>
-                      <Badge tone="neutral">{CATEGORY_LABEL[item.category] ?? item.category}</Badge>
+                      <Badge tone="neutral">{categoryLabel(t, item.category)}</Badge>
                       {!item.published && <Badge tone="warning">{t("sf.unpublished")}</Badge>}
                     </div>
                     <p className="mt-1 line-clamp-2 text-sm text-content-muted">{item.answer}</p>
@@ -260,6 +266,11 @@ function FaqEditor({
   const create = useCreateFaq();
   const update = useUpdateFaq();
   const saving = create.isPending || update.isPending;
+  const [initial] = useState(form);
+  const dirty = JSON.stringify(form) !== JSON.stringify(initial);
+  const guard = useDiscardGuard();
+  // Esc, the backdrop and Cancel all ask first when something is unsaved — they discarded it.
+  const close = () => void guard(dirty, onClose);
 
   function save() {
     const body: SiteFaqInput = {
@@ -287,7 +298,7 @@ function FaqEditor({
   return (
     <RecordDialog
       open
-      onClose={onClose}
+      onClose={close}
       title={item ? t("sf.edit.title") : t("sf.new")}
       sub={item ? t("sf.edit.id", { id: formatNumber(item.id) }) : t("sf.edit.newSub")}
       footer={
@@ -295,7 +306,7 @@ function FaqEditor({
           <Button onClick={save} loading={saving}>
             {t("sf.save")}
           </Button>
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" onClick={close}>
             {t("sf.cancel")}
           </Button>
         </div>
@@ -322,7 +333,7 @@ function FaqEditor({
           >
             {FAQ_CATEGORIES.map((c) => (
               <option key={c} value={c}>
-                {CATEGORY_LABEL[c] ? t(CATEGORY_LABEL[c]) : c}
+                {categoryLabel(t, c)}
               </option>
             ))}
           </Select>

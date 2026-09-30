@@ -145,8 +145,9 @@ function CopyEditor({ item }: { item: SiteCopyItem }) {
   }
 
   function reset() {
-    // Clearing both languages is what restores the site's own copy — the public endpoint treats a
-    // blank row as "not overridden".
+    // Clearing both languages restores the default: a blank design-copy row means "use the site's
+    // in-code copy", and for a seeded key (meta, hero, push) the server writes its seed default
+    // back — the reply carries it, so the boxes show what the site now says.
     setFa("");
     setEn("");
     save("", "");

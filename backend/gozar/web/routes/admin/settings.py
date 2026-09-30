@@ -8,11 +8,19 @@ from __future__ import annotations
 
 import json
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel
 
+from gozar.services.button_links import is_button_url, normalize_emoji_id
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.web.dependencies import AdminUser, DbSession
+from gozar.web.routes.admin.bounds import (
+    ConfigsPerPage,
+    DailyLimitMb,
+    RewardLimit,
+    RewardMb,
+    TrialHours,
+)
 from gozar.web.routes.admin.site_locations import reject_unknown_locations
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -39,12 +47,12 @@ class SettingsOut(BaseModel):
 
 class SettingsPatch(BaseModel):
     locations: list[str] | None = None
-    daily_limit_mb: int | None = None
-    referral_reward_mb: int | None = None
-    referral_reward_limit: int | None = None
-    trial_hours: int | None = None
+    daily_limit_mb: DailyLimitMb | None = None
+    referral_reward_mb: RewardMb | None = None
+    referral_reward_limit: RewardLimit | None = None
+    trial_hours: TrialHours | None = None
     ads_enabled: bool | None = None
-    configs_per_page: int | None = None
+    configs_per_page: ConfigsPerPage | None = None
     ad_button_enabled: bool | None = None
     ad_button_text: str | None = None
     ad_button_url: str | None = None
@@ -80,6 +88,20 @@ async def update_settings(
     body: SettingsPatch, request: Request, session: DbSession, admin: AdminUser
 ) -> SettingsOut:
     settings = _settings(request, session)
+    # Checked BEFORE anything is written, so a refused save changes nothing.
+    ad_url = body.ad_button_url.strip() if body.ad_button_url is not None else None
+    # The bot drops a button whose link Telegram would refuse — silently, on every delivered
+    # config. Refused here instead, where the operator is looking.
+    if ad_url and not is_button_url(ad_url):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "the promo button link must start with https://, http:// or tg://",
+        )
+    emoji_id = (
+        normalize_emoji_id(body.ad_button_emoji_id) if body.ad_button_emoji_id is not None else ""
+    )
+    if emoji_id is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "the premium emoji id must be a number")
     if body.locations is not None:
         # Same guard the website settings and wizard use, on the BOT's own squad. A name the squad
         # does not serve is offered in the bot's picker and then matches no remark, so the claim
@@ -112,8 +134,8 @@ async def update_settings(
         )
     if body.ad_button_text is not None:
         await settings.set(SettingKey.AD_BUTTON_TEXT, body.ad_button_text.strip())
-    if body.ad_button_url is not None:
-        await settings.set(SettingKey.AD_BUTTON_URL, body.ad_button_url.strip())
+    if ad_url is not None:
+        await settings.set(SettingKey.AD_BUTTON_URL, ad_url)
     if body.ad_button_emoji_id is not None:
-        await settings.set(SettingKey.AD_BUTTON_EMOJI_ID, body.ad_button_emoji_id.strip())
+        await settings.set(SettingKey.AD_BUTTON_EMOJI_ID, emoji_id)
     return await _read(settings)
