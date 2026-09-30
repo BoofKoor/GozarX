@@ -18,6 +18,7 @@ import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -88,7 +89,9 @@ export function Setup() {
     complete.mutate(
       {
         trial_squad: trialSquad,
-        locations: pickerUnavailable ? splitLocations(locationsText) : locations,
+        locations: pickerUnavailable
+          ? splitLocations(locationsText)
+          : resolveSelection(locations, picker ?? []).save,
         ...econ,
         ads_enabled: false,
       },

@@ -152,8 +152,13 @@ class AdminService:
         return user
 
     async def refresh_locations(self) -> list[str] | None:
-        """Re-derive the location allowlist from the trial squad and store it. Returns the names, or
-        ``None`` if the squad isn't configured yet or the panel call fails."""
+        """Offer every location the trial squad serves, from now on. Returns the squad's current
+        names, or ``None`` if the squad isn't configured yet or the panel call fails.
+
+        Stores ``[]`` ("all of them") rather than today's names: a snapshot froze out every host
+        added afterwards, and went stale — blocking the next settings save with a 400 — the moment
+        a host it named was renamed or hidden. A squad that serves nothing leaves the list as it is.
+        """
         squad = await self._settings.get(SettingKey.TRIAL_SQUAD)
         if not squad:
             logger.warning("refresh_locations: no trial squad configured")
@@ -163,7 +168,8 @@ class AdminService:
         except RemnawaveError:
             logger.warning("refresh_locations: panel call failed")
             return None
-        await self._settings.set(SettingKey.LOCATIONS, json.dumps(names))
+        if names:
+            await self._settings.set(SettingKey.LOCATIONS, json.dumps([]))
         return names
 
     async def _revoke_panel(self, user: User) -> bool:

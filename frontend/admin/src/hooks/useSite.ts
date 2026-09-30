@@ -70,10 +70,14 @@ export function useCompleteSiteSetup() {
   return useMutation({
     mutationFn: async (payload: SiteSetupPayload) =>
       (await api.post<SetupStatus>("/admin/site/setup/", payload)).data,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["site-setup-status"] });
-      qc.invalidateQueries({ queryKey: ["site-settings"] });
-    },
+    // Returned, so the mutation — and the caller's navigate to the settings page — waits for the
+    // refetch. That page fills its form ONCE, and filled from the pre-wizard cache it showed the old
+    // squad's numbers; its next save then put them back, or 400'd on the old squad's names.
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["site-setup-status"] }),
+        qc.invalidateQueries({ queryKey: ["site-settings"] }),
+      ]),
   });
 }
 

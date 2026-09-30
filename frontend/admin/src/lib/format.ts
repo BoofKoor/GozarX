@@ -274,7 +274,12 @@ export function splitLocations(raw: string): string[] {
 
 /** Join a list with the locale's own comma — the inverse of `splitLocations`. */
 export function joinList(list: string[]): string {
-  return list.join(getLocale() === "fa" ? "، " : ", ");
+  return list.join(listSeparator());
+}
+
+/** The active locale's list separator — for callers that isolate each item in its own element. */
+export function listSeparator(): string {
+  return getLocale() === "fa" ? "، " : ", ";
 }
 
 // The formatting tags Telegram actually renders (attribute-less; <a href> handled separately).

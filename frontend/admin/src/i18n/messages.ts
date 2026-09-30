@@ -272,11 +272,15 @@ const FA = {
   "loc.unavailable":
     "لیست لوکیشن‌های اسکواد از پنل گرفته نشد. می‌توانید نام‌ها را دستی وارد کنید (با کاما جدا کنید) — اما نام اشتباه را سرور رد می‌کند.",
   "loc.placeholder": "مثال: آلمان، هلند",
-  "loc.all": "همهٔ {n} لوکیشن اسکواد",
+  "loc.all": "همهٔ {n} لوکیشن اسکواد (لوکیشن جدید اسکواد خودکار اضافه می‌شود)",
   "loc.some": "{n} از {total} انتخاب شده",
   "loc.selectAll": "انتخاب همه",
   "loc.refresh": "به‌روزرسانی از اسکواد",
-  "loc.subsetNote": "فقط لوکیشن‌های تیک‌خورده به کاربر نشان داده می‌شوند.",
+  "loc.subsetNote":
+    "فقط لوکیشن‌های تیک‌خورده به کاربر نشان داده می‌شوند؛ لوکیشنی که بعداً به اسکواد اضافه شود تا تیکش نزنید نمایش داده نمی‌شود.",
+  "loc.stale": "{n} لوکیشن ذخیره‌شده دیگر در اسکواد نیست و با ذخیرهٔ بعدی حذف می‌شود:",
+  "loc.emptySquad":
+    "این اسکواد هیچ host فعالی ندارد، پس لوکیشنی برای انتخاب نیست. hostهای اسکواد را در پنل بررسی کنید.",
 
   // ── bot settings ────────────────────────────────────────────────────────
   "set.title": "تنظیمات ربات",
@@ -490,6 +494,9 @@ const FA = {
   "ss.locations.refreshFailed": "به‌روزرسانی لوکیشن‌ها ممکن نشد.",
   "ss.popular": "لوکیشن محبوب",
   "ss.popular.hint": "نشان ⭐ روی پیکر سایت. فقط می‌تواند یکی از لوکیشن‌های بالا باشد.",
+  "ss.popular.stale":
+    "لوکیشن ستاره‌دار ذخیره‌شده دیگر در فهرست نیست و با ذخیرهٔ بعدی پاک می‌شود؛ یکی دیگر انتخاب کنید.",
+  "ss.popular.staleOption": "{name} (دیگر ارائه نمی‌شود)",
   "ss.popular.none": "— بدون —",
 
   // ── website: first-run wizard ───────────────────────────────────────────
@@ -498,6 +505,8 @@ const FA = {
   "ssu.submit": "ذخیره و تکمیل",
   "ssu.done": "راه‌اندازی وب‌سایت کامل شد.",
   "ssu.squad": "اسکواد",
+  "ssu.squadGone":
+    "اسکوادی که قبلاً ذخیره شده بود دیگر در پنل وجود ندارد؛ اولین اسکواد فعلی انتخاب شد. پیش از ذخیره بررسی کنید.",
   "ssu.squad.field": "اسکواد آزمایشی وب‌سایت",
   "ssu.locations.sub": "خالی گذاشتن یعنی همهٔ لوکیشن‌های اسکواد ارائه شوند.",
 
@@ -1240,11 +1249,16 @@ const EN: Record<keyof typeof FA, string> = {
   "loc.unavailable":
     "The squad's location list could not be fetched from the panel. You can type the names by hand (comma-separated) — but the server rejects a name that is wrong.",
   "loc.placeholder": "e.g. Germany, Netherlands",
-  "loc.all": "All {n} squad locations",
+  "loc.all": "All {n} squad locations (new ones in the squad are added automatically)",
   "loc.some": "{n} of {total} selected",
   "loc.selectAll": "Select all",
   "loc.refresh": "Refresh from the squad",
-  "loc.subsetNote": "Only the ticked locations are offered.",
+  "loc.subsetNote":
+    "Only the ticked locations are offered; one added to the squad later stays hidden until you tick it.",
+  "loc.stale":
+    "{n} saved location(s) are no longer in the squad and will be dropped on the next save:",
+  "loc.emptySquad":
+    "This squad has no enabled host, so there is no location to pick. Check the squad's hosts in the panel.",
 
   // ── bot settings ────────────────────────────────────────────────────────
   "set.title": "Bot settings",
@@ -1460,6 +1474,9 @@ const EN: Record<keyof typeof FA, string> = {
   "ss.locations.refreshFailed": "Could not refresh the locations.",
   "ss.popular": "Popular location",
   "ss.popular.hint": "Gets the ⭐ on the site's picker. Must be one of the locations above.",
+  "ss.popular.stale":
+    "The saved starred location is no longer on the list and will be cleared on the next save; pick another.",
+  "ss.popular.staleOption": "{name} (no longer offered)",
   "ss.popular.none": "— none —",
 
   // ── website: first-run wizard ───────────────────────────────────────────
@@ -1469,6 +1486,8 @@ const EN: Record<keyof typeof FA, string> = {
   "ssu.submit": "Save and finish",
   "ssu.done": "Website setup complete.",
   "ssu.squad": "Squad",
+  "ssu.squadGone":
+    "The squad saved earlier no longer exists in the panel; the first current squad is selected. Check it before saving.",
   "ssu.squad.field": "Website trial squad",
   "ssu.locations.sub": "Leaving it empty offers every location the squad serves.",
 

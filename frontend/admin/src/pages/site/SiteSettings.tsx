@@ -23,6 +23,7 @@ import {
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { normalizeRemark, resolveSelection } from "@/lib/locations";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -132,12 +133,21 @@ export function SiteSettings() {
   const setNum = (key: NumKey) => (n: number) => setForm((f) => ({ ...f, [key]: n }));
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
+  const selection = resolveSelection(form.locations, picker ?? []);
   // What the popular-location select may offer: whatever the form currently says is on the picker.
   const offered = pickerUnavailable
     ? splitLocations(form.locationsText)
-    : form.locations.length > 0
-      ? form.locations
-      : (picker ?? []);
+    : selection.all
+      ? (picker ?? [])
+      : selection.save;
+  // A starred location the picker no longer offers used to read as «هیچ» in the select while the
+  // stale name was still sent — and refused with a 400. It is shown for what it is, and cleared on
+  // save. Only judged against a list the panel actually returned.
+  const popularStale =
+    !pickerUnavailable &&
+    Boolean(picker) &&
+    form.popular_location !== "" &&
+    !offered.some((o) => normalizeRemark(o) === normalizeRemark(form.popular_location));
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -166,8 +176,9 @@ export function SiteSettings() {
         reward_push_mb: form.reward_push_mb,
         reward_streak_mb: form.reward_streak_mb,
         streak_days: form.streak_days,
-        locations: pickerUnavailable ? splitLocations(form.locationsText) : form.locations,
-        popular_location: form.popular_location,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable ? splitLocations(form.locationsText) : selection.save,
+        popular_location: popularStale ? "" : form.popular_location,
       },
       {
         onSuccess: () => toast.success(t("ss.saved")),
@@ -288,12 +299,20 @@ export function SiteSettings() {
               onRefresh={refreshFromSquad}
               refreshing={refresh.isPending}
             />
-            <Field label={t("ss.popular")} hint={t("ss.popular.hint")}>
+            <Field
+              label={t("ss.popular")}
+              hint={popularStale ? t("ss.popular.stale") : t("ss.popular.hint")}
+            >
               <Select
                 value={form.popular_location}
                 onChange={(e) => setForm((f) => ({ ...f, popular_location: e.target.value }))}
               >
                 <option value="">{t("ss.popular.none")}</option>
+                {popularStale && (
+                  <option value={form.popular_location}>
+                    {t("ss.popular.staleOption", { name: form.popular_location })}
+                  </option>
+                )}
                 {offered.map((l) => (
                   <option key={l} value={l}>
                     {l}

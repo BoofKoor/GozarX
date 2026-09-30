@@ -158,13 +158,36 @@ async def test_claim_empty_links_is_no_locations_no_flip(session) -> None:
     assert user.panel_username is None
 
 
-async def test_claim_allowlist_intersects_empty_is_no_locations(session) -> None:
+async def test_an_allowlist_matching_no_link_offers_the_squads_own(session) -> None:
+    # Every ticked name since renamed: an empty picker for everyone is never what was configured,
+    # and the links are the trial squad's own, so they are offered rather than nothing.
     panel = FakePanel([(_sub(), _TWO)])
     trial = await _service(session, panel, **{SettingKey.LOCATIONS: "Sweden"})  # excludes DE/FI
     user = await _user(session)
 
+    result = await trial.claim(user)
+    assert isinstance(result, Provisioned)
+    assert result.remarks == ["Germany", "Finland"]
+
+
+async def test_the_allowlist_matches_a_templated_remark_by_normalised_name(session) -> None:
+    # The allowlist holds RAW host remarks; the link map is keyed by the RENDERED fragment. Compared
+    # verbatim, "Germany {{TRAFFIC_LEFT}}" never matched "Germany" and the claim read "no location".
+    panel = FakePanel([(_sub(), _TWO)])
+    trial = await _service(session, panel, **{SettingKey.LOCATIONS: '["Germany {{TRAFFIC_LEFT}}"]'})
+    user = await _user(session)
+
+    result = await trial.claim(user)
+    assert isinstance(result, Provisioned)
+    assert result.remarks == ["Germany"]
+
+
+async def test_a_squad_with_no_links_is_still_no_locations(session) -> None:
+    panel = FakePanel([(_sub(), {})])
+    trial = await _service(session, panel, **{SettingKey.LOCATIONS: "Sweden"})
+    user = await _user(session)
+
     assert isinstance(await trial.claim(user), NoLocations)
-    assert user.status is UserStatus.available
 
 
 async def test_claim_not_ready_without_squad(session) -> None:

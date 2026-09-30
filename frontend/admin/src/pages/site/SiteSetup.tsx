@@ -1,4 +1,4 @@
-import { Coins, Gift, MapPin, Server } from "lucide-react";
+import { AlertTriangle, Coins, Gift, MapPin, Server } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { useCompleteSiteSetup, useSiteDerivableLocations, useSiteSettings } from
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
 import { allValidNumbers } from "@/lib/validate";
 
 interface Econ {
@@ -79,11 +80,26 @@ export function SiteSetup() {
     }
   }, [current]);
 
+  // The saved squad is only kept if the panel still has it. A deleted one used to stay in state
+  // while the select — which has no option for it — showed the first live squad, so the form read
+  // one squad and saved another, and the site could no longer provision anyone.
+  const savedSquad = current?.trial_squad ?? "";
+  const squadGone = Boolean(savedSquad && squads && !squads.some((s) => s.uuid === savedSquad));
   useEffect(() => {
-    if (trialSquad) return;
-    if (current?.trial_squad) setTrialSquad(current.trial_squad);
-    else if (squads && squads.length > 0) setTrialSquad(squads[0].uuid);
-  }, [squads, current, trialSquad]);
+    if (trialSquad || !current) return;
+    if (squads) {
+      if (savedSquad && !squadGone) {
+        setTrialSquad(savedSquad);
+      } else if (squads.length > 0) {
+        setTrialSquad(squads[0].uuid);
+        // Locations saved for a squad that is gone mean nothing for this one.
+        setLocations([]);
+        setLocationsText("");
+      }
+    } else if (isError && savedSquad) {
+      setTrialSquad(savedSquad); // the panel cannot be asked; keep what was saved
+    }
+  }, [squads, isError, current, savedSquad, squadGone, trialSquad]);
 
   // Don't render the form until current settings load — otherwise DEFAULT_ECON could be saved over
   // a customised live economy on a failed GET (H1).
@@ -134,7 +150,10 @@ export function SiteSetup() {
     complete.mutate(
       {
         trial_squad: trialSquad,
-        locations: pickerUnavailable ? splitLocations(locationsText) : locations,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable
+          ? splitLocations(locationsText)
+          : resolveSelection(locations, picker ?? []).save,
         ...econ,
       },
       {
@@ -170,6 +189,15 @@ export function SiteSetup() {
       <form id="site-setup" onSubmit={submit} className="space-y-6">
         <Card className="max-w-2xl">
           <CardHeader title={t("ssu.squad")} icon={Server} />
+          {squadGone && (
+            <p
+              role="status"
+              className="mb-3 flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("ssu.squadGone")}
+            </p>
+          )}
           <Field label={t("ssu.squad.field")}>
             {isLoading ? (
               <Spinner className="h-5 w-5 text-brand" />

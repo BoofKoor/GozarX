@@ -37,6 +37,7 @@ from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
+from gozar.remnawave.links import normalize_remark
 from gozar.remnawave.schemas import PanelUser, Subscription
 from gozar.services.settings_service import SettingKey, SettingsService
 
@@ -279,12 +280,23 @@ class TrialService:
         await self._redis.delete(sub_cache_key(telegram_id))
 
     async def _filter_locations(self, links: dict[str, str]) -> dict[str, str]:
-        """Intersect the link map with the LOCATIONS allowlist (empty allowlist -> keep all)."""
+        """Intersect the link map with the LOCATIONS allowlist (empty allowlist -> keep all).
+
+        Matched by NORMALISED name, like the site: the allowlist holds raw host remarks while the
+        link map is keyed by the RENDERED fragment, so a remark carrying a template token
+        ("Germany {{TRAFFIC_LEFT}}") never compared equal and every claim read "no location". An
+        allowlist that matches none of the links (each ticked host since renamed) keeps them all —
+        the links are the trial squad's own, and an empty picker is never what was configured.
+        """
         allow = await self._settings.get_list(SettingKey.LOCATIONS)
         if not allow:
             return dict(links)
-        allowed = set(allow)
-        return {name: link for name, link in links.items() if name in allowed}
+        allowed = {normalize_remark(name) for name in allow}
+        kept = {name: link for name, link in links.items() if normalize_remark(name) in allowed}
+        if not kept and links:
+            logger.warning("bot locations: the allowlist matches no link; offering all")
+            return dict(links)
+        return kept
 
     # --- self-heal ------------------------------------------------------------------------------
     @staticmethod

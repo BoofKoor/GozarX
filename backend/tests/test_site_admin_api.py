@@ -92,12 +92,23 @@ async def test_site_setup_derives_locations_from_squad(site_client: httpx.AsyncC
         "Germany",
         "Finland",
     ]
-    # empty allowlist -> derive every squad location by NAME
+    # No explicit allowlist -> ALL of the squad's locations, stored as [] so hosts added later
+    # appear on their own (a snapshot went stale and blocked every later save with a 400).
     r = await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
     assert r.status_code == 200 and r.json()["completed"] is True
     settings = (await site_client.get("/api/admin/site/settings/")).json()
     assert settings["trial_squad"] == "sq-1"
-    assert settings["locations"] == ["Germany", "Finland"]
+    assert settings["locations"] == []
+
+
+async def test_site_setup_refuses_a_squad_the_panel_no_longer_has(
+    site_client: httpx.AsyncClient,
+) -> None:
+    # A deleted squad used to be stored (an unknown squad read as "nothing to check"), and the site
+    # could no longer provision anyone.
+    r = await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-gone"})
+    assert r.status_code == 400
+    assert (await site_client.get("/api/admin/site/setup/status")).json()["completed"] is False
 
 
 async def test_site_setup_respects_explicit_locations(site_client: httpx.AsyncClient) -> None:
@@ -123,9 +134,23 @@ async def test_site_settings_update_and_refresh_locations(site_client: httpx.Asy
     ] == 1
     # refresh-locations needs a squad; 400 before setup
     assert (await site_client.post("/api/admin/site/settings/refresh-locations")).status_code == 400
-    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Germany"]}
+    )
+    # Refresh = offer every location the squad serves, from now on (not a snapshot of today's).
     r = await site_client.post("/api/admin/site/settings/refresh-locations")
-    assert r.status_code == 200 and r.json()["locations"] == ["Germany", "Finland"]
+    assert r.status_code == 200 and r.json()["locations"] == []
+
+
+async def test_site_popular_is_checked_against_the_squad_when_all_are_offered(
+    site_client: httpx.AsyncClient,
+) -> None:
+    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    ok = await site_client.put("/api/admin/site/settings/", json={"popular_location": "Finland"})
+    assert ok.status_code == 200 and ok.json()["popular_location"] == "Finland"
+    # With [] ("all of them") there used to be nothing to check a stale star against.
+    bad = await site_client.put("/api/admin/site/settings/", json={"popular_location": "Mars"})
+    assert bad.status_code == 400
 
 
 async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:

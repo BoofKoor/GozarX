@@ -390,6 +390,16 @@ async def test_available_locations_fresh_is_live_from_the_squad(session) -> None
     assert await svc.available_locations(device) == ["Germany", "Ukraine"]
 
 
+async def test_available_locations_honour_the_ticked_subset(session) -> None:
+    """Unticking a location in the settings used to save, say "saved", and change nothing: the
+    picker read the live list and ignored the stored one. The subset is matched by NORMALISED name
+    and keeps the squad's own spelling."""
+    panel = FakePanel([], squad_locations=["Germany", "Ukraine"])
+    svc = await _service(session, panel, **{SiteSettingKey.SITE_LOCATIONS: '[" germany"]'})
+    device = await _device(session)
+    assert await svc.available_locations(device) == ["Germany"]
+
+
 async def test_available_locations_fresh_falls_back_when_panel_is_down(session) -> None:
     """Panel unreachable -> last known good (here: the stored list) instead of an empty picker."""
     panel = FakePanel([], squad_error=RemnawaveError("down"))

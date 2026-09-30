@@ -58,6 +58,33 @@ async def reject_unknown_locations(request: Request, squad: str | None, wanted: 
         )
 
 
+async def reject_unknown_squad(request: Request, squad: str) -> None:
+    """400 when the panel answers and the squad is not one of its squads. No-op when unverifiable.
+
+    A squad deleted in the panel used to be kept: the wizard's select showed the first live squad
+    while the form still held the dead uuid, and ``known_squad_locations`` reads an unknown squad
+    as "nothing to check" — so the save went through and the service could no longer provision.
+    """
+    try:
+        squads = await request.app.state.panel.list_internal_squads()
+    except RemnawaveError:
+        logger.warning("squad not validated — panel unreachable")
+        return
+    if squads and all(s.uuid != squad for s in squads):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST,
+            "that squad no longer exists in the panel — pick one of its current squads",
+        )
+
+
+async def offered_locations(request: Request, squad: str | None, stored: list[str]) -> list[str]:
+    """What the picker offers for a stored list: the list itself, or — when it is empty, which
+    means "all of them" — the squad's live names (``[]`` when those can't be read right now)."""
+    if stored:
+        return stored
+    return await known_squad_locations(request, squad) or []
+
+
 def reject_popular_outside_list(popular: str, locations: list[str]) -> None:
     """400 when the starred "popular" location isn't one of the offered ones.
 

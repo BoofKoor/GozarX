@@ -259,6 +259,29 @@ class SiteTrialService:
         await self._redis.delete(site_sub_cache_key(uuid))
 
     async def squad_locations(self) -> list[str] | None:
+        """The locations the site OFFERS: the squad's live names, narrowed to the admin's ticked
+        subset (``SITE_LOCATIONS``, matched by NORMALISED name) — or ``None`` when unknown.
+
+        An empty stored list means "all of them", so a host added in the panel appears on its own.
+        The subset used to be ignored whenever the panel answered: unticking a location in the
+        settings saved, said "saved", and changed nothing on the site. A subset that matches NONE of
+        the live names (every ticked host since renamed) is treated as "all" rather than offering
+        nothing — the picker shows it that way too, and an empty site is never what was chosen.
+        """
+        live = await self._live_squad_locations()
+        if live is None:
+            return None
+        chosen = await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
+        if not chosen:
+            return live
+        keys = {normalize_remark(name) for name in chosen}
+        subset = [name for name in live if normalize_remark(name) in keys]
+        if not subset and live:
+            logger.warning("site locations: the ticked subset matches no live host; offering all")
+            return live
+        return subset
+
+    async def _live_squad_locations(self) -> list[str] | None:
         """The configured squad's location names, LIVE — or ``None`` when they can't be determined.
 
         ``None`` is a distinct answer from ``[]`` and the difference matters everywhere downstream:
@@ -295,7 +318,7 @@ class SiteTrialService:
         return names
 
     async def _last_good_locations(self, squad: str) -> list[str] | None:
-        """Newest successful derivation, else the stored list, else ``None`` (still unknown)."""
+        """Newest successful derivation, else the stored subset, else ``None`` (still unknown)."""
         raw = await self._redis.get(site_squad_locations_last_good_key(squad))
         if raw is not None:
             try:

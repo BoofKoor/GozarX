@@ -17,6 +17,7 @@ import { useSiteDerivableLocations } from "@/hooks/useSite";
 import { useI18n } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { joinList, splitLocations } from "@/lib/format";
+import { resolveSelection } from "@/lib/locations";
 import { allValidNumbers } from "@/lib/validate";
 
 interface FormState {
@@ -129,7 +130,10 @@ export function Settings() {
         trial_hours: form.trial_hours,
         configs_per_page: form.configs_per_page,
         ads_enabled: form.ads_enabled,
-        locations: pickerUnavailable ? splitLocations(form.locationsText) : form.locations,
+        // Never a name the squad stopped serving: those are shown in the picker, then dropped.
+        locations: pickerUnavailable
+          ? splitLocations(form.locationsText)
+          : resolveSelection(form.locations, picker ?? []).save,
         ad_button_enabled: form.ad_button_enabled,
         ad_button_text: form.ad_button_text.trim(),
         ad_button_url: form.ad_button_url.trim(),

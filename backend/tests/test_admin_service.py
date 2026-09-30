@@ -219,12 +219,20 @@ async def test_zero_referrals_resets_count() -> None:
     assert user.referral_count == 0
 
 
-async def test_refresh_locations_writes_allowlist() -> None:
+async def test_refresh_locations_offers_every_squad_location_from_now_on() -> None:
+    # It stores "all of them" ([]), not today's names: a snapshot froze out every host added
+    # afterwards and went stale — blocking the next settings save — once a named host was renamed.
     settings = FakeSettings({SettingKey.TRIAL_SQUAD: "sq1"})
     panel = FakePanel(locations=["NL", "DE"])
     names = await _svc(settings=settings, panel=panel).refresh_locations()
     assert names == ["NL", "DE"]
-    assert (SettingKey.LOCATIONS, json.dumps(["NL", "DE"])) in settings.sets
+    assert (SettingKey.LOCATIONS, json.dumps([])) in settings.sets
+
+
+async def test_refresh_locations_leaves_the_list_when_the_squad_serves_nothing() -> None:
+    settings = FakeSettings({SettingKey.TRIAL_SQUAD: "sq1"})
+    names = await _svc(settings=settings, panel=FakePanel(locations=[])).refresh_locations()
+    assert names == [] and settings.sets == []
 
 
 async def test_refresh_locations_without_squad_returns_none() -> None:
