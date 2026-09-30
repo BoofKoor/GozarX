@@ -326,6 +326,16 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   is a real radio group in two rows (7 Tab presses to the CTA, was 27); switching location names
   the target and can be cancelled. `docs/website/audit/accept_b.py` checks all of it against the
   mock, over real time.
+23 The site audit's Phase C: conversion on a phone and the paths INTO the claim widget. The claim
+  button is on a 360×740 first screen (a one-to-two-line phone subtitle, the trust chips after the
+  widget, a compact widget head; it sat 197px below it) and a sticky bar brings the widget back
+  once it scrolls away. A landing's widget sits under its H1 — every seeded body already told the
+  reader it was «بالای همین صفحه» while it rendered ~1,000px down. `/?loc=` carries a location
+  chosen on /locations or the homepage flags into the widget; the header, the phone menu, the
+  footer band (now by visitor state), the reward rows and the app cards all go where they say;
+  guides lead Android with Happ's own APK (Play serves nothing to an Iranian IP) and tell iOS
+  about the Apple ID; `/articles` indexes every article. `docs/website/audit/accept_c.py` checks
+  all of it against the mock.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -657,6 +667,39 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **Offer an action only where it can succeed.** The push mission hides once notifications are on,
   once the visitor has blocked them, and where `PushManager` does not exist (iOS Safari outside an
   installed web app) — there it was a button that could only fail.
+- **The i18n chrome OUTRANKS `DESIGN_COPY`, so a chrome key must never reuse a design-copy name.**
+  Phase B's picker button added `loc_all` («همهٔ لوکیشن‌ها ({n})») to the chrome, and the homepage's
+  «مشاهدهٔ همهٔ لوکیشن‌ها» link — the design copy's `loc_all` — started printing the widget's string
+  with its token raw. `accept_c.py` reads every page's rendered text for an unfilled `{token}`.
+- **The phone's first screen holds the claim button, and that is MEASURED.** The subtitle has a
+  one-to-two-line phone version (`hero_sub_short`, CSS picks — no hydration guess), the chips come
+  after the widget in the DOM (the desktop grid puts them back under the copy), and the widget head
+  is compact up to 460px. `accept_c.py` fails if the CTA leaves a 360×740 or 390×844 first screen.
+- **A widget height reservation is S1's MEASURED natural height at that width** (520 up to 460px,
+  564 above, 570 under 360). Too tall is a band of empty card under the button; too short is a
+  layout shift when the skeleton resolves. Re-measure whenever the head, cards or CTA change —
+  `accept_c.py` fails past 3px.
+- **A choice made elsewhere arrives chosen.** A location link into the widget is
+  `/?loc=<display name>#hero-widget` — never `/#hero`, which offered the popular location to
+  someone who had just tapped another. (A /locations cell opens its landing where one exists; the
+  homepage flags always use `?loc=`, the widget being on that page.) `preselect` applies ONCE per
+  value: a list refresh does not undo a manual pick, but a new link (a second flag tapped on the
+  same page, no remount) wins over it.
+- **The sticky bar never doubles a call to action on screen.** It shows only while the widget is
+  away, steps aside for the footer band and a landing's closing band, hides during a cooldown and
+  from 940px, and is `inert` + `visibility:hidden` while down.
+- **`overflow:hidden` makes a SCROLL CONTAINER, and `scrollIntoView` clips a target's
+  `scroll-margin` at a scroll container's edge.** The hero's `hidden` put `#hero-widget` at y=28 on
+  desktop — its head under the 69px sticky header — because the widget sits only 28px inside the
+  hero. `overflow:clip` clips the same paint without being scrollable; keep `hidden` before it as
+  the fallback. `accept_c.py` checks every anchor lands below the header.
+- **A scrollable rail is a Tab stop in Chromium** (keyboard-focusable scrollers), so where it sits
+  in the DOM counts toward "Tab presses to the CTA": the chip rail moving below the widget took it
+  from 7 to 6.
+- **An install source must work from Iran.** Android leads with Happ's GitHub APK and keeps Play
+  second; the App Store platforms say that store has no Iranian storefront and needs another
+  country's Apple ID. A guide step's screenshot is an ASSET drop — `public/guides/<platform>/<n>.webp`
+  appears under step n once it exists; none ship until real captures of Happ do.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

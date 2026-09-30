@@ -8,10 +8,12 @@ import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
 
 // ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
-export function Flag({ name, size = 40 }: { name: string; size?: number }) {
+// `fluid` leaves the size to the stylesheet (`.flag` is 40px), for a place that resizes it by
+// breakpoint — an inline size would outrank any media query.
+export function Flag({ name, size = 40, fluid = false }: { name: string; size?: number; fluid?: boolean }) {
   const cc = flagCC(name);
   const [errored, setErrored] = useState(false);
-  const style = { inlineSize: size, blockSize: size } as const;
+  const style = fluid ? undefined : ({ inlineSize: size, blockSize: size } as const);
   if (cc && !errored) {
     return (
       <img

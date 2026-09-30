@@ -12,6 +12,7 @@
 | ۵ | [`05-fix-plan.md`](05-fix-plan.md)، [`report.html`](report.html) | گزارش نهایی، تصمیم‌های مالک، پلن ۶ فازی با معیار پذیرش |
 | A | [`06-phase-a.md`](06-phase-a.md)، [`shots/phase-a/`](shots/phase-a/) | اجرای فاز A: سنجش قبل/بعد، انحراف‌ها، ۹ تصویر شاهد |
 | B | [`07-phase-b.md`](07-phase-b.md)، [`accept_b.py`](accept_b.py)، [`shots/phase-b/`](shots/phase-b/) | اجرای فاز B: پذیرش خودکار در زمان واقعی (۱۵ بررسی)، شاهدها |
+| C | [`08-phase-c.md`](08-phase-c.md)، [`accept_c.py`](accept_c.py)، [`shots/phase-c/`](shots/phase-c/) | اجرای فاز C: دکمه در صفحهٔ اول موبایل، مسیرهای ورود به ویجت، پذیرش خودکار (۳۶ بررسی)، شاهدها |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -28,9 +29,10 @@ pip install playwright pillow            # Chromium از قبل روی ماشی�
 python3 docs/website/audit/audit.py /tmp/shots [--only home-]
 python3 docs/website/audit/probe_extra.py /tmp/shots
 python3 docs/website/audit/accept_b.py /tmp/shots     # رفتار جریان دریافت در طول زمان (~۲ دقیقه)
+python3 docs/website/audit/accept_c.py /tmp/shots     # فولد موبایل و مسیرهای ورود به ویجت (~۲ دقیقه)
 ```
 
-`mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`)
+`mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`، `mock_refs`)
 — جدول کامل در docstring همان فایل. دو عددی که صفحهٔ اول **سمت سرور** می‌خواند از کوکی نمی‌آیند و با
 متغیر محیطی تنظیم می‌شوند: `MOCK_TRIAL_HOURS` (پیش‌فرض ۲۴) و `MOCK_DELIVERED` (پیش‌فرض ۴۸۲۱۳؛ زیر ۱۰۰۰ چیپ
 پنهان می‌شود).

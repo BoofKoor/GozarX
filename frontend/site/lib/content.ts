@@ -167,21 +167,36 @@ export const APP_NAME = "Happ";
 export interface GuideStep {
   t: string;
   d: string;
+  /** this step is "get your config": it carries a link to the claim widget (C-29) */
+  get?: true;
 }
 
 // Locale-invariant platform metadata: the BrandIcon glyph key, the accent colour that tints the
 // card/hero tile, the store glyph for the download button, and the OFFICIAL Happ download URL.
+// Android's first button is the APK from Happ's own GitHub release (C-28, decision D4): Google Play
+// serves nothing to an Iranian IP, so a guide that opened with it was a dead end at step one for the
+// people it was written for. Play stays as the second option (`alt`). `appleId` marks the platforms
+// whose only source is the App Store — which has no Iranian storefront, so the guide says how.
 export interface PlatformMeta {
   os: "android" | "apple" | "windows" | "linux";
   acc: string;
-  store: "googleplay" | "appstore" | "windows" | "linux";
+  store: "android" | "googleplay" | "appstore" | "windows" | "linux";
   url: string;
+  alt?: string;
+  appleId?: true;
 }
+const APP_STORE = "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215";
 export const PLATFORM_META: Record<Platform, PlatformMeta> = {
-  android: { os: "android", acc: "#22B364", store: "googleplay", url: "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share" },
-  ios: { os: "apple", acc: "#5B6B82", store: "appstore", url: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215" },
+  android: {
+    os: "android",
+    acc: "#22B364",
+    store: "android",
+    url: "https://github.com/Happ-proxy/happ-android/releases/latest/download/Happ.apk",
+    alt: "https://play.google.com/store/apps/details?id=com.happproxy&pcampaignid=web_share",
+  },
+  ios: { os: "apple", acc: "#5B6B82", store: "appstore", url: APP_STORE, appleId: true },
   windows: { os: "windows", acc: "#2A7BE4", store: "windows", url: "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/setup-Happ.x64.exe" },
-  macos: { os: "apple", acc: "#5B6B82", store: "appstore", url: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215" },
+  macos: { os: "apple", acc: "#5B6B82", store: "appstore", url: APP_STORE, appleId: true },
   linux: { os: "linux", acc: "#E0872A", store: "linux", url: "https://github.com/Happ-proxy/happ-desktop/releases/latest/download/Happ.linux.x64.deb" },
 };
 
@@ -196,7 +211,21 @@ export interface Guide extends PlatformMeta {
 
 export const GUIDE_LABELS: Record<
   Locale,
-  { title: string; sub: string; eyebrow: string; time: string; easy: string; view: string; steps: string; trouble: string; backToGuides: string; connect: string }
+  {
+    title: string;
+    sub: string;
+    eyebrow: string;
+    time: string;
+    easy: string;
+    view: string;
+    steps: string;
+    trouble: string;
+    backToGuides: string;
+    connect: string;
+    get: string;
+    storeAlt: string;
+    appleId: string;
+  }
 > = {
   fa: {
     title: "راهنمای اتصال",
@@ -209,6 +238,10 @@ export const GUIDE_LABELS: Record<
     trouble: "عیب‌یابی",
     backToGuides: "همهٔ راهنماها",
     connect: "اتصال {name} با Happ",
+    get: "کانفیگت را بگیر",
+    storeAlt: "یا از Google Play",
+    appleId:
+      "اپ‌استور برای ایران فروشگاه ندارد؛ برای نصب Happ با یک Apple ID کشور دیگر (مثلاً آمریکا) وارد App Store شو.",
   },
   en: {
     title: "Setup guides",
@@ -221,21 +254,27 @@ export const GUIDE_LABELS: Record<
     trouble: "Troubleshooting",
     backToGuides: "All guides",
     connect: "{name} with Happ",
+    get: "Get your config",
+    storeAlt: "or from Google Play",
+    appleId:
+      "The App Store has no Iranian storefront — to install Happ, sign in with an Apple ID from another country (for example the US).",
   },
 };
 
 // Shared Happ flow — identical on every platform (the install source differs only via the button).
+// Step 2 links to the widget (it said «به صفحهٔ دریافت برو» and linked nowhere), and step 3 leads
+// with the one-tap Happ button under the config — the clipboard route is the fallback, not the path.
 const HAPP_STEPS: Record<Locale, GuideStep[]> = {
   fa: [
     { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا Happ را دریافت و نصب کنی، سپس اپ را باز کن." },
-    { t: "لینک کانفیگ را کپی کن", d: "به صفحهٔ دریافت برو، لوکیشن دلخواهت را بگیر و روی دکمهٔ «کپی» بزن تا لینک کانفیگ در کلیپ‌بورد قرار گیرد." },
-    { t: "کانفیگ را از کلیپ‌بورد اضافه کن", d: "در Happ روی دکمهٔ + (افزودن) بزن و «Add from clipboard» را انتخاب کن؛ کانفیگ از کلیپ‌بورد شناسایی و اضافه می‌شود." },
+    { t: "کانفیگت را بگیر", d: "در صفحهٔ اصلی لوکیشن دلخواهت را انتخاب کن و «دریافت کانفیگ» را بزن؛ کانفیگ همان لحظه ساخته می‌شود.", get: true },
+    { t: "کانفیگ را به Happ اضافه کن", d: "زیر کانفیگ روی دکمهٔ Happ بزن تا با یک لمس به اپ اضافه شود. اگر اپ باز نشد، «کپی» را بزن و در Happ از دکمهٔ + گزینهٔ «Add from clipboard» را انتخاب کن." },
     { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ بزرگ اتصال بزن؛ اگر اجازهٔ VPN خواسته شد آن را تأیید کن. چند لحظه بعد وصل می‌شوی." },
   ],
   en: [
     { t: "Install Happ", d: "Tap the button below to download and install Happ, then open the app." },
-    { t: "Copy the config link", d: "Go to the get page, claim a location and press the “Copy” button so the config link is on your clipboard." },
-    { t: "Add the config from clipboard", d: "In Happ tap the + (Add) button and choose “Add from clipboard”; the config is detected and added." },
+    { t: "Get your config", d: "On the home page, pick a location and tap “Get config” — your config is made on the spot.", get: true },
+    { t: "Add it to Happ", d: "Under the config, tap the Happ button to add it in one tap. If the app doesn’t open, tap “Copy”, then in Happ press + and choose “Add from clipboard”." },
     { t: "Connect", d: "Pick a location and tap the big connect button; approve the VPN permission if asked. You’ll be connected in a moment." },
   ],
 };
@@ -260,14 +299,14 @@ const NAMES: Record<Locale, Record<Platform, string>> = {
 // Download-button label lines (small top line + bold bottom line), per platform + locale.
 const DL: Record<Locale, Record<Platform, { top: string; bottom: string }>> = {
   fa: {
-    android: { top: "دریافت از", bottom: "Google Play" },
+    android: { top: "دانلود مستقیم", bottom: "فایل نصبی اندروید (APK)" },
     ios: { top: "دریافت از", bottom: "App Store" },
     windows: { top: "دانلود مستقیم", bottom: "نصب‌کنندهٔ ویندوز (.exe)" },
     macos: { top: "دریافت از", bottom: "App Store" },
     linux: { top: "دانلود مستقیم", bottom: "بستهٔ لینوکس (.deb)" },
   },
   en: {
-    android: { top: "Get it on", bottom: "Google Play" },
+    android: { top: "Direct download", bottom: "Android installer (APK)" },
     ios: { top: "Download on the", bottom: "App Store" },
     windows: { top: "Direct download", bottom: "Windows installer (.exe)" },
     macos: { top: "Download on the", bottom: "App Store" },

@@ -2,16 +2,21 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "@/lib/server";
-import { translator } from "@/lib/i18n";
+import { fill, translator } from "@/lib/i18n";
 import { fetchLanding, fetchLandings } from "@/lib/landing";
 import { breadcrumbLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
+import { StickyCta } from "@/components/StickyCta";
+import { locName } from "@/components/widget/flags";
 
 // SEO keyword landing — one URL per admin-authored `site_landing_pages` row («کانفیگ آلمان»,
 // «آیپی آمریکا», …). Server-rendered so crawlers get the full article + metadata without JS; the
 // claim widget rides along as the usual client island with the row's location pre-selected.
+// The widget comes FIRST, under the H1 (C-26): a visitor searching «کانفیگ آلمان» wants the config,
+// and after the article it sat ~1,000px down a phone — while every seeded body tells the reader it
+// is «بالای همین صفحه». The article follows, and a closing band sends a finished reader back up.
 // Request-time dynamic (getLocale reads cookies), so nothing here ever fetches during `next build`.
 //
 // hreflang is intentionally absent: one URL serves both locales by cookie, and same-URL alternates
@@ -60,6 +65,11 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
 
   // The served row may be the fa fallback inside en chrome — the article carries its own lang/dir.
   const rtl = row.locale === "fa";
+  // A location landing names its location in the widget and the closing band; an article landing
+  // keeps the widget's own title.
+  const loc = row.location_remark ? locName(row.location_remark) : null;
+  const widgetTitle = loc ? (fill(t("land_w_title"), { loc }) ?? undefined) : undefined;
+  const ctaHead = (loc && fill(t("land_cta_h"), { loc })) || t("land_cta_h_any");
 
   return (
     <section className="sec landing-page">
@@ -85,6 +95,14 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
           {row.heading ?? row.title}
         </h1>
 
+        <div className="landing-widget" id="get">
+          <ClaimWidget
+            locale={locale}
+            preselect={row.location_remark ?? undefined}
+            title={widgetTitle}
+          />
+        </div>
+
         {/* Admin-authored HTML, SANITISED by the backend on the way out (services/article_html):
             this origin is the admin panel's too, so a handler in a pasted body would run where the
             admin tokens live. Only bare article tags and vetted links survive. */}
@@ -95,8 +113,16 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
           dangerouslySetInnerHTML={{ __html: row.body }}
         />
 
-        <div className="landing-widget" id="get">
-          <ClaimWidget locale={locale} preselect={row.location_remark ?? undefined} />
+        {/* the reader who finished the article is a long way below the widget */}
+        <div className="land-cta">
+          <div className="land-cta-t">
+            <h2>{ctaHead}</h2>
+            <p>{t("land_cta_d")}</p>
+          </div>
+          <a className="ft-cta-btn" href="#get">
+            <Icon name="bolt" sw={2.2} />
+            {t("sticky_get")}
+          </a>
         </div>
 
         {related.length > 0 && (
@@ -112,6 +138,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
           </div>
         )}
       </div>
+      <StickyCta locale={locale} target=".landing-widget" />
     </section>
   );
 }

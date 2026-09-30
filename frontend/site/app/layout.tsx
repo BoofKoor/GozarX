@@ -5,7 +5,7 @@ import { copyrightYear, dir, type Locale } from "@/lib/i18n";
 import { getLocale } from "@/lib/server";
 import { GOOGLE_SITE_VERIFICATION, SITE_URL } from "@/lib/site";
 import { fetchSiteCopy } from "@/lib/siteCopy";
-import { fetchArticleLandings } from "@/lib/landing";
+import { fetchFeaturedArticles } from "@/lib/landing";
 import { organizationLd, webSiteLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
 import { Header } from "@/components/Header";
@@ -104,10 +104,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const { locale, theme } = await resolve();
   const fontFile = locale === "fa" ? "/fonts/YekanBakh-VF.woff2" : "/fonts/Inter-Variable-latin.woff2";
   // Article landings for the footer's link row — fetched here (server) and passed into the client
-  // Footer, so every page carries internal links to them. Degrades to [] with no backend. Same
-  // generous cap as the homepage band: every article landing should get a link, not a slug-ordered
-  // prefix of them (Next dedupes this fetch with the homepage's, so it costs one backend call).
-  const articles = await fetchArticleLandings(24);
+  // Footer, so every page carries internal links. Degrades to [] with no backend. Five featured,
+  // not the whole set: the same thirteen links on every page's footer read as a link farm, and
+  // /articles (linked beside them) now gives every article its internal link instead.
+  const articles = await fetchFeaturedArticles(5);
   return (
     <html lang={locale} dir={dir(locale)} data-theme={theme} suppressHydrationWarning>
       <body suppressHydrationWarning>
