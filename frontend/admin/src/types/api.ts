@@ -557,8 +557,12 @@ export interface DashboardUsage {
    *  not recording yet" are different facts and the empty state has to tell them apart. */
   recording_since: string | null;
   samples: number;
+  /** The panel's figure — everything it serves, the site and the operator's own squads included. */
   traffic: Metric;
+  /** The counter dropped inside the window, so `traffic` is a floor. */
+  traffic_counter_reset: boolean;
   peak_online: Metric;
+  /** Panel traffic per bot + site claimer: an upper bound, the panel carries own squads too. */
   bytes_per_user: Metric;
   nodes_online: number;
   mem_used: number;

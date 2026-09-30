@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { stillInFlight } from "@/lib/inflight";
 import type {
   ActivityHours,
   BroadcastAudience,
@@ -56,7 +57,7 @@ export function useBroadcastHistory() {
     queryFn: async () => (await api.get<BroadcastLog[]>("/admin/broadcast/history")).data,
     refetchInterval: (q) => {
       const rows = q.state.data ?? [];
-      if (rows.some((r) => r.status === "sending" || r.status === "queued")) return 5_000;
+      if (stillInFlight(rows)) return 5_000;
       if (rows.some((r) => r.status === "scheduled")) return 30_000;
       return false;
     },

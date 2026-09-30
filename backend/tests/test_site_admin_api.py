@@ -745,3 +745,28 @@ async def test_inbox_delete_removes_the_message(
     assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 204
     assert (await site_client.get("/api/admin/site/inbox/")).json()["total"] == 2
     assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 404
+
+
+class _DownArq:
+    async def enqueue_job(self, name: str, *args: object) -> None:
+        raise ConnectionError("redis is down")
+
+
+async def test_a_push_the_queue_refused_is_closed_not_left_queued(db_sessions, monkeypatch) -> None:
+    # Nothing would ever pick the row up: left on "queued", the history polled it forever.
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    await _subscribe(db_sessions, endpoint="e1")
+    app = _build_app(db_sessions, arq=_DownArq())
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        r = await c.post("/api/admin/site/push/", json={"title": "hi", "body": "b", "url": ""})
+        assert r.status_code == 503
+        history = (await c.get("/api/admin/site/push/history")).json()
+        assert [row["status"] for row in history] == ["failed"]
+    get_settings.cache_clear()

@@ -77,15 +77,18 @@ def zero_filled_daily_pairs(
     return [(day, *counts.get(day, (0, 0))) for day in day_keys(days)]
 
 
-def previous_window(days: int) -> tuple[datetime, datetime]:
-    """``(start, end)`` of the window immediately BEFORE the current ``days``-day one.
+def previous_window(days: int, now: datetime | None = None) -> tuple[datetime, datetime]:
+    """``(start, end)`` of the comparison window: the current one, shifted back ``days`` days.
 
     The comparison period must be exactly as long as the current one and must not overlap it, or a
-    "+30% vs last period" chip is meaningless. ``end`` is the current window's start, so the two are
-    adjacent half-open ranges.
+    "+30% vs last period" chip is meaningless. The current window runs from local midnight to NOW,
+    so its length depends on the hour — and the previous one used to be ``days`` FULL days: at 00:30
+    a perfectly flat series read about 14% down on every KPI, recovering only by midnight. Shifting
+    the whole current window back keeps the two the same length at any hour, and still disjoint.
     """
-    current_start = window_start(days)
-    return current_start - timedelta(days=max(days, 1)), current_start
+    now = now or datetime.now(UTC)
+    shift = timedelta(days=max(days, 1))
+    return window_start(days) - shift, now - shift
 
 
 def pct_change(current: float | None, previous: float | None) -> float | None:

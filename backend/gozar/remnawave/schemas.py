@@ -131,6 +131,17 @@ class Subscription(_Base):
     user: SubscriptionUser = Field(default_factory=SubscriptionUser)
 
 
+def _is_number(value: object) -> bool:
+    """True when ``value`` is a number, or a string that parses as one (the panel's counters)."""
+    if value is None or isinstance(value, bool):
+        return False
+    try:
+        float(value)  # type: ignore[arg-type]
+    except (TypeError, ValueError):
+        return False
+    return True
+
+
 def _coerce_int(value: object) -> int:
     """Best-effort int (the panel sends ``totalBytesLifetime`` as a STRING). Non-numeric -> 0."""
     try:
@@ -154,6 +165,10 @@ class SystemStats(_Base):
     total_users: int = 0
     nodes_online: int = 0
     total_traffic_bytes: int = 0
+    #: Whether the panel actually SENT a parsable lifetime counter. Coerced to 0 when it did not, a
+    #: missing field was recorded as a real reading of 0 — a fake reset, then the next genuine
+    #: reading counted the whole lifetime total again as one hour's traffic.
+    traffic_known: bool = True
     # panel host resources (for the system monitoring page)
     cpu_cores: int = 0
     mem_total: int = 0
@@ -181,6 +196,7 @@ class SystemStats(_Base):
             "total_users": users.get("totalUsers", 0),
             "nodes_online": nodes.get("totalOnline", 0),
             "total_traffic_bytes": _coerce_int(nodes.get("totalBytesLifetime", 0)),
+            "traffic_known": _is_number(nodes.get("totalBytesLifetime")),
             "cpu_cores": cpu.get("cores", 0),
             "mem_total": _coerce_int(memory.get("total", 0)),
             "mem_used": _coerce_int(memory.get("used", 0)),

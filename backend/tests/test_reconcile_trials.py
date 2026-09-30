@@ -225,3 +225,27 @@ async def test_a_pending_revoke_survives_a_panel_that_is_still_down(db_sessions)
     # Still pending: forgetting the handle would leave the account impossible to revoke.
     async with db_sessions() as session:
         assert (await UserRepository(session).get(9)).panel_username == "g9"
+
+
+async def test_a_sweep_that_runs_out_of_budget_resumes_where_it_stopped(
+    db_sessions, monkeypatch
+) -> None:
+    """Killed at arq's 300 s, the sweep restarted from the top every run, so the trials at the end
+    of the list were never checked. Now each run stops inside its budget and the next resumes."""
+    from gozar.worker import tasks
+
+    for tid in (1, 2, 3):
+        await _add(db_sessions, tid, f"g{tid}")
+    monkeypatch.setattr(tasks, "_RECONCILE_MAX_PER_RUN", 1)
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = FakePanel({"g1": "ACTIVE", "g2": "ACTIVE", "g3": "EXPIRED"})
+    ctx = {"sessionmaker": db_sessions, "panel": panel, "bot": FakeBot(), "cache_redis": redis}
+
+    for _ in range(3):
+        await reconcile_trials(ctx)
+
+    # One probe per run, each run carrying on after the last: the third run reaches user 3.
+    assert panel.probed == ["g1", "g2", "g3"]
+    assert await _status(db_sessions, 3) is UserStatus.available
+    await reconcile_trials(ctx)
+    assert panel.probed[-1] == "g1"  # a full pass wraps back to the start

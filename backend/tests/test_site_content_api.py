@@ -171,3 +171,14 @@ async def test_resetting_a_push_nudge_keeps_it_renderable(client: httpx.AsyncCli
     )
     default = DEFAULT_SITE_CONTENT["site_push_limited_body"]
     assert (r.json()["fa"], r.json()["en"]) == (default[Language.fa], default[Language.en])
+
+
+async def test_the_editor_offers_no_field_the_page_never_shows(client: httpx.AsyncClient) -> None:
+    # The seeded site_hero_title / site_hero_sub rows always win on the page, so an edit to these
+    # design keys "saved" and changed nothing a visitor could see.
+    keys = {i["key"] for i in (await client.get("/api/admin/site/content/")).json()}
+    for shadowed in ("hero_h1_a", "hero_h1_b", "hero_sub"):
+        assert content_key(shadowed) not in keys
+    assert {"site_hero_title", "site_hero_sub"} <= keys
+    r = await client.put(f"/api/admin/site/content/{content_key('hero_sub')}", json={"fa": "x"})
+    assert r.status_code == 404

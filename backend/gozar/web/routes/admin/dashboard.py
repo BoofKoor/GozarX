@@ -22,7 +22,9 @@ from fastapi import APIRouter, Query, Request
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.db.repositories.config_log import ConfigLogRepository
+from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.usage_sample import UsageSampleRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.services.panel_cache import (
@@ -516,11 +518,16 @@ class UsageOut(BaseModel):
     #: traffic in this window" apart from "we were not recording yet", which are different facts.
     recording_since: datetime | None
     samples: int
-    #: Bytes carried in the window, against the same-length window before it.
+    #: Bytes carried in the window, against the same-length window before it. The panel's
+    #: figure — everything it serves, the site and the operator's own squads included.
     traffic: Metric
+    #: The panel's counter went DOWN inside the window, so ``traffic`` is a floor: what crossed the
+    #: reset itself cannot be known.
+    traffic_counter_reset: bool = False
     #: Highest concurrent users seen in the window, against the previous window.
     peak_online: Metric
-    #: Bytes per distinct claimer in the window — the average person's consumption.
+    #: Panel traffic per distinct claimer in the window (bot + site). An upper bound on the average
+    #: person's consumption, since the panel also carries the operator's own squads.
     bytes_per_user: Metric
     nodes_online: int
     mem_used: int
@@ -547,24 +554,32 @@ async def dashboard_usage(
     logs = ConfigLogRepository(session)
 
     now = datetime.now(UTC)
-    traffic = await usage.traffic_between(since, now)
-    traffic_prev = await usage.traffic_between(prev_start, prev_end)
+    window_traffic = await usage.traffic_between(since, now)
+    traffic = window_traffic.bytes
+    traffic_prev = (await usage.traffic_between(prev_start, prev_end)).bytes
     peak = await usage.peak_online_between(since, now)
     peak_prev = await usage.peak_online_between(prev_start, prev_end)
 
     # Per-user consumption divides by the people who actually CLAIMED in the window, not by every
-    # registered user: a signup who never took a config carried no bytes, and counting them would
-    # make the average fall every time the bot gained a passer-by.
-    claimers = await logs.active_user_count_since(since)
-    claimers_prev = await logs.active_user_count_between(prev_start, prev_end)
+    # registered user: a signup who never took a config carried no bytes. The panel reports ONE
+    # traffic figure for everything it serves, so the claimers are the bot's AND the site's — the
+    # bot's alone put the site's traffic on the bot's users. It is still an upper bound (the panel
+    # also carries the operator's own squads), and the tab says so.
+    site_claims = SiteClaimRepository(session)
+    claimers = await logs.active_user_count_since(
+        since
+    ) + await site_claims.distinct_device_count_between(since, now)
+    claimers_prev = await logs.active_user_count_between(
+        prev_start, prev_end
+    ) + await site_claims.distinct_device_count_between(prev_start, prev_end)
     per_user = traffic / claimers if claimers else 0
     per_user_prev = traffic_prev / claimers_prev if claimers_prev else 0
 
     latest = await usage.latest()
-    # The first day in the series has no predecessor to difference against, so its traffic is
-    # structurally 0 — dropped rather than charted as a day the service sat idle.
-    rows = await usage.daily(since.date())
-    daily = [UsageDay(**asdict(r)) for r in rows[1:]] if len(rows) > 1 else []
+    # LOCAL days from the window's first. A partial first day (recording began inside the range)
+    # is left out by the repository rather than charted as a day the service sat idle.
+    rows = await usage.daily(since.astimezone(DISPLAY_TZ).date())
+    daily = [UsageDay(**asdict(r)) for r in rows]
 
     return UsageOut(
         range_days=window,
@@ -575,6 +590,7 @@ async def dashboard_usage(
             previous=float(traffic_prev),
             change_pct=pct_change(traffic, traffic_prev),
         ),
+        traffic_counter_reset=window_traffic.counter_reset,
         peak_online=Metric(
             value=float(peak), previous=float(peak_prev), change_pct=pct_change(peak, peak_prev)
         ),

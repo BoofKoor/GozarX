@@ -512,6 +512,57 @@ async def _clear_device_revoke(session: object, uuid: str, username: str) -> boo
     return True
 
 
+#: How long one reconcile run may spend probing, and at most how many trials it probes. arq kills a
+#: job at 300 s, and one bounded ``get_user`` per active trial for the live install's ~10,000 took
+#: far longer — every run died partway and the next started from the top again, so the trials at the
+#: end of the list were NEVER checked: no expiry reminder, and "active configs" never came down.
+_RECONCILE_BUDGET_SECONDS = 240.0
+_RECONCILE_MAX_PER_RUN = 5_000
+#: Where the last run stopped, per sweep; the next run resumes after it and wraps at the end.
+_RECONCILE_CURSOR_KEY = "reconcile:cursor:{sweep}"
+_RECONCILE_CURSOR_TTL = 24 * 3600
+
+
+def _resume_order(targets: list[tuple], cursor: str | None, *, numeric: bool) -> list[tuple]:
+    """``targets`` sorted by key, rotated to start just after ``cursor`` (a full pass ends back at
+    the start). A cursor that no longer matches anything simply starts from the top."""
+    ordered = sorted(targets, key=lambda t: t[0])
+    if cursor is None:
+        return ordered
+    try:
+        after = int(cursor) if numeric else cursor
+    except ValueError:
+        return ordered
+    split = next((i for i, t in enumerate(ordered) if t[0] > after), len(ordered))
+    return ordered[split:] + ordered[:split]
+
+
+class _SweepBudget:
+    """Stops a sweep before arq does, and remembers where — so the NEXT run carries on."""
+
+    def __init__(self, redis: object, sweep: str) -> None:
+        self._redis = redis
+        self._key = _RECONCILE_CURSOR_KEY.format(sweep=sweep)
+        self._deadline = time.monotonic() + _RECONCILE_BUDGET_SECONDS
+        self._done = 0
+
+    async def cursor(self) -> str | None:
+        raw = await self._redis.get(self._key)  # type: ignore[attr-defined]
+        return raw.decode() if isinstance(raw, bytes) else raw
+
+    def spent(self) -> bool:
+        return self._done >= _RECONCILE_MAX_PER_RUN or time.monotonic() >= self._deadline
+
+    def tick(self) -> None:
+        self._done += 1
+
+    async def stop_after(self, key: object) -> None:
+        await self._redis.set(self._key, str(key), ex=_RECONCILE_CURSOR_TTL)  # type: ignore[attr-defined]
+
+    async def finished(self) -> None:
+        await self._redis.delete(self._key)  # type: ignore[attr-defined]
+
+
 async def reconcile_trials(ctx: dict) -> None:
     """Fallback for the panel webhook: sweep ``active_config`` users and, for any whose panel
     account is TERMINAL (time-expired / disabled / missing), reset them to claimable and send the
@@ -545,8 +596,17 @@ async def reconcile_trials(ctx: dict) -> None:
     async with sessionmaker() as session:
         targets = await UserRepository(session).list_active_with_panel()
 
+    budget = _SweepBudget(redis, "bot")
+    ordered = _resume_order(targets, await budget.cursor(), numeric=True)
     healed = 0
-    for telegram_id, username in targets:
+    last: int | None = None
+    for telegram_id, username in ordered:
+        if budget.spent():
+            await budget.stop_after(last)
+            logger.info("reconcile_trials: budget spent; the next run resumes after %s", last)
+            break
+        budget.tick()
+        last = telegram_id
         try:
             # Authoritative user record (single call, no link resolution): its `status` is the
             # source of truth for whether the trial has ended.
@@ -590,6 +650,9 @@ async def reconcile_trials(ctx: dict) -> None:
         healed += 1
         await asyncio.sleep(0.02)
 
+    else:
+        await budget.finished()  # a full pass: the next run starts from the top
+
     if healed:
         logger.info("reconcile_trials: healed %d ended trial(s)", healed)
 
@@ -622,33 +685,41 @@ async def site_push_broadcast(
         subs = await PushSubscriptionRepository(session).list_active(locale)
         jobs = [(s.endpoint, push.subscription_info(s)) for s in subs]
         if log_id is not None:
-            await SitePushLogRepository(session).mark_sending(log_id)
+            # The audience actually walked, not the count taken at enqueue: subscriptions come and
+            # go in between, and "delivered" read above 100%.
+            await SitePushLogRepository(session).mark_sending(log_id, recipients=len(jobs))
             await session.commit()
 
     sent = failed = 0
     gone: list[str] = []
-    for endpoint, info in jobs:
-        outcome = await push.send_push(info, payload)
-        if outcome is push.PushOutcome.SENT:
-            sent += 1
-        elif outcome is push.PushOutcome.GONE:
-            gone.append(endpoint)
-        else:
-            failed += 1
-        await asyncio.sleep(push.PUSH_SEND_DELAY)
-
-    if gone:
-        async with sessionmaker() as session:
-            repo = PushSubscriptionRepository(session)
-            for endpoint in gone:
-                await repo.deactivate(endpoint)
-            await session.commit()
-    if log_id is not None:
-        async with sessionmaker() as session:
-            await SitePushLogRepository(session).complete(
-                log_id, sent=sent, failed=failed, pruned=len(gone)
-            )
-            await session.commit()
+    ok = False
+    try:
+        for endpoint, info in jobs:
+            outcome = await push.send_push(info, payload)
+            if outcome is push.PushOutcome.SENT:
+                sent += 1
+            elif outcome is push.PushOutcome.GONE:
+                gone.append(endpoint)
+            else:
+                failed += 1
+            await asyncio.sleep(push.PUSH_SEND_DELAY)
+        ok = True
+    finally:
+        # Whatever stopped the loop — the job's own timeout, a worker restart (a CancelledError,
+        # which `except Exception` never sees), a crash — the row says how far it got. It used to
+        # stay on "sending" forever and the history polled it every five seconds.
+        if gone:
+            async with sessionmaker() as session:
+                repo = PushSubscriptionRepository(session)
+                for endpoint in gone:
+                    await repo.deactivate(endpoint)
+                await session.commit()
+        if log_id is not None:
+            async with sessionmaker() as session:
+                await SitePushLogRepository(session).complete(
+                    log_id, sent=sent, failed=failed, pruned=len(gone), ok=ok
+                )
+                await session.commit()
     logger.info(
         "site_push_broadcast: sent %d · failed %d · pruned %d (of %d)",
         sent,
@@ -685,8 +756,17 @@ async def site_reconcile(ctx: dict) -> None:
     async with sessionmaker() as session:
         targets = await SiteDeviceRepository(session).list_active_with_panel()
 
+    budget = _SweepBudget(redis, "site")
+    ordered = _resume_order(targets, await budget.cursor(), numeric=False)
     healed = 0
-    for uuid, username in targets:
+    last: str | None = None
+    for uuid, username in ordered:
+        if budget.spent():
+            await budget.stop_after(last)
+            logger.info("site_reconcile: budget spent; the next run resumes after %s", last)
+            break
+        budget.tick()
+        last = uuid
         try:
             panel_user = await panel.get_user(username)  # None on 404 — the account is already gone
         except RemnawaveError:
@@ -722,6 +802,9 @@ async def site_reconcile(ctx: dict) -> None:
             )
         healed += 1
         await asyncio.sleep(0.02)
+
+    else:
+        await budget.finished()
 
     if healed:
         logger.info("site_reconcile: healed %d ended trial(s)", healed)
@@ -832,6 +915,11 @@ async def sample_usage(ctx: dict) -> None:
     stats = await ctx["panel"].system_stats()
     if stats is None:
         logger.warning("usage sample skipped: panel did not answer")
+        return
+    if not stats.traffic_known:
+        # Stored as 0 it would read as a counter reset, and the next real reading would then count
+        # the whole lifetime total as one hour's traffic. A skipped hour only widens one gap.
+        logger.warning("usage sample skipped: the panel sent no traffic counter")
         return
     try:
         async with ctx["sessionmaker"]() as session:

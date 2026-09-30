@@ -301,15 +301,23 @@ async def send_broadcast(
 
     owners = get_settings().owners
     progress_chat = owners[0] if owners else 0  # the worker pings this Telegram chat with progress
-    await arq.enqueue_job(
-        "broadcast_text",
-        body.text,
-        progress_chat,
-        body.languages,
-        body.only_active,
-        body.only_referrers,
-        buttons,
-        log.id,
-        _defer_until=when,
-    )
+    try:
+        await arq.enqueue_job(
+            "broadcast_text",
+            body.text,
+            progress_chat,
+            body.languages,
+            body.only_active,
+            body.only_referrers,
+            buttons,
+            log.id,
+            _defer_until=when,
+        )
+    except Exception as exc:
+        # Nothing will ever pick this row up: closed as failed, not left "queued" for good.
+        await BroadcastLogRepository(session).complete(
+            log.id, sent=0, failed=0, removed=0, ok=False
+        )
+        await session.commit()
+        raise HTTPException(503, "the broadcast queue is unreachable — nothing was sent") from exc
     return BroadcastOut(queued=True, recipients=recipients, log_id=log.id)

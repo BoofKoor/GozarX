@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { stillInFlight } from "@/lib/inflight";
 import type {
   SiteAnalytics,
   SiteDeviceAction,
@@ -294,10 +295,7 @@ export function useSitePushHistory() {
   return useQuery({
     queryKey: ["site-push-history"],
     queryFn: async () => (await api.get<SitePushLog[]>("/admin/site/push/history")).data,
-    refetchInterval: (query) =>
-      (query.state.data ?? []).some((r) => r.status === "queued" || r.status === "sending")
-        ? 5_000
-        : false,
+    refetchInterval: (query) => (stillInFlight(query.state.data) ? 5_000 : false),
   });
 }
 
