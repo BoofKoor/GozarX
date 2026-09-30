@@ -49,4 +49,38 @@ describe("LocationPicker", () => {
     expect(screen.getByDisplayValue("آلمان")).toBeInTheDocument();
     expect(screen.getByText(/از پنل گرفته نشد/)).toBeInTheDocument();
   });
+
+  it("names a saved location the squad dropped, and never sends it", async () => {
+    // The reported bug: stored names the squad stopped serving stayed in the selection with no
+    // checkbox to show them, so ticking a NEW location read "29 of 25" and the save came back 400.
+    const { onChange } = setup({
+      available: [...AVAILABLE, "Mexico"],
+      selected: ["Germany", "Finland", "Netherlands", "{{STATUS}} | GozarX", "🇩🇪 DE"],
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("{{STATUS}} | GozarX، 🇩🇪 DE");
+    expect(screen.getByText("۳ از ۴ انتخاب شده")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByLabelText("Mexico"));
+    // Everything ticked collapses to [] — "all of them", so a host added later appears by itself.
+    expect(onChange).toHaveBeenCalledWith([]);
+  });
+
+  it("matches a saved name the way the server does, not verbatim", () => {
+    setup({ selected: ["germany ", "Finland"] });
+    expect(screen.getByLabelText("Germany")).toBeChecked();
+    expect(screen.getByLabelText("Netherlands")).not.toBeChecked();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("keeps the last ticked location instead of saving 'none', which means all", async () => {
+    const { onChange } = setup({ selected: ["Germany"] });
+    await userEvent.click(screen.getByLabelText("Germany"));
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it("says a squad with no host has nothing to pick, instead of offering a box it would ignore", () => {
+    setup({ available: [] });
+    expect(screen.getByText(/هیچ host فعالی ندارد/)).toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+  });
 });

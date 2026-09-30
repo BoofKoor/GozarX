@@ -71,3 +71,33 @@ export function useConfirm(): ConfirmFn {
   if (!ctx) throw new Error("useConfirm must be used within a ConfirmProvider");
   return ctx;
 }
+
+/**
+ * `guard(dirty, then)` runs `then` — closing an editor, switching to another record — at once when
+ * nothing is unsaved, and only after the operator agrees to lose the edits when something is.
+ *
+ * Every editor used to discard silently: Esc or a click outside the FAQ and button editors, and a
+ * click on another key in Texts, threw away whatever had been typed, with no way back.
+ */
+export function useDiscardGuard(): (dirty: boolean, then: () => void) => Promise<void> {
+  const confirm = useConfirm();
+  const { t } = useI18n();
+  return useCallback(
+    async (dirty: boolean, then: () => void) => {
+      if (
+        dirty &&
+        !(await confirm({
+          title: t("ui.discard.title"),
+          message: t("ui.discard.message"),
+          confirmLabel: t("ui.discard.confirm"),
+          cancelLabel: t("ui.discard.keep"),
+          tone: "danger",
+        }))
+      ) {
+        return;
+      }
+      then();
+    },
+    [confirm, t],
+  );
+}

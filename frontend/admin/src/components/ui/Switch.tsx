@@ -44,8 +44,9 @@ export function Switch({
         <span
           className={clsx(
             "h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
-            // RTL: the "on" position is the LEFT end of the track.
-            checked ? "-translate-x-4" : "translate-x-0",
+            // "On" is the track's END edge, which is the left in RTL and the RIGHT in LTR. A bare
+            // `-translate-x-4` pushed the knob 16px out of its track on every English switch.
+            checked ? "ltr:translate-x-4 rtl:-translate-x-4" : "translate-x-0",
           )}
         />
       </span>

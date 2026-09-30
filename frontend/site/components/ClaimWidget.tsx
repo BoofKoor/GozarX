@@ -237,6 +237,11 @@ export function ClaimWidget({
           case "cooldown":
             await reload(); // S5, counting down to the instant the server named
             break;
+          case "blocked":
+            // Blocked while this tab sat on the picker: the fresh status says so (SB), where a
+            // generic error screen would invite a retry that can never succeed.
+            await reload();
+            break;
           case "location_unavailable":
             // The squad stopped serving what we offered (renamed/disabled host, or a tab left open).
             // Re-sync the picker and say so in place — the server deliberately refuses to
@@ -307,6 +312,9 @@ export function ClaimWidget({
   const fresh = !!result?.ok && !result.changed;
   const exhausted = !!status?.data_exhausted;
   const canClaim = status?.can_claim ?? true;
+  // The operator blocked this device: it gets nothing, whatever its cooldown says, so it is neither
+  // a cooldown to count down nor one to poll for.
+  const blocked = status?.status === "blocked";
   const pct =
     status && status.daily_limit_bytes > 0
       ? Math.round((status.usage_bytes / status.daily_limit_bytes) * 100)
@@ -323,7 +331,7 @@ export function ClaimWidget({
   const expiresAt = status
     ? clientDeadline(status.expires_at, status.server_time, statusAt, status.remaining)
     : null;
-  const inCooldown = !loading && !hasConfig && !canClaim;
+  const inCooldown = !loading && !hasConfig && !canClaim && !blocked;
   const cooldownOver = useExpired(inCooldown ? cooldownAt : null);
   useBackoffPoll(inCooldown && cooldownOver, poll);
   const configOver = useExpired(hasConfig ? expiresAt : null);
@@ -337,23 +345,26 @@ export function ClaimWidget({
     ? "loading"
     : offline || errState
       ? "s8"
-      : unavailable
-        ? "s7x"
-        : hasConfig && exhausted
-          ? "s6"
-          : hasConfig && link
-            ? revived
-              ? "rv"
-              : fresh
-                ? "s3"
-                : "s4"
-            : !canClaim
-              ? "s5"
-              : locs.length === 0
-                ? "s7"
-                : "s1";
+      : blocked
+        ? "sb"
+        : unavailable
+          ? "s7x"
+          : hasConfig && exhausted
+            ? "s6"
+            : hasConfig && link
+              ? revived
+                ? "rv"
+                : fresh
+                  ? "s3"
+                  : "s4"
+              : !canClaim
+                ? "s5"
+                : locs.length === 0
+                  ? "s7"
+                  : "s1";
   const viewTitle: Record<string, string> = {
     s8: t("err_title"),
+    sb: t("blk_title"),
     s7x: t("empty_title"),
     s7: t("empty_title"),
     s6: t("ex_title"),
@@ -565,6 +576,19 @@ export function ClaimWidget({
           )}
           {view === "s3" && !changeLoc && <Missions locale={locale} refCode={status?.ref_code ?? ""} />}
         </div>
+      </div>
+    );
+  }
+
+  // ---------- SB blocked by the operator ----------
+  else if (view === "sb") {
+    body = (
+      <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
+        <CenterState kind="err" title={t("blk_title")} sub={t("blk_sub")}>
+          <Link className="btn secondary" href="/contact">
+            {t("blk_contact")}
+          </Link>
+        </CenterState>
       </div>
     );
   }

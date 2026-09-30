@@ -9,8 +9,8 @@ stop. Needs the same setup as audit.py:
     python3 docs/website/audit/accept_b.py OUTDIR
 
 Writes OUTDIR/accept-b.json and one screenshot per check; exits non-zero if any check fails. The
-widget roots carry `data-view` (s1 · s3 · s4 · rv · s5 · s6 · s7 · s7x · s8) and an inline notice
-carries `data-notice`, so the checks name states, not copy.
+widget roots carry `data-view` (s1 · s3 · s4 · rv · s5 · s6 · s7 · s7x · s8 · sb) and an inline
+notice carries `data-notice`, so the checks name states, not copy.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ OUTCOMES = {
     "rate_limited_once": ("view", "s3"),  # refused once: the automatic retry succeeds
     "turnstile_failed": ("notice", "ts"),
     "panel_error": ("view", "s8"),
+    "blocked": ("view", "sb"),  # blocked while the picker sat open: not an error to retry
 }
 
 
@@ -98,6 +99,30 @@ def main() -> int:
         announced = page.evaluate("document.querySelector('.sr-only[role=status]')?.textContent")
         page.screenshot(path=str(out / "b-cooldown0-after.png"))
         record("cooldown0 → s1 within 60s", bool(got), seconds=round(secs, 1), announced=announced)
+        ctx.close()
+
+        # 2b) a blocked device: its own screen, no countdown to a claim that will never come, and
+        #     no reward missions that the server would refuse -----------------------------------
+        ctx = make_context(browser, "m390", "fa", "light", cookies={"mock_state": "blocked"})
+        page = ctx.new_page()
+        page.goto(BASE + "/status", wait_until="networkidle")
+        page.wait_for_selector("[data-view]:not([data-view='loading'])", timeout=8000)
+        page.wait_for_timeout(400)
+        probe = page.evaluate(
+            """() => ({
+              view: document.querySelector('[data-view]')?.dataset.view ?? null,
+              countdown: !!document.querySelector('[data-view] .cd'),
+              contact: document.querySelector('[data-view] a[href="/contact"]') !== null,
+              rewards: !!document.querySelector('.rewards-card'),
+            })"""
+        )
+        page.screenshot(path=str(out / "b-blocked.png"))
+        record(
+            "blocked → sb, no countdown, no missions",
+            probe["view"] == "sb" and not probe["countdown"] and probe["contact"]
+            and not probe["rewards"],
+            **probe,
+        )
         ctx.close()
 
         # 3) S6 celebrates a revive without a refresh (the page polls every 25s while visible) -----

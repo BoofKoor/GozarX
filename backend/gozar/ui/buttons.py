@@ -56,10 +56,23 @@ class Override:
     row: int | None = None
     position: int | None = None
     style: str | None = None
+    #: ``{screen: {"row", "position", "visible"}}`` — order and visibility for ONE screen, over the
+    #: key-wide values above (a key such as change_location sits on several screens).
+    screens: Mapping[str, Mapping[str, object]] = field(default_factory=dict)
+
+    def on(self, screen: str | None, name: str) -> object | None:
+        """The per-screen value ``name`` for ``screen``, or ``None`` when that screen has none."""
+        if screen is None:
+            return None
+        entry = self.screens.get(screen)
+        return None if entry is None else entry.get(name)
 
 
 class ButtonOverrides:
-    """Immutable per-update snapshot of all button overrides, keyed by i18n key."""
+    """Immutable per-update snapshot of all button overrides, keyed by i18n key.
+
+    Order and visibility take a ``screen``: a per-screen entry wins, else the key-wide value.
+    """
 
     __slots__ = ("_by_key",)
 
@@ -70,17 +83,26 @@ class ButtonOverrides:
         ov = self._by_key.get(key)
         return None if ov is None else ov.labels.get(lang.value)
 
-    def is_visible(self, key: str) -> bool:
+    def is_visible(self, key: str, screen: str | None = None) -> bool:
         ov = self._by_key.get(key)
-        return True if ov is None else ov.is_visible
+        if ov is None:
+            return True
+        per = ov.on(screen, "visible")
+        return ov.is_visible if per is None else bool(per)
 
-    def row(self, key: str) -> int | None:
+    def row(self, key: str, screen: str | None = None) -> int | None:
         ov = self._by_key.get(key)
-        return None if ov is None else ov.row
+        if ov is None:
+            return None
+        per = ov.on(screen, "row")
+        return ov.row if per is None else int(per)  # type: ignore[call-overload]
 
-    def position(self, key: str) -> int | None:
+    def position(self, key: str, screen: str | None = None) -> int | None:
         ov = self._by_key.get(key)
-        return None if ov is None else ov.position
+        if ov is None:
+            return None
+        per = ov.on(screen, "position")
+        return ov.position if per is None else int(per)  # type: ignore[call-overload]
 
     def style(self, key: str) -> str | None:
         ov = self._by_key.get(key)
@@ -94,7 +116,11 @@ def render_rows(
     lang: Language,
     structure: Sequence[Sequence[ButtonSpec]],
     buttons: ButtonOverrides | None = None,
+    *,
+    screen: str | None = None,
 ) -> InlineKeyboardMarkup:
+    """``screen`` names the keyboard being drawn, so a per-screen order/visibility applies to it
+    alone (``None`` reads only the key-wide values)."""
     ov = buttons if buttons is not None else EMPTY_OVERRIDES
 
     # (eff_row, eff_pos, stable_order, text, callback_data, url, style, icon_custom_emoji_id)
@@ -120,11 +146,11 @@ def render_rows(
                 order += 1
                 continue
 
-            if not ov.is_visible(spec.key):
+            if not ov.is_visible(spec.key, screen):
                 continue
-            eff_row = ov.row(spec.key)
+            eff_row = ov.row(spec.key, screen)
             eff_row = d_row if eff_row is None else eff_row
-            eff_pos = ov.position(spec.key)
+            eff_pos = ov.position(spec.key, screen)
             eff_pos = d_pos if eff_pos is None else eff_pos
             collected.append(
                 (eff_row, eff_pos, order, text, spec.callback_data, spec.url, style, icon)

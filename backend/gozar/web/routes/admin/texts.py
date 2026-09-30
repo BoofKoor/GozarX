@@ -9,12 +9,13 @@ from __future__ import annotations
 
 import re
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from gozar.db.models.enums import Language
 from gozar.db.repositories.content import ContentRepository
 from gozar.seed import DEFAULT_CONTENT
+from gozar.services import telegram_html
 from gozar.services.content import ContentService, render, sanitize_tokens
 from gozar.web.dependencies import AdminUser, DbSession
 
@@ -47,6 +48,17 @@ class PreviewIn(BaseModel):
 class PreviewOut(BaseModel):
     rendered: str
     missing_placeholders: list[str]
+
+
+#: The website's copy lives in the same ``content`` table under this prefix, and is edited in the
+#: website section. Listed here as well, every one of them counted as "untranslated" forever (the
+#: site has no Russian), inflated the count of bot messages, and saving one wrote an empty ``ru``
+#: row for a page that is never shown in Russian.
+_SITE_PREFIX = "site_"
+
+
+def _is_bot_key(key: str) -> bool:
+    return not key.startswith(_SITE_PREFIX)
 
 
 def _placeholders(*bodies: str) -> list[str]:
@@ -86,7 +98,7 @@ def _text_out(key: str, entry: dict) -> TextOut:
 @router.get("/", response_model=list[TextOut])
 async def list_texts(request: Request, session: DbSession, admin: AdminUser) -> list[TextOut]:
     by_key = await _rows_by_key(ContentRepository(session))
-    keys = sorted(set(by_key) | set(DEFAULT_CONTENT))
+    keys = sorted(k for k in set(by_key) | set(DEFAULT_CONTENT) if _is_bot_key(k))
     return [_text_out(key, by_key.get(key, {})) for key in keys]
 
 
@@ -94,13 +106,34 @@ async def list_texts(request: Request, session: DbSession, admin: AdminUser) -> 
 async def update_text(
     key: str, body: TextPatch, request: Request, session: DbSession, admin: AdminUser
 ) -> TextOut:
+    repo = ContentRepository(session)
+    existing = await _rows_by_key(repo)
+    # Only a key the bot knows: one nobody reads is copy nobody sees, and an arbitrary key over the
+    # column's 128 characters was a 500. A website key is edited in the website section.
+    if not _is_bot_key(key) or (key not in DEFAULT_CONTENT and key not in existing):
+        raise HTTPException(404, "no such bot text")
+    if body.fa is not None and not body.fa.strip():
+        # Persian is what every other language falls back to; a blank one leaves nothing to send.
+        raise HTTPException(422, "Persian text can't be empty: other languages fall back to it.")
+    for lang, text in (("fa", body.fa), ("en", body.en), ("ru", body.ru)):
+        # Every bot message is sent as HTML: markup Telegram cannot parse fails the WHOLE message,
+        # so this screen would stop answering for everyone who reads it in that language.
+        problem = telegram_html.check(text) if text else None
+        if problem is not None:
+            raise HTTPException(400, f"{lang}: {problem.message()}")
     content = ContentService(session, request.app.state.redis)
     # The editor saves all three languages together, so the per-key link_preview lands on every row.
     # sanitize_tokens strips any stray bidi/zero-width marks an RTL edit slipped inside ``{token}``.
+    stored = existing.get(key, {}).get("bodies", {})
     for lang, text in ((Language.fa, body.fa), (Language.en, body.en), (Language.ru, body.ru)):
-        if text is not None:
-            await content.set(key, lang, sanitize_tokens(text), body.link_preview)
-    by_key = await _rows_by_key(ContentRepository(session))
+        if text is None:
+            continue
+        # A blank translation that never existed stays absent (it falls back to Persian either way)
+        # rather than becoming an empty row; clearing one that DID exist is a real edit.
+        if not text.strip() and lang.value not in stored:
+            continue
+        await content.set(key, lang, sanitize_tokens(text), body.link_preview)
+    by_key = await _rows_by_key(repo)
     return _text_out(key, by_key.get(key, {}))
 
 

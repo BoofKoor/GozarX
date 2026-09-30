@@ -1,5 +1,14 @@
-import { Fingerprint, Gift, MonitorSmartphone, Network, Search, ShieldOff, X } from "lucide-react";
-import { type ReactNode, useDeferredValue, useEffect, useState } from "react";
+import {
+  AlertTriangle,
+  Fingerprint,
+  Gift,
+  MonitorSmartphone,
+  Network,
+  Search,
+  ShieldOff,
+  X,
+} from "lucide-react";
+import { type ReactNode, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -17,6 +26,7 @@ import { Segmented } from "@/components/ui/Segmented";
 import { Spinner } from "@/components/ui/Spinner";
 import { TBody, TD, TH, THead, TR, Table } from "@/components/ui/Table";
 import { useConfirm } from "@/components/ui/confirm";
+import { useDebouncedValue, useFilterPage } from "@/hooks/useDebouncedValue";
 import {
   useSiteDevice,
   useSiteDeviceAction,
@@ -64,20 +74,26 @@ export function SiteDevices() {
   ];
   const [params, setParams] = useSearchParams();
   const ipBucket = params.get("ip_bucket") ?? "";
-  const [search, setSearch] = useState("");
+  // Seeded from the URL, so a link from elsewhere lands FILTERED: the inbox's "sender device" link
+  // passed `?search=<uuid>`, and the page read the box from local state alone — every device, the
+  // sender's somewhere among them. `open` goes one step further and shows that device's record.
+  const [search, setSearch] = useState(() => params.get("search") ?? "");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<string | null>(null);
-  const deferredSearch = useDeferredValue(search);
-
-  useEffect(() => setPage(1), [status, deferredSearch, ipBucket]);
+  const [selected, setSelected] = useState<string | null>(() => params.get("open"));
+  // Debounced, not deferred — see `useDebouncedValue`; and the page belongs to the filters, so a
+  // changed filter asks for page 1 in the same render instead of one request later.
+  const settledSearch = useDebouncedValue(search.trim());
+  const filters = {
+    status: status || undefined,
+    search: settledSearch || undefined,
+    ip_bucket: ipBucket || undefined,
+  };
+  const [page, setPage] = useFilterPage(JSON.stringify(filters));
 
   const { data, isLoading, isError, refetch } = useSiteDevices({
     page,
     page_size: PAGE_SIZE,
-    status: status || undefined,
-    search: deferredSearch || undefined,
-    ip_bucket: ipBucket || undefined,
+    ...filters,
   });
 
   const total = data?.total ?? 0;
@@ -101,7 +117,15 @@ export function SiteDevices() {
             icon={<Search className="h-4 w-4" />}
             placeholder={t("sd.search")}
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              // Typed over, the link's filter is done: a reload should not bring it back.
+              if (params.has("search") || params.has("open")) {
+                params.delete("search");
+                params.delete("open");
+                setParams(params, { replace: true });
+              }
+            }}
           />
         </div>
         <Segmented
@@ -186,12 +210,23 @@ export function SiteDevices() {
                     )}
                   </TD>
                   <TD>
-                    <StatusBadge status={d.status} />
+                    <span className="flex items-center gap-1.5">
+                      <StatusBadge status={d.status} />
+                      {d.revoke_pending && (
+                        <AlertTriangle
+                          className="h-3.5 w-3.5 text-warning-700"
+                          role="img"
+                          aria-label={t("sd.row.revokePending")}
+                        />
+                      )}
+                    </span>
                   </TD>
                   <TD className="tabular-nums">{formatNumber(d.referral_count)}</TD>
                   <TD className="tabular-nums">{formatNumber(d.streak_count)}</TD>
+                  {/* From the claim LOG: `last_claim_at` is the cooldown anchor, which a reset
+                      clears — the column read "—" for devices that plainly had claims. */}
                   <TD className="whitespace-nowrap text-xs text-content-muted">
-                    {faDate(d.last_claim_at)}
+                    {faDate(d.last_claimed_at)}
                   </TD>
                   <TD className="font-mono text-xs text-content-muted" dir="ltr">
                     {d.ip_bucket ?? "—"}
@@ -212,11 +247,17 @@ export function SiteDevices() {
   );
 }
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
+/** One label/value line of the record. `ltr` is for a genuinely Latin value (a panel username, an
+ *  IP bucket); forced on EVERY value, it laid a Persian date «۲۶ تیر ۱۴۰۵» out as «۲۶ ۱۴۰۵ تیر». */
+function Row({ label, value, ltr = false }: { label: string; value: ReactNode; ltr?: boolean }) {
   return (
     <div className="flex justify-between gap-2 border-b border-line py-2 text-sm last:border-0">
       <span className="text-content-muted">{label}</span>
-      <span dir="ltr" className="text-content">
+      <span
+        dir={ltr ? "ltr" : undefined}
+        className={ltr ? "font-mono text-content" : "text-content"}
+        style={{ unicodeBidi: "isolate" }}
+      >
         {value}
       </span>
     </div>
@@ -225,7 +266,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
 
 function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) {
   const { t } = useI18n();
-  const { data: device, isLoading } = useSiteDevice(uuid);
+  const { data: device, isLoading, isError, refetch } = useSiteDevice(uuid);
   const { data: peers } = useSiteDevicePeers(uuid);
   const action = useSiteDeviceAction();
   const confirm = useConfirm();
@@ -240,8 +281,17 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
     action.mutate(
       { uuid, action: name },
       {
-        onSuccess: () => toast.success(t("sd.action.done")),
-        onError: (err) => toast.error(apiErrorMessage(err, t("sd.action.failed"))),
+        onSuccess: (updated) =>
+          updated.revoke_pending
+            ? toast.warning(t("sd.action.revokePending"))
+            : toast.success(t("sd.action.done")),
+        onError: (err) =>
+          toast.error(
+            apiErrorMessage(err, t("sd.action.failed"), {
+              409: t("sd.action.refusedState"),
+              502: t("sd.action.refusedPanel"),
+            }),
+          ),
       },
     );
   }
@@ -258,24 +308,44 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
         </Button>
       }
     >
-      {isLoading || !device ? (
+      {!device && isError ? (
+        // Failed, not slow: the spinner used to turn forever over a record that would never load.
+        <ErrorState compact onRetry={() => void refetch()} />
+      ) : isLoading || !device ? (
         <div className="flex justify-center py-10">
           <Spinner className="h-6 w-6 text-brand" />
         </div>
       ) : (
         <div className="space-y-5">
+          {device.revoke_pending && (
+            <p
+              role="status"
+              className="flex items-start gap-2 rounded-xl bg-warning-500/15 p-2.5 text-xs text-warning-700"
+            >
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+              {t("sd.detail.revokePending")}
+            </p>
+          )}
           <div>
             <Row label={t("sd.col.status")} value={<StatusBadge status={device.status} />} />
             <Row label={t("sd.detail.claims")} value={formatNumber(device.claims)} />
-            <Row label={t("sd.col.lastClaim")} value={faDate(device.last_claim_at)} />
+            <Row label={t("sd.col.lastClaim")} value={faDate(device.last_claimed_at)} />
             <Row
               label={t("sd.detail.rewardedInvites")}
               value={formatNumber(device.referral_count)}
             />
             <Row label={t("sd.detail.invited")} value={formatNumber(device.invited)} />
             <Row label={t("sd.detail.streak")} value={formatNumber(device.streak_count)} />
-            <Row label={t("sd.detail.panelAccount")} value={device.site_panel_username ?? "—"} />
-            <Row label={t("sd.col.ip")} value={device.ip_bucket ?? "—"} />
+            <Row
+              label={t("sd.detail.panelAccount")}
+              value={device.site_panel_username ?? "—"}
+              ltr={device.site_panel_username != null}
+            />
+            <Row
+              label={t("sd.col.ip")}
+              value={device.ip_bucket ?? "—"}
+              ltr={device.ip_bucket != null}
+            />
             <Row label={t("sd.col.firstSeen")} value={faDate(device.created_at)} />
           </div>
 
@@ -361,9 +431,17 @@ function DeviceDrawer({ uuid, onClose }: { uuid: string; onClose: () => void }) 
                 {t("sd.action.block")}
               </Button>
             )}
-            <Button variant="outline" onClick={() => run("reset")} loading={action.isPending}>
-              {t("sd.action.reset")}
-            </Button>
+            {/* Not offered to a blocked device: it used to lift the block as a side effect. And
+                on an active one it deletes a working config, so it asks first. */}
+            {device.status !== "blocked" && (
+              <Button
+                variant="outline"
+                onClick={() => run("reset", t("sd.action.resetConfirm"))}
+                loading={action.isPending}
+              >
+                {t("sd.action.reset")}
+              </Button>
+            )}
           </div>
         </div>
       )}

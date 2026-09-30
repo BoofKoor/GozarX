@@ -18,6 +18,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from gozar.bot import callbacks as cb
 from gozar.db.models.enums import Language
 from gozar.ui.buttons import ButtonOverrides, ButtonSpec, render_rows
+from gozar.ui.catalogue import Screen
 from gozar.ui.labels import LANGUAGE_NAMES
 
 # Default locations per picker page (the runtime `configs_per_page` setting overrides it); longer
@@ -62,7 +63,7 @@ def main_menu_keyboard(
             ButtonSpec(key="menu_settings", callback_data=cb.MENU_SETTINGS),
         ],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.main_menu)
 
 
 def back_keyboard(lang: Language, buttons: ButtonOverrides | None = None) -> InlineKeyboardMarkup:
@@ -75,7 +76,7 @@ def help_keyboard(lang: Language, buttons: ButtonOverrides | None = None) -> Inl
         [ButtonSpec(key="apps", callback_data=cb.MENU_APPS)],
         [ButtonSpec(key="back", callback_data=cb.MENU_HOME)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.help)
 
 
 def landing_keyboard(
@@ -93,7 +94,7 @@ def landing_keyboard(
         [ButtonSpec(key="increase_traffic", callback_data=cb.MENU_INVITE)],
         [ButtonSpec(key="back", callback_data=cb.MENU_HOME)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.landing)
 
 
 def location_keyboard(
@@ -133,7 +134,7 @@ def location_keyboard(
         structure.append(nav_row)  # Prev/Next share one row
 
     structure.append([ButtonSpec(key="back", callback_data=cb.MENU_CONFIG)])  # back to the landing
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.location)
 
 
 def config_delivered_keyboard(
@@ -148,7 +149,7 @@ def config_delivered_keyboard(
         change_row,
         [ButtonSpec(key="show_menu", callback_data=cb.MENU_HOME_NEW)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.config_delivered)
 
 
 def status_keyboard(
@@ -158,7 +159,7 @@ def status_keyboard(
     if active:
         structure.append([ButtonSpec(key="change_location", callback_data=cb.CONFIG_CHANGE)])
     structure.append([ButtonSpec(key="back", callback_data=cb.MENU_HOME)])
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.status)
 
 
 def settings_keyboard(
@@ -174,7 +175,7 @@ def settings_keyboard(
         [ButtonSpec(key="settings_language", callback_data=cb.SETTINGS_LANGUAGE), reminder],
         [ButtonSpec(key="back", callback_data=cb.MENU_HOME)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.settings)
 
 
 def invite_keyboard(
@@ -186,7 +187,7 @@ def invite_keyboard(
             [ButtonSpec(key="invite_share", url=f"https://t.me/share/url?url={quote(link)}")]
         )
     structure.append([ButtonSpec(key="back", callback_data=cb.MENU_HOME)])
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.invite)
 
 
 # --- Admin panel (owner-only) keyboards ---------------------------------------------------------
@@ -208,13 +209,18 @@ def admin_menu_keyboard(
         ],
         [ButtonSpec(key="admin_close", callback_data=cb.ADMIN_CLOSE)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.admin_menu)
 
 
 def admin_back_keyboard(
     lang: Language, buttons: ButtonOverrides | None = None
 ) -> InlineKeyboardMarkup:
-    return render_rows(lang, [[ButtonSpec(key="admin_back", callback_data=cb.ADMIN_MENU)]], buttons)
+    return render_rows(
+        lang,
+        [[ButtonSpec(key="admin_back", callback_data=cb.ADMIN_MENU)]],
+        buttons,
+        screen=Screen.admin_back,
+    )
 
 
 def confirm_keyboard(
@@ -234,7 +240,7 @@ def confirm_keyboard(
             ButtonSpec(key="admin_cancel", callback_data=cancel_cb),
         ]
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.confirm)
 
 
 def admin_user_card_keyboard(
@@ -255,4 +261,4 @@ def admin_user_card_keyboard(
         ],
         [ButtonSpec(key="admin_back", callback_data=cb.ADMIN_MENU)],
     ]
-    return render_rows(lang, structure, buttons)
+    return render_rows(lang, structure, buttons, screen=Screen.admin_user_card)

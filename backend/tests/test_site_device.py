@@ -145,3 +145,19 @@ async def test_endpoint_reset_cookieless_does_not_clear(env) -> None:
     resp = await client.post("/api/public/device/reset")
     assert resp.status_code == 200 and resp.json()["ok"] is True
     assert not resp.headers.get_list("set-cookie")
+
+
+async def test_endpoint_reset_keeps_a_blocked_devices_row(env, db_sessions) -> None:
+    # The reset hard-deletes the row — and with it the fingerprint, IP bucket and claim history the
+    # block exists to keep. A blocked device gets a fresh cookie, but its record stays.
+    client, _app = env
+    handle = (await client.get("/api/public/status")).json()["ref_code"]
+    async with db_sessions() as s:
+        device = await s.scalar(select(SiteDevice).where(SiteDevice.handle == handle))
+        device.status = SiteDeviceStatus.blocked
+        await s.commit()
+    resp = await client.post("/api/public/device/reset")
+    assert resp.status_code == 200 and resp.json()["ok"] is True
+    async with db_sessions() as s:
+        kept = await s.scalar(select(SiteDevice).where(SiteDevice.handle == handle))
+    assert kept is not None and kept.status == SiteDeviceStatus.blocked

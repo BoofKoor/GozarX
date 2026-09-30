@@ -29,11 +29,13 @@ export function useResetButton() {
   });
 }
 
+/** Arrange ONE screen. The screen travels with the order: a key sits on several screens, and an
+ *  order sent without one applied to every screen that key appears on. */
 export function useReorderButtons() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (items: ReorderItem[]) =>
-      (await api.post<ButtonConfig[]>("/admin/buttons/reorder", { items })).data,
+    mutationFn: async ({ screen, items }: { screen: string; items: ReorderItem[] }) =>
+      (await api.post<ButtonConfig[]>("/admin/buttons/reorder", { screen, items })).data,
     onSuccess: (data) => qc.setQueryData(["buttons"], data),
   });
 }

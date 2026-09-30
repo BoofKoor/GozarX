@@ -71,9 +71,10 @@ export default async function HomePage({
       {/* HERO — on a phone the claim button has to be on the first screen: a one-to-two-line
           subtitle there (the full one returns from 600px), the trust chips AFTER the widget, and a
           compact widget head. DOM order is copy → widget → chips; the desktop grid puts the chips
-          back under the copy. The phone's subtitle is its own key (`hero_sub_short`, editable
-          beside `hero_sub` in the site-copy editor): an edited `site_hero_sub` is four lines on a
-          phone, which is exactly what pushed the button off the screen. */}
+          back under the copy. The phone's subtitle is its own key (`hero_sub_short`, in the
+          site-copy editor's hero group; the long one is the `site_hero_sub` row): an edited
+          `site_hero_sub` is four lines on a phone, which is what pushed the button off the
+          screen. */}
       <section className="hero" id="hero">
         <div className="container hero-inner">
           <div className="hero-copy">

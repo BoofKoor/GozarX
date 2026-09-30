@@ -45,11 +45,40 @@ class BroadcastLogRepository(BaseRepository):
     async def get(self, id_: int) -> BroadcastLog | None:
         return await self.session.get(BroadcastLog, id_)
 
-    async def mark_sending(self, id_: int) -> None:
+    async def mark_sending(self, id_: int, *, recipients: int | None = None) -> None:
+        """Flip to ``sending``. ``recipients`` is the audience the worker actually walks — for a
+        scheduled send it can differ from the count taken hours earlier at enqueue time, and the
+        history's ``sent / recipients`` must not be able to read above 100%."""
         row = await self.get(id_)
         if row is not None:
             row.status = BroadcastStatus.sending
+            if recipients is not None:
+                row.recipients = recipients
             await self.session.flush()
+
+    async def record_progress(self, id_: int, *, sent: int, failed: int, removed: int) -> None:
+        """Persist the running counts while a fan-out is in flight, so an interrupted send still
+        says how far it got instead of reading 0/0/0."""
+        row = await self.get(id_)
+        if row is not None:
+            row.sent, row.failed, row.removed = sent, failed, removed
+            await self.session.flush()
+
+    async def fail_interrupted(self) -> int:
+        """Close every row still marked ``sending`` — run at worker start, when nothing can be
+        sending: a row in that state belongs to a worker that died mid-send (a SIGKILL skips the
+        job's own bookkeeping). Its last recorded counts are kept."""
+        rows = (
+            await self.session.scalars(
+                select(BroadcastLog).where(BroadcastLog.status == BroadcastStatus.sending)
+            )
+        ).all()
+        now = datetime.now(UTC)
+        for row in rows:
+            row.status = BroadcastStatus.failed
+            row.finished_at = now
+        await self.session.flush()
+        return len(rows)
 
     async def complete(
         self, id_: int, *, sent: int, failed: int, removed: int, ok: bool = True

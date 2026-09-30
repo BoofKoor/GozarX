@@ -35,6 +35,8 @@ logger = logging.getLogger("gozar.services.push")
 _GONE_STATUSES = {404, 410}
 # ~20 sends/s — a courteous ceiling for a bulk broadcast fan-out (mirrors the bot's send throttle).
 PUSH_SEND_DELAY = 0.05
+#: Seconds one push-service request may take before it counts as failed (and is kept, not pruned).
+PUSH_SEND_TIMEOUT = 10.0
 
 # Real Web Push service hosts. A stored endpoint is POSTed server-side (by the sender + broadcast),
 # so anything outside these is an SSRF into the internal network / metadata → reject it. Covers
@@ -103,6 +105,9 @@ async def send_push(info: dict[str, object], payload_json: str) -> PushOutcome:
             vapid_private_key=private_key,
             vapid_claims={"sub": subject},
             ttl=600,
+            # pywebpush defaults to NO timeout: one push service that accepted the connection and
+            # never answered held the whole fan-out until the job's six-hour ceiling.
+            timeout=PUSH_SEND_TIMEOUT,
         )
 
     try:

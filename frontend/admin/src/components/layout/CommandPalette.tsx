@@ -149,6 +149,14 @@ export function CommandPalette({
           }}
           placeholder={t("palette.placeholder")}
           aria-label={t("palette.aria")}
+          // The combobox pattern: focus STAYS in the input while the arrows move a highlight, so
+          // the highlight has to be announced by reference. Without these a screen reader heard
+          // nothing at all as the operator arrowed through the list.
+          role="combobox"
+          aria-expanded={visible.length > 0}
+          aria-controls="cmdk-list"
+          aria-autocomplete="list"
+          aria-activedescendant={visible.length > 0 ? optionId(cursor) : undefined}
           className="w-full bg-transparent py-3.5 text-sm text-content outline-none placeholder:text-content-subtle"
         />
         <kbd className="hidden shrink-0 rounded border border-line px-1.5 py-0.5 text-[10px] text-content-subtle sm:block">
@@ -159,21 +167,36 @@ export function CommandPalette({
       {visible.length === 0 ? (
         <p className="px-4 py-8 text-center text-sm text-content-muted">{t("palette.empty")}</p>
       ) : (
-        <ul ref={listRef} role="listbox" className="scrollbar-thin max-h-80 overflow-y-auto p-2">
+        <ul
+          ref={listRef}
+          id="cmdk-list"
+          role="listbox"
+          aria-label={t("palette.aria")}
+          className="scrollbar-thin max-h-80 overflow-y-auto p-2"
+        >
           {visible.map((cmd, i) => {
             const header = cmd.group !== lastGroup ? cmd.group : null;
             lastGroup = cmd.group;
             const active = i === cursor;
             return (
-              <li key={cmd.id}>
+              // `presentation`: a listbox OWNS options, and an `<li>` in between broke that link —
+              // the options were no longer the listbox's to announce.
+              <li key={cmd.id} role="presentation">
                 {header && (
-                  <div className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-content-subtle">
+                  <div
+                    role="presentation"
+                    className="px-2 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-content-subtle"
+                  >
                     {header}
                   </div>
                 )}
                 <button
                   type="button"
+                  id={optionId(i)}
                   role="option"
+                  // Out of the tab order: focus lives in the input, and Tab should leave the dialog
+                  // rather than walk twenty options.
+                  tabIndex={-1}
                   aria-selected={active}
                   data-active={active}
                   onMouseEnter={() => setCursor(i)}
@@ -203,12 +226,29 @@ export function CommandPalette({
   );
 }
 
-/** Binds ⌘K / Ctrl+K globally. Ignored while typing so it never fights with a text field. */
+const optionId = (i: number) => `cmdk-option-${i}`;
+
+/** Whether keyboard focus is somewhere the user is TYPING. */
+function isTyping(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT";
+}
+
+/**
+ * Binds ⌘K / Ctrl+K globally — and it is ignored while typing, so it never fights a text field.
+ *
+ * The comment always said so; the handler never checked. Ctrl+K then Enter inside the broadcast
+ * composer opened the palette, picked its first entry and navigated to the dashboard, taking the
+ * unsaved message with it.
+ */
 export function useCommandPaletteShortcut(onOpen: () => void): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "k" && e.key !== "K") return;
       if (!e.metaKey && !e.ctrlKey) return;
+      if (isTyping(e.target)) return;
       e.preventDefault();
       onOpen();
     };

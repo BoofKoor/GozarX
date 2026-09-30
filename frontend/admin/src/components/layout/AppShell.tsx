@@ -1,11 +1,12 @@
 import { clsx } from "clsx";
-import { useCallback, useState } from "react";
+import { Suspense, useCallback, useState } from "react";
 import { Outlet } from "react-router-dom";
 
 import { useI18n } from "@/i18n";
 
 import { CommandPalette, useCommandPaletteShortcut } from "./CommandPalette";
 import { ChromeProvider, SIDE_STACK, SIDE_WIDTH, useChrome } from "./chrome";
+import { RouteFallback } from "./RouteFallback";
 import { MobileNav, Sidebar } from "./Sidebar";
 import { TopBar } from "./TopBar";
 
@@ -52,7 +53,11 @@ function Shell() {
             className="scrollbar-thin flex-1 overflow-y-auto px-4 pb-6 pt-3 outline-none sm:px-5"
           >
             <div className="animate-fade-in mx-auto w-full max-w-[1180px]">
-              <Outlet />
+              {/* The page's own boundary: a page chunk still downloading shows a spinner HERE, in
+                  the well, while the rail and the top bar stay where they are. */}
+              <Suspense fallback={<RouteFallback />}>
+                <Outlet />
+              </Suspense>
             </div>
           </main>
         </div>

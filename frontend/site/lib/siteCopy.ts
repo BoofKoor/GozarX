@@ -27,6 +27,12 @@ const EMPTY: SiteCopy = {
   overrides: {},
 };
 
+/** A blank string is "unset", not a value: every caller falls back with `??`, which keeps "". An
+ *  older backend returned a cleared row verbatim, and the page shipped an empty <title>. */
+function text(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value : null;
+}
+
 export async function fetchSiteCopy(locale: Locale): Promise<SiteCopy> {
   try {
     const res = await fetch(`${BACKEND}/api/public/site-copy?locale=${locale}`, {
@@ -34,8 +40,14 @@ export async function fetchSiteCopy(locale: Locale): Promise<SiteCopy> {
     });
     if (!res.ok) return EMPTY;
     const data = (await res.json()) as Partial<SiteCopy>;
-    // An older backend has no `overrides` field; default it rather than letting `undefined` through.
-    return { ...EMPTY, ...data, overrides: data.overrides ?? {} };
+    return {
+      hero_title: text(data.hero_title),
+      hero_sub: text(data.hero_sub),
+      meta_title: text(data.meta_title),
+      meta_description: text(data.meta_description),
+      // An older backend has no `overrides` field; default it rather than letting `undefined` through.
+      overrides: data.overrides ?? {},
+    };
   } catch {
     return EMPTY;
   }

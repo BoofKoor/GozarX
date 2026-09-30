@@ -16,10 +16,12 @@ import httpx
 import pytest_asyncio
 from httpx import ASGITransport
 
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.config.settings import get_settings
 from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice
+from gozar.db.models.site_device_day import SiteDeviceDay
 from gozar.db.models.site_message import SiteMessage
 from gozar.db.models.site_reward import SiteReward
 from gozar.web.app import create_app
@@ -27,6 +29,11 @@ from gozar.web.auth.jwt import create_access
 
 _SECRET = "test-admin-secret-0123456789-abcdef-ghijkl"  # >=32 bytes for PyJWT
 _DAY = timedelta(days=1)
+
+
+def _visit(uuid: str, when: datetime) -> SiteDeviceDay:
+    """A recorded visit, as ``touch_seen`` writes it: the local day, and the first request in it."""
+    return SiteDeviceDay(device_uuid=uuid, day=when.astimezone(DISPLAY_TZ).date(), first_at=when)
 
 
 class _StubPanel:
@@ -85,12 +92,23 @@ async def test_site_setup_derives_locations_from_squad(site_client: httpx.AsyncC
         "Germany",
         "Finland",
     ]
-    # empty allowlist -> derive every squad location by NAME
+    # No explicit allowlist -> ALL of the squad's locations, stored as [] so hosts added later
+    # appear on their own (a snapshot went stale and blocked every later save with a 400).
     r = await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
     assert r.status_code == 200 and r.json()["completed"] is True
     settings = (await site_client.get("/api/admin/site/settings/")).json()
     assert settings["trial_squad"] == "sq-1"
-    assert settings["locations"] == ["Germany", "Finland"]
+    assert settings["locations"] == []
+
+
+async def test_site_setup_refuses_a_squad_the_panel_no_longer_has(
+    site_client: httpx.AsyncClient,
+) -> None:
+    # A deleted squad used to be stored (an unknown squad read as "nothing to check"), and the site
+    # could no longer provision anyone.
+    r = await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-gone"})
+    assert r.status_code == 400
+    assert (await site_client.get("/api/admin/site/setup/status")).json()["completed"] is False
 
 
 async def test_site_setup_respects_explicit_locations(site_client: httpx.AsyncClient) -> None:
@@ -106,19 +124,29 @@ async def test_site_settings_update_and_refresh_locations(site_client: httpx.Asy
     )
     assert r.status_code == 200
     assert r.json()["daily_limit_mb"] == 2048 and r.json()["streak_days"] == 5
-    # negatives are clamped to 0
-    assert (
-        await site_client.put("/api/admin/site/settings/", json={"referral_reward_mb": -9})
-    ).json()["referral_reward_mb"] == 0
-    # trial_hours is floored to 1 (never 0)
-    assert (await site_client.put("/api/admin/site/settings/", json={"trial_hours": 0})).json()[
-        "trial_hours"
-    ] == 1
+    # Out of range is refused with a 422 naming the field, never silently floored.
+    for bad in ({"referral_reward_mb": -9}, {"trial_hours": 0}, {"daily_limit_mb": 0}):
+        r = await site_client.put("/api/admin/site/settings/", json=bad)
+        assert r.status_code == 422, bad
     # refresh-locations needs a squad; 400 before setup
     assert (await site_client.post("/api/admin/site/settings/refresh-locations")).status_code == 400
-    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    await site_client.post(
+        "/api/admin/site/setup/", json={"trial_squad": "sq-1", "locations": ["Germany"]}
+    )
+    # Refresh = offer every location the squad serves, from now on (not a snapshot of today's).
     r = await site_client.post("/api/admin/site/settings/refresh-locations")
-    assert r.status_code == 200 and r.json()["locations"] == ["Germany", "Finland"]
+    assert r.status_code == 200 and r.json()["locations"] == []
+
+
+async def test_site_popular_is_checked_against_the_squad_when_all_are_offered(
+    site_client: httpx.AsyncClient,
+) -> None:
+    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    ok = await site_client.put("/api/admin/site/settings/", json={"popular_location": "Finland"})
+    assert ok.status_code == 200 and ok.json()["popular_location"] == "Finland"
+    # With [] ("all of them") there used to be nothing to check a stale star against.
+    bad = await site_client.put("/api/admin/site/settings/", json={"popular_location": "Mars"})
+    assert bad.status_code == 400
 
 
 async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:
@@ -156,6 +184,35 @@ async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:
     # delete -> 204 then 404
     assert (await site_client.delete(f"/api/admin/site/pages/{page_id}")).status_code == 204
     assert (await site_client.get(f"/api/admin/site/pages/{page_id}")).status_code == 404
+
+
+async def test_a_landing_preselects_only_a_location_the_site_offers(
+    site_client: httpx.AsyncClient,
+) -> None:
+    """The fifth writer of a location name. Free text, a typo — or a name the squad stopped
+    serving — saved fine and the landing's widget then preselected nothing."""
+    await site_client.post("/api/admin/site/setup/", json={"trial_squad": "sq-1"})
+    base = {"slug": "de-config", "locale": "fa", "title": "آلمان"}
+    ok = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "location_remark": "Germany"}
+    )
+    assert ok.status_code == 201
+    bad = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "slug": "mars", "location_remark": "Mars"}
+    )
+    assert bad.status_code == 400 and "Mars" in bad.json()["detail"]
+    # Blank is "no preselection" and is always fine.
+    blank = await site_client.post(
+        "/api/admin/site/pages/", json={**base, "slug": "none", "location_remark": None}
+    )
+    assert blank.status_code == 201
+    # Changing the page's COPY does not re-check an unchanged location.
+    page_id = ok.json()["id"]
+    upd = await site_client.put(
+        f"/api/admin/site/pages/{page_id}",
+        json={**base, "title": "عنوان نو", "location_remark": "Germany"},
+    )
+    assert upd.status_code == 200
 
 
 async def test_inbox_list_and_mark_read(site_client: httpx.AsyncClient, db_sessions) -> None:
@@ -399,7 +456,18 @@ async def test_site_stats_compares_against_the_previous_window(
         for n, uuid in ((9, "p1"), (10, "p2")):
             when = now - timedelta(days=n)
             s.add(SiteDevice(uuid=uuid, created_at=when, last_seen_at=when))
+        # The visit record has been running since before both windows.
+        month_ago = now - timedelta(days=30)
+        s.add(SiteDevice(uuid="early", created_at=month_ago, last_seen_at=month_ago))
         await s.flush()
+        s.add_all(
+            [
+                _visit("early", month_ago),
+                _visit("p1", now - timedelta(days=9)),
+                _visit("p2", now - timedelta(days=10)),
+                _visit("cur", now - _DAY),
+            ]
+        )
         s.add(SiteClaim(device_uuid="cur", location="Germany", created_at=now - _DAY))
         await s.commit()
 
@@ -407,6 +475,48 @@ async def test_site_stats_compares_against_the_previous_window(
     assert body["visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
     # change_pct is None (not 0.0) with no baseline, so a launch week reads as "new", not "flat".
     assert body["claimers"] == {"value": 1, "previous": 0, "change_pct": None}
+
+
+async def test_a_loyal_visitor_is_counted_in_the_previous_window_too(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """A device that visits every day was 0 last week and a cliff today.
+
+    ``last_seen_at`` holds only the LATEST visit, so a past window counted just the devices that
+    never came back, and the daily series put each device on its last day alone.
+    """
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="loyal", created_at=now - timedelta(days=40), last_seen_at=now))
+        await s.flush()
+        s.add_all([_visit("loyal", now - timedelta(days=n)) for n in range(40)])
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"] == {"value": 1, "previous": 1, "change_pct": 0.0}
+    assert body["returning_visitors"] == {"value": 1, "previous": 1, "change_pct": 0.0}
+    assert [p["count"] for p in body["visitors_series"]] == [1] * 7
+
+
+async def test_visits_before_the_record_began_are_unknown_not_zero(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    now = datetime.now(UTC)
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="d", created_at=now - timedelta(days=3), last_seen_at=now))
+        await s.flush()
+        # The recorder shipped two days ago.
+        s.add_all([_visit("d", now - timedelta(days=2)), _visit("d", now)])
+        await s.commit()
+
+    body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
+    assert body["visitors"] == {"value": 1, "previous": None, "change_pct": None}
+    assert body["returning_visitors"]["previous"] is None
+    assert body["conversion_pct_prev"] is None
+    assert body["visits_recorded_since"] is not None
+    counts = [p["count"] for p in body["visitors_series"]]
+    # The day the record began is partial, so it and every day before it have no figure at all.
+    assert counts == [None] * 5 + [0, 1]
 
 
 async def test_site_stats_splits_live_from_stale_active_configs(
@@ -480,7 +590,8 @@ async def test_site_analytics_aggregations(site_client: httpx.AsyncClient, db_se
     assert body["stickiness_pct"] == 100.0
     econ = {r["type"]: (r["grants"], r["total_mb"]) for r in body["reward_economy"]}
     assert econ == {"pwa": (2, 400), "push": (1, 200)}
-    assert body["streak_distribution"] == {"0": 1, "3-6": 1, "7+": 1}  # d2=0, d1=5, d3=8
+    # d2=0, d1=5 (claimed now) — and d3's stored 8 is LAPSED (it never provisioned), so it is 0.
+    assert body["streak_distribution"] == {"0": 2, "3-6": 1}
     assert body["push"]["active"] == 1 and body["push"]["inactive"] == 1
     assert body["push"]["by_locale"] == [{"label": "fa", "count": 1}]  # active only
     assert body["abuse"]["top_ip_buckets"] == [{"label": "ipA", "count": 2}]
@@ -664,3 +775,28 @@ async def test_inbox_delete_removes_the_message(
     assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 204
     assert (await site_client.get("/api/admin/site/inbox/")).json()["total"] == 2
     assert (await site_client.delete(f"/api/admin/site/inbox/{first['id']}")).status_code == 404
+
+
+class _DownArq:
+    async def enqueue_job(self, name: str, *args: object) -> None:
+        raise ConnectionError("redis is down")
+
+
+async def test_a_push_the_queue_refused_is_closed_not_left_queued(db_sessions, monkeypatch) -> None:
+    # Nothing would ever pick the row up: left on "queued", the history polled it forever.
+    monkeypatch.setenv("ADMIN_JWT_SECRET", _SECRET)
+    monkeypatch.setenv("ADMIN_USERNAME", "root")
+    get_settings.cache_clear()
+    await _subscribe(db_sessions, endpoint="e1")
+    app = _build_app(db_sessions, arq=_DownArq())
+    token = create_access("root")
+    async with httpx.AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://t",
+        headers={"Authorization": f"Bearer {token}"},
+    ) as c:
+        r = await c.post("/api/admin/site/push/", json={"title": "hi", "body": "b", "url": ""})
+        assert r.status_code == 503
+        history = (await c.get("/api/admin/site/push/history")).json()
+        assert [row["status"] for row in history] == ["failed"]
+    get_settings.cache_clear()

@@ -7,11 +7,11 @@ and every difference is taken HERE so the reset rule lives in one place.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import func, select
 
-from gozar.config.reporting import DISPLAY_TZ_NAME
+from gozar.config.reporting import DISPLAY_TZ
 from gozar.db.models.usage_sample import UsageSample
 from gozar.db.repositories.base import BaseRepository
 
@@ -27,6 +27,15 @@ class DayUsage:
     #: The lifetime counter went DOWN across this day's boundary — a panel restart, a node removed
     #: and re-added, or an admin resetting traffic. The delta is reported as 0 rather than as a
     #: negative, and this flag is why the chart can say so instead of just drawing a gap.
+    counter_reset: bool
+
+
+@dataclass(slots=True)
+class TrafficWindow:
+    """Traffic carried in a window, and whether the counter reset inside it (then the figure is a
+    floor: what crossed the reset itself cannot be known)."""
+
+    bytes: int
     counter_reset: bool
 
 
@@ -59,86 +68,102 @@ class UsageSampleRepository(BaseRepository):
     async def sample_count(self) -> int:
         return int(await self.session.scalar(select(func.count()).select_from(UsageSample)) or 0)
 
-    async def daily(self, since: date) -> list[DayUsage]:
-        """Per LOCAL day since ``since``: traffic carried, and the concurrency during it.
-
-        Traffic is the difference between the LAST cumulative reading of each day and the last of
-        the day before — not the difference between a day's first and last sample, which would drop
-        everything carried between the final sample of one day and the first of the next.
-
-        A negative difference means the counter reset; it is reported as 0 traffic and flagged. The
-        alternative — a negative bar, or a silently absorbed jump — is either nonsense on the chart
-        or a lie in the total.
-
-        The FIRST day in the result has no predecessor to difference against, so it carries 0 bytes
-        and is dropped by the caller rather than being shown as a day the service was idle.
-        """
-        day = func.date(func.timezone(DISPLAY_TZ_NAME, UsageSample.captured_at)).label("day")
-        rows = (
-            await self.session.execute(
-                select(
-                    day,
-                    # The last cumulative reading of the day: max() is right for a monotonic
-                    # counter and, unlike "order by captured_at desc limit 1", needs no window.
-                    # A reset mid-day is caught at the NEXT boundary, which is where it shows.
-                    func.max(UsageSample.total_bytes).label("cum"),
-                    func.max(UsageSample.online_now).label("peak"),
-                    func.avg(UsageSample.online_now).label("avg"),
-                )
-                .where(func.timezone(DISPLAY_TZ_NAME, UsageSample.captured_at) >= since)
-                .group_by(day)
-                .order_by(day)
-            )
-        ).all()
-
-        out: list[DayUsage] = []
-        previous: int | None = None
-        for d, cum, peak, avg in rows:
-            cum = int(cum or 0)
-            delta = 0 if previous is None else cum - previous
-            reset = delta < 0
-            out.append(
-                DayUsage(
-                    day=d.isoformat(),
-                    bytes=max(0, delta),
-                    peak_online=int(peak or 0),
-                    avg_online=int(round(float(avg or 0))),
-                    counter_reset=reset,
-                )
-            )
-            previous = cum
-        return out
-
-    async def traffic_between(self, start: datetime, end: datetime) -> int:
-        """Bytes carried in a window, as last-reading-in minus last-reading-before.
-
-        Anchored on the reading BEFORE the window rather than the first one inside it, so traffic
-        carried between the last sample before the window and the first inside it is not lost. With
-        no earlier reading (the window contains the very first sample) the window's own first
-        reading is the baseline — the only honest choice, since nothing is known before it.
-
-        Returns 0 rather than a negative when the counter reset inside the window: a reset makes the
-        true figure unknowable, and an unknowable figure must not be reported as a loss.
-        """
-        before = await self.session.scalar(
+    async def _reading_before(self, at: datetime) -> int | None:
+        return await self.session.scalar(
             select(UsageSample.total_bytes)
-            .where(UsageSample.captured_at < start)
+            .where(UsageSample.captured_at < at)
             .order_by(UsageSample.captured_at.desc())
             .limit(1)
         )
-        inside = (
+
+    async def daily(self, since: date) -> list[DayUsage]:
+        """Per LOCAL day from ``since``: traffic carried, and the concurrency during it.
+
+        A day's traffic is the sum of the POSITIVE steps between consecutive readings whose later
+        reading falls in that day, starting from the last reading before ``since`` — so nothing
+        carried between two days falls down the gap between them.
+
+        A step DOWN means the counter reset (a panel restart, a node removed and re-added, a manual
+        traffic reset). That step counts as 0 — what was carried across it is unknowable — and flags
+        the day it happened on. Differencing daily maxima instead, as this used to, gave the reset
+        day only its pre-reset traffic and pinned the flag, and a zero, on the day AFTER it.
+
+        With no reading before ``since`` (recording began inside the range), the first day has no
+        baseline for its first step, so it is partial: it is left out rather than drawn as a
+        quiet day.
+        """
+        start = datetime.combine(since, time(0), tzinfo=DISPLAY_TZ)
+        baseline = await self._reading_before(start)
+        rows = (
             await self.session.execute(
-                select(
-                    func.min(UsageSample.total_bytes),
-                    func.max(UsageSample.total_bytes),
-                ).where(UsageSample.captured_at >= start, UsageSample.captured_at < end)
+                select(UsageSample.captured_at, UsageSample.total_bytes, UsageSample.online_now)
+                .where(UsageSample.captured_at >= start)
+                .order_by(UsageSample.captured_at)
             )
-        ).one()
-        low, high = inside
-        if high is None:
-            return 0
-        baseline = int(before) if before is not None else int(low or 0)
-        return max(0, int(high) - baseline)
+        ).all()
+
+        days: dict[str, dict] = {}
+        previous = baseline
+        first_day = None
+        for captured_at, total, online in rows:
+            key = captured_at.astimezone(DISPLAY_TZ).date().isoformat()
+            if first_day is None:
+                first_day = key
+            entry = days.setdefault(key, {"bytes": 0, "online": [], "reset": False})
+            entry["online"].append(int(online or 0))
+            total = int(total)
+            if previous is not None:
+                step = total - previous
+                if step < 0:
+                    entry["reset"] = True
+                else:
+                    entry["bytes"] += step
+            previous = total
+
+        out: list[DayUsage] = []
+        for key, entry in days.items():
+            if key == first_day and baseline is None:
+                continue  # partial: its first step had nothing to be measured from
+            online = entry["online"]
+            out.append(
+                DayUsage(
+                    day=key,
+                    bytes=entry["bytes"],
+                    peak_online=max(online),
+                    avg_online=int(round(sum(online) / len(online))),
+                    counter_reset=entry["reset"],
+                )
+            )
+        return out
+
+    async def traffic_between(self, start: datetime, end: datetime) -> TrafficWindow:
+        """Bytes carried in ``[start, end)``: the sum of positive steps between consecutive
+        readings, anchored on the reading BEFORE the window (so the traffic between the last reading
+        before it and the first inside is not lost).
+
+        With no earlier reading, the window's own first reading is the baseline — nothing is known
+        before it. A step DOWN is a counter reset: it counts 0 and sets ``counter_reset``. This used
+        to be "highest reading inside minus the one before", which a reset mid-window cut short:
+        everything carried after the reset was lost, silently (200 reported for 850 carried).
+        """
+        previous = await self._reading_before(start)
+        rows = await self.session.scalars(
+            select(UsageSample.total_bytes)
+            .where(UsageSample.captured_at >= start, UsageSample.captured_at < end)
+            .order_by(UsageSample.captured_at)
+        )
+        carried = 0
+        reset = False
+        for total in rows:
+            total = int(total)
+            if previous is not None:
+                step = total - previous
+                if step < 0:
+                    reset = True
+                else:
+                    carried += step
+            previous = total
+        return TrafficWindow(bytes=carried, counter_reset=reset)
 
     async def peak_online_between(self, start: datetime, end: datetime) -> int:
         return int(

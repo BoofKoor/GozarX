@@ -46,6 +46,7 @@ const FA = {
   "shell.health.degraded": "سرویس با اختلال کار می‌کند",
   "shell.health.down": "سرویس دچار مشکل است",
   "shell.health.checking": "در حال بررسی وضعیت…",
+  "shell.health.unreachable": "سرور به بررسی وضعیت جواب نمی‌دهد",
 
   // ── shared UI ───────────────────────────────────────────────────────────
   "ui.close": "بستن",
@@ -111,6 +112,18 @@ const FA = {
   "users.action.confirmLabel": "بله، انجام بده",
   "users.action.done": "انجام شد.",
   "users.action.failed": "ناموفق بود.",
+  "users.action.reclaimConfirm":
+    "کانفیگ فعلی این کاربر از پنل حذف می‌شود و می‌تواند همین حالا یکی دیگر بگیرد. ادامه می‌دهید؟",
+  "users.action.revokePending":
+    "مسدود شد، ولی پنل جواب نداد و کانفیگ فعلی هنوز کار می‌کند؛ جاروی دوره‌ای دوباره تلاش می‌کند.",
+  "users.detail.revokePending":
+    "این کاربر مسدود است، ولی پنل درخواست حذف کانفیگش را نپذیرفت؛ کانفیگ تا وقتی جاروی دوره‌ای (هر ۱۵ دقیقه) آن را حذف کند کار می‌کند.",
+  "users.row.revokePending": "کانفیگ هنوز از پنل حذف نشده",
+  "users.status.unreachable": "ربات را بسته",
+  "users.action.refusedBanned":
+    "این کاربر مسدود است. اول مسدودی را بردارید، بعد اجازهٔ دریافت مجدد بدهید.",
+  "users.action.refusedPanel":
+    "پنل جواب نداد، پس کانفیگ فعلی حذف نشد و چیزی تغییر نکرد. کمی بعد دوباره امتحان کنید.",
 
   // ── broadcast ───────────────────────────────────────────────────────────
   "bc.title": "پیام همگانی",
@@ -118,6 +131,17 @@ const FA = {
   "bc.audience": "مخاطب",
   "bc.audience.hint": "{n} گیرنده از {total} کاربر",
   "bc.audience.empty": "حداقل یک زبان را انتخاب کنید.",
+  "bc.audience.nobody": "هیچ کاربری در این مخاطب نیست؛ فیلترها را تغییر دهید.",
+  // Telegram HTML parse mode — shared by the broadcast composer and the texts editor.
+  "tg.html.stray":
+    "تلگرام این متن را رد می‌کند: نویسهٔ {at} یک «<» است که برچسب نیست. برای خودِ «<» بنویسید &lt;",
+  "tg.html.unsupported":
+    "تلگرام این متن را رد می‌کند: {tag} برچسبی نیست که تلگرام بشناسد. برای خودِ «<» بنویسید &lt;",
+  "tg.html.mismatch":
+    "تلگرام این متن را رد می‌کند: {tag} در نویسهٔ {at} برچسبی را می‌بندد که باز نیست.",
+  "tg.html.unclosed": "تلگرام این متن را رد می‌کند: {tag} باز شده و بسته نشده است.",
+  "tg.html.spoiler":
+    'تلگرام این متن را رد می‌کند: {tag} باید class="tg-spoiler" داشته باشد (یا از tg-spoiler استفاده کنید).',
   "bc.audience.unreachable": "شمارش گیرندگان در دسترس نیست.",
   "bc.audience.outside": "خارج از فیلتر",
   "bc.compose": "نگارش پیام",
@@ -137,7 +161,7 @@ const FA = {
   "bc.send": "ارسال",
   "bc.send.confirmTitle": "ارسال پیام همگانی",
   "bc.send.confirm": "این پیام به {n} کاربر ({who}) همین حالا ارسال شود؟",
-  "bc.send.confirmAt": "این پیام ساعت {h} به {n} کاربر ({who}) ارسال شود؟",
+  "bc.send.confirmAt": "این پیام ساعت {h} به وقت تهران به {n} کاربر ({who}) ارسال شود؟",
   "bc.send.queued": "در صف ارسال به {n} کاربر ({who}) قرار گرفت.",
   "bc.send.failed": "ارسال نشد.",
   "bc.eta": "حدود {m} دقیقه با نرخ {rate} پیام در ثانیه",
@@ -170,7 +194,8 @@ const FA = {
   "bc.schedule.hint": "خاموش یعنی همین حالا به صف می‌رود.",
   "bc.schedule.at": "ساعت ارسال",
   "hours.pick": "ارسال در ساعت {h}",
-  "bc.schedule.queued": "برای ساعت {h} زمان‌بندی شد.",
+  "hours.aria": "ساعت ارسال",
+  "bc.schedule.queued": "برای ساعت {h} به وقت تهران زمان‌بندی شد.",
   "bc.schedule.confirm": "زمان‌بندی",
   "bc.pf.buttons": "لینک دکمه‌ها معتبر است",
   "bc.pf.buttonsBad": "لینک یکی از دکمه‌ها معتبر نیست",
@@ -208,6 +233,8 @@ const FA = {
   "texts.discard": "بازگرداندن",
   "texts.saved": "ذخیره شد.",
   "texts.saveFailed": "ذخیره نشد.",
+  "texts.faRequired":
+    "متن فارسی نمی‌تواند خالی باشد: زبان‌های دیگر وقتی ترجمه ندارند به همین برمی‌گردند.",
 
   // ── bot buttons ─────────────────────────────────────────────────────────
   "btn.title": "دکمه‌ها",
@@ -218,6 +245,8 @@ const FA = {
   "btn.drag": "کشیدن برای جابه‌جایی",
   "btn.edit": "ویرایش",
   "btn.reset": "بازگشت به پیش‌فرض",
+  "btn.resetDone": "به پیش‌فرض برگشت.",
+  "btn.resetFailed": "بازگشت به پیش‌فرض انجام نشد.",
   "btn.custom": "سفارشی",
   "btn.critical": "حیاتی",
   "btn.criticalDrag": "دکمهٔ حیاتی جابه‌جا نمی‌شود.",
@@ -259,11 +288,15 @@ const FA = {
   "loc.unavailable":
     "لیست لوکیشن‌های اسکواد از پنل گرفته نشد. می‌توانید نام‌ها را دستی وارد کنید (با کاما جدا کنید) — اما نام اشتباه را سرور رد می‌کند.",
   "loc.placeholder": "مثال: آلمان، هلند",
-  "loc.all": "همهٔ {n} لوکیشن اسکواد",
+  "loc.all": "همهٔ {n} لوکیشن اسکواد (لوکیشن جدید اسکواد خودکار اضافه می‌شود)",
   "loc.some": "{n} از {total} انتخاب شده",
   "loc.selectAll": "انتخاب همه",
   "loc.refresh": "به‌روزرسانی از اسکواد",
-  "loc.subsetNote": "فقط لوکیشن‌های تیک‌خورده به کاربر نشان داده می‌شوند.",
+  "loc.subsetNote":
+    "فقط لوکیشن‌های تیک‌خورده به کاربر نشان داده می‌شوند؛ لوکیشنی که بعداً به اسکواد اضافه شود تا تیکش نزنید نمایش داده نمی‌شود.",
+  "loc.stale": "{n} لوکیشن ذخیره‌شده دیگر در اسکواد نیست و با ذخیرهٔ بعدی حذف می‌شود:",
+  "loc.emptySquad":
+    "این اسکواد هیچ host فعالی ندارد، پس لوکیشنی برای انتخاب نیست. hostهای اسکواد را در پنل بررسی کنید.",
 
   // ── bot settings ────────────────────────────────────────────────────────
   "set.title": "تنظیمات ربات",
@@ -278,7 +311,8 @@ const FA = {
   "set.trialHours": "مدت اعتبار کانفیگ (ساعت)",
   "set.rewardMb": "پاداش هر دعوت (مگابایت)",
   "set.rewardLimit": "سقف دعوت‌های پاداش‌دار",
-  "set.rewardLimit.hint": "پس از این تعداد، دعوت تازه پاداشی اضافه نمی‌کند.",
+  "set.rewardLimit.hint":
+    "پس از این تعداد، دعوت تازه پاداشی اضافه نمی‌کند. ۰ یعنی هیچ دعوتی پاداش نمی‌گیرد، نه «بی‌سقف».",
   "set.menu": "منو و لوکیشن‌ها",
   "set.perPage": "تعداد کانفیگ در هر صفحهٔ منو",
   "set.locations": "لوکیشن‌های ربات",
@@ -290,8 +324,10 @@ const FA = {
   "set.adButton.text": "متن دکمه",
   "set.adButton.textPlaceholder": "مثال: کانال ما",
   "set.adButton.url": "لینک دکمه",
+  "set.adButton.urlInvalid":
+    "لینک باید با https://، http:// یا tg:// شروع شود؛ وگرنه ربات دکمه را نمی‌سازد.",
   "set.adButton.emoji": "آی‌دی ایموجی پریمیوم (اختیاری)",
-  "set.adButton.emojiPlaceholder": "مثلاً ۵۳۶۸۳۲۴۱۷۰۶۷۱۲۰۲۲۸۶",
+  "set.adButton.emojiPlaceholder": "مثلاً 5368324170671202286",
   "set.adButton.emojiHint":
     "فقط وقتی دیده می‌شود که مالک ربات اشتراک تلگرام پریمیوم فعال داشته باشد؛ وگرنه دکمه بدون ایموجی می‌آید.",
 
@@ -307,6 +343,8 @@ const FA = {
   "sys.probe.db": "دیتابیس",
   "sys.probe.panel": "پنل",
   "sys.probe.telegram": "تلگرام",
+  "sys.probe.unreachable": "در دسترس نیست",
+  "sys.probe.botDisabled": "ربات غیرفعال است",
   "sys.host.bot": "منابع سرور ربات",
   "sys.host.panel": "منابع سرور پنل",
   "sys.host.cpu": "بار پردازنده (۱ دقیقه)",
@@ -348,6 +386,9 @@ const FA = {
   "login.submit": "ورود",
   "login.failed": "نام کاربری یا رمز عبور نادرست است.",
   "login.notConfigured": "پنل هنوز پیکربندی نشده است.",
+  "login.network": "به سرور دسترسی نیست. اتصال را بررسی کنید و دوباره امتحان کنید.",
+  "login.server": "سرور در حال حاضر پاسخ نمی‌دهد. چند لحظه بعد دوباره امتحان کنید.",
+  "login.rateLimited": "تلاش‌های ورود زیاد بود. چند دقیقه صبر کنید و دوباره امتحان کنید.",
 
   // ── first-run wizard ────────────────────────────────────────────────────
   "setup.title": "راه‌اندازی اولیه",
@@ -355,6 +396,8 @@ const FA = {
   "setup.squad": "اسکواد آزمایشی",
   "setup.squad.hint": "کانفیگ‌های آزمایشی از این اسکواد ساخته می‌شوند؛ لوکیشن‌ها هم از آن می‌آیند.",
   "setup.squadsUnreachable": "فهرست اسکوادها از پنل گرفته نشد.",
+  "setup.squadsEmpty":
+    "پنل هنوز هیچ اسکواد داخلی‌ای ندارد. یک Internal Squad در Remnawave بسازید، هاست‌ها را به آن بدهید و دوباره امتحان کنید.",
   "setup.pickSquad": "یک اسکواد انتخاب کنید.",
   "setup.submit": "تکمیل و ورود به پنل",
   "setup.done": "راه‌اندازی کامل شد.",
@@ -449,6 +492,7 @@ const FA = {
   "si.deleted": "حذف شد.",
   "si.deleteFailed": "حذف نشد.",
   "si.markUnread": "خوانده‌نشده",
+  "si.delete": "حذف پیام",
   "si.markedUnread": "به‌عنوان خوانده‌نشده علامت خورد.",
   "si.language": "زبان: {lang}",
   "si.senderDevice": "دستگاه فرستنده",
@@ -477,6 +521,9 @@ const FA = {
   "ss.locations.refreshFailed": "به‌روزرسانی لوکیشن‌ها ممکن نشد.",
   "ss.popular": "لوکیشن محبوب",
   "ss.popular.hint": "نشان ⭐ روی پیکر سایت. فقط می‌تواند یکی از لوکیشن‌های بالا باشد.",
+  "ss.popular.stale":
+    "لوکیشن ستاره‌دار ذخیره‌شده دیگر در فهرست نیست و با ذخیرهٔ بعدی پاک می‌شود؛ یکی دیگر انتخاب کنید.",
+  "ss.popular.staleOption": "{name} (دیگر ارائه نمی‌شود)",
   "ss.popular.none": "— بدون —",
 
   // ── website: first-run wizard ───────────────────────────────────────────
@@ -485,6 +532,8 @@ const FA = {
   "ssu.submit": "ذخیره و تکمیل",
   "ssu.done": "راه‌اندازی وب‌سایت کامل شد.",
   "ssu.squad": "اسکواد",
+  "ssu.squadGone":
+    "اسکوادی که قبلاً ذخیره شده بود دیگر در پنل وجود ندارد؛ اولین اسکواد فعلی انتخاب شد. پیش از ذخیره بررسی کنید.",
   "ssu.squad.field": "اسکواد آزمایشی وب‌سایت",
   "ssu.locations.sub": "خالی گذاشتن یعنی همهٔ لوکیشن‌های اسکواد ارائه شوند.",
 
@@ -569,6 +618,16 @@ const FA = {
   "sd.action.confirmLabel": "بله، انجام بده",
   "sd.action.done": "انجام شد.",
   "sd.action.failed": "ناموفق بود.",
+  "sd.action.resetConfirm":
+    "کانفیگ فعلی این دستگاه از پنل حذف می‌شود و می‌تواند همین حالا یکی دیگر بگیرد. ادامه می‌دهید؟",
+  "sd.action.revokePending":
+    "مسدود شد، ولی پنل جواب نداد و کانفیگ فعلی هنوز کار می‌کند؛ جاروی دوره‌ای دوباره تلاش می‌کند.",
+  "sd.detail.revokePending":
+    "این دستگاه مسدود است، ولی پنل درخواست حذف کانفیگش را نپذیرفت؛ کانفیگ تا وقتی جاروی دوره‌ای (هر ۱۵ دقیقه) آن را حذف کند کار می‌کند.",
+  "sd.row.revokePending": "کانفیگ هنوز از پنل حذف نشده",
+  "sd.action.refusedState": "این عمل برای وضعیت فعلی این دستگاه مجاز نیست؛ صفحه را تازه کنید.",
+  "sd.action.refusedPanel":
+    "پنل جواب نداد، پس کانفیگ فعلی حذف نشد و چیزی تغییر نکرد. کمی بعد دوباره امتحان کنید.",
 
   // ── website: FAQ ────────────────────────────────────────────────────────
   "sf.title": "سوال‌های پرتکرار",
@@ -650,6 +709,10 @@ const FA = {
   "sl.field.location": "لوکیشن پیش‌انتخاب در ویجت (اختیاری)",
   "sl.field.locationHint":
     "نام remark — بازدیدکنندهٔ این صفحه همان لوکیشن را از پیش انتخاب‌شده می‌بیند.",
+  "sl.field.locationPick":
+    "یکی از لوکیشن‌هایی که پیکر سایت ارائه می‌دهد — بازدیدکنندهٔ این صفحه آن را از پیش انتخاب‌شده می‌بیند.",
+  "sl.field.locationStale":
+    "لوکیشن ذخیره‌شده دیگر در پیکر سایت نیست، پس ویجت چیزی را از پیش انتخاب نمی‌کند. یکی از لوکیشن‌های فعلی را انتخاب کنید.",
   "sl.field.published": "منتشرشده",
   "sl.field.publishedHint": "صفحه‌های پیش‌نویس در سایت و سایت‌مپ دیده نمی‌شوند.",
   "sl.delete": "حذف",
@@ -670,6 +733,7 @@ const FA = {
   "st.range.days": "{n} روز",
   "st.rangeLabel": "{n} روز اخیر",
   "st.prev": "دورهٔ قبل: {n}",
+  "st.prevUnrecorded": "دورهٔ قبل: هنوز ثبت نمی‌شد",
   "st.kpi.visitors": "بازدیدکننده ({range})",
   "st.kpi.newVisitors": "بازدیدکنندهٔ تازه ({range})",
   "st.kpi.returning": "بازگشتی ({range})",
@@ -684,6 +748,10 @@ const FA = {
   "st.daily": "بازدید و دریافت روزانه",
   "st.daily.visitors": "بازدیدکننده",
   "st.daily.claims": "دریافت کانفیگ",
+  "st.daily.since":
+    "بازدیدها از {date} روزبه‌روز ثبت می‌شوند؛ روزهای پیش از آن دادهٔ بازدید ندارند، نه بازدید صفر.",
+  "st.daily.notRecording":
+    "بازدیدها از اولین روز کامل پس از این به‌روزرسانی روزبه‌روز ثبت می‌شوند؛ این بازه هنوز روز ثبت‌شده‌ای ندارد.",
   "st.top": "پرطرفدارترین لوکیشن‌ها",
   "st.top.hidden": "{n} روز اخیر · {hidden} لوکیشن دیگر نمایش داده نشده",
   "st.noData": "داده‌ای نیست.",
@@ -748,6 +816,10 @@ const FA = {
   "ui.confirm": "تأیید",
   "ui.cancel": "انصراف",
   "ui.retry": "تلاش مجدد",
+  "ui.discard.title": "تغییرات ذخیره نشده",
+  "ui.discard.message": "تغییراتی که ذخیره نکرده‌اید از بین می‌رود.",
+  "ui.discard.confirm": "دور ریختن تغییرات",
+  "ui.discard.keep": "ادامهٔ ویرایش",
   "ui.error": "دریافت اطلاعات با خطا مواجه شد. لطفاً دوباره تلاش کنید.",
   "ui.crashed": "مشکلی پیش آمد",
   "ui.crashed.msg": "خطای غیرمنتظره‌ای رخ داد. لطفاً صفحه را دوباره بارگذاری کنید.",
@@ -822,6 +894,7 @@ const FA = {
   "d.topReferrers.count": "{n} دعوت",
   "d.topLocations": "پرطرفدارترین لوکیشن‌ها",
   "d.topLocations.empty": "هنوز کانفیگی دریافت نشده",
+  "d.topLocations.more": "و {n} لوکیشن دیگر در این بازه",
   "d.newVsReturning": "کاربر جدید در برابر بازگشتی",
   "d.newVsReturning.sub": "کاربرانی که کانفیگ گرفته‌اند؛ «جدید» یعنی اولین دریافت در طول عمرشان.",
   "d.newVsReturning.share": "بازگشتی {pct}",
@@ -833,7 +906,11 @@ const FA = {
   "d.usage.sub": "ترافیک عبوری و کاربران هم‌زمان در بازهٔ انتخابی",
   "d.usage.traffic": "ترافیک عبوری",
   "d.usage.peak": "اوج کاربران هم‌زمان",
-  "d.usage.perUser": "میانگین مصرف هر کاربر",
+  "d.usage.perUser": "ترافیک پنل به ازای هر دریافت‌کننده",
+  "d.usage.perUser.note":
+    "کل ترافیک پنل تقسیم بر کاربران ربات و سایت که در این بازه کانفیگ گرفته‌اند؛ حد بالاست، چون اسکوادهای شخصی شما هم در ترافیک هستند.",
+  "d.usage.wholePanel": "کل پنل، شامل کاربران سایت و اسکوادهای شخصی شما",
+  "d.usage.trafficReset": "شمارندهٔ پنل در این بازه ریست شده؛ این عدد حداقل ترافیک است.",
   "d.usage.nodes": "نودهای آنلاین",
   "d.usage.nodes.hint": "خواندهٔ لحظه‌ای، نه بازه‌ای",
   "d.usage.mem": "حافظهٔ پنل {pct} از {total}",
@@ -862,8 +939,8 @@ const FA = {
   "d.active.note":
     "کاربر فعال = دستِ‌کم یک دریافت کانفیگ در بازهٔ زمانی؛ چسبندگی سهم کاربرانی است که هر روز برمی‌گردند.",
   "d.conv": "تبدیل و دعوت",
-  "d.conv.rate": "نرخ تبدیل",
-  "d.conv.rateHint": "کاربرانی که حداقل یک کانفیگ گرفته‌اند",
+  "d.conv.rate": "نرخ تبدیل (کل دوره)",
+  "d.conv.rateHint": "همهٔ کاربرانی که از ابتدا حداقل یک کانفیگ گرفته‌اند",
   "d.conv.reminder": "یادآور روشن",
   "d.conv.reminderHint": "{n} کاربر",
   "d.conv.avgReferrals": "میانگین دعوت به ازای کاربر",
@@ -883,7 +960,7 @@ const FA = {
   "d.dau.empty": "در این بازه کسی کانفیگ نگرفته است",
   "d.cap": "سقف پاداش دعوت",
   "d.cap.current": "سقف فعلی: {n} دعوت پاداش‌دار",
-  "d.cap.none": "سقفی تنظیم نشده — دعوت‌ها بی‌نهایت پاداش می‌گیرند.",
+  "d.cap.none": "سقف ۰ است — هیچ دعوتی پاداش نمی‌گیرد.",
   "d.cap.empty": "هنوز دعوت موفقی ثبت نشده",
   "d.cap.active": "دعوت‌کنندهٔ فعال",
   "d.cap.atCap": "رسیده به سقف",
@@ -912,14 +989,21 @@ const FA = {
   "dash.chart.sub": "کانفیگ داده‌شده و کاربران جدید در بازهٔ انتخابی",
   "dash.chart.claims": "کانفیگ داده‌شده",
   "dash.chart.signups": "کاربران جدید",
-  "dash.chart.panelDown": "پنل در دسترس نیست — ارقام پنل صفر گزارش شده‌اند",
+  "dash.chart.leftAxis": "محور چپ",
+  "dash.chart.rightAxis": "محور راست",
+  "dash.chart.partial": "امروز، هنوز کامل نشده",
+  "dash.chart.soFar": "تا این لحظه",
+  "dash.chart.panelDown": "پنل در دسترس نیست — ارقامی که فقط پنل می‌دهد نامعلوم است",
   "dash.range.aria": "بازهٔ زمانی",
   "dash.range.days": "{n} روز",
+  "dash.range.loading": "در حال بارگذاری بازهٔ جدید…",
   "dash.export": "خروجی CSV",
   "dash.top.location": "لوکیشن برتر",
   "dash.top.referrer": "دعوت‌کنندهٔ برتر",
   "dash.top.language": "زبان غالب",
   "dash.top.hour": "ساعت اوج",
+  "dash.scope.range": "{n} روز",
+  "dash.scope.allTime": "کل دوره",
   "dash.unit.claims": "دریافت",
   "dash.unit.invites": "دعوت",
   "dash.unit.users": "کاربر",
@@ -927,7 +1011,7 @@ const FA = {
   "dash.side.live": "آمار زنده",
   "dash.side.health": "وضعیت سرویس",
   "dash.rate.conversion": "تبدیل",
-  "dash.rate.conversionFull": "کاربرانی که تا کنون کانفیگ گرفته‌اند",
+  "dash.rate.conversionFull": "کاربران جدید این بازه که کانفیگ گرفته‌اند",
   "dash.rate.return": "بازگشت",
   "dash.rate.returnFull": "بازگشت در هفتهٔ دوم",
   "dash.rate.activation": "فعال‌سازی",
@@ -947,8 +1031,16 @@ const FA = {
   "dash.health.webhookUnset": "تنظیم نشده",
   "dash.health.webhookError": "خطای اخیر",
   "dash.health.webhookOk": "فعال",
+  "dash.health.checking": "در حال بررسی…",
+  "dash.stale": "آخرین به‌روزرسانی داشبورد ناموفق بود؛ اعداد مربوط به ساعت {time} هستند.",
+  "sys.stale": "آخرین بررسی وضعیت ناموفق بود؛ این وضعیت مربوط به ساعت {time} است.",
+  "dash.health.webhookUnreachable": "تلگرام جواب نمی‌دهد",
+  "dash.health.webhookUnregistered": "ثبت نشده؛ پیامی نمی‌رسد",
+  "dash.health.webhookBacklog": "{n} آپدیت در صف",
   "dash.health.activeConfigs": "کانفیگ فعال",
+  "dash.health.activeStale": "{n} منقضی‌شده هنوز همگام نشده",
   "dash.health.conversion": "نرخ تبدیل",
+  "dash.health.conversionRange": "نرخ تبدیل {n} روز",
   "dash.health.more": "جزئیات سلامت سرویس",
 
   // ── charts ──────────────────────────────────────────────────────────────
@@ -988,6 +1080,7 @@ const EN: Record<keyof typeof FA, string> = {
   "shell.health.degraded": "The service is degraded",
   "shell.health.down": "The service is down",
   "shell.health.checking": "Checking status…",
+  "shell.health.unreachable": "The server is not answering the status check",
 
   "ui.close": "Close",
 
@@ -1050,12 +1143,34 @@ const EN: Record<keyof typeof FA, string> = {
   "users.action.confirmLabel": "Yes, do it",
   "users.action.done": "Done.",
   "users.action.failed": "That did not work.",
+  "users.action.reclaimConfirm":
+    "This deletes the user's current config from the panel and lets them claim another right away. Continue?",
+  "users.action.revokePending":
+    "Blocked, but the panel did not answer and the current config still works; the sweep will retry.",
+  "users.detail.revokePending":
+    "This user is blocked, but the panel did not accept the delete for their config; it keeps working until the reconcile sweep (every 15 minutes) removes it.",
+  "users.row.revokePending": "Config not yet removed from the panel",
+  "users.status.unreachable": "Blocked the bot",
+  "users.action.refusedBanned":
+    "This user is blocked. Unblock them first, then allow another claim.",
+  "users.action.refusedPanel":
+    "The panel did not answer, so the current config was not removed and nothing changed. Try again shortly.",
 
   "bc.title": "Broadcast",
   "bc.sub": "Sent from the worker, so the bot stays responsive on its webhook",
   "bc.audience": "Audience",
   "bc.audience.hint": "{n} recipients of {total} users",
   "bc.audience.empty": "Pick at least one language.",
+  "bc.audience.nobody": "Nobody is in this audience; change the filters.",
+  "tg.html.stray":
+    "Telegram will reject this: character {at} is a '<' that is not a tag. Write &lt; for a literal '<'.",
+  "tg.html.unsupported":
+    "Telegram will reject this: {tag} is not a tag Telegram supports. Write &lt; for a literal '<'.",
+  "tg.html.mismatch":
+    "Telegram will reject this: {tag} at character {at} closes a tag that is not open.",
+  "tg.html.unclosed": "Telegram will reject this: {tag} is opened and never closed.",
+  "tg.html.spoiler":
+    'Telegram will reject this: {tag} needs class="tg-spoiler" (or use tg-spoiler).',
   "bc.audience.unreachable": "The recipient count is unavailable.",
   "bc.audience.outside": "outside the filter",
   "bc.compose": "Compose",
@@ -1075,7 +1190,7 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.send": "Send",
   "bc.send.confirmTitle": "Send broadcast",
   "bc.send.confirm": "Send this to {n} users ({who}) right now?",
-  "bc.send.confirmAt": "Send this to {n} users ({who}) at {h}?",
+  "bc.send.confirmAt": "Send this to {n} users ({who}) at {h} Tehran time?",
   "bc.send.queued": "Queued for {n} users ({who}).",
   "bc.send.failed": "That did not send.",
   "bc.eta": "about {m} min at {rate} messages per second",
@@ -1109,7 +1224,8 @@ const EN: Record<keyof typeof FA, string> = {
   "bc.schedule.hint": "Off means it goes into the queue now.",
   "bc.schedule.at": "Send at",
   "hours.pick": "Send at {h}",
-  "bc.schedule.queued": "Scheduled for {h}.",
+  "hours.aria": "Send hour",
+  "bc.schedule.queued": "Scheduled for {h} Tehran time.",
   "bc.schedule.confirm": "Schedule",
   "bc.pf.buttons": "Button links are valid",
   "bc.pf.buttonsBad": "One of the button links is invalid",
@@ -1148,6 +1264,8 @@ const EN: Record<keyof typeof FA, string> = {
   "texts.discard": "Discard",
   "texts.saved": "Saved.",
   "texts.saveFailed": "Could not save.",
+  "texts.faRequired":
+    "The Persian text can't be empty: every other language falls back to it when untranslated.",
 
   // ── bot buttons ─────────────────────────────────────────────────────────
   "btn.title": "Buttons",
@@ -1158,6 +1276,8 @@ const EN: Record<keyof typeof FA, string> = {
   "btn.drag": "Drag to move",
   "btn.edit": "Edit",
   "btn.reset": "Reset to default",
+  "btn.resetDone": "Reset to the default.",
+  "btn.resetFailed": "Could not reset to the default.",
   "btn.custom": "custom",
   "btn.critical": "critical",
   "btn.criticalDrag": "A critical button cannot be moved.",
@@ -1199,11 +1319,16 @@ const EN: Record<keyof typeof FA, string> = {
   "loc.unavailable":
     "The squad's location list could not be fetched from the panel. You can type the names by hand (comma-separated) — but the server rejects a name that is wrong.",
   "loc.placeholder": "e.g. Germany, Netherlands",
-  "loc.all": "All {n} squad locations",
+  "loc.all": "All {n} squad locations (new ones in the squad are added automatically)",
   "loc.some": "{n} of {total} selected",
   "loc.selectAll": "Select all",
   "loc.refresh": "Refresh from the squad",
-  "loc.subsetNote": "Only the ticked locations are offered.",
+  "loc.subsetNote":
+    "Only the ticked locations are offered; one added to the squad later stays hidden until you tick it.",
+  "loc.stale":
+    "{n} saved location(s) are no longer in the squad and will be dropped on the next save:",
+  "loc.emptySquad":
+    "This squad has no enabled host, so there is no location to pick. Check the squad's hosts in the panel.",
 
   // ── bot settings ────────────────────────────────────────────────────────
   "set.title": "Bot settings",
@@ -1218,7 +1343,8 @@ const EN: Record<keyof typeof FA, string> = {
   "set.trialHours": "Config lifetime (hours)",
   "set.rewardMb": "Reward per invite (MB)",
   "set.rewardLimit": "Rewarded invites cap",
-  "set.rewardLimit.hint": "Past this count, a new invite adds no further reward.",
+  "set.rewardLimit.hint":
+    "Past this count, a new invite adds no further reward. 0 means no invite is rewarded, not 'no cap'.",
   "set.menu": "Menu and locations",
   "set.perPage": "Configs per menu page",
   "set.locations": "Bot locations",
@@ -1230,6 +1356,8 @@ const EN: Record<keyof typeof FA, string> = {
   "set.adButton.text": "Button label",
   "set.adButton.textPlaceholder": "e.g. our channel",
   "set.adButton.url": "Button link",
+  "set.adButton.urlInvalid":
+    "The link must start with https://, http:// or tg:// — otherwise the bot leaves the button out.",
   "set.adButton.emoji": "Premium emoji id (optional)",
   "set.adButton.emojiPlaceholder": "e.g. 5368324170671202286",
   "set.adButton.emojiHint":
@@ -1247,6 +1375,8 @@ const EN: Record<keyof typeof FA, string> = {
   "sys.probe.db": "Database",
   "sys.probe.panel": "Panel",
   "sys.probe.telegram": "Telegram",
+  "sys.probe.unreachable": "unreachable",
+  "sys.probe.botDisabled": "bot disabled",
   "sys.host.bot": "Bot host resources",
   "sys.host.panel": "Panel host resources",
   "sys.host.cpu": "CPU load (1 min)",
@@ -1288,6 +1418,9 @@ const EN: Record<keyof typeof FA, string> = {
   "login.submit": "Sign in",
   "login.failed": "Wrong username or password.",
   "login.notConfigured": "The panel has not been configured yet.",
+  "login.network": "Could not reach the server. Check the connection and try again.",
+  "login.server": "The server is not answering right now. Try again in a moment.",
+  "login.rateLimited": "Too many sign-in attempts. Wait a few minutes and try again.",
 
   // ── first-run wizard ────────────────────────────────────────────────────
   "setup.title": "First-run setup",
@@ -1296,6 +1429,8 @@ const EN: Record<keyof typeof FA, string> = {
   "setup.squad.hint":
     "Trial configs are created in this squad, and its hosts define the locations.",
   "setup.squadsUnreachable": "Could not fetch the squad list from the panel.",
+  "setup.squadsEmpty":
+    "The panel has no internal squads yet. Create an Internal Squad in Remnawave, give it your hosts, then retry.",
   "setup.pickSquad": "Pick a squad.",
   "setup.submit": "Finish and open the panel",
   "setup.done": "Setup complete.",
@@ -1390,6 +1525,7 @@ const EN: Record<keyof typeof FA, string> = {
   "si.deleted": "Deleted.",
   "si.deleteFailed": "Could not delete.",
   "si.markUnread": "Unread",
+  "si.delete": "Delete message",
   "si.markedUnread": "Marked unread.",
   "si.language": "Language: {lang}",
   "si.senderDevice": "Sender's device",
@@ -1419,6 +1555,9 @@ const EN: Record<keyof typeof FA, string> = {
   "ss.locations.refreshFailed": "Could not refresh the locations.",
   "ss.popular": "Popular location",
   "ss.popular.hint": "Gets the ⭐ on the site's picker. Must be one of the locations above.",
+  "ss.popular.stale":
+    "The saved starred location is no longer on the list and will be cleared on the next save; pick another.",
+  "ss.popular.staleOption": "{name} (no longer offered)",
   "ss.popular.none": "— none —",
 
   // ── website: first-run wizard ───────────────────────────────────────────
@@ -1428,6 +1567,8 @@ const EN: Record<keyof typeof FA, string> = {
   "ssu.submit": "Save and finish",
   "ssu.done": "Website setup complete.",
   "ssu.squad": "Squad",
+  "ssu.squadGone":
+    "The squad saved earlier no longer exists in the panel; the first current squad is selected. Check it before saving.",
   "ssu.squad.field": "Website trial squad",
   "ssu.locations.sub": "Leaving it empty offers every location the squad serves.",
 
@@ -1512,6 +1653,17 @@ const EN: Record<keyof typeof FA, string> = {
   "sd.action.confirmLabel": "Yes, do it",
   "sd.action.done": "Done.",
   "sd.action.failed": "That failed.",
+  "sd.action.resetConfirm":
+    "This deletes the device's current config from the panel and lets it claim another right away. Continue?",
+  "sd.action.revokePending":
+    "Blocked, but the panel did not answer and the current config still works; the sweep will retry.",
+  "sd.detail.revokePending":
+    "This device is blocked, but the panel did not accept the delete for its config; it keeps working until the reconcile sweep (every 15 minutes) removes it.",
+  "sd.row.revokePending": "Config not yet removed from the panel",
+  "sd.action.refusedState":
+    "That action is not allowed in this device's current state; refresh the page.",
+  "sd.action.refusedPanel":
+    "The panel did not answer, so the current config was not removed and nothing changed. Try again shortly.",
 
   // ── website: FAQ ────────────────────────────────────────────────────────
   "sf.title": "FAQ",
@@ -1592,6 +1744,10 @@ const EN: Record<keyof typeof FA, string> = {
   "sl.field.preview": "Preview",
   "sl.field.location": "Pre-selected location in the widget (optional)",
   "sl.field.locationHint": "A remark name — a visitor landing here finds it already selected.",
+  "sl.field.locationPick":
+    "One of the locations the site's picker offers — a visitor landing here finds it already selected.",
+  "sl.field.locationStale":
+    "The stored location is no longer on the site's picker, so the widget preselects nothing. Pick one of the current locations.",
   "sl.field.published": "Published",
   "sl.field.publishedHint": "Drafts appear neither on the site nor in the sitemap.",
   "sl.delete": "Delete",
@@ -1612,6 +1768,7 @@ const EN: Record<keyof typeof FA, string> = {
   "st.range.days": "{n} days",
   "st.rangeLabel": "last {n} days",
   "st.prev": "previous period: {n}",
+  "st.prevUnrecorded": "previous period: not recorded yet",
   "st.kpi.visitors": "Visitors ({range})",
   "st.kpi.newVisitors": "New visitors ({range})",
   "st.kpi.returning": "Returning ({range})",
@@ -1626,6 +1783,10 @@ const EN: Record<keyof typeof FA, string> = {
   "st.daily": "Visits and claims per day",
   "st.daily.visitors": "Visitors",
   "st.daily.claims": "Configs claimed",
+  "st.daily.since":
+    "Visits are recorded per day from {date}; earlier days have no visit data, which is not zero visits.",
+  "st.daily.notRecording":
+    "Visits are recorded per day from the first full day after this update; this range has none yet.",
   "st.top": "Most popular locations",
   "st.top.hidden": "last {n} days · {hidden} more locations not shown",
   "st.noData": "No data.",
@@ -1690,6 +1851,10 @@ const EN: Record<keyof typeof FA, string> = {
   "ui.confirm": "Confirm",
   "ui.cancel": "Cancel",
   "ui.retry": "Try again",
+  "ui.discard.title": "Unsaved changes",
+  "ui.discard.message": "The changes you have not saved will be lost.",
+  "ui.discard.confirm": "Discard changes",
+  "ui.discard.keep": "Keep editing",
   "ui.error": "Something went wrong fetching this. Please try again.",
   "ui.crashed": "Something broke",
   "ui.crashed.msg": "An unexpected error occurred. Please reload the page.",
@@ -1764,6 +1929,7 @@ const EN: Record<keyof typeof FA, string> = {
   "d.topReferrers.count": "{n} invites",
   "d.topLocations": "Most popular locations",
   "d.topLocations.empty": "Nothing claimed yet",
+  "d.topLocations.more": "and {n} more in this range",
   "d.newVsReturning": "New versus returning",
   "d.newVsReturning.sub": 'Users who claimed; "new" means it was their first claim ever.',
   "d.newVsReturning.share": "returning {pct}",
@@ -1775,7 +1941,11 @@ const EN: Record<keyof typeof FA, string> = {
   "d.usage.sub": "Traffic carried and concurrent users over the selected range",
   "d.usage.traffic": "Traffic carried",
   "d.usage.peak": "Peak concurrent users",
-  "d.usage.perUser": "Average per user",
+  "d.usage.perUser": "Panel traffic per claimer",
+  "d.usage.perUser.note":
+    "Whole-panel traffic over the bot and site users who claimed in this range — an upper bound, since your own squads are in the traffic too.",
+  "d.usage.wholePanel": "Whole panel, including site users and your own squads",
+  "d.usage.trafficReset": "The panel's counter reset in this range; this is a floor.",
   "d.usage.nodes": "Nodes online",
   "d.usage.nodes.hint": "A live reading, not a window",
   "d.usage.mem": "Panel memory {pct} of {total}",
@@ -1805,8 +1975,8 @@ const EN: Record<keyof typeof FA, string> = {
   "d.active.note":
     "An active user claimed at least one config in the window; stickiness is the share who come back every day.",
   "d.conv": "Conversion and invites",
-  "d.conv.rate": "Conversion",
-  "d.conv.rateHint": "Users who have claimed at least one config",
+  "d.conv.rate": "Conversion (all time)",
+  "d.conv.rateHint": "Everyone who has claimed at least one config, since the start",
   "d.conv.reminder": "Reminders on",
   "d.conv.reminderHint": "{n} users",
   "d.conv.avgReferrals": "Average invites per user",
@@ -1826,7 +1996,7 @@ const EN: Record<keyof typeof FA, string> = {
   "d.dau.empty": "Nobody claimed in this range",
   "d.cap": "Referral reward cap",
   "d.cap.current": "Current cap: {n} rewarded invites",
-  "d.cap.none": "No cap set — invites reward without limit.",
+  "d.cap.none": "The cap is 0 — no invite earns a reward.",
   "d.cap.empty": "No successful invite yet",
   "d.cap.active": "Active referrers",
   "d.cap.atCap": "At the cap",
@@ -1854,14 +2024,21 @@ const EN: Record<keyof typeof FA, string> = {
   "dash.chart.sub": "Configs delivered and new users over the selected range",
   "dash.chart.claims": "Configs delivered",
   "dash.chart.signups": "New users",
-  "dash.chart.panelDown": "Panel unreachable — its figures are reported as zero",
+  "dash.chart.leftAxis": "left axis",
+  "dash.chart.rightAxis": "right axis",
+  "dash.chart.partial": "today, still filling",
+  "dash.chart.soFar": "so far",
+  "dash.chart.panelDown": "Panel unreachable — figures only the panel reports are unknown",
   "dash.range.aria": "Range",
   "dash.range.days": "{n}d",
+  "dash.range.loading": "Loading the new range…",
   "dash.export": "Download CSV",
   "dash.top.location": "TOP LOCATION",
   "dash.top.referrer": "TOP REFERRER",
   "dash.top.language": "TOP LANGUAGE",
   "dash.top.hour": "PEAK HOUR",
+  "dash.scope.range": "{n} days",
+  "dash.scope.allTime": "all time",
   "dash.unit.claims": "claims",
   "dash.unit.invites": "invites",
   "dash.unit.users": "users",
@@ -1869,7 +2046,7 @@ const EN: Record<keyof typeof FA, string> = {
   "dash.side.live": "Live statistics",
   "dash.side.health": "Service health",
   "dash.rate.conversion": "Conversion",
-  "dash.rate.conversionFull": "Users who have ever claimed",
+  "dash.rate.conversionFull": "New users in this range who have claimed",
   "dash.rate.return": "Retention",
   "dash.rate.returnFull": "Returned in week two",
   "dash.rate.activation": "Activation",
@@ -1889,8 +2066,16 @@ const EN: Record<keyof typeof FA, string> = {
   "dash.health.webhookUnset": "not configured",
   "dash.health.webhookError": "recent error",
   "dash.health.webhookOk": "live",
+  "dash.health.checking": "checking…",
+  "dash.stale": "The last dashboard refresh failed; these figures are from {time}.",
+  "sys.stale": "The last status check failed; this reading is from {time}.",
+  "dash.health.webhookUnreachable": "Telegram not answering",
+  "dash.health.webhookUnregistered": "not registered; nothing arrives",
+  "dash.health.webhookBacklog": "{n} updates queued",
   "dash.health.activeConfigs": "Active configs",
+  "dash.health.activeStale": "{n} expired, not yet synced",
   "dash.health.conversion": "Conversion rate",
+  "dash.health.conversionRange": "Conversion, {n} days",
   "dash.health.more": "Service health detail",
 
   "chart.trendLabel": "Trend over the last {days} days",

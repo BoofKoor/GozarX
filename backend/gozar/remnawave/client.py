@@ -17,7 +17,14 @@ from pydantic import SecretStr, ValidationError
 
 from gozar.remnawave.errors import RemnawaveError
 from gozar.remnawave.links import parse_remark
-from gozar.remnawave.schemas import Host, InternalSquad, PanelUser, Subscription, SystemStats
+from gozar.remnawave.schemas import (
+    Host,
+    InternalSquad,
+    PanelUser,
+    SquadActivity,
+    Subscription,
+    SystemStats,
+)
 
 logger = logging.getLogger("gozar.remnawave")
 
@@ -181,14 +188,22 @@ class RemnawaveClient:
     _USERS_PAGE_SIZE = 500
     _USERS_MAX_PAGES = 40  # hard ceiling (20k users) so a huge panel can't become a firehose
 
-    async def squad_online_count(self, squad_uuids: set[str]) -> int | None:
-        """Count users online in the last minute who belong to ANY of ``squad_uuids`` (the service's
-        trial squad(s)) — excludes the operator's own personal squads that pollute the panel-wide
-        ``onlineNow``. Empty input -> 0 (nothing to scope to)."""
+    async def squad_online_count(self, squad_uuids: set[str]) -> SquadActivity | None:
+        """Count, among users who belong to ANY of ``squad_uuids`` (the service's trial squad(s)),
+        who was online in the last minute and who in the last week — excluding the operator's own
+        personal squads that pollute the panel-wide ``onlineNow``. Empty input -> zeros (nothing to
+        scope to).
+
+        The week figure rides the same sweep because the dashboard gauges one against the other:
+        against the panel-wide ``onlineLastWeek`` the ring compared a trial-squad count with a
+        population that also held the operator's own users.
+        """
         if not squad_uuids:
-            return 0
-        cutoff = datetime.now(UTC) - timedelta(seconds=self.ONLINE_WINDOW_SECONDS)
-        online = 0
+            return SquadActivity(online=0, week=0)
+        now = datetime.now(UTC)
+        cutoff = now - timedelta(seconds=self.ONLINE_WINDOW_SECONDS)
+        week_cutoff = now - timedelta(days=7)
+        online = week = 0
         start = 0
         for _ in range(self._USERS_MAX_PAGES):
             try:
@@ -206,10 +221,12 @@ class RemnawaveClient:
                 except ValidationError:
                     continue
                 seen = _parse_iso(user.traffic.online_at)
-                if seen is None or seen < cutoff:
+                if seen is None or seen < week_cutoff:
                     continue
                 if any(ref.uuid in squad_uuids for ref in user.active_internal_squads):
-                    online += 1
+                    week += 1
+                    if seen >= cutoff:
+                        online += 1
             if len(users) < self._USERS_PAGE_SIZE:
                 break
             start += self._USERS_PAGE_SIZE
@@ -217,7 +234,7 @@ class RemnawaveClient:
             logger.warning(
                 "squad_online_count: hit the %d-page cap; count is a floor", self._USERS_MAX_PAGES
             )
-        return online
+        return SquadActivity(online=online, week=week)
 
     # VERIFY: GET /api/internal-squads -> response.internalSquads[]
     async def list_internal_squads(self) -> list[InternalSquad]:

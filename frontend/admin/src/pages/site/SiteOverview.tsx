@@ -9,14 +9,15 @@ import {
   Wrench,
 } from "lucide-react";
 import { type ReactNode } from "react";
-import { Link } from "react-router-dom";
 
 import { StatCard } from "@/components/dashboard/StatCard";
 import { SiteTabs } from "@/components/site/SiteTabs";
+import { PUSH_STATUS } from "@/components/site/pushStatus";
 import { Badge } from "@/components/ui/Badge";
-import { Button } from "@/components/ui/Button";
+import { ExternalLinkButton, LinkButton } from "@/components/ui/Button";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { ErrorState } from "@/components/ui/ErrorState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Skeleton } from "@/components/ui/Skeleton";
 import {
@@ -40,8 +41,15 @@ const RANGE_DAYS = 14;
 
 export function SiteOverview() {
   const { t } = useI18n();
-  const { data: settings, isLoading: settingsLoading } = useSiteSettings();
+  const {
+    data: settings,
+    isLoading: settingsLoading,
+    isError: settingsError,
+    refetch: refetchSettings,
+  } = useSiteSettings();
   const { data: stats } = useSiteStats(RANGE_DAYS);
+  // A figure that has not arrived is «—», never a 0 that reads as "nobody came".
+  const n = (value: number | undefined) => (value === undefined ? "—" : formatNumber(value));
   const { data: pages } = useSiteLandingPages();
   const { data: unread } = useSiteUnreadCount();
   const { data: pushHistory } = useSitePushHistory();
@@ -56,12 +64,10 @@ export function SiteOverview() {
         title={t("so.title")}
         sub={t("so.sub")}
         actions={
-          <a href="/" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline" size="sm">
-              <ExternalLink className="h-4 w-4" />
-              {t("so.visit")}
-            </Button>
-          </a>
+          <ExternalLinkButton href="/" variant="outline" size="sm">
+            <ExternalLink className="h-4 w-4" />
+            {t("so.visit")}
+          </ExternalLinkButton>
         }
       >
         <SiteTabs unreadMessages={unread} />
@@ -71,17 +77,17 @@ export function SiteOverview() {
         <Card>
           <Skeleton className="h-24 w-full" />
         </Card>
+      ) : settingsError && !settings ? (
+        // A settings read that FAILED used to fall through to "not set up yet", sending the
+        // operator into the wizard to redo a setup that was fine.
+        <ErrorState onRetry={() => void refetchSettings()} />
       ) : !configured ? (
         <Card>
           <EmptyState
             icon={Wrench}
             title={t("so.notSetUp")}
             message={t("so.notSetUp.msg")}
-            action={
-              <Link to="/site/setup">
-                <Button>{t("so.setUpNow")}</Button>
-              </Link>
-            }
+            action={<LinkButton to="/site/setup">{t("so.setUpNow")}</LinkButton>}
           />
         </Card>
       ) : (
@@ -91,22 +97,24 @@ export function SiteOverview() {
                 identity count under the word "visitors", which only ever grows. */}
             <StatCard
               label={t("so.kpi.visitors", { days: formatNumber(RANGE_DAYS) })}
-              value={formatNumber(stats?.visitors.value ?? 0)}
+              value={n(stats?.visitors.value)}
               icon={Globe}
               tone="brand"
               delta={stats?.visitors.change_pct}
             />
             <StatCard
               label={t("so.kpi.claimers", { days: formatNumber(RANGE_DAYS) })}
-              value={formatNumber(stats?.claimers.value ?? 0)}
+              value={n(stats?.claimers.value)}
               icon={Download}
               tone="success"
               delta={stats?.claimers.change_pct}
-              hint={t("so.kpi.conversion", { pct: faPct(stats?.conversion_pct ?? 0) })}
+              hint={
+                stats ? t("so.kpi.conversion", { pct: faPct(stats.conversion_pct) }) : undefined
+              }
             />
             <StatCard
               label={t("so.kpi.subscribers")}
-              value={formatNumber(stats?.push_subscribers ?? 0)}
+              value={n(stats?.push_subscribers)}
               icon={BellRing}
               tone="warning"
             />
@@ -147,16 +155,12 @@ export function SiteOverview() {
                 />
               </div>
               <div className="mt-4 flex gap-2">
-                <Link to="/site/settings">
-                  <Button variant="outline" size="sm">
-                    {t("so.config.editSettings")}
-                  </Button>
-                </Link>
-                <Link to="/site/content">
-                  <Button variant="ghost" size="sm">
-                    {t("so.config.editCopy")}
-                  </Button>
-                </Link>
+                <LinkButton to="/site/settings" variant="outline" size="sm">
+                  {t("so.config.editSettings")}
+                </LinkButton>
+                <LinkButton to="/site/content" variant="ghost" size="sm">
+                  {t("so.config.editCopy")}
+                </LinkButton>
               </div>
             </Card>
 
@@ -176,10 +180,12 @@ export function SiteOverview() {
                     lastPush ? (
                       <span className="flex items-center gap-2">
                         {faDate(lastPush.created_at)}
-                        <Badge tone={lastPush.status === "done" ? "success" : "neutral"}>
+                        <Badge tone={PUSH_STATUS[lastPush.status]?.tone ?? "neutral"}>
                           {lastPush.status === "done"
                             ? t("so.reach.delivered", { n: formatNumber(lastPush.sent) })
-                            : lastPush.status}
+                            : PUSH_STATUS[lastPush.status]
+                              ? t(PUSH_STATUS[lastPush.status].label)
+                              : lastPush.status}
                         </Badge>
                       </span>
                     ) : (
@@ -191,7 +197,7 @@ export function SiteOverview() {
                   label={t("so.reach.activeConfigs")}
                   value={
                     <span className="flex items-center gap-2">
-                      {formatNumber(stats?.active_configs_live ?? 0)}
+                      {n(stats?.active_configs_live)}
                       {(stats?.active_configs_stale ?? 0) > 0 && (
                         <Badge tone="warning">
                           {t("so.reach.stale", {
@@ -204,24 +210,18 @@ export function SiteOverview() {
                 />
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
-                <Link to="/site/pages">
-                  <Button variant="outline" size="sm">
-                    <FileText className="h-4 w-4" />
-                    {t("so.link.pages")}
-                  </Button>
-                </Link>
-                <Link to="/site/inbox">
-                  <Button variant="ghost" size="sm">
-                    <Inbox className="h-4 w-4" />
-                    {t("so.link.inbox")}
-                  </Button>
-                </Link>
-                <Link to="/site/devices">
-                  <Button variant="ghost" size="sm">
-                    <MonitorSmartphone className="h-4 w-4" />
-                    {t("so.link.devices")}
-                  </Button>
-                </Link>
+                <LinkButton to="/site/pages" variant="outline" size="sm">
+                  <FileText className="h-4 w-4" />
+                  {t("so.link.pages")}
+                </LinkButton>
+                <LinkButton to="/site/inbox" variant="ghost" size="sm">
+                  <Inbox className="h-4 w-4" />
+                  {t("so.link.inbox")}
+                </LinkButton>
+                <LinkButton to="/site/devices" variant="ghost" size="sm">
+                  <MonitorSmartphone className="h-4 w-4" />
+                  {t("so.link.devices")}
+                </LinkButton>
               </div>
             </Card>
           </div>

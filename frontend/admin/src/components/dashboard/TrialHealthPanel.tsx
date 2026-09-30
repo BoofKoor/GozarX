@@ -69,10 +69,20 @@ export function TrialHealthPanel({ data }: { data: DashboardStats }) {
           ))}
         </ul>
       </div>
+      {/* Each is "—" when the panel did not give it: a dead panel is not zero nodes. */}
       <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3 text-center">
-        <Metric label={t("d.trial.traffic")} value={humanBytes(data.total_traffic_bytes)} />
-        <Metric label={t("d.trial.nodes")} value={formatNumber(data.nodes_online)} />
-        <Metric label={t("d.trial.panelUsers")} value={formatNumber(data.panel_total_users)} />
+        <Metric
+          label={t("d.trial.traffic")}
+          value={data.total_traffic_bytes == null ? "—" : humanBytes(data.total_traffic_bytes)}
+        />
+        <Metric
+          label={t("d.trial.nodes")}
+          value={data.nodes_online == null ? "—" : formatNumber(data.nodes_online)}
+        />
+        <Metric
+          label={t("d.trial.panelUsers")}
+          value={data.panel_total_users == null ? "—" : formatNumber(data.panel_total_users)}
+        />
       </div>
     </Card>
   );

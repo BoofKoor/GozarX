@@ -137,3 +137,21 @@ export function rosePath(cx: number, cy: number, pts: readonly RosePoint[], k = 
 export function spokeAngles(n: number): number[] {
   return Array.from({ length: n }, (_, i) => (i / n) * Math.PI * 2 - Math.PI / 2);
 }
+
+/**
+ * Which x labels a time axis can draw without them running into each other.
+ *
+ * Every label was drawn: at 90 days the buckets sit ~9 viewBox units apart and the two-digit day
+ * numbers overprinted into a grey bar. When one label per bucket does not fit, the axis steps a
+ * WEEK at a time instead of by the smallest stride that fits — a stride of three drew every third
+ * day with a weekday initial that changed at random, and a weekly axis reads as a calendar.
+ *
+ * Counted back from the LAST bucket, so the newest day (today) always keeps its label.
+ */
+export function visibleLabels(count: number, plotWidth: number, minGap = 24): boolean[] {
+  if (count <= 0) return [];
+  const spacing = count > 1 ? plotWidth / (count - 1) : plotWidth;
+  let stride = Math.max(1, Math.ceil(minGap / spacing));
+  if (stride > 1) stride = Math.ceil(stride / 7) * 7;
+  return Array.from({ length: count }, (_, i) => (count - 1 - i) % stride === 0);
+}
