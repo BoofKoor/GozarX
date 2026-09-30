@@ -9,7 +9,7 @@ screens; only the security guards (rate limit / Turnstile) return 4xx.
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gozar.cache.redis import single_flight
 from gozar.db.repositories.site_claim import SiteClaimRepository
@@ -30,6 +30,7 @@ from gozar.services.site_trial import (
 from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice, OptionalDevice, client_ip
 from gozar.web.routes.public.security import rate_limit_ok, verify_turnstile
+from gozar.web.routes.public.status import server_now
 
 router = APIRouter(tags=["public"])
 
@@ -62,6 +63,12 @@ class ClaimResponse(BaseModel):
     size: str | None = None
     changed: bool = False
     retry_after: str | None = None
+    # The absolute instants behind `expires` / `retry_after` (UTC ISO), plus the server's clock so
+    # the client can count down to them without trusting its own. The human strings stay for older
+    # clients and the bot.
+    expires_at: str | None = None
+    cooldown_until: str | None = None
+    server_time: str = Field(default_factory=server_now)
     # Live squad names, sent only with reason='location_unavailable' so the picker can re-sync.
     locations: list[str] | None = None
 
@@ -150,11 +157,17 @@ async def post_claim(
             expires=result.expires,
             size=result.size,
             changed=result.changed,
+            expires_at=result.expires_at,
         )
     if isinstance(result, Blocked):
         return ClaimResponse(ok=False, reason="blocked")
     if isinstance(result, AlreadyClaimedToday):
-        return ClaimResponse(ok=False, reason="cooldown", retry_after=result.retry_after)
+        return ClaimResponse(
+            ok=False,
+            reason="cooldown",
+            retry_after=result.retry_after,
+            cooldown_until=result.until.isoformat() if result.until else None,
+        )
     if isinstance(result, NotReady):
         return ClaimResponse(ok=False, reason="not_ready")
     if isinstance(result, NoLocations):

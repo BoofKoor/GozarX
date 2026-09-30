@@ -20,3 +20,16 @@ export function rewardMessage(
   }
   return r?.reason === "already_claimed" ? t("reward_taken") : t("reward_err");
 }
+
+// Share an invite through the system sheet WITH a sentence — a bare URL told the friend nothing about
+// why they were getting it. Resolves false where there is no share sheet (the caller copies instead)
+// and when the person dismisses it; never throws.
+export async function shareInvite(link: string, locale: Locale): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.share) return false;
+  try {
+    await navigator.share({ title: "GozarX", text: translator(locale)("invite_share"), url: link });
+    return true;
+  } catch {
+    return false;
+  }
+}

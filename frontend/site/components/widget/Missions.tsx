@@ -4,23 +4,46 @@ import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
-import { rewardMessage } from "@/lib/rewards";
+import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { pushSupported, subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
+import { IosSteps } from "@/components/widget/Overlay";
+
+// Closing the strip holds until tomorrow (local midnight) rather than until the next render — it
+// used to reappear on every visit, which made the ✕ look broken.
+const DISMISS_KEY = "gz_missions_hidden_until";
+function dismissedNow(): boolean {
+  try {
+    return Number(window.localStorage.getItem(DISMISS_KEY) ?? 0) > Date.now();
+  } catch {
+    return false; // storage blocked (private mode, a strict browser): the strip just shows
+  }
+}
+function dismissUntilTomorrow(): void {
+  try {
+    const midnight = new Date();
+    midnight.setHours(24, 0, 0, 0);
+    window.localStorage.setItem(DISMISS_KEY, String(midnight.getTime()));
+  } catch {
+    /* not persisted — it still hides for this view */
+  }
+}
 
 // "Want more daily volume?" strip (design `.missions`) — invite (Web Share), install PWA, enable
 // notifications. Actions are REAL: install fires the native prompt, notifications actually
-// subscribe. The install chip only appears when the browser can actually install (the full iOS
-// flow lives on the account page). Reward MB comes from site_* settings. Dismissible.
+// subscribe. The install chip appears where the browser can install — and on iOS as the "Add to
+// Home Screen" steps, since web push only exists there for an installed web app. Reward MB comes
+// from site_* settings. Dismissible until tomorrow.
 export function Missions({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
   const { config, reload, pushPerm, pushOn, refreshPush } = useSite();
   const pwa = usePwaState();
-  const [hidden, setHidden] = useState(false);
+  const [hidden, setHidden] = useState(dismissedNow);
   const [busy, setBusy] = useState<string | null>(null);
   const [flash, setFlash] = useState<string | null>(null);
+  const [iosSteps, setIosSteps] = useState(false);
   if (hidden) return null;
 
   const link = typeof window !== "undefined" ? `${window.location.origin}/?ref=${refCode}` : "";
@@ -31,12 +54,9 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
   }
 
   async function invite() {
-    try {
-      if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) toast(t("invite_copied"));
-    } catch {
-      /* cancelled */
-    }
+    if (await shareInvite(link, locale)) return;
+    if (typeof navigator !== "undefined" && "share" in navigator) return; // a sheet exists; dismissed
+    if (await copyText(link)) toast(t("invite_copied"));
   }
   async function installPwa() {
     setBusy("pwa");
@@ -86,20 +106,28 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
       rw: amount(config?.reward_referral_mb, <Icon name="share" sw={2} />),
     },
   ];
-  // Only offer the install chip when the browser can actually install (Chromium prompt captured).
-  if (pwa === "installable") {
+  // Only offer the install chip when the browser can actually install (Chromium prompt captured) —
+  // or on iOS, where "install" is three manual steps, and the one way to notifications there too.
+  if (pwa === "installable" || pwa === "ios") {
     chips.push({
       key: "pwa",
       ic: "download",
       title: t("m_pwa"),
-      desc: t("m_pwa_d"),
-      action: installPwa,
+      desc: pwa === "ios" ? t("m_pwa_ios") : t("m_pwa_d"),
+      action: pwa === "ios" ? () => setIosSteps(true) : installPwa,
       rw: amount(config?.reward_pwa_mb, "＋"),
     });
   }
   // Only while it can still be earned HERE: not once notifications are on, not once the visitor has
-  // blocked them (the browser would refuse without asking), and not where push does not exist.
-  if (config?.vapid_public_key && !pushOn && pushPerm !== "denied" && pushSupported()) {
+  // blocked them (the browser would refuse without asking), and not where push does not exist. On
+  // an iPhone that has not installed the web app, the install chip above is the way to push.
+  if (
+    config?.vapid_public_key &&
+    !pushOn &&
+    pushPerm !== "denied" &&
+    pwa !== "ios" &&
+    pushSupported()
+  ) {
     chips.push({
       key: "push",
       ic: "bell",
@@ -116,7 +144,14 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
         <span className="t">
           <Icon name="gift" sw={2} /> {t("m_title")}
         </span>
-        <button className="x-btn" aria-label={t("common.close")} onClick={() => setHidden(true)}>
+        <button
+          className="x-btn"
+          aria-label={t("common.close")}
+          onClick={() => {
+            dismissUntilTomorrow();
+            setHidden(true);
+          }}
+        >
           <Icon name="x" sw={2} />
         </button>
       </div>
@@ -144,6 +179,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
       <div className="toast-wrap" role="status">
         {flash && <div className="toast">{flash}</div>}
       </div>
+      {iosSteps && <IosSteps locale={locale} onClose={() => setIosSteps(false)} />}
     </div>
   );
 }

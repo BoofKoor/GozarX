@@ -1,14 +1,15 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
-import { rewardMessage } from "@/lib/rewards";
+import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
+import { IosSteps, Overlay } from "@/components/widget/Overlay";
 
 // Account rewards card — the daily-claim streak (day-dots) + the three ways to grow the daily
 // allowance (invite / install the web app / enable notifications). Unlike the old decorative strip,
@@ -47,6 +48,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   // ~400px card pops in when the fetch resolves and shoves the page (a status-page CLS the RUM data
   // flagged). A quiet skeleton holds the space until the real content replaces it in-place.
   if (!status) return <div className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // A blocked device collects nothing — the server refuses every reward — so the missions would be
+  // a card of buttons that can only fail. The widget above already says why.
+  if (status.status === "blocked") return null;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);
@@ -60,12 +64,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   }
 
   async function invite() {
-    try {
-      if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) toast(t("invite_copied"));
-    } catch {
-      /* user cancelled the share sheet */
-    }
+    if (await shareInvite(link, locale)) return;
+    if (typeof navigator !== "undefined" && "share" in navigator) return; // a sheet exists; dismissed
+    if (await copyText(link)) toast(t("invite_copied"));
   }
 
   async function installPwa() {
@@ -404,63 +405,6 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
         )}
       </div>
     </div>
-  );
-}
-
-function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.focus(); // move focus into the dialog on open
-  }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="overlay open" onClick={onClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-modal
-        tabIndex={-1}
-        ref={ref}
-        style={{ maxInlineSize: 420 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function IosSteps({ locale, onClose }: { locale: Locale; onClose: () => void }) {
-  const t = translator(locale);
-  const steps = [
-    { n: 1, text: t("ios_1"), icon: "share" },
-    { n: 2, text: t("ios_2"), icon: "download" },
-    { n: 3, text: t("ios_3"), icon: "check" },
-  ] as const;
-  return (
-    <Overlay onClose={onClose}>
-      <h3 style={{ marginBlockEnd: 12 }}>{t("inst_h")}</h3>
-      <div className="ios-steps">
-        {steps.map((s) => (
-          <div className="ios-step" key={s.n}>
-            <span className="ios-n">{faDigits(String(s.n), locale)}</span>
-            <span className="ios-t">{s.text}</span>
-            <span className="ios-badge">
-              <Icon name={s.icon} sw={2} />
-            </span>
-          </div>
-        ))}
-      </div>
-      <button className="btn ghost block" style={{ marginBlockStart: 14 }} onClick={onClose}>
-        {t("common.close")}
-      </button>
-    </Overlay>
   );
 }
 

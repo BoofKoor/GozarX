@@ -627,3 +627,99 @@ async def test_endpoint_second_claim_is_change_location(claim_env) -> None:
     assert body["ok"] is True
     assert body["changed"] is True  # active device -> change-location, not a new provision
     assert len(app.state.panel.created) == 1  # provisioned exactly once
+
+
+# --- absolute instants (the site counts down to them; the rounded strings froze at "0m") -------
+
+
+def _when(iso: str | None) -> datetime:
+    assert iso is not None
+    parsed = datetime.fromisoformat(iso)
+    assert parsed.tzinfo is not None  # a naive instant would be read as the VIEWER's local time
+    return parsed
+
+
+def test_iso_utc_normalises_the_panels_spellings() -> None:
+    from gozar.services.trial import iso_utc
+
+    assert iso_utc("2026-10-01T12:00:00Z") == "2026-10-01T12:00:00+00:00"
+    assert iso_utc("2026-10-01T12:00:00") == "2026-10-01T12:00:00+00:00"  # naive means UTC
+    assert iso_utc("2026-10-01T15:30:00+03:30") == "2026-10-01T12:00:00+00:00"
+    assert iso_utc("not a date") is None
+    assert iso_utc(None) is None
+
+
+async def test_status_cooldown_carries_the_instant_it_lifts(session) -> None:
+    last = datetime.now(UTC) - timedelta(hours=2)
+    svc = await _service(session, FakePanel([]))
+    device = await _device(session, last_claim_at=last)
+
+    info = await svc.status(device)
+
+    assert info.can_claim is False
+    assert abs(_when(info.cooldown_until) - (last + timedelta(hours=24))) < timedelta(seconds=1)
+
+
+async def test_status_claimable_device_has_no_instants(session) -> None:
+    svc = await _service(session, FakePanel([]))
+    info = await svc.status(await _device(session))
+    assert info.cooldown_until is None
+    assert info.expires_at is None
+
+
+async def test_status_active_carries_the_expiry_instant(session) -> None:
+    panel = FakePanel([(_sub(expires_hours=12), _TWO)])
+    svc = await _service(session, panel)
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-live"
+    )
+
+    info = await svc.status(device)
+
+    expected = datetime.now(UTC) + timedelta(hours=12)
+    assert abs(_when(info.expires_at) - expected) < timedelta(seconds=5)
+
+
+async def test_status_panel_down_has_no_expiry_instant(session) -> None:
+    svc = await _service(session, FakePanel([RemnawaveError("down")]))
+    device = await _device(
+        session, status=SiteDeviceStatus.active_config, site_panel_username="s-x"
+    )
+    info = await svc.status(device)
+    assert info.live is False
+    assert info.expires_at is None  # unknown is None, never a guess
+
+
+async def test_cooldown_claim_carries_the_instant(session) -> None:
+    last = datetime.now(UTC) - timedelta(hours=1)
+    svc = await _service(session, FakePanel([(_sub(), _TWO)]))
+    device = await _device(session, last_claim_at=last)
+
+    result = await svc.claim(device, "Germany")
+
+    assert isinstance(result, AlreadyClaimedToday)
+    assert result.until is not None
+    assert abs(result.until - (last + timedelta(hours=24))) < timedelta(seconds=1)
+
+
+async def test_delivery_carries_the_expiry_instant(session) -> None:
+    svc = await _service(session, FakePanel([(_sub(expires_hours=24), _TWO)]))
+    result = await svc.claim(await _device(session), "Germany")
+    assert isinstance(result, Delivered)
+    expected = datetime.now(UTC) + timedelta(hours=24)
+    assert abs(_when(result.expires_at) - expected) < timedelta(seconds=5)
+
+
+async def test_endpoint_carries_instants_and_server_time(claim_env) -> None:
+    client, _app = claim_env
+    claim = (await client.post("/api/public/claim", json={"location": "Germany"})).json()
+    assert claim["ok"] is True
+    _when(claim["expires_at"])
+    now = _when(claim["server_time"])
+    assert abs(now - datetime.now(UTC)) < timedelta(seconds=5)
+
+    status = (await client.get("/api/public/status")).json()
+    _when(status["server_time"])
+    _when(status["expires_at"])  # live config
+    _when(status["cooldown_until"])  # the claim just started the rolling window
+    assert status["can_claim"] is False

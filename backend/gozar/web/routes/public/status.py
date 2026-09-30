@@ -7,8 +7,10 @@ when the panel is unreachable. ``GET /config`` hands the SPA the public keys it 
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gozar.config.settings import get_settings
 from gozar.db.repositories.site_claim import SiteClaimRepository
@@ -20,6 +22,12 @@ from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice
 
 router = APIRouter(tags=["public"])
+
+
+def server_now() -> str:
+    """The server's clock at response time. A client counting down to an absolute instant takes its
+    own clock's offset from this, so a phone set ten minutes fast still reaches zero on time."""
+    return datetime.now(UTC).isoformat()
 
 
 class HistoryItem(BaseModel):
@@ -39,6 +47,9 @@ class StatusResponse(BaseModel):
     usage_bytes: int
     remaining: str
     cooldown: str
+    expires_at: str | None = None  # UTC ISO instant behind `remaining` (None when not live)
+    cooldown_until: str | None = None  # UTC ISO instant behind `cooldown` (None when claimable)
+    server_time: str = Field(default_factory=server_now)
     can_claim: bool
     configs: int
     referral_count: int

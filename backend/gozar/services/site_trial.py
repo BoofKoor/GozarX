@@ -53,10 +53,12 @@ from gozar.services.trial import (
     NotReady,
     PanelError,
     TrialService,
+    cooldown_ends_at,
     cooldown_remaining,
     human_bytes,
     human_remaining,
     in_cooldown,
+    iso_utc,
 )
 
 logger = logging.getLogger("gozar.services.site_trial")
@@ -69,6 +71,11 @@ def _iso(dt: datetime) -> str:
     return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
 
 
+def _until_iso(last_claim: datetime | None, hours: int) -> str | None:
+    ends = cooldown_ends_at(last_claim, hours)
+    return ends.isoformat() if ends else None
+
+
 @dataclass(frozen=True)
 class Delivered:
     """A config for a chosen location was delivered. ``changed`` is True when an already-active
@@ -79,6 +86,7 @@ class Delivered:
     expires: str  # human time-remaining ("19h 54m")
     size: str  # daily allowance, human ("1.5 GB")
     changed: bool = False
+    expires_at: str | None = None  # the same expiry as an absolute UTC ISO instant
 
 
 @dataclass(frozen=True)
@@ -135,6 +143,11 @@ class SiteStatusInfo:
     usage_bytes: int
     remaining: str  # time left on the current config
     cooldown: str  # time until the next fresh claim ("" when already elapsed)
+    # The two instants behind `remaining` / `cooldown`, as UTC ISO (None when unknown/elapsed). The
+    # human strings are rounded to the minute, so a client counting down from them was up to 59s
+    # off and, under a minute, had nothing to count at all ("0m").
+    expires_at: str | None
+    cooldown_until: str | None
     can_claim: bool
     configs: int  # claim-history count
     referral_count: int
@@ -440,6 +453,7 @@ class SiteTrialService:
             expires=human_remaining(expires),
             size=await self._allowance_size(device),
             changed=changed,
+            expires_at=iso_utc(expires),
         )
 
     # --- public flow ----------------------------------------------------------------------------
@@ -493,7 +507,10 @@ class SiteTrialService:
         # 2. One claim per rolling site_trial_hours window (anchored on the last PROVISION time).
         hours = await self._hours()
         if in_cooldown(device.last_claim_at, hours):
-            return AlreadyClaimedToday(cooldown_remaining(device.last_claim_at, hours))
+            return AlreadyClaimedToday(
+                cooldown_remaining(device.last_claim_at, hours),
+                until=cooldown_ends_at(device.last_claim_at, hours),
+            )
 
         # 3. Site trial squad configured (admin 'website' wizard done)?
         squad = await self._settings.get(SiteSettingKey.SITE_TRIAL_SQUAD)
@@ -551,6 +568,7 @@ class SiteTrialService:
         active = device.status == SiteDeviceStatus.active_config
         live, exhausted, usage_bytes = True, False, 0
         usage, remaining = "—", "—"  # unknown until live traffic is read
+        expires_at: str | None = None
         location: str | None = None
         link: str | None = None
         if active:
@@ -566,6 +584,7 @@ class SiteTrialService:
                     usage_bytes = sub.user.traffic_used_bytes
                     usage = human_bytes(usage_bytes)
                     remaining = human_remaining(sub.user.expires_at)
+                    expires_at = iso_utc(sub.user.expires_at)
                     exhausted = TrialService._is_data_exhausted(sub)
                     loc = await self._claims.latest_location_for_device(device.uuid)
                     if loc and loc in links:
@@ -605,6 +624,8 @@ class SiteTrialService:
             usage_bytes=usage_bytes,
             remaining=remaining,
             cooldown=cooldown_remaining(device.last_claim_at, hours) if cooling else "",
+            expires_at=expires_at,
+            cooldown_until=_until_iso(device.last_claim_at, hours) if cooling else None,
             can_claim=not cooling and device.status != SiteDeviceStatus.blocked,
             configs=await self._claims.count_for_device(device.uuid),
             referral_count=device.referral_count,
