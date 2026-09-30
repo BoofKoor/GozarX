@@ -73,23 +73,28 @@ export function Footer({
   // who holds a config (or is waiting out the cooldown) is shown the one thing that still grows it,
   // inviting, with the configured reward; once the invite cap is reached that stops being true, so
   // the band points at their config instead. Unknown (loading, no backend) keeps the claim band. The
-  // `.ft-cta` element itself stays put across the switch — StickyCta watches it.
+  // `.ft-cta` element itself stays put across the switch — StickyCta watches it. A device the
+  // operator blocked can neither claim nor grow anything (its invites are not credited), so it is
+  // told the one thing left to it.
+  const blocked = status?.status === "blocked";
   const holder = !!status && (status.has_config || !status.can_claim);
   const capped = !!status && status.referral_cap > 0 && status.referral_count >= status.referral_cap;
   const reward = config?.reward_referral_mb ?? 0;
-  const band = !holder
-    ? { h: t("ft_cta_h"), d: t("ft_cta_d"), btn: t("ft_cta_btn"), href: "/#hero-widget" }
-    : capped
-      ? { h: t("ft_cta_mine_h"), d: t("ft_cta_mine_d"), btn: t("sticky_mine"), href: "/status" }
-      : {
-          h: t("ft_cta_inv_h"),
-          d:
-            (reward > 0 &&
-              fill(t("ft_cta_inv_d"), { v: `${faDigits(reward, locale)} ${t("mb_unit")}` })) ||
-            t("ft_cta_inv_d_any"),
-          btn: t("ft_cta_inv_btn"),
-          href: "/status#rewards",
-        };
+  const band = blocked
+    ? { h: t("blk_title"), d: t("blk_sub"), btn: t("blk_contact"), href: "/contact" }
+    : !holder
+      ? { h: t("ft_cta_h"), d: t("ft_cta_d"), btn: t("ft_cta_btn"), href: "/#hero-widget" }
+      : capped
+        ? { h: t("ft_cta_mine_h"), d: t("ft_cta_mine_d"), btn: t("sticky_mine"), href: "/status" }
+        : {
+            h: t("ft_cta_inv_h"),
+            d:
+              (reward > 0 &&
+                fill(t("ft_cta_inv_d"), { v: `${faDigits(reward, locale)} ${t("mb_unit")}` })) ||
+              t("ft_cta_inv_d_any"),
+            btn: t("ft_cta_inv_btn"),
+            href: "/status#rewards",
+          };
 
   return (
     <footer className="ft">
