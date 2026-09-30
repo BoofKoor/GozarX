@@ -29,6 +29,7 @@ SITE_COPY_GROUPS: dict[str, list[str]] = {
     # three were fields whose edits never reached the page. One editable field per text.
     "hero": [
         "hero_eyebrow",
+        "hero_sub_short",
         "trust1",
         "trust2",
         "trust3",
@@ -81,10 +82,18 @@ SITE_COPY_DEFAULTS: dict[str, dict[Language, str]] = {
         Language.en: "in seconds",
     },
     "hero_sub": {Language.fa: _HERO_SUB_FA, Language.en: _HERO_SUB_EN},
+    # The phone hero's one-to-two-line subtitle (the long one pushed the claim button off-screen).
+    "hero_sub_short": {
+        Language.fa: "هر روز یک کانفیگ رایگان؛ بدون ثبت‌نام، با لوکیشن دلخواه.",
+        Language.en: "A free config every day — no signup, any location you like.",
+    },
     "trust1": {Language.fa: "بدون ثبت‌نام", Language.en: "No signup"},
     "trust2": {Language.fa: "همیشه رایگان", Language.en: "Free forever"},
-    "trust3": {Language.fa: "هر ۲۴ ساعت تازه", Language.en: "Fresh every 24h"},
-    "trust4": {Language.fa: "+۱۲٬۰۰۰ کاربر", Language.en: "12,000+ users"},
+    # `{h}` is filled with site_trial_hours and `{n}` with the real configs-delivered count (rounded
+    # down to the thousand); the site hides the chip rather than print a guess when either value is
+    # missing. An override may keep the token or drop it — both render.
+    "trust3": {Language.fa: "هر {h} ساعت تازه", Language.en: "Fresh every {h}h"},
+    "trust4": {Language.fa: "+{n} کانفیگ تحویل‌شده", Language.en: "{n}+ configs delivered"},
     "w_title": {Language.fa: "کانفیگ رایگان امروز", Language.en: "Today's free config"},
     "w_sub": {
         Language.fa: "یک لوکیشن انتخاب کن و بگیر",
@@ -106,12 +115,14 @@ SITE_COPY_DEFAULTS: dict[str, dict[Language, str]] = {
     },
     "app_eyebrow": {Language.fa: "اپ‌های سازگار", Language.en: "Compatible apps"},
     "app_title": {
-        Language.fa: "در اپ دلخواهت باز کن",
-        Language.en: "Open in your favorite app",
+        Language.fa: "با اپ دلخواهت وصل شو",
+        Language.en: "Connect with your favorite app",
     },
     "app_sub": {
-        Language.fa: "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. اپِ متناسب با دستگاهت را انتخاب کن.",
-        Language.en: "Configs work with every popular client. Pick the app that fits your device.",
+        Language.fa: "کانفیگ با همهٔ کلاینت‌های محبوب کار می‌کند. راهنمای اپ دستگاهت را باز کن.",
+        Language.en: (
+            "Configs work with every popular client. Open the guide for your device's app."
+        ),
     },
     "faq_eyebrow": {Language.fa: "سوالات متداول", Language.en: "FAQ"},
     "faq_title": {Language.fa: "سوالی داری؟", Language.en: "Got a question?"},

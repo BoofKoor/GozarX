@@ -1,8 +1,10 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getLocale } from "@/lib/server";
-import type { Locale } from "@/lib/i18n";
+import { type Locale, faDigits } from "@/lib/i18n";
 import { GUIDE_LABELS, guideFor } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 import { BrandIcon } from "@/components/BrandIcon";
@@ -10,6 +12,15 @@ import { BrandIcon } from "@/components/BrandIcon";
 // "اتصال ویندوز با Happ" — strip the "(iOS)"/"(macOS)" parenthetical so the heading stays tight.
 function heading(labels: { connect: string }, name: string): string {
   return labels.connect.replace("{name}", name.replace(/\s*\(.*\)/, ""));
+}
+
+// A step's screenshot is an ASSET drop, not a code change (C-30): `public/guides/<platform>/<n>.webp`
+// (16:9 — 1280×720) appears under step n once the file exists. None ship yet: they have to be real
+// captures of Happ on each platform, which only the owner can take. Checked per render (the page is
+// request-time already), so a file copied into a running container shows up without a rebuild.
+function stepShot(platform: string, n: number): string | null {
+  const rel = `/guides/${platform}/${n}.webp`;
+  return existsSync(path.join(process.cwd(), "public", rel)) ? rel : null;
 }
 
 // Meta-description template ({name} = platform display name), kept under ~160 chars for SERPs.
@@ -72,33 +83,67 @@ export default async function GuidePage({ params }: { params: Promise<{ platform
 
         <h2 className="gsteps-h">{labels.steps}</h2>
         <div className="tl">
-          {g.steps.map((s, i) => (
-            <div className={`tstep${i === g.steps.length - 1 ? " last" : ""}`} key={i}>
-              <span className="tbadge">{i + 1}</span>
-              <div className="tcard">
-                <strong>{s.t}</strong>
-                <p className="mt-2">{s.d}</p>
-                {i === 0 && (
-                  <a
-                    className="dlbtn"
-                    href={g.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    style={acc}
-                    aria-label={`${g.dl.top} ${g.dl.bottom}`}
-                  >
-                    <span className="store">
-                      <BrandIcon name={g.store} />
-                    </span>
-                    <span className="dlt">
-                      <small>{g.dl.top}</small>
-                      <b>{g.dl.bottom}</b>
-                    </span>
-                  </a>
-                )}
+          {g.steps.map((s, i) => {
+            const shot = stepShot(g.platform, i + 1);
+            return (
+              <div className={`tstep${i === g.steps.length - 1 ? " last" : ""}`} key={i}>
+                <span className="tbadge">{faDigits(i + 1, locale)}</span>
+                <div className="tcard">
+                  <strong>{s.t}</strong>
+                  <p className="mt-2">{s.d}</p>
+                  {i === 0 && (
+                    <>
+                      <a
+                        className="dlbtn"
+                        href={g.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={acc}
+                        aria-label={`${g.dl.top} ${g.dl.bottom}`}
+                      >
+                        <span className="store">
+                          <BrandIcon name={g.store} />
+                        </span>
+                        <span className="dlt">
+                          <small>{g.dl.top}</small>
+                          <b>{g.dl.bottom}</b>
+                        </span>
+                      </a>
+                      {g.alt && (
+                        <a className="dl-alt" href={g.alt} target="_blank" rel="noopener noreferrer">
+                          {labels.storeAlt}
+                          <Icon name="chevr" sw={2.4} cls="ic-dir" />
+                        </a>
+                      )}
+                      {g.appleId && (
+                        <p className="dl-note">
+                          <Icon name="info" sw={2} />
+                          <span>{labels.appleId}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {s.get && (
+                    <Link className="btn sm guide-get" href="/#hero-widget">
+                      <Icon name="bolt" sw={2.2} />
+                      {labels.get}
+                    </Link>
+                  )}
+                  {shot && (
+                    <img
+                      className="tshot"
+                      src={shot}
+                      alt={s.t}
+                      width={1280}
+                      height={720}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <h2 className="gsteps-h">{labels.trouble}</h2>

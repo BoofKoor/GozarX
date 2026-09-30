@@ -1,7 +1,7 @@
 """site_locations — reset the wizard's snapshot to "all", now that the list is a real filter
 
 Revision ID: c7f62cc5a366
-Revises: a7d3e9f1c2b5
+Revises: 1d81a25d3ea5
 Create Date: 2026-09-30
 
 Until the previous release the website IGNORED ``site_locations`` whenever the panel answered: it
@@ -25,7 +25,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "c7f62cc5a366"
-down_revision: str | None = "a7d3e9f1c2b5"
+down_revision: str | None = "1d81a25d3ea5"
 branch_labels: str | None = None
 depends_on: str | None = None
 

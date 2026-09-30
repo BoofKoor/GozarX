@@ -56,6 +56,7 @@ export async function fetchLandings(locale?: Locale): Promise<LandingSummary[]> 
 export interface ArticleLink {
   slug: string;
   label: string;
+  desc: string; // the landing's meta description — the one-line summary a card shows
 }
 
 /** Published landings WITHOUT a location — the article/guide set, for internal linking.
@@ -76,8 +77,26 @@ export async function fetchArticleLandings(limit = 8): Promise<ArticleLink[]> {
   for (const row of await fetchLandings()) {
     if (row.location_remark || seen.has(row.slug)) continue;
     seen.add(row.slug);
-    out.push({ slug: row.slug, label: row.title.split("—")[0].split("|")[0].trim() });
+    out.push({
+      slug: row.slug,
+      label: row.title.split("—")[0].split("|")[0].trim(),
+      desc: row.meta_description,
+    });
     if (out.length >= limit) break;
   }
   return out;
+}
+
+// The articles the homepage features as cards: the broad keyword page plus the three platforms most
+// visitors arrive on. A slug the operator has since deleted simply drops out, and the rest of the
+// article set fills in behind it in the API's order.
+const FEATURED = ["free-v2ray-config", "vpn-android", "vpn-iphone", "vpn-windows"];
+
+export async function fetchFeaturedArticles(count: number): Promise<ArticleLink[]> {
+  const all = await fetchArticleLandings(100);
+  const rank = (slug: string) => {
+    const i = FEATURED.indexOf(slug);
+    return i < 0 ? FEATURED.length : i;
+  };
+  return [...all].sort((a, b) => rank(a.slug) - rank(b.slug)).slice(0, count);
 }

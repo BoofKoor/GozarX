@@ -1,16 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
+import { Announce } from "@/components/Announce";
+import { formatVolume } from "@/lib/format";
 
 // ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
-export function Flag({ name, size = 40 }: { name: string; size?: number }) {
+// `fluid` leaves the size to the stylesheet (`.flag` is 40px), for a place that resizes it by
+// breakpoint — an inline size would outrank any media query.
+export function Flag({ name, size = 40, fluid = false }: { name: string; size?: number; fluid?: boolean }) {
   const cc = flagCC(name);
   const [errored, setErrored] = useState(false);
-  const style = { inlineSize: size, blockSize: size } as const;
+  const style = fluid ? undefined : ({ inlineSize: size, blockSize: size } as const);
   if (cc && !errored) {
     return (
       <img
@@ -64,6 +69,7 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
         {copied ? t("copied") : t("copy")}
       </button>
       {failed && <span className="copy-manual">{t("copy_manual")}</span>}
+      <Announce text={copied ? t("copied") : failed ? t("copy_manual") : ""} />
     </div>
   );
 }
@@ -102,17 +108,26 @@ const APPS: Record<string, { n: string; icon: string; deeplink: (link: string) =
   streisand: { n: "Streisand", icon: "/icons/streisand.webp", deeplink: (l) => `streisand://import/${l}` },
   happ: { n: "Happ", icon: "/icons/happ.webp", deeplink: (l) => `happ://add/${l}` },
 };
-const PLATFORM_APPS: Record<string, string[]> = {
+// Only apps that exist on THIS system: a Windows visitor was offered v2rayNG (Android only) and
+// Streisand (Apple only), and a deep link into an app that is not installed does nothing at all.
+type Platform = "ios" | "android" | "macos" | "windows" | "linux" | "desktop";
+const PLATFORM_APPS: Record<Platform, string[]> = {
   ios: ["streisand", "happ"],
   android: ["v2rayng", "happ"],
-  desktop: ["happ", "v2rayng", "streisand"],
+  macos: ["happ", "streisand"],
+  windows: ["happ"],
+  linux: ["happ"],
+  desktop: ["happ", "v2rayng", "streisand"], // unrecognised — offer everything
 };
-function detectPlatform(): "ios" | "android" | "desktop" {
+function detectPlatform(): Platform {
   if (typeof navigator === "undefined") return "desktop";
   const ua = navigator.userAgent;
-  if (/android/i.test(ua)) return "android";
+  if (/android|cros/i.test(ua)) return "android"; // ChromeOS runs the Android apps
   if (/iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1))
-    return "ios";
+    return "ios"; // iPadOS reports itself as a Mac with touch
+  if (/macintosh|mac os x/i.test(ua)) return "macos";
+  if (/windows/i.test(ua)) return "windows";
+  if (/linux/i.test(ua)) return "linux";
   return "desktop";
 }
 
@@ -122,7 +137,7 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   // config state, after the fetch resolves; the SSR pass shows the skeleton), so navigator is already
   // available on first render. Detecting in an effect instead made the row render 3 apps (column) then
   // flip to 2 (row) on mobile, shrinking the card ~100px under the user's finger (a CLS jump).
-  const [platform] = useState<"ios" | "android" | "desktop">(detectPlatform);
+  const [platform] = useState<Platform>(detectPlatform);
   // Each button is purely the deep link — tapping opens the app and imports the config. It does NOT
   // copy anything to the clipboard (the separate "copy" field is there for manual paste).
   return (
@@ -142,39 +157,37 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
           </a>
         ))}
       </div>
+      {/* the deep links assume the app is installed — this is the way out when it is not */}
+      <Link className="app-get" href={platform === "desktop" ? "/guides" : `/guides/${platform}`}>
+        {t("app_get")}
+        <Icon name="chevr" sw={2.4} cls="ic-dir" />
+      </Link>
     </div>
   );
-}
-
-// Mirror the backend's `human_bytes` (1024-based, 1 decimal, round values drop the ".0") so a
-// client-derived "remaining volume" formats identically to the server strings ("800 MB", "1.5 GB").
-function humanBytes(n: number): string {
-  const fmt = (v: number, u: string) =>
-    u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1).replace(/\.0$/, "")} ${u}`;
-  let v = Math.max(0, n);
-  for (const u of ["B", "KB", "MB", "GB"]) {
-    if (v < 1024) return fmt(v, u);
-    v /= 1024;
-  }
-  return fmt(v, "TB");
 }
 
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
 // Passing `remainingBytes` switches on the boxed "metric" layout: a % chip beside the label and a
 // "remaining volume" footer (the config card). Without it, the plain meter is used (exhausted state).
+// `note` replaces the "used of total" figures with a sentence — a fresh config read «۰ B از ۱ GB».
+// Figures arrive as BYTES and go through the one volume formatter (lib/format): the backend's
+// "380 MB" strings put a Latin unit inside a Persian sentence. `null` = not known yet (a dash).
 export function UsageMeter({
-  used,
-  total,
+  usedBytes,
+  totalBytes,
   pct,
   locale,
   remainingBytes,
+  note,
 }: {
-  used: string;
-  total: string;
+  usedBytes: number | null;
+  totalBytes: number | null;
   pct: number;
   locale: Locale;
   remainingBytes?: number;
+  note?: string;
 }) {
+  const vol = (b: number | null) => (b == null ? "—" : formatVolume(b, locale));
   const t = translator(locale);
   const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
   const metric = remainingBytes != null;
@@ -191,12 +204,14 @@ export function UsageMeter({
             </span>
           )}
         </span>
-        {/* Each "<number> MB" is bidi-isolated so the Latin unit stays glued to its figure under
-            RTL (else it renders reversed, e.g. "MB ۷۰۰.۰ از MB ۶۶۶.۵"). */}
-        <span className="v tnum">
-          <bdi dir="ltr">{faDigits(used, locale)}</bdi> {t("of")}{" "}
-          <bdi dir="ltr">{faDigits(total, locale)}</bdi>
-        </span>
+        {/* each figure isolated, so «۳۸۰ مگابایت از ۱ گیگابایت» keeps its order in either direction */}
+        {note ? (
+          <span className="v">{note}</span>
+        ) : (
+          <span className="v tnum">
+            <bdi>{vol(usedBytes)}</bdi> {t("of")} <bdi>{vol(totalBytes)}</bdi>
+          </span>
+        )}
       </div>
       <div className={cls}>
         <i style={{ inlineSize: `${Math.min(100, Math.max(0, pct))}%` }} />
@@ -205,7 +220,7 @@ export function UsageMeter({
         <div className="meter-foot">
           {t("remaining_vol")}{" "}
           <b>
-            <bdi dir="ltr">{faDigits(humanBytes(remainingBytes), locale)}</bdi>
+            <bdi>{formatVolume(remainingBytes, locale)}</bdi>
           </b>
         </div>
       )}
@@ -213,92 +228,69 @@ export function UsageMeter({
   );
 }
 
-// ---- Countdown: parse "Xh Ym Zs" (incl. Persian digits) → live segmented HH:MM:SS (design `.cd`) ----
-function toSeconds(s: string): number {
-  const norm = s.replace(/[۰-۹]/g, (d) => "۰۱۲۳۴۵۶۷۸۹".indexOf(d).toString());
-  const h = /(\d+)\s*(h|ساعت)/.exec(norm);
-  const m = /(\d+)\s*(m|دقیقه|min)/.exec(norm);
-  const sec = /(\d+)\s*(s|ثانیه|sec)/.exec(norm);
-  return (h ? +h[1] * 3600 : 0) + (m ? +m[1] * 60 : 0) + (sec ? +sec[1] : 0);
+// ---- Countdown: a live segmented HH:MM:SS to an absolute deadline (design `.cd`) ----
+// `deadline` is a client-clock millisecond (lib/time turns the server's instant into one). Seconds
+// left are recomputed from the wall clock on every tick, never decremented: background tabs are
+// throttled to about one tick a minute, and a counter that decremented would fall minutes behind.
+// What happens at zero is the caller's business (see lib/usePoll) — this only draws the time.
+function useSecondsLeft(deadline: number): number {
+  const [left, setLeft] = useState(() => Math.max(0, Math.round((deadline - Date.now()) / 1000)));
+  useEffect(() => {
+    const tick = () => {
+      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
+      setLeft(next);
+      if (next <= 0) window.clearInterval(id);
+    };
+    const id = window.setInterval(tick, 1000);
+    tick();
+    return () => window.clearInterval(id);
+  }, [deadline]);
+  return left;
 }
+
 function pad(n: number) {
   return n.toString().padStart(2, "0");
 }
 
-// Seconds remaining, derived from an absolute deadline anchored once per `from` — NOT decremented
-// per interval fire. Background tabs are throttled to ~1 tick/minute; a per-fire counter would drift
-// minutes slow and fire onDone late. Recomputing from wall-clock every tick stays correct across
-// throttling/sleep. The deadline is set in an effect (client-only), so there's no SSR/hydration skew.
-function useCountdown(from: string, onDone?: () => void): number {
-  const [left, setLeft] = useState(() => toSeconds(from));
-  const doneRef = useRef(false);
-  useEffect(() => {
-    const deadline = Date.now() + toSeconds(from) * 1000;
-    doneRef.current = false;
-    const tick = () => {
-      const next = Math.max(0, Math.round((deadline - Date.now()) / 1000));
-      setLeft(next);
-      if (next <= 0 && !doneRef.current) {
-        doneRef.current = true;
-        onDone?.();
-      }
-    };
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [from, onDone]);
-  return left;
-}
-
 export function Countdown({
-  from,
+  deadline,
   label,
   locale,
-  onDone,
 }: {
-  from: string;
+  deadline: number;
   label: string;
   locale: Locale;
-  onDone?: () => void;
 }) {
   const t = translator(locale);
-  const left = useCountdown(from, onDone);
+  const left = useSecondsLeft(deadline);
   const h = Math.floor(left / 3600);
   const m = Math.floor((left % 3600) / 60);
   const s = left % 60;
-  const digits = (n: string) =>
-    locale === "fa" ? n.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : n;
+  // `.cd-seg`, not `.seg` — `.seg` is the header's pill toggle, and its inline-flex put each unit
+  // label beside its digits instead of under them.
   return (
     <>
       <div className="cd-label">{label}</div>
       <div className="cd" dir="ltr">
-        <span className="seg">
-          <b>{digits(pad(h))}</b>
+        <span className="cd-seg">
+          <b>{faDigits(pad(h), locale)}</b>
           <span>{t("cd_h")}</span>
         </span>
-        <span className="colon">:</span>
-        <span className="seg">
-          <b>{digits(pad(m))}</b>
+        <span className="colon" aria-hidden>
+          :
+        </span>
+        <span className="cd-seg">
+          <b>{faDigits(pad(m), locale)}</b>
           <span>{t("cd_m")}</span>
         </span>
-        <span className="colon">:</span>
-        <span className="seg">
-          <b>{digits(pad(s))}</b>
+        <span className="colon" aria-hidden>
+          :
+        </span>
+        <span className="cd-seg">
+          <b>{faDigits(pad(s), locale)}</b>
           <span>{t("cd_s")}</span>
         </span>
       </div>
     </>
   );
-}
-
-// ---- InlineCountdown: plain "H:MM:SS" text that ticks (status stat card `.cd-inline`) ----
-export function InlineCountdown({ from, locale }: { from: string; locale: Locale }) {
-  const left = useCountdown(from);
-  if (toSeconds(from) <= 0) return <span dir="ltr">—</span>;
-  const h = Math.floor(left / 3600);
-  const m = Math.floor((left % 3600) / 60);
-  const s = left % 60;
-  const txt = `${h}:${pad(m)}:${pad(s)}`;
-  const out = locale === "fa" ? txt.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : txt;
-  return <span dir="ltr">{out}</span>;
 }

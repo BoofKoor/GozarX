@@ -1,58 +1,51 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { api, type PublicStats } from "@/lib/api";
+import type { PublicStats } from "@/lib/api";
 import { Icon } from "@/components/Icon";
 
 // STATS band — three LIVE, honest figures (no marketing fabrications): configs delivered (a real
 // count of claim rows), the active-location count (with a green "online" pulse), and rolling uptime
-// (the share of health samples that weren't "down"). All read straight from the public API.
-function faDigits(s: string, locale: Locale) {
-  return locale === "fa" ? s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : s;
-}
-
-export function HomeStats({ locale }: { locale: Locale }) {
+// (the share of health samples that weren't "down"). `stats` is the server's /stats, read by the
+// page for the hero chip anyway — so the band's figures are in the HTML rather than «—» placeholders
+// that a second client-side fetch filled in. A figure the backend could not give is LEFT OUT, not
+// printed as «—» (C-38): a dash in a stats band reads as "zero" or "broken", and neither is true.
+export function HomeStats({ locale, stats }: { locale: Locale; stats: PublicStats | null }) {
   const t = translator(locale);
-  const { locations } = useSite();
-  const [stats, setStats] = useState<PublicStats | null>(null);
+  const { locations, loading } = useSite();
 
-  useEffect(() => {
-    let alive = true;
-    api
-      .stats()
-      .then((s) => alive && setStats(s))
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, []);
-
-  const locCount = locations?.length ?? 0;
-  const dash = "—";
   const intl = locale === "fa" ? "fa-IR" : "en-US"; // native grouping (٬) + decimals (٫) for fa
   const pct = locale === "fa" ? "٪" : "%";
+  const locCount = locations?.length ?? 0;
 
   const items = [
     {
       icon: "bolt",
-      n: stats ? stats.configs_delivered.toLocaleString(intl) : dash,
+      n: stats ? stats.configs_delivered.toLocaleString(intl) : null,
       l: t("stat1"),
       live: false,
     },
-    { icon: "pin", n: locCount ? faDigits(String(locCount), locale) : dash, l: t("stat2"), live: true },
+    {
+      icon: "pin",
+      // the location list is the one figure only the client has: a placeholder while it loads
+      // (so the band does not change shape as it arrives), and gone if it never does
+      n: locCount ? faDigits(String(locCount), locale) : loading ? "—" : null,
+      l: t("stat2"),
+      live: true,
+    },
     {
       icon: "gauge",
       n:
         stats?.uptime_pct != null
           ? stats.uptime_pct.toLocaleString(intl, { maximumFractionDigits: 1 }) + pct
-          : dash,
+          : null,
       l: t("stat3"),
       live: false,
     },
-  ] as const;
+  ].filter((s) => s.n !== null);
 
+  if (!items.length) return null;
   return (
     <section className="sec">
       <div className="container">

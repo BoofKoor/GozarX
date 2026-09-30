@@ -16,10 +16,35 @@ export function dir(locale: Locale): "rtl" | "ltr" {
 }
 
 // Latin → Persian digits for fa (the design renders all numerals localized). Technical strings
-// (config links, transfer codes) stay Latin/LTR — never run this on those.
+// (config links, transfer codes) stay Latin/LTR — never run this on those. The separators between
+// two digits count too: "1.5" becomes «۱٫۵» and "12,000" «۱۲٬۰۰۰», the marks Intl's fa-IR output
+// already uses — a hand-built «۱.۵» beside an Intl «۹۹٫۷» spelled one idea two ways.
 export function faDigits(s: string | number, locale: Locale): string {
   const str = String(s);
-  return locale === "fa" ? str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : str;
+  if (locale !== "fa") return str;
+  return str
+    .replace(/(\d)\.(?=\d)/g, "$1٫")
+    .replace(/(\d),(?=\d{3}(?!\d))/g, "$1٬")
+    .replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
+}
+
+// Substitute `{token}`s in a copy string. Returns null when any token has no value, so the caller
+// hides the sentence instead of printing a guess ("24") or a raw "{h}". A string with no tokens —
+// e.g. a panel override that dropped them — comes back unchanged.
+export function fill(
+  text: string,
+  tokens: Record<string, string | number | null | undefined>,
+): string | null {
+  let missing = false;
+  const out = text.replace(/\{(\w+)\}/g, (whole, key: string) => {
+    const v = tokens[key];
+    if (v === null || v === undefined || v === "") {
+      missing = true;
+      return whole;
+    }
+    return String(v);
+  });
+  return missing ? null : out;
 }
 
 // Copyright year, localized: Jalali for fa (Intl, Persian digits), Gregorian for en. Compute this on
@@ -148,6 +173,55 @@ const fa: Dict = {
   "notfound.title": "صفحه پیدا نشد",
   "notfound.home": "بازگشت به خانه",
   "common.close": "بستن",
+  menu_open: "باز کردن منو",
+  menu_title: "منوی سایت",
+  tm_gen_err: "ساخت کد انجام نشد. چند دقیقهٔ دیگر دوباره امتحان کن.",
+  invite_copied: "لینک دعوت کپی شد",
+  reward_added: "{v} به حجم روزانه‌ات اضافه شد",
+  reward_taken: "این جایزه را قبلاً گرفته‌ای.",
+  reward_err: "ثبت جایزه انجام نشد — دوباره تلاش کن.",
+  usage_none: "هنوز مصرفی نداشتی",
+  cta_verifying: "در حال بررسی امنیتی…",
+  cta_slow: "کمی بیشتر طول کشید؛ هنوز در حال ساخت است…",
+  notice_loc_gone: "این لوکیشن دیگر در دسترس نیست. فهرست تازه شد؛ یکی دیگر انتخاب کن.",
+  notice_busy: "درخواست قبلی‌ات هنوز در جریان است؛ چند ثانیهٔ دیگر دوباره بزن.",
+  notice_ts: "بررسی امنیتی باید دوباره انجام شود؛ یک لحظه صبر کن و دوباره بزن.",
+  blk_title: "این دستگاه کانفیگ رایگان نمی‌گیرد",
+  blk_sub: "دریافت کانفیگ برای این دستگاه بسته شده است. اگر فکر می‌کنی اشتباهی پیش آمده، برایمان بنویس.",
+  blk_contact: "تماس با ما",
+  revived_title: "کانفیگت دوباره زنده شد ✨",
+  revived_sub: "همین لینک دوباره کار می‌کند؛ لازم نیست چیزی را عوض کنی.",
+  revived_friend: "یک دوست دعوتت را پذیرفت و {v} به حجم روزانه‌ات اضافه شد.",
+  change_to: "تغییر به {loc}",
+  change_pick: "یک لوکیشن دیگر انتخاب کن",
+  chg_cancel: "انصراف",
+  loc_current: "فعلی",
+  loc_more_all: "همهٔ لوکیشن‌ها ({n})",
+  app_get: "اپ را نداری؟ نصبش کن",
+  m_pwa_ios: "روی آیفون اعلان‌ها هم فقط بعد از نصب کار می‌کنند",
+  invite_share: "کانفیگ رایگان روزانه، بدون ثبت‌نام 🎁 با لینک من بگیر:",
+  ref_welcome: "دوستت دعوتت کرده 🎁 کانفیگ رایگانت را بگیر؛ با اولین دریافتت، به دوستت هم حجم هدیه می‌رسد.",
+  sticky_get: "دریافت کانفیگ رایگان",
+  sticky_mine: "کانفیگ من",
+  land_w_title: "کانفیگ رایگان {loc}",
+  land_cta_h: "کانفیگ رایگان {loc} را همین حالا بگیر",
+  land_cta_h_any: "کانفیگ رایگان امروزت را همین حالا بگیر",
+  land_cta_d: "بدون ثبت‌نام؛ کمتر از یک دقیقه تا اتصال.",
+  ft_cta_inv_h: "دوستانت را دعوت کن",
+  ft_cta_inv_d: "هر دعوت موفق {v} به حجم روزانه‌ات اضافه می‌کند.",
+  ft_cta_inv_d_any: "با هر دعوت موفق حجم روزانه‌ات بیشتر می‌شود.",
+  ft_cta_inv_btn: "دعوت دوستان",
+  ft_cta_mine_h: "همه‌چیزِ کانفیگت یک‌جا",
+  app_desktop: "دسکتاپ",
+  skip_main: "پرش به محتوا",
+  menu_close: "بستن منو",
+  theme_sys: "سیستم",
+  ft_cta_mine_d: "مصرف، زمان باقی‌مانده و جایزه‌هایت در صفحهٔ کانفیگ من است.",
+  art_all: "همهٔ مقاله‌ها",
+  art_read: "خواندن",
+  art_page_title: "راهنماها و مقاله‌ها",
+  art_page_sub: "آموزش اتصال با اپ‌های مختلف و پاسخ پرسش‌های رایج دربارهٔ کانفیگ رایگان.",
+  art_empty: "فعلاً مقاله‌ای برای نمایش نیست؛ کمی بعد دوباره سر بزن.",
 };
 
 const en: Dict = {
@@ -242,6 +316,55 @@ const en: Dict = {
   "notfound.title": "Page not found",
   "notfound.home": "Back home",
   "common.close": "Close",
+  menu_open: "Open menu",
+  menu_title: "Site menu",
+  tm_gen_err: "Couldn't create a code. Try again in a few minutes.",
+  invite_copied: "Invite link copied",
+  reward_added: "{v} added to your daily volume",
+  reward_taken: "You've already claimed this reward.",
+  reward_err: "Couldn't add the reward — please try again.",
+  usage_none: "Nothing used yet",
+  cta_verifying: "Running a security check…",
+  cta_slow: "Taking a little longer — still building it…",
+  notice_loc_gone: "That location isn't available any more. The list is refreshed — pick another.",
+  notice_busy: "Your previous request is still running — try again in a few seconds.",
+  notice_ts: "The security check has to run again — wait a moment, then try again.",
+  blk_title: "This device can't get a free config",
+  blk_sub: "Free configs are switched off for this device. If you think that's a mistake, write to us.",
+  blk_contact: "Contact us",
+  revived_title: "Your config is back ✨",
+  revived_sub: "The same link works again — nothing to change.",
+  revived_friend: "A friend accepted your invite, and {v} was added to your daily volume.",
+  change_to: "Switch to {loc}",
+  change_pick: "Pick a different location",
+  chg_cancel: "Cancel",
+  loc_current: "Current",
+  loc_more_all: "All locations ({n})",
+  app_get: "Don't have the app? Install it",
+  m_pwa_ios: "On iPhone, notifications need the installed app too",
+  invite_share: "A free daily config, no signup 🎁 Grab yours with my link:",
+  ref_welcome: "A friend invited you 🎁 Claim your free config — your first claim sends them bonus volume too.",
+  sticky_get: "Get a free config",
+  sticky_mine: "My config",
+  land_w_title: "Free {loc} config",
+  land_cta_h: "Get your free {loc} config now",
+  land_cta_h_any: "Get today's free config now",
+  land_cta_d: "No signup — under a minute to connect.",
+  ft_cta_inv_h: "Invite your friends",
+  ft_cta_inv_d: "Each successful invite adds {v} to your daily volume.",
+  ft_cta_inv_d_any: "Each successful invite grows your daily volume.",
+  ft_cta_inv_btn: "Invite friends",
+  ft_cta_mine_h: "Everything about your config, in one place",
+  app_desktop: "Desktop",
+  skip_main: "Skip to content",
+  menu_close: "Close menu",
+  theme_sys: "System",
+  ft_cta_mine_d: "Your usage, time left and rewards are on your config page.",
+  art_all: "All articles",
+  art_read: "Read",
+  art_page_title: "Guides and articles",
+  art_page_sub: "How to connect with each app, and answers to common questions about free configs.",
+  art_empty: "No articles to show right now — check back soon.",
 };
 
 const DICTS: Record<Locale, Dict> = { fa, en };

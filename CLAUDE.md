@@ -314,17 +314,52 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   answers with placeholder links) became a 404 "account gone" and deleted a live trial.
 20 The admin panel audited end to end — measured on a copy at the live install's volume (108k users,
   1.3M claims, a 12k-user mock panel) and rendered in Chromium — and all 76 findings fixed, in four
-  packages. Speed: the dashboard stopped paging every panel user inline (25.8s → 1.5s for the
-  page, `/stats` 24.6s → 0.6–1.1s; the squad online count moved to the worker), panel readings are
-  shared and bounded, nginx caches hashed assets and 404s a missing chunk. Correctness: user actions no longer crash the panel, bans and
-  blocks survive a dead panel (revoke pending + retry), gone chats are marked not deleted, commits
-  land before the response and inside the claim locks, Telegram-refused HTML is caught before a
-  send, location lists store `[]` for "all" (the reported "29 of 25 selected" save error), buttons
-  are per screen, sweeps resume within a time budget. Reporting: past website windows from
-  `site_device_days`, a mint is not a visit, windows shift back, traffic steps across counter
-  resets, gauges and rates keep one population and one window, unknowns are «—». Security: tokens
-  carry a credential version and a 30-day session cap.
-21 Phase 20's own mistakes, found by reviewing it after merge. Its list became a real filter, so a
+  packages. Speed: the dashboard stopped paging every panel user inline (25.8s → 1.5s for the page,
+  `/stats` 24.6s → 0.6–1.1s; the squad online count moved to the worker), panel readings are shared
+  and bounded, nginx caches hashed assets and 404s a missing chunk. Correctness: user actions no
+  longer crash the panel, bans and blocks survive a dead panel (revoke pending + retry), gone chats
+  are marked not deleted, commits land before the response and inside the claim locks,
+  Telegram-refused HTML is caught before a send, location lists store `[]` for "all" (the reported
+  "29 of 25 selected" save error), buttons are per screen, sweeps resume within a time budget.
+  Reporting: past website windows from `site_device_days`, a mint is not a visit, windows shift
+  back, traffic steps across counter resets, gauges and rates keep one population and one window,
+  unknowns are «—». Security: tokens carry a credential version and a 30-day session cap.
+21 The public site audited the way phase 18 audited the panel — by rendering it (`docs/website/
+  audit/`: 68 code findings, 14 visual, measured probes, a six-phase fix plan A–F) — and its Phase A
+  shipped: skeletons that painted nothing, a reduced-motion override a duplicate rule outranked, the
+  revive block's broken invite field, the countdown's labels, three RTL fills/rails, Persian digits,
+  AA contrast, the active-page marker, and reward toasts that said «✓». The hero's two frozen
+  numbers («۲۴ ساعت», «+۱۲٬۰۰۰ کاربر») now come from `/config.trial_hours` and the real
+  delivered-configs count, and a data migration takes them out of the live FAQ as well.
+22 The site audit's Phase B: the claim flow made correct over TIME. `/status` and `/claim` carry the
+  instants behind their rounded strings (`cooldown_until`, `expires_at`) plus `server_time`, so a
+  countdown reaches zero on time on a phone whose clock is wrong and, at zero, asks the server
+  until the state actually changes — under a minute the old one read "0m" and froze on 00:00:00.
+  Every claim outcome has its own screen instead of the generic error; a config revived by a
+  friend's first claim is noticed by polling and celebrated with the amount it gained; the picker
+  is a real radio group in two rows (7 Tab presses to the CTA, was 27); switching location names
+  the target and can be cancelled. `docs/website/audit/accept_b.py` checks all of it against the
+  mock, over real time.
+23 The site audit's Phase C: conversion on a phone and the paths INTO the claim widget. The claim
+  button is on a 360×740 first screen (a one-to-two-line phone subtitle, the trust chips after the
+  widget, a compact widget head; it sat 197px below it) and a sticky bar brings the widget back
+  once it scrolls away. A landing's widget sits under its H1 — every seeded body already told the
+  reader it was «بالای همین صفحه» while it rendered ~1,000px down. `/?loc=` carries a location
+  chosen on /locations or the homepage flags into the widget; the header, the phone menu, the
+  footer band (now by visitor state), the reward rows and the app cards all go where they say;
+  guides lead Android with Happ's own APK (Play serves nothing to an Iranian IP) and tell iOS
+  about the Apple ID; `/articles` indexes every article. `docs/website/audit/accept_c.py` checks
+  all of it against the mock.
+24 The site audit's Phase D: the accessibility and language plumbing. One `useFocusTrap` (the
+  panel's contract) now holds the phone menu, the rewards overlays and the reset confirmation —
+  Tab used to walk out of the open menu into the widget behind it; every phone control is a 44px
+  target (58 were not); a skip link, announced copy confirmations and form errors, accordions with
+  `aria-controls` whose closed answers Ctrl-F can still find, and a heading outline without skipped
+  levels. The theme gets its third state back («سیستم»), with one `lib/prefs` behind every theme
+  and language control; location names follow the visitor's language (`locLabel`: "Germany" in
+  the English UI, never the Persian remark); and every volume prints through one `formatVolume`,
+  which ended the reversed «GB ۱». `docs/website/audit/accept_d.py` checks all of it.
+25 Phase 20's own mistakes, found by reviewing it after merge. Its list became a real filter, so a
   migration resets the wizard's stale `site_locations` snapshot to `[]` — every host added since was
   vanishing from the site. Gone chats are marked as a broadcast goes and in batches, and a copy's
   "chat not found" no longer counts. Unban finishes a pending revoke. A save made while the picker
@@ -612,6 +647,125 @@ and the Postgres password are reused, never rotated; a blank admin password keep
 - **`faDate` prints an INSTANT on the Tehran clock and a DAY KEY as that date.** Formatted in UTC, a
   timestamp from 00:00–03:30 local read as the day before.
 - **A unit is the locale's word** — `humanHours` said «۲۱s» (see `humanUptime`).
+
+## Website conventions (`frontend/site`)
+- **The site never states a number the backend does not.** A renewal window is `trial_hours`
+  (`/config`), a reward is `reward_*_mb`, social proof is `/stats`. Copy carries `{token}`s filled by
+  `fill()` (`lib/i18n`), which returns `null` when a value is missing — the caller hides the sentence
+  rather than print a guess or a raw `{h}`. The hero promised «هر ۲۴ ساعت» and «+۱۲٬۰۰۰ کاربر»:
+  constants no setting or count could ever move.
+- **A server render reads only DEVICE-INDEPENDENT endpoints** — `/config`, `/stats`, site copy,
+  landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`). Never `/status`: reading it mints
+  a device.
+- **Seeded copy changes by MIGRATION as well as in the seed.** `add_default` inserts only what is
+  absent, so a reworded default never reaches a running install. Update the rows that still hold the
+  OLD text verbatim (`4a1e7c9d2f80`, `a42488f9321a`) and nothing an operator wrote. The site's in-code
+  fallbacks (`FAQ_ITEMS`, `DESIGN_COPY`) mirror the seed and `SITE_COPY_DEFAULTS` exactly.
+- **Every theme token lives in all FOUR blocks of `globals.css`** (auto-light, auto-dark,
+  `[data-theme=light]`, `[data-theme=dark]`). One missing resolves to nothing, silently: `--skel-1/2`
+  were never defined, so every skeleton was an empty box and the widget loaded as a blank card.
+- **A skeleton that starts painting can start costing CLS.** Chromium only tracks nodes that paint,
+  so while `--skel-*` were undefined the skeleton was invisible to layout-shift scoring as well as
+  to the eye. Once it painted, React's reconciliation recycled its placeholder `div`s into the
+  resolved widget — the grid placeholder became `.cta-anchor` — and that node moving scored 0.13
+  CLS on a phone. A loading branch carries its own `key`, so resolving REPLACES it.
+- **The reduced-motion override must win.** A second `.reveal` rule, declared later, outranked the
+  `prefers-reduced-motion` one, so with motion off every below-the-fold section stayed at opacity 0 —
+  blank bands for exactly the visitors who asked for less. `audit.py` counts `stillHiddenReveals`
+  BEFORE it forces them in for a shot.
+- **No bidi-mirrored glyph stands in for an icon.** RTL mirrors `‹`/`›`, so a breadcrumb `‹` pointed
+  back at «خانه» in both languages; use the `chevr` icon with `ic-dir`. A fill grows from
+  inline-start and its gradient runs the same way, and a sequence with a reading order (the streak
+  rail) never takes `dir="ltr"`.
+- **One `faDigits`** (`lib/i18n`), which also turns the `.`/`,` between two digits into «٫»/«٬».
+  Technical strings — links, transfer codes, handles — stay Latin; a Latin unit inside Persian copy
+  sits in `<bdi dir="ltr">`.
+- **Class names are global.** The countdown's segments were `.seg` — the header's pill toggle — and
+  inherited its inline-flex, which put each unit label beside its digits instead of under them.
+- **Feedback is a sentence.** A reward toast says what was added (with the real amount), that it was
+  already taken, or that it failed — never «✓»/«—». A toast's `role="status"` wrapper stays mounted:
+  a live region inserted together with its text is not announced.
+- **Count down to an INSTANT, never from a rounded duration.** `/status`/`/claim` send
+  `cooldown_until`/`expires_at` with `server_time`; `lib/time.clientDeadline` takes the device
+  clock's offset out (phones with a wrong clock are common enough that the FAQ mentions them). The
+  human strings stay for the bot and older clients; the site uses them only as a fallback.
+- **A deadline passing is a question for the server, asked with backoff and QUIETLY.**
+  `useBackoffPoll` asks right away, then at 2s…30s, until the state the deadline implies arrives
+  (the cooldown lifted, the config ended); `useVisiblePoll` waits on other people (a friend reviving
+  the config) only while the tab is visible. Background polls use `reload({ quiet: true })`: one
+  failed poll must not throw the widget onto its error screen mid-countdown.
+- **Every claim outcome has a screen.** Only `panel_error`/5xx is S8. `not_ready`/`no_locations` is
+  S7 with a retry, `location_unavailable`/`turnstile_failed` stay on S1 with an inline notice, and a
+  429 (almost always our own single-flight lock) gets one automatic retry. A device the operator
+  blocked is SB, read from `/status`'s `status` — no countdown (the backend still reports the
+  cooldown it is inside, but nothing waits at its end) and no reward missions the server refuses.
+  Each widget root carries `data-view` and a notice `data-notice`, so tests name states instead of
+  copy.
+- **A user-caused outcome takes focus; a background one is announced.** After a tap the outcome's
+  `<h2>` is focused; a cooldown lifting or a revive arriving with nobody's hand on the widget goes
+  through the `role="status"` region, which is mounted OUTSIDE the per-state roots for that reason.
+- **Never hand `<Turnstile>` an inline callback.** It re-renders the Cloudflare widget when its
+  callbacks change identity, so an inline arrow rebuilt the challenge on every render of the claim
+  widget.
+- **Offer an action only where it can succeed.** The push mission hides once notifications are on,
+  once the visitor has blocked them, and where `PushManager` does not exist (iOS Safari outside an
+  installed web app) — there it was a button that could only fail.
+- **The i18n chrome OUTRANKS `DESIGN_COPY`, so a chrome key must never reuse a design-copy name.**
+  Phase B's picker button added `loc_all` («همهٔ لوکیشن‌ها ({n})») to the chrome, and the homepage's
+  «مشاهدهٔ همهٔ لوکیشن‌ها» link — the design copy's `loc_all` — started printing the widget's string
+  with its token raw. `accept_c.py` reads every page's rendered text for an unfilled `{token}`.
+- **The phone's first screen holds the claim button, and that is MEASURED.** The subtitle has a
+  one-to-two-line phone version (`hero_sub_short`, CSS picks — no hydration guess), the chips come
+  after the widget in the DOM (the desktop grid puts them back under the copy), and the widget head
+  is compact up to 460px. `accept_c.py` fails if the CTA leaves a 360×740 or 390×844 first screen.
+- **A widget height reservation is S1's MEASURED natural height at that width** (523 up to 460px,
+  564 above; 551 under 350 and 572 under 330, where the reassurance line wraps). Too tall is a
+  band of empty card under the button; too short is a layout shift when the skeleton resolves.
+  Re-measure whenever the head, cards or CTA change — Phase D's 44px "all locations" button moved
+  it by 3px — and `accept_c.py` fails past 3px.
+- **A choice made elsewhere arrives chosen.** A location link into the widget is
+  `/?loc=<display name>#hero-widget` — never `/#hero`, which offered the popular location to
+  someone who had just tapped another. (A /locations cell opens its landing where one exists; the
+  homepage flags always use `?loc=`, the widget being on that page.) `preselect` applies ONCE per
+  value: a list refresh does not undo a manual pick, but a new link (a second flag tapped on the
+  same page, no remount) wins over it.
+- **The sticky bar never doubles a call to action on screen.** It shows only while the widget is
+  away, steps aside for the footer band and a landing's closing band, hides during a cooldown and
+  from 940px, and is `inert` + `visibility:hidden` while down.
+- **`overflow:hidden` makes a SCROLL CONTAINER, and `scrollIntoView` clips a target's
+  `scroll-margin` at a scroll container's edge.** The hero's `hidden` put `#hero-widget` at y=28 on
+  desktop — its head under the 69px sticky header — because the widget sits only 28px inside the
+  hero. `overflow:clip` clips the same paint without being scrollable; keep `hidden` before it as
+  the fallback. `accept_c.py` checks every anchor lands below the header.
+- **A scrollable rail is a Tab stop in Chromium** (keyboard-focusable scrollers), so where it sits
+  in the DOM counts toward "Tab presses to the CTA": the chip rail moving below the widget took it
+  from 7 to 6.
+- **Every modal surface uses `lib/useFocusTrap`** — the menu sheet, `Overlay` (named through
+  `<OverlayTitle>`) and the reset confirmation: Esc, focus in and back, Tab kept inside, the page
+  behind locked. It reads `onClose` through a ref, because callers pass inline arrows and an effect
+  keyed on the callback re-ran every render, re-capturing "what had focus" as the dialog itself.
+- **A phone control is a 44px box** (`@media (max-width:999.98px)`, the burger's breakpoint). Where
+  it must LOOK smaller — the id copy plate, the switch's 46×26 track — the box is transparent and
+  the visual is drawn inside it; where a bar must not grow, negative block margins hand the box
+  back to the layout. `accept_d.py` walks every control on 16 pages at 360 and 390.
+- **A location has a KEY and a LABEL.** `locName` is the remark, and it is what matching uses —
+  preselect, popular, landings, `?loc=`. `locLabel(remark, lang)` is what a person reads: the
+  remark itself when it is already in their script, else the country in their language
+  (`Intl.DisplayNames`, through a short-form table: USA, UK, UAE), numbering kept, anything more
+  specific than a country left as written rather than half-translated.
+- **A volume is printed from BYTES by `formatVolume`** (`lib/format`) — «۱٫۵ گیگابایت» / "1.5 GB".
+  The API's `human_bytes` strings put a Latin unit inside Persian copy, which is what reversed the
+  allowance chip into «GB ۱». In Persian the unit is a Persian word, so nothing is left to reorder.
+- **"System" theme is the ABSENCE of a choice** — no `theme` cookie and no `data-theme` — which is
+  exactly what the stylesheet's auto blocks answer. `lib/prefs` owns the cookie, the attributes and
+  the event every control listens to, so the header, the menu and the settings cannot disagree.
+- **React 19 renders `hidden="until-found"` as `hidden=""`**, so `AccItem` sets the value after
+  hydration — and an accordion answer must never be hidden with `display:none`, which is what made
+  closed FAQ answers invisible to find-in-page.
+- **An install source must work from Iran.** Android leads with Happ's GitHub APK and keeps Play
+  second; the App Store platforms say that store has no Iranian storefront and needs another
+  country's Apple ID. A guide step's screenshot is an ASSET drop — `public/guides/<platform>/<n>.webp`
+  appears under step n once it exists; none ship until real captures of Happ do.
 
 ## Security
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.

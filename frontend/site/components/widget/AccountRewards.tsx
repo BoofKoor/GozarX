@@ -1,19 +1,22 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
+import { MB, formatMb, volumeParts } from "@/lib/format";
+import { IosSteps, Overlay, OverlayTitle } from "@/components/widget/Overlay";
 
 // Account rewards card — the daily-claim streak (day-dots) + the three ways to grow the daily
 // allowance (invite / install the web app / enable notifications). Unlike the old decorative strip,
 // the actions are REAL: install fires the native prompt (or shows the iOS steps), notifications
 // actually subscribe, and each chip shows its live state (installed / enabled / blocked). The
-// "+N MB" figures come from the public config — never hardcoded.
+// "+N MB" figures come from the public config — never hardcoded — and print through lib/format.
 export function AccountRewards({ locale }: { locale: Locale }) {
   const t = translator(locale);
   // Push state is SHARED via the provider so this mission and the status page's Settings switch
@@ -45,7 +48,12 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   // Reserve the card's footprint while /status loads instead of returning null — otherwise the whole
   // ~400px card pops in when the fetch resolves and shoves the page (a status-page CLS the RUM data
   // flagged). A quiet skeleton holds the space until the real content replaces it in-place.
-  if (!status) return <div className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // `id="rewards"` on both, so /status#rewards (the homepage's reward rows) finds its target in the
+  // server HTML, before /status has loaded.
+  if (!status) return <div id="rewards" className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // A blocked device collects nothing — the server refuses every reward — so the missions would be
+  // a card of buttons that can only fail. The widget above already says why.
+  if (status.status === "blocked") return null;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);
@@ -59,12 +67,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   }
 
   async function invite() {
-    try {
-      if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) toast(t("copied"));
-    } catch {
-      /* user cancelled the share sheet */
-    }
+    if (await shareInvite(link, locale)) return;
+    if (typeof navigator !== "undefined" && "share" in navigator) return; // a sheet exists; dismissed
+    if (await copyText(link)) toast(t("invite_copied"));
   }
 
   async function installPwa() {
@@ -75,11 +80,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
     if (pwa !== "installable") return;
     setBusy("pwa");
     try {
-      const ok = await promptInstall();
-      if (ok) {
-        await api.claimReward("pwa");
+      if (await promptInstall()) {
+        const r = await api.claimReward("pwa").catch(() => null);
         await reload();
-        toast("✓");
+        toast(rewardMessage(locale, r, config?.reward_pwa_mb, "m_pwa_done"));
       }
     } finally {
       setBusy(null);
@@ -93,9 +97,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
       const ok = await subscribeToPush(config?.vapid_public_key ?? "", locale);
       await refreshPush(); // re-sync the shared push state (also updates the Settings switch)
       if (ok) {
-        await api.claimReward("push");
+        const r = await api.claimReward("push").catch(() => null);
         await reload();
-        toast("✓");
+        toast(rewardMessage(locale, r, config?.reward_push_mb, "m_push_done"));
       } else if (
         typeof Notification !== "undefined" &&
         Notification.permission !== "denied"
@@ -111,7 +115,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   const pushConfigured = !!config?.vapid_public_key;
 
   return (
-    <div className="card rewards-card rw2">
+    <div id="rewards" className="card rewards-card rw2">
       <div className="rw2-head">
         <span className="rw2-gift" aria-hidden>
           <Icon name="gift" sw={2} />
@@ -142,7 +146,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
           </span>
           <span className="rw2-side">
             <span className="rw2-amt brand">
-              +{faDigits(String(config?.reward_referral_mb ?? 0), locale)} <u>MB</u>
+              <Volume mb={config?.reward_referral_mb ?? 0} locale={locale} />
             </span>
             <Icon name="share" sw={2} cls="rw2-end" />
           </span>
@@ -220,11 +224,10 @@ export function AccountRewards({ locale }: { locale: Locale }) {
         {t("rw_foot")}
       </div>
 
-      {flash && (
-        <div className="toast-wrap">
-          <div className="toast">{flash}</div>
-        </div>
-      )}
+      {/* The live region stays mounted: one inserted together with its text is not announced. */}
+      <div className="toast-wrap" role="status">
+        {flash && <div className="toast">{flash}</div>}
+      </div>
 
       {modal === "ios" && <IosSteps locale={locale} onClose={() => setModal(null)} />}
       {modal === "push" && (
@@ -285,7 +288,7 @@ function MissionRow({
       </span>
       <span className="rw2-side">
         <span className={`rw2-amt ${tone}`}>
-          {busy ? "…" : <>+{faDigits(String(amountMb ?? 0), locale)} <u>MB</u></>}
+          {busy ? "…" : <Volume mb={amountMb ?? 0} locale={locale} />}
         </span>
         {end === "check" ? (
           <Icon name="check" sw={2.6} cls="rw2-end ok" />
@@ -386,9 +389,8 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
           </b>
           <small>{t("rw_keep")}</small>
         </div>
-        <div className="rw2-rail" dir="ltr">
-          {rail}
-        </div>
+        {/* flows with the page: day 1 at inline-start, so a Persian rail reads right to left */}
+        <div className="rw2-rail">{rail}</div>
       </div>
       <div className="rw2-cap">
         <Icon name={cap.icon} sw={2.6} cls={cap.cls} />
@@ -402,67 +404,10 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
           )}
         </span>
         {cap.amt && (
-          <b className="amt">{`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}</b>
+          <b className="amt">{`+${formatMb(rewardMb ?? 0, locale)}`}</b>
         )}
       </div>
     </div>
-  );
-}
-
-function Overlay({ children, onClose }: { children: ReactNode; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    ref.current?.focus(); // move focus into the dialog on open
-  }, []);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div className="overlay open" onClick={onClose}>
-      <div
-        className="modal"
-        role="dialog"
-        aria-modal
-        tabIndex={-1}
-        ref={ref}
-        style={{ maxInlineSize: 420 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function IosSteps({ locale, onClose }: { locale: Locale; onClose: () => void }) {
-  const t = translator(locale);
-  const steps = [
-    { n: 1, text: t("ios_1"), icon: "share" },
-    { n: 2, text: t("ios_2"), icon: "download" },
-    { n: 3, text: t("ios_3"), icon: "check" },
-  ] as const;
-  return (
-    <Overlay onClose={onClose}>
-      <h3 style={{ marginBlockEnd: 12 }}>{t("inst_h")}</h3>
-      <div className="ios-steps">
-        {steps.map((s) => (
-          <div className="ios-step" key={s.n}>
-            <span className="ios-n">{faDigits(String(s.n), locale)}</span>
-            <span className="ios-t">{s.text}</span>
-            <span className="ios-badge">
-              <Icon name={s.icon} sw={2} />
-            </span>
-          </div>
-        ))}
-      </div>
-      <button className="btn ghost block" style={{ marginBlockStart: 14 }} onClick={onClose}>
-        {t("common.close")}
-      </button>
-    </Overlay>
   );
 }
 
@@ -490,7 +435,7 @@ function PushPrompt({
           <Icon name="bell" sw={2} />
         </span>
         <div>
-          <h3>{t("pre_h")}</h3>
+          <OverlayTitle>{t("pre_h")}</OverlayTitle>
           <p className="msub">{t("pre_d")}</p>
         </div>
       </div>
@@ -508,7 +453,7 @@ function PushPrompt({
         ))}
       </div>
       <span className="rw" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBlock: 4 }}>
-        <Icon name="bolt" sw={2.2} /> {`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}
+        <Icon name="bolt" sw={2.2} /> {`+${formatMb(rewardMb ?? 0, locale)}`}
       </span>
       <div style={{ display: "flex", gap: 10, marginBlockStart: 10 }}>
         <button className="btn ghost block" onClick={onClose}>
@@ -531,7 +476,7 @@ function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void 
           <Icon name="bell" sw={2} />
         </span>
         <div>
-          <h3>{t("ps_bl_h")}</h3>
+          <OverlayTitle>{t("ps_bl_h")}</OverlayTitle>
           <p className="msub">{t("ps_bl_d")}</p>
         </div>
       </div>
@@ -540,5 +485,16 @@ function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void 
         {t("common.close")}
       </button>
     </Overlay>
+  );
+}
+
+// "+500" over a smaller unit — «مگابایت» in Persian, so the pill no longer needs `direction: ltr`
+// to hold a Latin "MB" beside a Persian figure.
+function Volume({ mb, locale }: { mb: number; locale: Locale }) {
+  const { num, unit } = volumeParts(mb * MB, locale);
+  return (
+    <>
+      +{num} <u>{unit}</u>
+    </>
   );
 }

@@ -47,7 +47,7 @@ export default async function ContactPage() {
               <p className="lead">{t("about_lead")}</p>
               <p>{t("about_body")}</p>
               <div className="deflect">
-                <h4>{t("about_deflect")}</h4>
+                <h2>{t("about_deflect")}</h2>
                 <Link href="/faq">
                   <Icon name="help" sw={2} />
                   {t("nav_faq")}

@@ -3,12 +3,14 @@
 import Link from "next/link";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { locName } from "@/components/widget/flags";
+import { locLabel, locName } from "@/components/widget/flags";
 import { Flag } from "@/components/widget/pieces";
 
 // Live location grid for /locations — the full flag list from the trial squad (client island; the
 // SEO copy around it is server-rendered). A cell whose location has a matching keyword landing
-// (by location_remark / display name) deep-links there; the rest jump to the home claim widget.
+// (by location_remark / display name) deep-links there; the rest open the home claim widget WITH
+// that location picked (`/?loc=`, C-27) — they used to land on "#hero" with the popular one chosen,
+// so a visitor who tapped هلند was offered آلمان.
 export function LocationsGrid({
   locale,
   landings,
@@ -40,13 +42,14 @@ export function LocationsGrid({
             <span key={i} className="loccell skeleton" aria-hidden />
           ))
         : list.map((loc) => {
-            const href = landingFor(loc) ?? "/#hero";
+            const href =
+              landingFor(loc) ?? `/?loc=${encodeURIComponent(locName(loc))}#hero-widget`;
             // No inline "get" label: the whole cell is the link, and long Persian names
             // (آذربایجان، کره جنوبی…) need the full width to render untruncated.
             return (
               <Link key={loc} className="loccell" href={href} title={t("loc_go")}>
                 <Flag name={loc} size={34} />
-                <span className="ln">{locName(loc)}</span>
+                <span className="ln">{locLabel(loc, locale)}</span>
               </Link>
             );
           })}

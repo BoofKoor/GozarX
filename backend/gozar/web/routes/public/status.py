@@ -7,19 +7,27 @@ when the panel is unreachable. ``GET /config`` hands the SPA the public keys it 
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from fastapi import APIRouter, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from gozar.config.settings import get_settings
 from gozar.db.repositories.site_claim import SiteClaimRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.health import uptime_pct
 from gozar.services.settings_service import SettingsService, SiteSettingKey
-from gozar.services.site_trial import SiteTrialService
+from gozar.services.site_trial import _DEFAULT_SITE_TRIAL_HOURS, SiteTrialService
 from gozar.web.dependencies import DbSession
 from gozar.web.routes.public.identity import CurrentDevice
 
 router = APIRouter(tags=["public"])
+
+
+def server_now() -> str:
+    """The server's clock at response time. A client counting down to an absolute instant takes its
+    own clock's offset from this, so a phone set ten minutes fast still reaches zero on time."""
+    return datetime.now(UTC).isoformat()
 
 
 class HistoryItem(BaseModel):
@@ -39,6 +47,9 @@ class StatusResponse(BaseModel):
     usage_bytes: int
     remaining: str
     cooldown: str
+    expires_at: str | None = None  # UTC ISO instant behind `remaining` (None when not live)
+    cooldown_until: str | None = None  # UTC ISO instant behind `cooldown` (None when claimable)
+    server_time: str = Field(default_factory=server_now)
     can_claim: bool
     configs: int
     referral_count: int
@@ -66,6 +77,10 @@ class PublicConfig(BaseModel):
     reward_push_mb: int = 0
     reward_streak_mb: int = 0
     streak_days: int = 0
+    # The rolling window a config lasts / renews on. Device-independent, so the site can render the
+    # hero's "fresh every Nh" server-side — /status carries it too, but reading /status mints a
+    # device, which a server render must never do.
+    trial_hours: int = _DEFAULT_SITE_TRIAL_HOURS
 
 
 def _service(request: Request, session) -> SiteTrialService:
@@ -104,6 +119,11 @@ async def get_config(request: Request, session: DbSession) -> PublicConfig:
         reward_push_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_PUSH_MB, 0),
         reward_streak_mb=await site_settings.get_int(SiteSettingKey.SITE_REWARD_STREAK_MB, 0),
         streak_days=await site_settings.get_int(SiteSettingKey.SITE_STREAK_DAYS, 0),
+        # Same floor as SiteTrialService._hours(), so the copy never promises a 0h window.
+        trial_hours=max(
+            await site_settings.get_int(SiteSettingKey.SITE_TRIAL_HOURS, _DEFAULT_SITE_TRIAL_HOURS),
+            1,
+        ),
     )
 
 

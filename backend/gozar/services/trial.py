@@ -75,10 +75,13 @@ class AlreadyClaimedToday:
     """The rolling claim cooldown (``trial_hours`` since the last claim) hasn't elapsed yet.
 
     ``retry_after`` is the human time LEFT until the next claim is allowed ("7h 12m"), or "" when
-    it can't be derived (the message then falls back to a generic wait copy).
+    it can't be derived (the message then falls back to a generic wait copy). ``until`` is the same
+    moment as an absolute instant, for a client that counts down to it (the site) — a rounded
+    "0m" cannot be counted, and a countdown built from one froze at 00:00:00.
     """
 
     retry_after: str = ""
+    until: datetime | None = None
 
 
 @dataclass(frozen=True)
@@ -165,6 +168,15 @@ def cooldown_remaining(last_claim: datetime | None, hours: int) -> str:
     return _human_duration(last_claim + timedelta(hours=max(hours, 1)) - datetime.now(UTC))
 
 
+def cooldown_ends_at(last_claim: datetime | None, hours: int) -> datetime | None:
+    """The instant the rolling cooldown lifts (``last_claim + hours``), or None when unknown."""
+    if last_claim is None:
+        return None
+    if last_claim.tzinfo is None:
+        last_claim = last_claim.replace(tzinfo=UTC)
+    return last_claim + timedelta(hours=max(hours, 1))
+
+
 def in_cooldown(last_claim: datetime | None, hours: int) -> bool:
     """True while the rolling claim cooldown is still active (last claim less than ``hours`` ago).
 
@@ -218,6 +230,16 @@ def _human_duration(delta: timedelta) -> str:
     if hours and minutes:
         return f"{hours}h {minutes}m"
     return f"{hours}h" if hours else f"{minutes}m"
+
+
+def iso_utc(value: str | None) -> str | None:
+    """An ISO timestamp from the panel, normalised to an explicit UTC offset; None if unparseable.
+
+    The panel may send a naive or ``Z``-suffixed string; a browser parses a naive one as LOCAL time,
+    which would shift an absolute deadline by the viewer's UTC offset.
+    """
+    parsed = _parse_dt(value)
+    return parsed.astimezone(UTC).isoformat() if parsed else None
 
 
 def human_remaining(value: str | None) -> str:

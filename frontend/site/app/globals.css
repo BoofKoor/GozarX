@@ -23,7 +23,10 @@ html, body { min-height: 100%; }
 html { -webkit-text-size-adjust: 100%; }
 body { background: var(--bg, #f6f8fc); }
 :focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 6px; }
-/* ---- Auto theme (no explicit choice → follow the OS; explicit [data-theme] always wins) ---- */
+/* ---- Auto theme (no explicit choice → follow the OS; explicit [data-theme] always wins) ----
+   A colour token lives in FOUR blocks: auto-light, auto-dark, [data-theme=light], [data-theme=dark].
+   A token missing from one is a silent bug in that theme only — --skel-1/--skel-2 existed only in
+   docs TOKENS.css, so every loading skeleton on the site painted nothing. Add to all four. */
 #app:not([data-theme="light"]):not([data-theme="dark"]){ --bg:#F6F8FC; --surface:#FFFFFF; --raised:#FFFFFF; --sunken:#F1F5F9; --sunken-2:#EEF2F8;
     --border:#E4E9F2; --border-strong:#D3DAE6; --text:#0F172A; --muted:#5E6B80; --faint:#7C8AA0;
     --primary:#2563EB; --primary-2:#1D4ED8; --primary-hover:#1D4ED8; --on-primary:#FFFFFF; --link:#2563EB; --ring:#3B82F6;
@@ -34,7 +37,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 24px rgba(37,99,235,.32); --glow-sm:0 4px 14px rgba(37,99,235,.28);
     --backdrop:rgba(15,23,42,.5); --logo-ink:#0F172A; --logo-accent:#2563EB;
     --hero-1:#2563EB; --hero-2:#06B6D4; --card-sheen:rgba(6,182,212,.10); --flag-ring:rgba(2,6,23,.08);
-    --band:#0B1220; --band-ink:#E5EDFF; }
+    --band:#0B1220; --band-ink:#E5EDFF; --accent:#06B6D4; --skel-1:#EAEFF7; --skel-2:#F4F7FC;
+    --grad-a:#2563EB; --grad-b:#0E7490; }
 @media (prefers-color-scheme: dark){
   #app:not([data-theme="light"]):not([data-theme="dark"]){ --bg:#020617; --surface:#0E1729; --raised:#182338; --sunken:#0A1120; --sunken-2:#111C31;
     --border:rgba(148,163,184,.16); --border-strong:rgba(148,163,184,.28); --text:#F1F5F9; --muted:#94A3B8; --faint:#64748B;
@@ -46,7 +50,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 28px rgba(59,130,246,.42); --glow-sm:0 4px 16px rgba(59,130,246,.36);
     --backdrop:rgba(2,6,23,.72); --logo-ink:#F1F5F9; --logo-accent:#3B82F6;
     --hero-1:#1E40AF; --hero-2:#0E7490; --card-sheen:rgba(6,182,212,.12); --flag-ring:rgba(255,255,255,.12);
-    --band:#0A1120; --band-ink:#E5EDFF; }
+    --band:#0A1120; --band-ink:#E5EDFF; --accent:#22D3EE; --skel-1:#141F33; --skel-2:#1C293F;
+    --grad-a:#60A5FA; --grad-b:#22D3EE; }
 }
 /* ============ GozarX — Phase 2: full homepage ============
      Built on the approved Phase 0 system + Phase 1 claim widget (real flags,
@@ -59,6 +64,10 @@ body { background: var(--bg, #f6f8fc); }
     --shadow-sm:0 1px 2px rgba(2,6,23,.06), 0 4px 12px rgba(2,6,23,.06);
     --shadow-md:0 2px 6px rgba(2,6,23,.06), 0 12px 32px rgba(2,6,23,.10);
     --shadow-hero:0 4px 14px rgba(2,6,23,.06), 0 28px 70px rgba(2,6,23,.20);
+    /* The far stop of every gradient that carries WHITE text (claim CTA, guide step badges). The
+       brand's bright cyan (--hero-2 #06B6D4) put the CTA's lighter half at ~3.7:1 and a step badge
+       at ~2.4:1; mixed toward cyan-700 the lightest point stays >= 4.5:1, hover included. */
+    --cta-end:#0E7490;
     min-height:100vh; background:var(--bg); color:var(--text); font-family:var(--font); line-height:var(--lh-body); font-size:16px; -webkit-font-smoothing:antialiased; transition:background .25s,color .25s;
   }
 #app[data-theme="light"]{
@@ -72,7 +81,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 24px rgba(37,99,235,.32); --glow-sm:0 4px 14px rgba(37,99,235,.28);
     --backdrop:rgba(15,23,42,.5); --logo-ink:#0F172A; --logo-accent:#2563EB;
     --hero-1:#2563EB; --hero-2:#06B6D4; --card-sheen:rgba(6,182,212,.10); --flag-ring:rgba(2,6,23,.08);
-    --band:#0B1220; --band-ink:#E5EDFF;
+    --band:#0B1220; --band-ink:#E5EDFF; --accent:#06B6D4; --skel-1:#EAEFF7; --skel-2:#F4F7FC;
+    --grad-a:#2563EB; --grad-b:#0E7490;
   }
 #app[data-theme="dark"]{
     --bg:#020617; --surface:#0E1729; --raised:#182338; --sunken:#0A1120; --sunken-2:#111C31;
@@ -85,7 +95,8 @@ body { background: var(--bg, #f6f8fc); }
     --glow:0 8px 28px rgba(59,130,246,.42); --glow-sm:0 4px 16px rgba(59,130,246,.36);
     --backdrop:rgba(2,6,23,.72); --logo-ink:#F1F5F9; --logo-accent:#3B82F6;
     --hero-1:#1E40AF; --hero-2:#0E7490; --card-sheen:rgba(6,182,212,.12); --flag-ring:rgba(255,255,255,.12);
-    --band:#0A1120; --band-ink:#E5EDFF;
+    --band:#0A1120; --band-ink:#E5EDFF; --accent:#22D3EE; --skel-1:#141F33; --skel-2:#1C293F;
+    --grad-a:#60A5FA; --grad-b:#22D3EE;
   }
 #app[data-locale="fa"]{ --font:"Yekan Bakh VF","Vazirmatn",Tahoma,"Segoe UI",system-ui,sans-serif; --lh-body:1.8; --lh-head:1.55; --ls-head:0; }
 #app[data-locale="en"]{ --font:"Inter Variable","Inter",system-ui,-apple-system,"Segoe UI",sans-serif; --lh-body:1.6; --lh-head:1.2; --ls-head:-.01em; }
@@ -113,8 +124,8 @@ a{ color:inherit; }
 .btn.ghost{ background:transparent; color:var(--text); font-weight:600; }
 .btn.ghost:hover{ background:var(--brand-tint); color:var(--link); }
 .btn.lg{ font-size:16px; padding:14px 24px; }
-.cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); box-shadow:var(--glow); position:relative; overflow:hidden; }
-[dir="rtl"] .cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); }
+.cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow); position:relative; overflow:hidden; }
+[dir="rtl"] .cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
 #app[data-theme="dark"] .cta{ color:#EAF2FF; }
 .cta:hover{ filter:brightness(1.06); box-shadow:var(--glow),0 0 0 4px color-mix(in srgb,var(--primary) 16%,transparent); }
 .cta .ic-dir{ transition:transform .2s; }
@@ -153,7 +164,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* Theme + language live in the burger sheet on mobile, so the header controls hide there and appear
    on desktop (where the burger is gone) — otherwise a desktop visitor has no way to switch either. */
 .hd-lang{ display:none; }
-.hd-ctrls .theme-switch{ display:none; }
+.hd-ctrls .theme-seg{ display:none; }
 .hd-lang button{ border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px; font-weight:700; padding:5px 11px; border-radius:var(--r-pill); cursor:pointer; }
 .hd-lang button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); }
 /* desktop (≥1000px): show the "My status" button + theme/lang controls, hide the burger */
@@ -161,7 +172,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
   .status-btn{ display:inline-flex; }
   .burger{ display:none; }
   .hd-lang{ display:inline-flex; padding:2px; gap:2px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
-  .hd-ctrls .theme-switch{ display:inline-block; }
+  .hd-ctrls .theme-seg{ display:inline-flex; }
 }
 .th-btn .sun{ display:none; }
 .th-btn .moon{ display:block; }
@@ -178,21 +189,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .sheet .navlink .ic{ inline-size:19px; block-size:19px; color:var(--muted); }
 .sheet-sep{ block-size:1px; background:var(--border); margin-block:12px; }
 .sheet-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-/* Theme toggle — an icon-only sliding sun⇄moon switch (no text). Geometry is exact: the padding box
-   is 64×32 (66×34 outer − 1px border each side, border-box); two 32px halves centred at x=16 and
-   x=48; the 28px thumb is inset 2px in each half so its centre lands on 16 / 48 — the same as each
-   slot's centre — so the active glyph sits dead-centre on the thumb. `direction:ltr` keeps sun-left
-   / moon-right regardless of the RTL sheet. */
-.theme-switch{ position:relative; inline-size:66px; block-size:34px; flex:none; border-radius:99px; background:var(--sunken); border:1px solid var(--border); padding:0; cursor:pointer; direction:ltr; -webkit-tap-highlight-color:transparent; }
-.theme-switch:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-.theme-switch .thumb{ position:absolute; inset-block-start:2px; inset-inline-start:2px; inline-size:28px; block-size:28px; border-radius:50%; background:var(--primary); box-shadow:0 3px 8px -1px color-mix(in srgb,var(--primary) 55%,transparent); transition:transform .28s cubic-bezier(.34,1.4,.5,1); z-index:1; }
-.theme-switch.is-dark .thumb{ transform:translateX(32px); }
-.theme-switch .slot{ position:absolute; inset-block-start:0; block-size:100%; inline-size:32px; display:grid; place-items:center; z-index:2; pointer-events:none; color:var(--muted); transition:color .2s; }
-.theme-switch .slot.sun{ inset-inline-start:0; }
-.theme-switch .slot.moon{ inset-inline-start:32px; }
-.theme-switch .slot .ic{ inline-size:15px; block-size:15px; }
-.theme-switch:not(.is-dark) .slot.sun{ color:var(--on-primary); }
-.theme-switch.is-dark .slot.moon{ color:var(--on-primary); }
+/* three-state theme control (system · light · dark — decision D6): icon buttons in a pill, in the
+   header and the phone menu; the account settings use the labelled .mini-seg shape of it */
+.theme-seg{ display:inline-flex; align-items:center; padding:3px; gap:2px; flex:none; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
+.theme-seg button{ inline-size:32px; block-size:32px; border:0; border-radius:var(--r-pill); background:transparent; color:var(--muted); display:grid; place-items:center; cursor:pointer; padding:0; transition:background .15s,color .15s; }
+.theme-seg button:hover{ color:var(--text); }
+.theme-seg button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); box-shadow:0 3px 8px -2px color-mix(in srgb,var(--primary) 55%,transparent); }
+.theme-seg button:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.theme-seg .ic{ inline-size:16px; block-size:16px; }
 /* ============ sections ============ */
   section{ position:relative; }
 .sec{ padding-block:56px; }
@@ -204,26 +208,54 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .link-more:hover{ text-decoration:underline; }
 .link-more .ic{ inline-size:16px; block-size:16px; }
 /* HERO */
-  .hero{ position:relative; overflow:hidden; padding-block:32px 52px; }
-@media (min-width:940px){ .hero{ padding-block:52px 76px; } }
+/* `clip`, not just `hidden`: `overflow:hidden` makes the hero a SCROLL CONTAINER, and scrollIntoView
+   clips the target's scroll-margin to a scroller's edge — so on desktop, where the widget sits 28px
+   under the hero's top, `/?loc=…#hero-widget` and the sticky bar landed it at y=28 with its head
+   under the 69px sticky header. `clip` clips the same paint without being scrollable; `hidden`
+   stays as the fallback where `clip` is unknown (Safari < 16). */
+  .hero{ position:relative; overflow:hidden; overflow:clip; padding-block:28px 44px; }
 .hero::before{ content:""; position:absolute; inset:0; z-index:0; background:radial-gradient(900px 420px at 82% -8%,color-mix(in srgb,var(--hero-2) 30%,transparent),transparent 60%),radial-gradient(820px 480px at 10% -4%,color-mix(in srgb,var(--hero-1) 34%,transparent),transparent 62%); }
 [dir="rtl"] .hero::before{ transform:scaleX(-1); }
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr); gap:32px; align-items:center; }
 .hero-copy{ text-align:center; }
 .hero-copy h1{ font-size:clamp(30px,6vw,50px); font-weight:800; line-height:var(--lh-head); letter-spacing:var(--ls-head); margin:4px 0 16px; text-wrap:balance; }
-.hero-copy h1 .grad{ background:linear-gradient(120deg,var(--hero-1),var(--hero-2)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+/* Gradient TEXT is a measured colour pair, not decoration: it reads against the hero wash in both
+   themes. The brand gradient (--hero-1 → --hero-2) started at #1E40AF on #020617 in dark (~2.3:1)
+   and ended on bright cyan in light (~2.3:1 on the tinted wash); --grad-a/--grad-b keep every point
+   of the word >= 3:1, the large-text floor. Mirrored in RTL like the site's other gradients. */
+.hero-copy h1 .grad{ background:linear-gradient(120deg,var(--grad-a),var(--grad-b)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+[dir="rtl"] .hero-copy h1 .grad{ background-image:linear-gradient(240deg,var(--grad-a),var(--grad-b)); }
 .hero-copy .sub{ font-size:17px; color:var(--muted); max-width:34rem; margin:0 auto 22px; }
+/* A phone gets a one-to-two-line subtitle: the full one (four lines at 390px), the H1 and the chip
+   row above the widget put the claim button ~200px under the first screen (V-01). Both are in the
+   HTML and CSS picks one, so nothing shifts and nothing depends on hydration. */
+.hero-copy .sub-short{ display:none; }
+@media (max-width:599.98px){
+  .hero{ padding-block:14px 36px; }
+  .hero-inner{ gap:16px; }
+  .hero-copy h1{ font-size:clamp(25px,7.2vw,32px); margin:0 0 8px; }
+  .hero-copy .sub{ font-size:15px; line-height:1.7; margin-block-end:0; text-wrap:balance; }
+  .hero-copy .sub-long{ display:none; }
+  .hero-copy .sub-short{ display:block; }
+}
 /* trust chips ride a single horizontal rail on mobile (swipe) — no messy 2×2 wrap; edges fade to
-   hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. */
-.trust-row{ display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; padding-block-end:2px; scrollbar-width:none; -webkit-mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); }
+   hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. Below
+   it the rail sits UNDER the widget (DOM order copy → widget → chips), centred while it fits —
+   `safe` falls back to the start edge once it overflows, so the first chip stays reachable. */
+.trust-row{ display:flex; flex-wrap:nowrap; justify-content:safe center; gap:8px; overflow-x:auto; overflow-y:hidden; padding-block-end:2px; scrollbar-width:none; -webkit-mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); }
 .trust-row::-webkit-scrollbar{ display:none; }
 .trust-row .pill{ flex:none; }
 .pill{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); background:color-mix(in srgb,var(--surface) 72%,transparent); border:1px solid var(--border); border-radius:var(--r-pill); padding:7px 13px; backdrop-filter:blur(4px); }
 .pill .ic{ inline-size:15px; block-size:15px; color:var(--success); flex:none; }
-/* desktop hero: two columns (copy + widget), copy left-aligned (from Phase 2, restored post-merge) */
+/* desktop hero: two columns (copy + widget), copy start-aligned. The chips come AFTER the widget in
+   the DOM (a phone needs the button first), so the grid puts them back under the copy: the widget
+   spans both rows, the copy sits on the row line and the chips hang from it — the auto rows share
+   the widget's height equally, which keeps the pair centred against it as before. */
 @media (min-width:940px){
-  .hero-inner{ grid-template-columns:minmax(0,1fr) minmax(400px,432px); gap:52px; }
-  .hero-copy{ text-align:start; }
+  .hero-inner{ grid-template-columns:minmax(0,1fr) minmax(400px,432px); grid-template-areas:"copy widget" "trust widget"; gap:0 52px; }
+  .hero-copy{ grid-area:copy; align-self:end; text-align:start; }
+  #hero-widget{ grid-area:widget; }
+  .hero-inner > .trust-row{ grid-area:trust; align-self:start; }
   .hero-copy .sub{ margin-inline:0; }
   .trust-row{ flex-wrap:wrap; overflow:visible; -webkit-mask:none; mask:none; justify-content:flex-start; }
 }
@@ -233,13 +265,24 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* Reserve the S1 location-picker height on the ABOVE-THE-FOLD hero (home) + landing widget so the
    async status/config/locations fetch resolving doesn't shove the page down ~320px (the headline
    CLS the RUM data flagged on `#how`). The picker is the common fresh-visitor state; shorter states
-   (cooldown / delivered config) top-align inside the reserved box. Scoped so status/gallery widgets
-   keep their natural height. Mobile needs a touch more — the 22-flag grid wraps into more rows. */
+   (cooldown / out of volume) centre inside the reserved box. Each value is S1's MEASURED natural
+   height in Persian at that width (docs/website/audit/08-phase-c.md, 09-phase-d.md) — a reservation
+   above it is a band of empty card under the button, one below it is a layout shift. Up to 460px
+   the head is compact and the cards smaller; below 350px the reassurance line under the button
+   wraps once, below 330px twice. */
 #hero-widget .widget, .landing-widget .widget,
-.status-page .grid-main > div > .widget{ min-block-size:610px; }
-@media (min-width:640px){
+.status-page .grid-main > div > .widget{ min-block-size:564px; }
+@media (max-width:460px){
   #hero-widget .widget, .landing-widget .widget,
-  .status-page .grid-main > div > .widget{ min-block-size:562px; }
+  .status-page .grid-main > div > .widget{ min-block-size:523px; }
+}
+@media (max-width:349.98px){
+  #hero-widget .widget, .landing-widget .widget,
+  .status-page .grid-main > div > .widget{ min-block-size:551px; }
+}
+@media (max-width:329.98px){
+  #hero-widget .widget, .landing-widget .widget,
+  .status-page .grid-main > div > .widget{ min-block-size:572px; }
 }
 .widget::before{ content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:radial-gradient(120% 78% at 100% 0%,var(--card-sheen),transparent 58%); }
 [dir="rtl"] .widget::before{ background:radial-gradient(120% 78% at 0% 0%,var(--card-sheen),transparent 58%); }
@@ -262,42 +305,60 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-card{ position:relative; display:flex; flex-direction:column; align-items:center; gap:9px; padding:13px 6px 11px; border:1.5px solid var(--border); border-radius:var(--r-card); background:var(--surface); cursor:pointer; transition:border-color .16s,background .16s,transform .12s,box-shadow .16s; min-inline-size:0; }
 .loc-card:hover{ border-color:color-mix(in srgb,var(--primary) 45%,var(--border-strong)); transform:translateY(-2px); box-shadow:var(--shadow-sm); }
 .loc-card:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-.loc-card[aria-pressed="true"]{ border-color:var(--primary); background:var(--brand-tint); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent); }
-.loc-card .flag-wrap{ position:relative; }
+.loc-card[aria-checked="true"]{ border-color:var(--primary); background:var(--brand-tint); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent); }
 .flag{ display:block; inline-size:40px; block-size:40px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; }
-.loc-card .nm{ font-size:13px; font-weight:500; line-height:1.6; color:var(--text); max-inline-size:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-block-end:1px; }
-.loc-card[aria-pressed="true"] .nm{ color:var(--brand-tint-ink); font-weight:700; }
-.loc-online{ position:absolute; inset-block-start:-1px; inset-inline-end:-1px; inline-size:11px; block-size:11px; border-radius:50%; background:var(--success); border:2px solid var(--surface); }
-.loc-card[aria-pressed="true"] .loc-online{ border-color:var(--brand-tint); }
+/* a name wraps to a second line rather than losing its end to an ellipsis (C-44) — «آذربایجان»
+   and "South Korea" were «آذربا…» and "South K…" in a 3-column phone grid */
+.loc-card .nm{ font-size:13px; font-weight:500; line-height:1.45; color:var(--text); max-inline-size:100%; text-align:center; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere; padding-block-end:1px; }
+.loc-card[aria-checked="true"] .nm{ color:var(--brand-tint-ink); font-weight:700; }
 .loc-check{ position:absolute; inset-block-start:6px; inset-inline-end:6px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--primary); color:#fff; display:none; place-items:center; box-shadow:var(--glow-sm); }
-.loc-card[aria-pressed="true"] .loc-check{ display:grid; }
+.loc-card[aria-checked="true"] .loc-check{ display:grid; }
+/* The popular card is the DEFAULT pick, so hiding its badge on selection meant nobody ever saw it.
+   It keeps the badge and drops the check instead — on a card under ~150px wide (phones, and the
+   desktop widget's 90px cards) the two collide. Selection still reads from the border, tint, ring. */
+.loc-card[aria-checked="true"] .loc-rec ~ .loc-check{ display:none; }
+/* collapsed picker: the cards past the first two rows (the `hidden` attribute loses to .loc-card's
+   display:flex without this) */
+.loc-card[hidden]{ display:none; }
 .loc-check .ic{ inline-size:12px; block-size:12px; }
 .loc-rec{ position:absolute; inset-block-start:-9px; inset-inline-start:10px; z-index:2; display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; line-height:1.5; color:var(--warning-ink); background:var(--surface); border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border)); border-radius:var(--r-pill); padding:2px 9px; box-shadow:var(--shadow-sm); }
 .loc-rec svg{ inline-size:11px; block-size:11px; color:var(--warning); flex:none; }
-/* Cap the picker height so many locations scroll INSIDE the card instead of ballooning it. The grid
-   itself is untouched; a slim scrollbar + a soft bottom fade (shown only while there's more below,
-   toggled by .more) hint the overflow. Top padding keeps the "popular" badge from clipping. */
-.loc-scroll{ position:relative; }
-/* 268px lands the crop at ~half of row 3 — an unambiguous "more below" peek (236px sliced only a
-   ~20px sliver that read as a layout glitch). */
-.loc-scroll > .loc-grid{ max-block-size:268px; overflow-y:auto; overflow-x:hidden; padding-block-start:12px; padding-inline-end:6px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--border-strong) transparent; }
-/* Touch devices: the fade + half-row peek carry the scroll affordance — hide the desktop scrollbar. */
-@media (pointer:coarse){
-  .loc-scroll > .loc-grid{ scrollbar-width:none; padding-inline-end:0; }
-  .loc-scroll > .loc-grid::-webkit-scrollbar{ display:none; }
-}
-.loc-scroll > .loc-grid::-webkit-scrollbar{ inline-size:6px; }
-.loc-scroll > .loc-grid::-webkit-scrollbar-thumb{ background:var(--border-strong); border-radius:9px; }
-.loc-scroll > .loc-grid::-webkit-scrollbar-track{ background:transparent; }
-.loc-scroll::after{ content:""; position:absolute; inset-inline:0; inset-block-end:0; block-size:40px; background:linear-gradient(transparent,var(--surface)); pointer-events:none; opacity:0; transition:opacity .2s; }
-.loc-scroll.more::after{ opacity:1; }
-.loc-card[aria-pressed="true"] .loc-rec{ display:none; }
+/* The picker shows two rows and an "all locations (N)" button — never a scroll box inside the page:
+   on a phone that nested scroll trapped the thumb (the grid scrolled; at its end the page did not).
+   Top padding keeps the badges that sit on a card's top edge from clipping. */
+.widget .loc-grid{ padding-block-start:12px; }
+.loc-more{ display:flex; align-items:center; justify-content:center; gap:6px; inline-size:100%; margin-block-start:10px; padding:10px 12px; font:inherit; font-size:13px; font-weight:700; color:var(--link); background:transparent; border:1px dashed var(--border-strong); border-radius:var(--r-ctl); cursor:pointer; }
+.loc-more:hover{ background:var(--brand-tint); border-style:solid; border-color:color-mix(in srgb,var(--primary) 45%,var(--border)); }
+.loc-more:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.loc-more .ic{ inline-size:16px; block-size:16px; }
+/* «فعلی» — the location in use, when switching — is the popular badge's shape in the brand tone */
+.loc-rec.loc-now{ color:var(--brand-tint-ink); border-color:color-mix(in srgb,var(--primary) 45%,var(--border)); }
+.loc-card[aria-checked="true"] .loc-now ~ .loc-check{ display:none; }
 .cta-wrap{ margin-block-start:20px; }
 .reassure{ display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:6px 14px; margin-block-start:14px; }
 .reassure .r{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; color:var(--muted); }
 .reassure .r .ic{ inline-size:14px; block-size:14px; color:var(--success); }
-.antibot{ display:flex; align-items:center; justify-content:center; gap:6px; margin-block-start:12px; font-size:11.5px; color:var(--faint); }
+.antibot{ display:flex; align-items:center; justify-content:center; gap:6px; margin-block-start:12px; font-size:11.5px; color:var(--muted); }
 .antibot .ic{ inline-size:13px; block-size:13px; }
+/* A claim that did not go through but leaves the picker the right screen, said in place (C-01). */
+.w-notice{ display:flex; align-items:flex-start; gap:8px; margin-block-end:12px; padding:10px 12px; font-size:13px; line-height:1.7; color:var(--text); background:var(--warning-surface); border:1px solid color-mix(in srgb,var(--warning) 38%,var(--border)); border-radius:var(--r-ctl); }
+.w-notice .ic{ inline-size:16px; block-size:16px; color:var(--warning-ink); flex:none; margin-block-start:3px; }
+.chg-cancel{ margin-block-start:10px; }
+/* A short state (cooldown, out of volume, nothing to hand out, error) centres in the height the
+   hero reserves for the picker, instead of hanging from the top over a band of empty card (C-60). */
+.widget.is-short{ display:flex; flex-direction:column; justify-content:center; }
+/* the visitor arrived through a friend's invite link */
+.ref-welcome{ display:flex; align-items:flex-start; gap:9px; margin-block-end:16px; padding:10px 12px; font-size:13px; line-height:1.7; font-weight:600; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-ctl); }
+.ref-welcome .ic{ inline-size:17px; block-size:17px; flex:none; margin-block-start:3px; }
+/* the way out when the deep links assume an app that is not installed */
+.app-get{ display:inline-flex; align-items:center; gap:4px; margin-block-start:10px; font-size:12.5px; font-weight:600; color:var(--link); text-decoration:none; }
+.app-get:hover{ text-decoration:underline; }
+.app-get .ic{ inline-size:14px; block-size:14px; }
+.revive .rt .rv-amt{ margin-inline-start:auto; font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:2px 9px; }
+/* Outcome headings take focus programmatically (so a screen reader announces the result); they are
+   not controls, so no focus ring. */
+.widget h2[tabindex="-1"]:focus{ outline:none; }
+.sr-only{ position:absolute; inline-size:1px; block-size:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
 .status-head{ display:flex; align-items:center; gap:13px; margin-block-end:18px; }
 .status-ic{ inline-size:46px; block-size:46px; border-radius:14px; display:grid; place-items:center; flex:none; }
 .status-ic .ic{ inline-size:25px; block-size:25px; }
@@ -354,11 +415,18 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .meter .v{ font-weight:700; font-variant-numeric:tabular-nums; }
 .bar{ block-size:9px; border-radius:var(--r-pill); background:var(--sunken-2); overflow:hidden; }
 .bar>i{ display:block; block-size:100%; border-radius:var(--r-pill); background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); transition:inline-size .5s ease; }
+/* a fill grows from inline-start, so its gradient runs that way too — else RTL lights the wrong end */
+[dir="rtl"] .bar>i{ background-image:linear-gradient(270deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); }
+/* Countdown segments are `.cd-seg`, NOT `.seg`: `.seg` is the header's pill toggle, and inheriting
+   its display:inline-flex put each unit label BESIDE its digits instead of under them. The label is
+   copy (11px, --muted, AA) — the old 9px --faint caps measured 3.5:1, and letter-spacing broke the
+   Persian words apart; only the Latin labels get the small-caps treatment. */
 .cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; }
-.cd .seg2{ min-inline-size:46px; padding:8px 6px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); text-align:center; }
-.cd .seg2 b{ display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; }
-.cd .seg2 span{ font-size:9px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; }
-.cd .colon{ font-size:20px; font-weight:800; color:var(--faint); }
+.cd .cd-seg{ display:flex; flex-direction:column; align-items:center; gap:1px; min-inline-size:54px; padding:7px 8px 5px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); }
+.cd .cd-seg b{ font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; color:var(--text); }
+.cd .cd-seg span{ font-size:11px; font-weight:600; line-height:1.4; color:var(--muted); }
+#app[data-locale="en"] .cd .cd-seg span{ font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; }
+.cd .colon{ font-size:20px; font-weight:800; color:var(--muted); padding-block-end:16px; }
 .cd-label{ text-align:center; font-size:12.5px; color:var(--muted); margin-block-end:4px; }
 .divider{ block-size:1px; background:var(--border); margin-block:18px; border:0; }
 .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); }
@@ -369,7 +437,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:32px; block-size:32px; border-radius:8px; display:grid; place-items:center; margin-inline-end:-4px; }
 .x-btn:hover{ background:var(--border); color:var(--text); }
 .m-chips{ display:flex; flex-direction:column; gap:7px; }
-.m-chip{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; }
+.m-chip{ display:flex; align-items:center; gap:10px; text-align:start; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; }
 .m-chip:hover{ border-color:var(--primary); transform:translateX(2px); }
 [dir="rtl"] .m-chip:hover{ transform:translateX(-2px); }
 .m-chip .mi{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
@@ -379,7 +447,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .m-chip .md{ display:block; font-size:11px; color:var(--muted); }
 .m-chip .rw{ font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 /* HOW IT WORKS */
-  .steps{ display:grid; gap:16px; grid-template-columns:1fr; }
+  .steps{ display:grid; gap:16px; grid-template-columns:1fr; list-style:none; margin:0; padding:0; }
 @media (min-width:760px){ .steps{ grid-template-columns:repeat(3,1fr); gap:20px; } }
 .step{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .step .num{ inline-size:40px; block-size:40px; border-radius:12px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; font-size:18px; font-weight:800; margin-block-end:16px; }
@@ -387,6 +455,15 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .step h3{ font-size:18px; font-weight:700; margin:0 0 8px; }
 .step p{ font-size:14px; color:var(--muted); margin:0; line-height:1.7; }
 .step .conn{ display:none; }
+/* On a phone the three cards stood ~800px tall for three sentences: a compact numbered list — the
+   number beside the text, not above it (V-14g). */
+@media (max-width:759.98px){
+  .steps{ gap:10px; }
+  .step{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:14px; padding:16px; }
+  .step .num{ grid-row:span 2; inline-size:36px; block-size:36px; border-radius:11px; font-size:16px; margin:0; }
+  .step h3{ font-size:16px; margin:3px 0 4px; }
+  .step p{ font-size:13.5px; }
+}
 /* LOCATIONS */
   .locrow{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (min-width:640px){ .locrow{ grid-template-columns:repeat(4,1fr); } }
@@ -400,7 +477,8 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* MORE VOLUME — missions as a horizontal list: icon · title/desc · a bold "+N MB" reward tile */
   .mvlist{ display:grid; gap:11px; grid-template-columns:1fr; }
 @media (min-width:760px){ .mvlist{ grid-template-columns:repeat(2,1fr); } }
-.mvrow{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-sm); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.mvrow{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.mvrow:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .mvrow:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); }
 .mvrow .mi{ inline-size:44px; block-size:44px; border-radius:13px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; flex:none; }
 .mvrow .mi .ic{ inline-size:22px; block-size:22px; }
@@ -443,8 +521,11 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .acc-head:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; }
 .acc-head .ic{ inline-size:20px; block-size:20px; color:var(--muted); transition:transform .25s; flex:none; }
 .acc[data-open="true"] .acc-head .ic{ transform:rotate(180deg); }
-.acc-body{ display:none; padding:0 18px 16px; font-size:14px; color:var(--muted); line-height:1.8; }
-.acc[data-open="true"] .acc-body{ display:block; }
+.acc-hd{ margin:0; font:inherit; }
+/* closed = the `hidden` attribute (until-found once hydrated: find-in-page can still reach it), so
+   no display rule here — `display:none` is what made closed answers unsearchable */
+.acc-body{ padding:0 18px 16px; font-size:14px; color:var(--muted); line-height:1.8; }
+.acc-body[hidden]{ padding-block:0; }
 /* TRUST band */
   .trust-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); padding:36px 24px; text-align:center; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
 .trust-card::before{ content:""; position:absolute; inset:0; background:radial-gradient(500px 220px at 50% -20%,var(--brand-tint),transparent 70%); }
@@ -469,7 +550,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
   footer.ft{ border-block-start:1px solid var(--border); background:var(--surface); margin-block-start:24px; }
 /* CTA-led band — a final "grab today's config" nudge above the link columns */
 .ft-cta{ margin-block:40px 36px; padding:26px 30px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 15%,var(--surface)) 0%,var(--surface) 60%); display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap; }
-.ft-cta-t h3{ font-size:20px; font-weight:800; margin:0 0 6px; }
+.ft-cta-t h2{ font-size:20px; font-weight:800; margin:0 0 6px; }
 .ft-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
 .ft-cta-btn{ display:inline-flex; align-items:center; gap:8px; background:var(--primary); color:var(--on-primary); font-weight:800; font-size:14.5px; padding:12px 20px; border-radius:var(--r-btn); text-decoration:none; white-space:nowrap; box-shadow:0 8px 22px -10px color-mix(in srgb,var(--primary) 60%,transparent); transition:transform .1s,filter .18s; }
 .ft-cta-btn:hover{ filter:brightness(1.05); }
@@ -479,7 +560,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 @media (min-width:820px){ .ft-grid{ grid-template-columns:1.7fr 1fr 1fr 1fr; } }
 .ft-brand .brandmark{ margin-block-end:12px; }
 .ft-brand p{ font-size:13.5px; color:var(--muted); max-width:34ch; line-height:1.85; margin:0; }
-.ft-col h4{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
+.ft-col h3{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
 .ft-col a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding-block:6.5px; transition:color .15s; }
 .ft-col a:hover{ color:var(--link); }
 /* Article-landing link row (above the bottom bar) — wraps freely, so it never disturbs .ft-grid. */
@@ -498,6 +579,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* reveal on scroll — no-JS-safe: content is visible by default; the RevealObserver adds
    `reveal-js` to #app after mount, which arms the fade-up entrance, then adds `.in` per element. */
 .reveal{ opacity:1; transform:none; }
+/* Keep these the ONLY `.reveal` rules. A copy of the first one further down the file had the same
+   specificity and a later position, so it outranked the reduced-motion override below: visitors who
+   asked for less motion got every homepage section at opacity 0 until they scrolled to it. */
 #app.reveal-js .reveal{ opacity:0; transform:translateY(18px); transition:opacity .5s ease, transform .5s ease; }
 #app.reveal-js .reveal.in{ opacity:1; transform:none; }
 @media (prefers-reduced-motion:reduce){ #app *, #app *::before, #app *::after{ animation-duration:.01ms !important; transition-duration:.01ms !important; } #app.reveal-js .reveal{ opacity:1; transform:none; } }
@@ -529,15 +613,15 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* ---------- buttons ---------- */
   .btn{ display:inline-flex; align-items:center; justify-content:center; gap:9px; border:1px solid transparent; border-radius:var(--r-btn); cursor:pointer; font:inherit; font-size:15px; font-weight:700; padding:12px 18px; background:var(--primary); color:var(--on-primary); transition:background .18s, transform .1s, box-shadow .18s, filter .18s; }
 .btn:disabled{ opacity:.6; cursor:not-allowed; box-shadow:none; }
+.btn.cta[aria-busy="true"]:disabled{ opacity:1; cursor:progress; }
 /* the primary claim CTA */
   .cta{ inline-size:100%; font-size:16.5px; font-weight:800; padding:16px 22px; border-radius:16px;
-    color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2)));
+    color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end)));
     box-shadow:var(--glow); position:relative; overflow:hidden; }
 .cta::after{ content:""; position:absolute; inset:0; background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.18) 50%,transparent 70%); transform:translateX(-120%); }
 .cta:not(:disabled):hover::after{ animation:sheen 1.1s ease; }
 @keyframes sheen{ to{ transform:translateX(120%); } }
 /* ================= HERO ================= */
-  .hero{ position:relative; overflow:hidden; padding-block:28px 44px; }
 .hero-copy .display{ margin:16px 0 14px; }
 /* ================= THE WIDGET ================= */
   .widget{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); box-shadow:var(--shadow-hero); padding:20px; isolation:isolate; }
@@ -568,10 +652,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .bar.warn>i{ background:linear-gradient(90deg,var(--warning),#fbbf24); }
 .bar.full>i{ background:linear-gradient(90deg,var(--danger),#f87171); }
 /* segmented countdown */
-  .cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; }
-.cd .seg{ min-inline-size:46px; padding:8px 6px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); text-align:center; }
-.cd .seg b{ display:block; font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.1; color:var(--text); }
-.cd .seg span{ font-size:9px; font-weight:600; color:var(--faint); letter-spacing:.06em; text-transform:uppercase; }
 /* missions strip */
   .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); }
 .x-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
@@ -583,6 +663,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .revive .rt .ic{ inline-size:18px; block-size:18px; }
 .revive .rd{ font-size:13px; line-height:1.7; color:var(--text); margin:0 0 14px; }
 .revive .rd b{ color:var(--warning-ink); }
+.revive .revive-share{ margin-block-start:10px; }
 .revived-note{ display:none; align-items:center; gap:8px; margin-block-start:12px; font-size:13px; font-weight:700; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-ctl); padding:11px 14px; animation:reveal .35s ease; }
 .revived-note.show{ display:flex; }
 .revived-note .ic{ inline-size:17px; block-size:17px; }
@@ -670,7 +751,6 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .ring-mini .vl.warn{ stroke:var(--warning); }
 .ring-mini .vl.full{ stroke:var(--danger); }
 .ring-mini .pct{ position:absolute; inset:0; display:grid; place-items:center; font-size:11px; font-weight:800; font-variant-numeric:tabular-nums; }
-.cd-inline{ font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; display:inline-block; }
 .grid-main{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
 @media (min-width:860px){ .grid-main{ grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); align-items:start; } }
 .block-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:14px; }
@@ -745,10 +825,12 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .transfer-card p{ font-size:13px; color:var(--muted); margin:2px 0 0; }
 .code-input{ display:flex; gap:8px; margin-block-start:14px; }
 .code-input input{ flex:1; min-inline-size:0; font:inherit; font-family:ui-monospace,Consolas,monospace; font-size:16px; letter-spacing:.15em; text-transform:uppercase; text-align:center; color:var(--text); background:var(--surface); border:1.5px solid var(--border-strong); border-radius:var(--r-ctl); padding:12px; direction:ltr; }
+.code-input input::placeholder{ font-family:var(--font); font-size:14px; letter-spacing:normal; text-transform:none; color:var(--muted); }
 .code-input input:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
 .code-input.err input{ border-color:var(--danger); }
 .code-err{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:8px; }
 .code-input.err ~ .code-err{ display:block; }
+.code-err.show{ display:block; }
 /* modal */
   .overlay{ position:fixed; inset:0; z-index:100; background:var(--backdrop); display:none; align-items:center; justify-content:center; padding:20px; }
 .overlay.open{ display:flex; }
@@ -757,7 +839,7 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .modal .mh{ display:flex; align-items:center; gap:12px; margin-block-end:8px; }
 .modal .mhi{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
 .modal .mhi .ic{ inline-size:23px; block-size:23px; }
-.modal h3{ font-size:18px; font-weight:800; margin:0; }
+.modal h3, .modal .ov-title{ font-size:18px; font-weight:800; margin:0; }
 .modal .msub{ font-size:13.5px; color:var(--muted); margin:0 0 18px; line-height:1.7; }
 .modal .close{ margin-inline-start:auto; }
 .bigcode{ display:flex; align-items:center; gap:8px; }
@@ -776,14 +858,13 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .sim-btns{ display:flex; gap:8px; justify-content:center; margin-block-start:6px; }
 footer.ft{ border-block-start:1px solid var(--border); background:var(--surface); margin-block-start:24px; }
 .devbar{ position:fixed; inset-block-end:14px; inset-inline:0; margin-inline:auto; inline-size:max-content; max-inline-size:calc(100vw - 20px); z-index:70; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-pill); padding:5px 6px 5px 12px; box-shadow:var(--shadow-md); font-size:12px; }
-#app.reveal-js .reveal{ opacity:0; transform:translateY(14px); transition:opacity .5s,transform .5s; }
 /* ============ GozarX — Phase 3: "More volume" missions page (/rewards) ============
      Same system + header/footer as the homepage. Fonts embedded. Mobile-first. */
   
   
   html,body{ margin:0; padding:0; }
-.btn.grad{ color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); box-shadow:var(--glow-sm); }
-[dir="rtl"] .btn.grad{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--hero-2))); }
+.btn.grad{ color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow-sm); }
+[dir="rtl"] .btn.grad{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
 #app[data-theme="dark"] .btn.grad{ color:#EAF2FF; }
 .btn.grad:hover{ filter:brightness(1.06); }
 /* header (same as homepage) */
@@ -897,7 +978,7 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .code-lg { font-size: clamp(22px, 6vw, 30px); letter-spacing: .16em; font-weight: 700; text-align: center; }
 .textarea { width: 100%; font: inherit; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-ctl); padding: 12px 14px; min-height: 120px; resize: vertical; }
 .textarea:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--brand-tint); }
-.hint { font-size: 13px; color: var(--faint); }
+.hint { font-size: 13px; color: var(--muted); }
 .err-text { color: var(--danger-ink); font-size: 13px; margin-top: 6px; }
 /* Base chip must precede the color modifiers so `.chip-success/-warning` win the cascade. */
 .chip{ display:inline-flex; align-items:center; gap:6px; padding:4px 11px; border-radius:var(--r-pill); font-size:12.5px; font-weight:600; background:var(--sunken); color:var(--muted); border:1px solid var(--border); }
@@ -924,18 +1005,18 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .mission{ font-size:16px; line-height:1.9; color:var(--text); }
 .mission .lead{ font-size:18px; font-weight:600; margin-block-end:12px; }
 .deflect{ margin-block-start:22px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px; }
-.deflect h4{ font-size:14px; font-weight:700; margin:0 0 10px; }
+.deflect h2{ font-size:14px; font-weight:700; margin:0 0 10px; }
 .deflect a{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--link); text-decoration:none; margin-inline-end:14px; }
 .deflect a .ic{ inline-size:14px; block-size:14px; }
 .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .field{ margin-block-end:16px; }
 .field label{ display:block; font-size:13.5px; font-weight:600; margin-block-end:7px; }
-.field .opt{ color:var(--faint); font-weight:500; }
+.field .opt{ color:var(--muted); font-weight:500; }
 .inp{ inline-size:100%; font:inherit; font-size:14.5px; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:11px 13px; }
 .inp:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
 textarea.inp{ resize:vertical; min-block-size:120px; line-height:1.7; }
 select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%); background-position:calc(100% - 20px) 55%,calc(100% - 15px) 55%; background-size:5px 5px; background-repeat:no-repeat; }
-[dir="rtl"] select.inp{ background-position:20px 55%,15px 55%; }
+[dir="rtl"] select.inp{ background-position:15px 55%,20px 55%; }
 .resp-note{ font-size:12.5px; color:var(--muted); margin-block-start:10px; display:flex; align-items:center; gap:6px; }
 .resp-note .ic{ inline-size:14px; block-size:14px; }
 .form-success{ display:none; text-align:center; padding:20px 0; }
@@ -943,7 +1024,8 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .form-card.sent .form-success{ display:block; }
 .form-success .ok{ inline-size:56px; block-size:56px; border-radius:50%; background:var(--success-surface); color:var(--success-ink); display:grid; place-items:center; margin:0 auto 14px; }
 .form-success .ok .ic{ inline-size:30px; block-size:30px; }
-.form-success h3{ font-size:18px; font-weight:800; margin:0 0 6px; }
+.form-success h2{ font-size:18px; font-weight:800; margin:0 0 6px; }
+.form-success h2:focus{ outline:none; }
 .form-success p{ font-size:14px; color:var(--muted); margin:0; }
 .field.err .inp{ border-color:var(--danger); }
 .field .errmsg{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:5px; }
@@ -954,12 +1036,22 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 @media (min-width:760px){ #app .approw{ grid-template-columns:repeat(3,1fr); } }
 @media (min-width:760px){ #app .grid-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (min-width:520px){ #app .loc-grid{ grid-template-columns:repeat(4,1fr); } }
-/* Mobile: badge + title share ONE row (the old column stack burned ~60px of card height before any
-   content); the allowance pill drops to its own compact line underneath. #app prefix so this
-   outranks the duplicated base .w-head{display:flex} declarations. */
+/* Mobile: a smaller badge beside the title, with the allowance under the TITLE rather than on a row
+   of its own, and no subtitle (the picker's own label says the same thing one line lower) — ~50px
+   of card height back, which is what puts the claim button on a 360×740 first screen. #app prefix
+   so this outranks the duplicated base .w-head{display:flex} declarations. */
 @media (max-width:460px){
-  #app .w-head{ display:grid; grid-template-columns:auto 1fr; align-items:center; gap:10px 12px; }
-  #app .w-head .allowance{ grid-column:1 / -1; margin-inline-start:0; justify-self:start; }
+  #app .w-head{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:3px 11px; margin-block-end:12px; }
+  #app .w-head .w-badge{ grid-row:1 / 3; inline-size:36px; block-size:36px; border-radius:11px; }
+  #app .w-head .w-badge .ic{ inline-size:19px; block-size:19px; }
+  #app .w-head .w-title{ font-size:16.5px; line-height:1.4; }
+  #app .w-head .w-sub{ display:none; }
+  #app .w-head .allowance{ grid-column:2; margin-inline-start:0; justify-self:start; font-size:11.5px; padding:3px 9px; }
+  #app .w-head .allowance .ic{ inline-size:12px; block-size:12px; }
+  .widget .loc-card{ padding:10px 4px 8px; gap:6px; }
+  .widget .loc-card .flag{ inline-size:34px; block-size:34px; }
+  .widget .loc-more{ margin-block-start:8px; padding-block:8px; }
+  .widget .cta-wrap{ margin-block-start:14px; }
 }
 /* ============ Phase 5 FAQ page tools (restored post-merge) ============ */
 .narrow{ max-width:820px; }
@@ -1039,6 +1131,7 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .rw2-srow{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .rw2-ring{ position:relative; inline-size:52px; block-size:52px; flex:none; display:grid; place-items:center; }
 .rw2-ring svg{ position:absolute; inset:0; inline-size:100%; block-size:100%; transform:rotate(-90deg); }
+[dir="rtl"] .rw2-ring svg{ transform:rotate(-90deg) scaleY(-1); }
 .rw2-ring circle{ fill:none; stroke-width:3.5; }
 .rw2-ring .tr{ stroke:var(--border-strong); }
 .rw2-ring .pr{ stroke:var(--success); stroke-linecap:round; }
@@ -1091,12 +1184,12 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .rw2-pill.danger{ background:var(--danger-surface); color:var(--danger-ink); }
 .rw2-track{ inline-size:100%; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
 .rw2-track > i{ display:block; block-size:100%; border-radius:99px; background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
-[dir="rtl"] .rw2-track > i{ margin-inline-start:auto; }
+[dir="rtl"] .rw2-track > i{ background-image:linear-gradient(270deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
 .rw2-cnt{ font-size:11px; font-weight:700; color:var(--muted); }
 .rw2-cnt b{ color:var(--success-ink); }
 
 .rw2-side{ flex:none; display:flex; align-items:center; gap:8px; }
-.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; direction:ltr; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; }
+.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; white-space:nowrap; }
 .rw2-amt u{ text-decoration:none; font-size:10px; font-weight:700; opacity:.8; }
 .rw2-amt.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
 .rw2-amt.success{ background:var(--success-surface); color:var(--success-ink); }
@@ -1125,7 +1218,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .push-head{ display:flex; align-items:center; gap:12px; margin-block-end:14px; }
 .push-ic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
 .push-ic .ic{ inline-size:22px; block-size:22px; }
-.push-head h3{ font-size:16px; font-weight:700; }
+.push-head h3, .push-head .ov-title{ font-size:16px; font-weight:700; }
 .plist{ display:flex; flex-direction:column; gap:10px; margin-block-end:6px; }
 .pitem{ display:flex; align-items:flex-start; gap:11px; }
 .pio{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--sunken); color:var(--primary); flex:none; }
@@ -1191,7 +1284,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .tstep:not(.last)::before{ content:""; position:absolute; inset-inline-start:20px; top:44px; bottom:-2px;
   inline-size:2px; background:linear-gradient(color-mix(in srgb,var(--primary) 45%,var(--border)), var(--border) 70%, transparent); }
 .tbadge{ flex:0 0 auto; inline-size:42px; block-size:42px; border-radius:50%;
-  background:linear-gradient(140deg,var(--hero-1),var(--hero-2)); color:#fff;
+  background:linear-gradient(140deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); color:#fff;
   display:grid; place-items:center; font-weight:800; font-size:17px; position:relative; z-index:1;
   box-shadow:0 8px 18px -8px color-mix(in srgb,var(--hero-2) 70%,transparent); }
 .tcard{ flex:1; min-inline-size:0; background:var(--surface); border:1px solid var(--border);
@@ -1268,10 +1361,10 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .meter.metric .bar{ block-size:10px; background:var(--border-strong); }
 /* countdown scaled to the card's own type scale (title 17-18px) — 27px digits shouted over the
    whole page; 20px keeps the timer prominent without dominating */
-.cfg .cd .seg{ min-inline-size:46px; padding:7px 6px; border-color:var(--border-strong);
+.cfg .cd .cd-seg{ padding:6px 8px 5px; border-color:var(--border-strong);
   background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
-.cfg .cd .seg b{ font-size:20px; }
-.cfg .cd .colon{ font-size:16px; }
+.cfg .cd .cd-seg b{ font-size:20px; }
+.cfg .cd .colon{ font-size:16px; padding-block-end:15px; }
 /* a standard-size "+" before the quick-add hint sentence */
 .apps .lbl{ display:flex; align-items:center; gap:6px; }
 .apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
@@ -1280,6 +1373,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .landing-page .crumbs{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--muted); margin-block-end:14px; }
 .landing-page .crumbs a{ color:var(--muted); text-decoration:none; }
 .landing-page .crumbs a:hover{ color:var(--text); }
+.landing-page .crumbs .crumb-sep{ inline-size:14px; block-size:14px; opacity:.7; flex:none; }
 .landing-page h1{ font-size:clamp(26px,4.2vw,34px); line-height:1.35; margin-block-end:14px; }
 /* admin-authored article body: comfortable fa reading rhythm (spec: ~38rem measure, 1.8 leading) */
 .landing-body{ max-inline-size:38rem; line-height:1.9; font-size:15.5px; color:var(--text); }
@@ -1290,17 +1384,26 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .landing-body a:hover{ text-decoration:underline; }
 .landing-body code{ direction:ltr; unicode-bidi:isolate; background:var(--sunken); border:1px solid var(--border); border-radius:6px; padding:1px 6px; font-size:13px; }
 .landing-widget{ margin-block:28px; }
-/* Homepage articles band — link chips on .chip's base look (centered under the section head). */
-.art-chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-.art-chips .chip{ text-decoration:none; padding:8px 15px; font-size:13px; transition:color .15s,border-color .15s; }
-.art-chips .chip:hover{ border-color:var(--border-strong); color:var(--text); }
+/* Articles as cards — a few featured on the homepage, all of them on /articles (V-08): a title, the
+   article's own meta description, and where it goes. Thirteen grey title pills read as a link farm. */
+.art-cards{ display:grid; gap:14px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:640px){ .art-cards{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:1000px){ .art-cards.four{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (min-width:1000px){ .art-cards.three{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.art-card{ display:flex; flex-direction:column; gap:8px; padding:18px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.art-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 40%,var(--border)); }
+.art-card:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.art-card b{ font-size:15.5px; font-weight:800; line-height:1.55; }
+.art-card p{ margin:0; font-size:13px; line-height:1.8; color:var(--muted); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.art-card .more{ margin-block-start:auto; padding-block-start:4px; display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--link); }
+.art-card .more .ic{ inline-size:15px; block-size:15px; }
 .landing-related h2{ font-size:17px; margin-block-end:10px; }
 .landing-related .chips{ display:flex; flex-wrap:wrap; gap:8px; }
 .landing-related .chip{ text-decoration:none; padding:7px 14px; font-size:13px; }
 .landing-related .chip:hover{ border-color:var(--border-strong); color:var(--text); }
 
 .locations-page .sec-head{ margin-block-end:18px; }
-.loc-intro{ max-inline-size:40rem; margin-inline:auto; line-height:1.9; color:var(--muted); text-align:center; display:grid; gap:8px; margin-block-end:30px; }
+.loc-intro{ max-inline-size:40rem; margin-inline:auto; line-height:1.9; color:var(--muted); text-align:start; display:grid; gap:8px; margin-block-end:30px; }
 .loc-h2{ font-size:19px; margin-block:26px 14px; }
 .loc-cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
 .loc-card-link{ display:block; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; transition:border-color .15s ease, transform .15s ease; }
@@ -1317,7 +1420,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .loccell.skeleton{ border-style:dashed; }
 
 /* courtesy auto-scroll anchors: clear the sticky header on snap-back, keep a breath at the edges */
-.widget{ scroll-margin-block-start:84px; }
+.widget, #hero-widget, .landing-widget{ scroll-margin-block-start:84px; }
 .widget:focus{ outline:none; }
 .cta-anchor{ scroll-margin-block-end:16px; }
 .pick-anchor{ scroll-margin-block-start:84px; scroll-margin-block-end:16px; }
@@ -1359,6 +1462,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .acct-btn.status-btn{ display:inline-flex; }
 .acct-btn{ align-items:center; gap:8px; font-size:13.5px; font-weight:700; padding:9px 15px; border-radius:12px; background:var(--brand-tint); color:var(--brand-tint-ink); text-decoration:none; border:1px solid transparent; transition:background .15s; }
 .acct-btn:hover{ background:var(--brand-tint-2); }
+.acct-btn[aria-current="page"]{ border-color:color-mix(in srgb,var(--primary) 45%,transparent); }
 .acct-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .acct-btn .ic{ inline-size:16px; block-size:16px; flex:none; }
 
@@ -1370,3 +1474,121 @@ button.rw2-row:disabled{ cursor:default; background:none; }
   .acct-btn .ic{ inline-size:19px; block-size:19px; }
 }
 @media (max-width:360px){ .acct-btn{ inline-size:36px; block-size:36px; } }
+
+/* ── sticky claim bar (phones) ─────────────────────────────────────────────────────────────────
+   Shown only while the claim widget is off-screen (StickyCta), so it never doubles a button the
+   visitor can already see; from 940px the widget sits beside the copy and the bar never appears.
+   Hidden = off-canvas AND `visibility:hidden` (plus `inert`), so it is out of the tab order and the
+   accessibility tree as well as out of sight. */
+.sticky-cta{ position:fixed; inset-inline:0; inset-block-end:0; z-index:55; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); background:color-mix(in srgb,var(--bg) 86%,transparent); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3); border-block-start:1px solid var(--border); box-shadow:0 -10px 28px -18px color-mix(in srgb,var(--text) 40%,transparent); transform:translateY(110%); visibility:hidden; transition:transform .26s ease, visibility 0s linear .26s; }
+.sticky-cta.show{ transform:none; visibility:visible; transition:transform .26s ease; }
+.sticky-cta .cta{ max-inline-size:520px; margin-inline:auto; display:flex; padding-block:13px; font-size:15.5px; }
+.sticky-cta .cta .ic{ inline-size:18px; block-size:18px; }
+@media (prefers-reduced-motion: reduce){ .sticky-cta, .sticky-cta.show{ transition:none; } }
+@media (min-width:940px){ .sticky-cta{ display:none; } }
+/* while the bar is up, the footer's last row and the toasts must not end up underneath it */
+@media (max-width:939.98px){
+  body:has(.sticky-cta) footer.ft{ padding-block-end:calc(76px + env(safe-area-inset-bottom)); }
+  body:has(.sticky-cta.show) .toast-wrap{ inset-block-end:calc(86px + env(safe-area-inset-bottom)); }
+}
+/* landing: the widget comes straight after the H1 now, so the page's top padding is trimmed on a
+   phone; the closing band sends a reader who finished the article back up to it */
+@media (max-width:599.98px){
+  .landing-page.sec{ padding-block-start:24px; }
+  .landing-page .landing-widget{ margin-block:18px 26px; }
+}
+.land-cta{ margin-block:34px 8px; padding:22px 24px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); display:flex; align-items:center; justify-content:space-between; gap:16px 22px; flex-wrap:wrap; }
+[dir="rtl"] .land-cta{ background:linear-gradient(225deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); }
+.land-cta-t{ min-inline-size:0; }
+.land-cta-t h2{ font-size:18px; font-weight:800; line-height:1.5; margin:0 0 4px; }
+.land-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
+.land-cta + .landing-related{ margin-block-start:30px; }
+/* the header's shortcut to the claim widget on pages without one (desktop; the phone menu leads
+   with the same action) */
+.hd-cta{ display:none; align-items:center; gap:7px; font-size:13.5px; font-weight:800; line-height:1.4; padding:9px 15px; border-radius:12px; color:#fff; text-decoration:none; white-space:nowrap; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow-sm); transition:filter .18s,transform .1s; }
+[dir="rtl"] .hd-cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
+.hd-cta:hover{ filter:brightness(1.06); }
+.hd-cta:active{ transform:scale(.985); }
+.hd-cta:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.hd-cta .ic{ inline-size:16px; block-size:16px; }
+@media (min-width:1000px){ .hd-cta{ display:inline-flex; } }
+.sheet-cta{ margin-block-end:12px; text-decoration:none; }
+#claim, #rewards{ scroll-margin-block-start:84px; }
+.sheet .navlink.active .ic{ color:inherit; }
+.ft-more a.ft-more-all{ color:var(--link); font-weight:700; }
+/* homepage flags are links now: each picks its location in the widget; the "+N" opens /locations */
+.fbig-link{ display:block; flex:0 0 auto; border-radius:50%; transition:transform .14s; }
+.fbig-link:hover{ transform:translateY(-2px); }
+.fbig-link:focus-visible, a.flagmore:focus-visible{ outline:2px solid var(--ring); outline-offset:3px; }
+.fbig-link .fbig{ display:block; }
+a.flagmore{ text-decoration:none; }
+/* desktop: map beside the flags, across the row (V-11) */
+@media (min-width:900px){
+  .loccard{ max-width:980px; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; }
+  .locframe{ margin:22px; margin-inline-end:0; }
+  .locside{ padding:22px 26px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .locside .locdiv{ display:none; }
+  .locside .flagstrip{ padding:0; }
+  .locside .loccap{ padding:14px 8px 4px; }
+  .locside .loccta{ border-block-start:0; padding:10px 14px; margin-block-start:0; }
+}
+/* guides: the second install source, the App Store's Apple ID caveat, the step-2 path to the widget,
+   and a step's screenshot when one has been dropped into public/guides/<platform>/<n>.webp */
+.dl-alt{ display:flex; align-items:center; gap:4px; inline-size:fit-content; margin-block-start:10px; font-size:13px; font-weight:700; color:var(--link); text-decoration:none; }
+.dl-alt:hover{ text-decoration:underline; }
+.dl-alt .ic{ inline-size:14px; block-size:14px; }
+.dl-note{ display:flex; align-items:flex-start; gap:8px; margin:12px 0 0; padding:10px 12px; font-size:13px; line-height:1.8; color:var(--text); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); }
+.dl-note .ic{ inline-size:16px; block-size:16px; flex:none; margin-block-start:4px; color:var(--muted); }
+.guide-get{ margin-block-start:12px; text-decoration:none; }
+.guide-get .ic{ inline-size:16px; block-size:16px; }
+.tshot{ display:block; inline-size:100%; block-size:auto; aspect-ratio:16/9; object-fit:cover; margin-block-start:14px; border-radius:var(--r-card); border:1px solid var(--border); background:var(--sunken); }
+/* the chip rail scrolls on a phone, which makes it a Tab stop in Chromium — so it needs a focus
+   ring like any other stop (inset: the rail's edge mask would fade an outer one away) */
+.trust-row:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; border-radius:var(--r-pill); }
+.loccta:focus-visible{ outline:2px solid var(--ring); outline-offset:-3px; }
+
+/* ── Phase D: keyboard, touch and language plumbing ──────────────────────────────────────────── */
+/* "skip to content": off-screen until it has focus, then the first thing on the page (C-41) */
+.skip-link{ position:absolute; inset-inline-start:12px; inset-block-start:-80px; z-index:100; display:inline-flex; align-items:center; min-block-size:44px; padding:10px 16px; font-weight:800; font-size:14px; color:var(--link); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); box-shadow:var(--shadow-md); text-decoration:none; }
+.skip-link:focus{ inset-block-start:12px; outline:2px solid var(--ring); outline-offset:2px; }
+main:focus{ outline:none; }
+/* the phone menu's top row: the handle, and a close button a screen reader (and a thumb) can find */
+.sheet-top{ position:relative; display:flex; align-items:center; justify-content:center; min-block-size:44px; margin-block-end:8px; }
+.sheet-top .sheet-handle{ margin:0; }
+.sheet-close{ position:absolute; inset-block-start:0; inset-inline-end:-6px; }
+.sheet .theme-seg button{ inline-size:44px; block-size:44px; }
+.sheet .theme-seg .ic{ inline-size:19px; block-size:19px; }
+.offline-h{ margin:0; font-size:15px; font-weight:700; }
+/* Touch targets ≥44px wherever the layout is the phone/tablet one (the burger's breakpoint) — the
+   spec's number, and Apple's. Measured before: 58 controls under it, from the header's 38px buttons
+   and a 23px breadcrumb to a 32px copy button (C-40). Where a control must LOOK smaller than its
+   target (the copy plate, the switch), the 44px box is transparent and the visual is drawn inside
+   it; where a bar must not grow, negative block margins give the box back to the layout. */
+@media (max-width:999.98px){
+  .hd-row{ padding-block:9px; }
+  .icon-only, .acct-btn, .acct-btn.status-btn{ inline-size:44px; block-size:44px; }
+  .brandmark{ min-block-size:44px; }
+  .link-more, .deflect a, .app-get, .dl-alt{ min-block-size:44px; }
+  .app-get, .dl-alt{ margin-block-start:2px; }
+  .loc-more, .btn.sm, .tab, .landing-related .chip{ min-block-size:44px; }
+  .mini-seg button, .sheet .seg button, .ft-langs button{ min-block-size:44px; min-inline-size:44px; padding-inline:16px; }
+  .ft-col a{ display:flex; align-items:center; min-block-size:44px; padding-block:0; }
+  .ft-more{ gap:0 16px; }
+  .ft-more a{ display:inline-flex; align-items:center; min-block-size:44px; }
+  .landing-page .crumbs a{ display:inline-flex; align-items:center; min-block-size:44px; margin-block:-10px; padding-inline:11px; margin-inline:-11px; }
+  .guide-page details > summary{ min-block-size:44px; padding-block:8px; margin-block:-8px; }
+  .x-btn{ inline-size:44px; block-size:44px; margin-block:-6px; margin-inline-end:-10px; }
+  .id-bar .id-tr{ min-block-size:44px; margin-block:-10px; }
+  /* the id copy button: a 44px target around the design's 32px plate */
+  .id-bar .id-cp{ position:relative; inline-size:44px; block-size:44px; margin:-6px; border:0; background:transparent; }
+  .id-bar .id-cp::before{ content:""; position:absolute; inset:6px; border-radius:9px; border:1px solid var(--border); background:var(--sunken); transition:border-color .15s; }
+  .id-bar .id-cp:hover::before{ border-color:var(--primary); }
+  .id-bar .id-cp.done::before{ border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+  .id-bar .id-cp .ic{ position:relative; }
+  /* the switch: a 44px-tall button, its 46×26 track drawn as ::before */
+  .switch, .switch[aria-checked="true"]{ inline-size:50px; block-size:44px; background:transparent; border-radius:12px; }
+  .switch::before{ content:""; position:absolute; inset-block:9px; inset-inline:2px; border-radius:9999px; background:var(--border-strong); transition:background .2s; }
+  .switch[aria-checked="true"]::before{ background:var(--primary); }
+  .switch::after{ inset-block-start:12px; inset-inline-start:5px; z-index:1; }
+  .switch[aria-checked="true"]::after{ inset-inline-start:25px; }
+}
