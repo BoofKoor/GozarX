@@ -47,7 +47,9 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   // Reserve the card's footprint while /status loads instead of returning null — otherwise the whole
   // ~400px card pops in when the fetch resolves and shoves the page (a status-page CLS the RUM data
   // flagged). A quiet skeleton holds the space until the real content replaces it in-place.
-  if (!status) return <div className="card rewards-card rw2 rw2-skel" aria-busy />;
+  // `id="rewards"` on both, so /status#rewards (the homepage's reward rows) finds its target in the
+  // server HTML, before /status has loaded.
+  if (!status) return <div id="rewards" className="card rewards-card rw2 rw2-skel" aria-busy />;
 
   const inviteCount = Math.max(0, status.referral_count);
   const inviteCap = Math.max(0, status.referral_cap);
@@ -109,7 +111,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   const pushConfigured = !!config?.vapid_public_key;
 
   return (
-    <div className="card rewards-card rw2">
+    <div id="rewards" className="card rewards-card rw2">
       <div className="rw2-head">
         <span className="rw2-gift" aria-hidden>
           <Icon name="gift" sw={2} />

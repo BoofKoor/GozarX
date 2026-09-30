@@ -47,7 +47,8 @@ export function StatusView({ locale }: { locale: Locale }) {
 
       {/* MAIN GRID */}
       <div className="grid-main">
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {/* #claim: where the phone menu's "get a config" lands on this page */}
+        <div id="claim" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <ClaimWidget locale={locale} />
           <AccountRewards locale={locale} />
         </div>

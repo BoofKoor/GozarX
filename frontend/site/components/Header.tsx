@@ -10,12 +10,24 @@ function setCookie(name: string, value: string) {
   document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
 }
 
-const NAV: { href: string; key: string }[] = [
-  { href: "/locations", key: "nav_loc" },
-  { href: "/guides", key: "nav_guides" },
-  { href: "/faq", key: "nav_faq" },
-  { href: "/contact", key: "nav_contact" },
+const NAV: { href: string; key: string; icon: string }[] = [
+  { href: "/locations", key: "nav_loc", icon: "pin" },
+  { href: "/guides", key: "nav_guides", icon: "book" },
+  { href: "/faq", key: "nav_faq", icon: "help" },
+  { href: "/contact", key: "nav_contact", icon: "mail" },
 ];
+// The phone menu leads with the visitor's own page and ends with Home — the logo already goes
+// there, so as the FIRST item it pushed everything else down for the one link nobody opens it for.
+const SHEET_NAV = [
+  { href: "/status", key: "nav_status", icon: "user" },
+  ...NAV,
+  { href: "/", key: "nav.home", icon: "home" },
+];
+
+// Pages that carry a claim widget of their own don't need the header's shortcut to one.
+function hasOwnWidget(pathname: string): boolean {
+  return pathname === "/" || pathname === "/status" || pathname.startsWith("/l/");
+}
 
 // A link is "here" on its own page and on anything under it (/guides → /guides/android) — marked for
 // sighted readers (.active) and screen readers (aria-current) alike.
@@ -31,6 +43,13 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
   const pathname = usePathname() ?? "/";
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
+  // Every page is a path to the widget (C-23): the header's shortcut on desktop, the top of the
+  // menu on a phone. A landing and the account page carry a widget of their own.
+  const ctaHref = pathname.startsWith("/l/")
+    ? "#get"
+    : pathname === "/status"
+      ? "#claim"
+      : "/#hero-widget";
   const [themeState, setThemeState] = useState<string>(theme ?? "");
 
   // Reflect the EFFECTIVE theme in the toggle. An explicit choice sets `data-theme`; with no cookie
@@ -100,6 +119,12 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
           </nav>
           <div className="hd-spacer" />
           <div className="hd-ctrls">
+            {!hasOwnWidget(pathname) && (
+              <Link className="hd-cta" href={ctaHref}>
+                <Icon name="bolt" sw={2.2} />
+                {t("cta_get")}
+              </Link>
+            )}
             {/* desktop-only theme + language controls (mobile has them in the burger sheet) */}
             <div className="hd-lang" role="group" aria-label={t("set_lang")}>
               <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
@@ -151,20 +176,23 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
         aria-label={t("menu_title")}
       >
         <div className="sheet-handle" />
+        <Link className="btn cta sheet-cta" href={ctaHref} onClick={() => setSheet(false)}>
+          <Icon name="bolt" sw={2.2} />
+          {t("cta_get")}
+        </Link>
         <nav id="sheetnav">
-          {[{ href: "/", key: "nav.home" }, ...NAV, { href: "/status", key: "nav_status" }].map(
-            (n) => (
-              <Link
-                key={n.href}
-                className={`navlink${isCurrent(pathname, n.href) ? " active" : ""}`}
-                aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
-                href={n.href}
-                onClick={() => setSheet(false)}
-              >
-                {t(n.key)}
-              </Link>
-            ),
-          )}
+          {SHEET_NAV.map((n) => (
+            <Link
+              key={n.href}
+              className={`navlink${isCurrent(pathname, n.href) ? " active" : ""}`}
+              aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
+              href={n.href}
+              onClick={() => setSheet(false)}
+            >
+              <Icon name={n.icon} sw={2} />
+              {t(n.key)}
+            </Link>
+          ))}
         </nav>
         <div className="sheet-sep" />
         <div className="sheet-controls">

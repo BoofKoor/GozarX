@@ -7,7 +7,10 @@ import { Icon } from "@/components/Icon";
 
 // MORE VOLUME — the ways to grow the daily allowance, as a horizontal list (icon · title/desc ·
 // reward amount). The reward is the REAL configured figure (reward_referral/pwa/push/streak_mb),
-// shown as a bold "+N MB" tile — never a generic "more volume" label or a hardcoded number.
+// shown as a bold "+N MB" tile — never a generic "more volume" label or a hardcoded number. Each row
+// is a link to where the mission is actually DONE — the rewards card on the account page (C-38): the
+// rows lifted on hover like links and went nowhere. A figure the backend did not give is left out
+// rather than shown as «—».
 const MISSIONS = [
   { t: "mv1_t", d: "mv1_d", ic: "users", key: "reward_referral_mb" },
   { t: "mv2_t", d: "mv2_d", ic: "download", key: "reward_pwa_mb" },
@@ -31,7 +34,7 @@ export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOver
           {MISSIONS.map((m) => {
             const mb = config?.[m.key];
             return (
-              <div className="mvrow" key={m.t}>
+              <Link className="mvrow" key={m.t} href="/status#rewards">
                 <span className="mi">
                   <Icon name={m.ic} sw={2} />
                 </span>
@@ -39,13 +42,15 @@ export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOver
                   <h3>{t(m.t)}</h3>
                   <p>{t(m.d)}</p>
                 </div>
-                <span className="mvamt" aria-label={mb != null ? `+${mb} MB` : undefined}>
-                  <b>
-                    <bdi dir="ltr">{mb != null ? `+${faDigits(String(mb), locale)}` : "—"}</bdi>
-                  </b>
-                  {mb != null && <i>MB</i>}
-                </span>
-              </div>
+                {mb != null && (
+                  <span className="mvamt" aria-label={`+${mb} MB`}>
+                    <b>
+                      <bdi dir="ltr">{`+${faDigits(String(mb), locale)}`}</bdi>
+                    </b>
+                    <i>MB</i>
+                  </span>
+                )}
+              </Link>
             );
           })}
         </div>

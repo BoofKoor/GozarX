@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { flagCC, locName } from "@/components/widget/flags";
@@ -8,7 +9,9 @@ import { Icon } from "@/components/Icon";
 // LOCATIONS teaser — a single compact card: a dotted world map (decorative "global presence"), a
 // LIVE pill with the REAL active-location count, and a flag strip of the live trial-squad locations.
 // Replaces the old tall 8-card grid. Data (count + flags) is live; the map is illustrative. Hidden
-// when the panel exposes no locations.
+// when the panel exposes no locations. Each flag PICKS its location in the claim widget above
+// (`/?loc=`, V-11) — they were pictures of choices that could not be chosen — and from 900px the
+// card runs map-beside-flags across the row instead of a 520px card in the middle of 1180.
 const SHOWN = 5;
 
 export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOverrides }) {
@@ -42,31 +45,48 @@ export function HomeLocations({ locale, copy }: { locale: Locale; copy?: CopyOve
             <img className="worldmap" src="/map-world.webp" alt="" width={640} height={382} />
           </div>
 
-          <div className="locdiv" />
+          <div className="locside">
+            <div className="locdiv" />
 
-          <div className="flagstrip">
-            {skeleton
-              ? Array.from({ length: SHOWN }).map((_, i) => (
-                  <span key={i} className="fbig skeleton" aria-hidden />
-                ))
-              : shown.map((name) => {
-                  const cc = flagCC(name);
-                  return cc ? (
-                    <img key={name} className="fbig" src={`/flags/${cc}.svg`} alt={locName(name)} loading="lazy" />
-                  ) : (
-                    <span key={name} className="fbig fb-fallback" aria-hidden>
-                      {locName(name).slice(0, 2).toUpperCase()}
-                    </span>
-                  );
-                })}
-            {more > 0 && <span className="flagmore">+{faDigits(String(more), locale)}</span>}
+            <div className="flagstrip">
+              {skeleton
+                ? Array.from({ length: SHOWN }).map((_, i) => (
+                    <span key={i} className="fbig skeleton" aria-hidden />
+                  ))
+                : shown.map((name) => {
+                    const cc = flagCC(name);
+                    const label = locName(name);
+                    return (
+                      <Link
+                        key={name}
+                        className="fbig-link"
+                        href={`/?loc=${encodeURIComponent(label)}#hero-widget`}
+                        aria-label={label}
+                        title={label}
+                      >
+                        {cc ? (
+                          <img className="fbig" src={`/flags/${cc}.svg`} alt="" loading="lazy" />
+                        ) : (
+                          <span className="fbig fb-fallback" aria-hidden>
+                            {label.slice(0, 2).toUpperCase()}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+              {more > 0 && (
+                <Link className="flagmore" href="/locations" aria-label={t("loc_all")}>
+                  +{faDigits(String(more), locale)}
+                </Link>
+              )}
+            </div>
+
+            <p className="loccap">{t("loc_worldwide")}</p>
+            <Link className="loccta" href="/locations">
+              {t("loc_all")}
+              <Icon name="arrow" sw={2.2} cls="ic-dir" />
+            </Link>
           </div>
-
-          <p className="loccap">{t("loc_worldwide")}</p>
-          <a className="loccta" href="/locations">
-            {t("loc_all")}
-            <Icon name="arrow" sw={2.2} cls="ic-dir" />
-          </a>
         </div>
       </div>
     </section>

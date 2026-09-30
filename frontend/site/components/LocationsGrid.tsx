@@ -8,7 +8,9 @@ import { Flag } from "@/components/widget/pieces";
 
 // Live location grid for /locations — the full flag list from the trial squad (client island; the
 // SEO copy around it is server-rendered). A cell whose location has a matching keyword landing
-// (by location_remark / display name) deep-links there; the rest jump to the home claim widget.
+// (by location_remark / display name) deep-links there; the rest open the home claim widget WITH
+// that location picked (`/?loc=`, C-27) — they used to land on "#hero" with the popular one chosen,
+// so a visitor who tapped هلند was offered آلمان.
 export function LocationsGrid({
   locale,
   landings,
@@ -40,7 +42,8 @@ export function LocationsGrid({
             <span key={i} className="loccell skeleton" aria-hidden />
           ))
         : list.map((loc) => {
-            const href = landingFor(loc) ?? "/#hero";
+            const href =
+              landingFor(loc) ?? `/?loc=${encodeURIComponent(locName(loc))}#hero-widget`;
             // No inline "get" label: the whole cell is the link, and long Persian names
             // (آذربایجان، کره جنوبی…) need the full width to render untruncated.
             return (

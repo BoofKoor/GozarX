@@ -11,9 +11,9 @@ export const revalidate = 3600;
 type Freq = NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 
 // Served at /sitemap.xml (Next.js metadata route). Lists the public, indexable pages: the marketing
-// pages, one guide page per platform, the locations index, and every published keyword landing
-// (/l/{slug}). The personalized /status view and the /offline PWA fallback are deliberately
-// excluded (and also disallowed in robots.ts).
+// pages, one guide page per platform, the locations and articles indexes, and every published
+// keyword landing (/l/{slug}). The personalized /status view and the /offline PWA fallback are
+// deliberately excluded (and also disallowed in robots.ts).
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const pages: { path: string; priority: number; changeFrequency: Freq }[] = [
@@ -25,6 +25,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly" as Freq,
     })),
     { path: "/locations", priority: 0.8, changeFrequency: "weekly" },
+    { path: "/articles", priority: 0.7, changeFrequency: "weekly" },
     { path: "/about", priority: 0.6, changeFrequency: "monthly" },
     { path: "/faq", priority: 0.6, changeFrequency: "monthly" },
     { path: "/contact", priority: 0.5, changeFrequency: "monthly" },

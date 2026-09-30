@@ -52,11 +52,14 @@ export function ClaimWidget({
   locale,
   compact = false,
   preselect,
+  title,
   copy,
 }: {
   locale: Locale;
   compact?: boolean;
   preselect?: string;
+  /** The picker's heading in place of «کانفیگ رایگان امروز» — a landing names its location. */
+  title?: string;
   /** Panel-authored copy overrides (w_title / w_sub / cta_get …), from the homepage. */
   copy?: CopyOverrides;
 }) {
@@ -185,13 +188,20 @@ export function ClaimWidget({
     prevStatus.current = status;
   }, [status]);
 
-  // Apply `preselect` once the live location list is in — but only while the user hasn't picked
-  // anything themselves (picked===null), so a manual choice always wins. Matches by exact remark
-  // or normalized display name (the same tolerance as the "popular" star in the Picker).
+  // Apply `preselect` once the live location list is in — ONCE per value, so a manual choice made
+  // after it wins, and a list refresh does not undo that choice. A NEW value does apply over an
+  // earlier pick: on the homepage it is `?loc=`, and tapping another flag on the same page changes it
+  // without remounting the widget — that tap is the newer intent. Matches by exact remark or
+  // normalized display name (the same tolerance as the "popular" star in the Picker).
+  const appliedPreselect = useRef<string | null>(null);
   useEffect(() => {
-    if (!preselect || picked !== null || !locs.length) return;
+    if (!preselect || !locs.length || appliedPreselect.current === preselect) return;
+    appliedPreselect.current = preselect;
     const hit = locs.find((l) => sameLoc(l, preselect));
-    if (hit) setPicked(hit);
+    if (hit) {
+      setPicked(hit);
+      setNotice(null);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [locations, preselect]);
 
@@ -592,7 +602,12 @@ export function ClaimWidget({
     body = (
       <div className="widget" ref={rootRef} tabIndex={-1} data-view={view}>
         <RefWelcome locale={locale} status={status} />
-        <WidgetHead locale={locale} allowance={status?.daily_limit} compact={compact} />
+        <WidgetHead
+          locale={locale}
+          title={title ?? t("w_title")}
+          sub={compact ? null : t("w_sub")}
+          allowance={status?.daily_limit}
+        />
         <Picker
           locale={locale}
           locations={locs}
@@ -628,14 +643,18 @@ export function ClaimWidget({
 
 // ================= sub-parts =================
 
+// The title and subtitle arrive resolved, so the panel's overrides (w_title / w_sub) reach them —
+// a translator built here from the locale alone never saw those.
 function WidgetHead({
   locale,
+  title,
+  sub,
   allowance,
-  compact,
 }: {
   locale: Locale;
+  title: string;
+  sub: string | null;
   allowance?: string;
-  compact: boolean;
 }) {
   const t = translator(locale);
   const chip = allowance ? fill(t("allowance"), { v: allowance }) : null;
@@ -646,9 +665,9 @@ function WidgetHead({
       </span>
       <div className="wt">
         <h2 className="w-title" tabIndex={-1}>
-          {t("w_title")}
+          {title}
         </h2>
-        {!compact && <p className="w-sub">{t("w_sub")}</p>}
+        {sub && <p className="w-sub">{sub}</p>}
       </div>
       {chip && (
         <span className="allowance">
@@ -783,10 +802,9 @@ function Picker({
               <span className="loc-check" aria-hidden>
                 <Icon name="check" sw={2.6} />
               </span>
-              <span className="flag-wrap">
-                <Flag name={loc} size={40} />
-                <span className="loc-online" aria-hidden />
-              </span>
+              {/* sized by CSS (smaller on a phone); no green "online" dot — every card had one,
+                  so it said nothing about any of them */}
+              <Flag name={loc} fluid />
               <span className="nm">{locName(loc)}</span>
             </button>
           );

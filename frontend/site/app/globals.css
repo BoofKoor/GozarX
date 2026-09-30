@@ -215,8 +215,12 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .link-more:hover{ text-decoration:underline; }
 .link-more .ic{ inline-size:16px; block-size:16px; }
 /* HERO */
-  .hero{ position:relative; overflow:hidden; padding-block:32px 52px; }
-@media (min-width:940px){ .hero{ padding-block:52px 76px; } }
+/* `clip`, not just `hidden`: `overflow:hidden` makes the hero a SCROLL CONTAINER, and scrollIntoView
+   clips the target's scroll-margin to a scroller's edge — so on desktop, where the widget sits 28px
+   under the hero's top, `/?loc=…#hero-widget` and the sticky bar landed it at y=28 with its head
+   under the 69px sticky header. `clip` clips the same paint without being scrollable; `hidden`
+   stays as the fallback where `clip` is unknown (Safari < 16). */
+  .hero{ position:relative; overflow:hidden; overflow:clip; padding-block:28px 44px; }
 .hero::before{ content:""; position:absolute; inset:0; z-index:0; background:radial-gradient(900px 420px at 82% -8%,color-mix(in srgb,var(--hero-2) 30%,transparent),transparent 60%),radial-gradient(820px 480px at 10% -4%,color-mix(in srgb,var(--hero-1) 34%,transparent),transparent 62%); }
 [dir="rtl"] .hero::before{ transform:scaleX(-1); }
 .hero-inner{ position:relative; z-index:1; display:grid; grid-template-columns:minmax(0,1fr); gap:32px; align-items:center; }
@@ -229,17 +233,36 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .hero-copy h1 .grad{ background:linear-gradient(120deg,var(--grad-a),var(--grad-b)); -webkit-background-clip:text; background-clip:text; color:transparent; }
 [dir="rtl"] .hero-copy h1 .grad{ background-image:linear-gradient(240deg,var(--grad-a),var(--grad-b)); }
 .hero-copy .sub{ font-size:17px; color:var(--muted); max-width:34rem; margin:0 auto 22px; }
+/* A phone gets a one-to-two-line subtitle: the full one (four lines at 390px), the H1 and the chip
+   row above the widget put the claim button ~200px under the first screen (V-01). Both are in the
+   HTML and CSS picks one, so nothing shifts and nothing depends on hydration. */
+.hero-copy .sub-short{ display:none; }
+@media (max-width:599.98px){
+  .hero{ padding-block:14px 36px; }
+  .hero-inner{ gap:16px; }
+  .hero-copy h1{ font-size:clamp(25px,7.2vw,32px); margin:0 0 8px; }
+  .hero-copy .sub{ font-size:15px; line-height:1.7; margin-block-end:0; text-wrap:balance; }
+  .hero-copy .sub-long{ display:none; }
+  .hero-copy .sub-short{ display:block; }
+}
 /* trust chips ride a single horizontal rail on mobile (swipe) — no messy 2×2 wrap; edges fade to
-   hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. */
-.trust-row{ display:flex; flex-wrap:nowrap; gap:8px; overflow-x:auto; padding-block-end:2px; scrollbar-width:none; -webkit-mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); }
+   hint the scroll. Reverts to a normal wrapped row at the desktop (2-column hero) breakpoint. Below
+   it the rail sits UNDER the widget (DOM order copy → widget → chips), centred while it fits —
+   `safe` falls back to the start edge once it overflows, so the first chip stays reachable. */
+.trust-row{ display:flex; flex-wrap:nowrap; justify-content:safe center; gap:8px; overflow-x:auto; overflow-y:hidden; padding-block-end:2px; scrollbar-width:none; -webkit-mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); mask:linear-gradient(90deg,transparent,#000 18px,#000 calc(100% - 18px),transparent); }
 .trust-row::-webkit-scrollbar{ display:none; }
 .trust-row .pill{ flex:none; }
 .pill{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text); background:color-mix(in srgb,var(--surface) 72%,transparent); border:1px solid var(--border); border-radius:var(--r-pill); padding:7px 13px; backdrop-filter:blur(4px); }
 .pill .ic{ inline-size:15px; block-size:15px; color:var(--success); flex:none; }
-/* desktop hero: two columns (copy + widget), copy left-aligned (from Phase 2, restored post-merge) */
+/* desktop hero: two columns (copy + widget), copy start-aligned. The chips come AFTER the widget in
+   the DOM (a phone needs the button first), so the grid puts them back under the copy: the widget
+   spans both rows, the copy sits on the row line and the chips hang from it — the auto rows share
+   the widget's height equally, which keeps the pair centred against it as before. */
 @media (min-width:940px){
-  .hero-inner{ grid-template-columns:minmax(0,1fr) minmax(400px,432px); gap:52px; }
-  .hero-copy{ text-align:start; }
+  .hero-inner{ grid-template-columns:minmax(0,1fr) minmax(400px,432px); grid-template-areas:"copy widget" "trust widget"; gap:0 52px; }
+  .hero-copy{ grid-area:copy; align-self:end; text-align:start; }
+  #hero-widget{ grid-area:widget; }
+  .hero-inner > .trust-row{ grid-area:trust; align-self:start; }
   .hero-copy .sub{ margin-inline:0; }
   .trust-row{ flex-wrap:wrap; overflow:visible; -webkit-mask:none; mask:none; justify-content:flex-start; }
 }
@@ -249,13 +272,19 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* Reserve the S1 location-picker height on the ABOVE-THE-FOLD hero (home) + landing widget so the
    async status/config/locations fetch resolving doesn't shove the page down ~320px (the headline
    CLS the RUM data flagged on `#how`). The picker is the common fresh-visitor state; shorter states
-   (cooldown / delivered config) top-align inside the reserved box. Scoped so status/gallery widgets
-   keep their natural height. Mobile needs a touch more — the 22-flag grid wraps into more rows. */
+   (cooldown / out of volume) centre inside the reserved box. Each value is S1's MEASURED natural
+   height in Persian at that width (docs/website/audit/08-phase-c.md) — a reservation above it is a
+   band of empty card under the button, one below it is a layout shift. Up to 460px the head is
+   compact and the cards smaller; under 360px the reassurance lines under the button wrap. */
 #hero-widget .widget, .landing-widget .widget,
-.status-page .grid-main > div > .widget{ min-block-size:610px; }
-@media (min-width:640px){
+.status-page .grid-main > div > .widget{ min-block-size:564px; }
+@media (max-width:460px){
   #hero-widget .widget, .landing-widget .widget,
-  .status-page .grid-main > div > .widget{ min-block-size:562px; }
+  .status-page .grid-main > div > .widget{ min-block-size:520px; }
+}
+@media (max-width:359.98px){
+  #hero-widget .widget, .landing-widget .widget,
+  .status-page .grid-main > div > .widget{ min-block-size:570px; }
 }
 .widget::before{ content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:radial-gradient(120% 78% at 100% 0%,var(--card-sheen),transparent 58%); }
 [dir="rtl"] .widget::before{ background:radial-gradient(120% 78% at 0% 0%,var(--card-sheen),transparent 58%); }
@@ -279,12 +308,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-card:hover{ border-color:color-mix(in srgb,var(--primary) 45%,var(--border-strong)); transform:translateY(-2px); box-shadow:var(--shadow-sm); }
 .loc-card:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .loc-card[aria-checked="true"]{ border-color:var(--primary); background:var(--brand-tint); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent); }
-.loc-card .flag-wrap{ position:relative; }
 .flag{ display:block; inline-size:40px; block-size:40px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; }
 .loc-card .nm{ font-size:13px; font-weight:500; line-height:1.6; color:var(--text); max-inline-size:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-block-end:1px; }
 .loc-card[aria-checked="true"] .nm{ color:var(--brand-tint-ink); font-weight:700; }
-.loc-online{ position:absolute; inset-block-start:-1px; inset-inline-end:-1px; inline-size:11px; block-size:11px; border-radius:50%; background:var(--success); border:2px solid var(--surface); }
-.loc-card[aria-checked="true"] .loc-online{ border-color:var(--brand-tint); }
 .loc-check{ position:absolute; inset-block-start:6px; inset-inline-end:6px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--primary); color:#fff; display:none; place-items:center; box-shadow:var(--glow-sm); }
 .loc-card[aria-checked="true"] .loc-check{ display:grid; }
 /* The popular card is the DEFAULT pick, so hiding its badge on selection meant nobody ever saw it.
@@ -421,7 +447,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .m-chip .md{ display:block; font-size:11px; color:var(--muted); }
 .m-chip .rw{ font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 /* HOW IT WORKS */
-  .steps{ display:grid; gap:16px; grid-template-columns:1fr; }
+  .steps{ display:grid; gap:16px; grid-template-columns:1fr; list-style:none; margin:0; padding:0; }
 @media (min-width:760px){ .steps{ grid-template-columns:repeat(3,1fr); gap:20px; } }
 .step{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
 .step .num{ inline-size:40px; block-size:40px; border-radius:12px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; font-size:18px; font-weight:800; margin-block-end:16px; }
@@ -429,6 +455,15 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .step h3{ font-size:18px; font-weight:700; margin:0 0 8px; }
 .step p{ font-size:14px; color:var(--muted); margin:0; line-height:1.7; }
 .step .conn{ display:none; }
+/* On a phone the three cards stood ~800px tall for three sentences: a compact numbered list — the
+   number beside the text, not above it (V-14g). */
+@media (max-width:759.98px){
+  .steps{ gap:10px; }
+  .step{ display:grid; grid-template-columns:auto minmax(0,1fr); column-gap:14px; padding:16px; }
+  .step .num{ grid-row:span 2; inline-size:36px; block-size:36px; border-radius:11px; font-size:16px; margin:0; }
+  .step h3{ font-size:16px; margin:3px 0 4px; }
+  .step p{ font-size:13.5px; }
+}
 /* LOCATIONS */
   .locrow{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
 @media (min-width:640px){ .locrow{ grid-template-columns:repeat(4,1fr); } }
@@ -442,7 +477,8 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* MORE VOLUME — missions as a horizontal list: icon · title/desc · a bold "+N MB" reward tile */
   .mvlist{ display:grid; gap:11px; grid-template-columns:1fr; }
 @media (min-width:760px){ .mvlist{ grid-template-columns:repeat(2,1fr); } }
-.mvrow{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-sm); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.mvrow{ display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.mvrow:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .mvrow:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 35%,var(--border)); }
 .mvrow .mi{ inline-size:44px; block-size:44px; border-radius:13px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; flex:none; }
 .mvrow .mi .ic{ inline-size:22px; block-size:22px; }
@@ -583,7 +619,6 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .cta:not(:disabled):hover::after{ animation:sheen 1.1s ease; }
 @keyframes sheen{ to{ transform:translateX(120%); } }
 /* ================= HERO ================= */
-  .hero{ position:relative; overflow:hidden; padding-block:28px 44px; }
 .hero-copy .display{ margin:16px 0 14px; }
 /* ================= THE WIDGET ================= */
   .widget{ position:relative; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); box-shadow:var(--shadow-hero); padding:20px; isolation:isolate; }
@@ -997,12 +1032,22 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 @media (min-width:760px){ #app .approw{ grid-template-columns:repeat(3,1fr); } }
 @media (min-width:760px){ #app .grid-stats{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media (min-width:520px){ #app .loc-grid{ grid-template-columns:repeat(4,1fr); } }
-/* Mobile: badge + title share ONE row (the old column stack burned ~60px of card height before any
-   content); the allowance pill drops to its own compact line underneath. #app prefix so this
-   outranks the duplicated base .w-head{display:flex} declarations. */
+/* Mobile: a smaller badge beside the title, with the allowance under the TITLE rather than on a row
+   of its own, and no subtitle (the picker's own label says the same thing one line lower) — ~50px
+   of card height back, which is what puts the claim button on a 360×740 first screen. #app prefix
+   so this outranks the duplicated base .w-head{display:flex} declarations. */
 @media (max-width:460px){
-  #app .w-head{ display:grid; grid-template-columns:auto 1fr; align-items:center; gap:10px 12px; }
-  #app .w-head .allowance{ grid-column:1 / -1; margin-inline-start:0; justify-self:start; }
+  #app .w-head{ display:grid; grid-template-columns:auto minmax(0,1fr); align-items:center; gap:3px 11px; margin-block-end:12px; }
+  #app .w-head .w-badge{ grid-row:1 / 3; inline-size:36px; block-size:36px; border-radius:11px; }
+  #app .w-head .w-badge .ic{ inline-size:19px; block-size:19px; }
+  #app .w-head .w-title{ font-size:16.5px; line-height:1.4; }
+  #app .w-head .w-sub{ display:none; }
+  #app .w-head .allowance{ grid-column:2; margin-inline-start:0; justify-self:start; font-size:11.5px; padding:3px 9px; }
+  #app .w-head .allowance .ic{ inline-size:12px; block-size:12px; }
+  .widget .loc-card{ padding:10px 4px 8px; gap:6px; }
+  .widget .loc-card .flag{ inline-size:34px; block-size:34px; }
+  .widget .loc-more{ margin-block-start:8px; padding-block:8px; }
+  .widget .cta-wrap{ margin-block-start:14px; }
 }
 /* ============ Phase 5 FAQ page tools (restored post-merge) ============ */
 .narrow{ max-width:820px; }
@@ -1335,17 +1380,26 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .landing-body a:hover{ text-decoration:underline; }
 .landing-body code{ direction:ltr; unicode-bidi:isolate; background:var(--sunken); border:1px solid var(--border); border-radius:6px; padding:1px 6px; font-size:13px; }
 .landing-widget{ margin-block:28px; }
-/* Homepage articles band — link chips on .chip's base look (centered under the section head). */
-.art-chips{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; }
-.art-chips .chip{ text-decoration:none; padding:8px 15px; font-size:13px; transition:color .15s,border-color .15s; }
-.art-chips .chip:hover{ border-color:var(--border-strong); color:var(--text); }
+/* Articles as cards — a few featured on the homepage, all of them on /articles (V-08): a title, the
+   article's own meta description, and where it goes. Thirteen grey title pills read as a link farm. */
+.art-cards{ display:grid; gap:14px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:640px){ .art-cards{ grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (min-width:1000px){ .art-cards.four{ grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (min-width:1000px){ .art-cards.three{ grid-template-columns:repeat(3,minmax(0,1fr)); } }
+.art-card{ display:flex; flex-direction:column; gap:8px; padding:18px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); box-shadow:var(--shadow-sm); text-decoration:none; color:var(--text); transition:transform .14s,box-shadow .14s,border-color .14s; }
+.art-card:hover{ transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:color-mix(in srgb,var(--primary) 40%,var(--border)); }
+.art-card:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.art-card b{ font-size:15.5px; font-weight:800; line-height:1.55; }
+.art-card p{ margin:0; font-size:13px; line-height:1.8; color:var(--muted); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+.art-card .more{ margin-block-start:auto; padding-block-start:4px; display:inline-flex; align-items:center; gap:5px; font-size:13px; font-weight:700; color:var(--link); }
+.art-card .more .ic{ inline-size:15px; block-size:15px; }
 .landing-related h2{ font-size:17px; margin-block-end:10px; }
 .landing-related .chips{ display:flex; flex-wrap:wrap; gap:8px; }
 .landing-related .chip{ text-decoration:none; padding:7px 14px; font-size:13px; }
 .landing-related .chip:hover{ border-color:var(--border-strong); color:var(--text); }
 
 .locations-page .sec-head{ margin-block-end:18px; }
-.loc-intro{ max-inline-size:40rem; margin-inline:auto; line-height:1.9; color:var(--muted); text-align:center; display:grid; gap:8px; margin-block-end:30px; }
+.loc-intro{ max-inline-size:40rem; margin-inline:auto; line-height:1.9; color:var(--muted); text-align:start; display:grid; gap:8px; margin-block-end:30px; }
 .loc-h2{ font-size:19px; margin-block:26px 14px; }
 .loc-cards{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
 .loc-card-link{ display:block; text-decoration:none; color:inherit; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px; transition:border-color .15s ease, transform .15s ease; }
@@ -1362,7 +1416,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .loccell.skeleton{ border-style:dashed; }
 
 /* courtesy auto-scroll anchors: clear the sticky header on snap-back, keep a breath at the edges */
-.widget{ scroll-margin-block-start:84px; }
+.widget, #hero-widget, .landing-widget{ scroll-margin-block-start:84px; }
 .widget:focus{ outline:none; }
 .cta-anchor{ scroll-margin-block-end:16px; }
 .pick-anchor{ scroll-margin-block-start:84px; scroll-margin-block-end:16px; }
@@ -1416,3 +1470,75 @@ button.rw2-row:disabled{ cursor:default; background:none; }
   .acct-btn .ic{ inline-size:19px; block-size:19px; }
 }
 @media (max-width:360px){ .acct-btn{ inline-size:36px; block-size:36px; } }
+
+/* ── sticky claim bar (phones) ─────────────────────────────────────────────────────────────────
+   Shown only while the claim widget is off-screen (StickyCta), so it never doubles a button the
+   visitor can already see; from 940px the widget sits beside the copy and the bar never appears.
+   Hidden = off-canvas AND `visibility:hidden` (plus `inert`), so it is out of the tab order and the
+   accessibility tree as well as out of sight. */
+.sticky-cta{ position:fixed; inset-inline:0; inset-block-end:0; z-index:55; padding:10px 16px calc(10px + env(safe-area-inset-bottom)); background:color-mix(in srgb,var(--bg) 86%,transparent); backdrop-filter:blur(14px) saturate(1.3); -webkit-backdrop-filter:blur(14px) saturate(1.3); border-block-start:1px solid var(--border); box-shadow:0 -10px 28px -18px color-mix(in srgb,var(--text) 40%,transparent); transform:translateY(110%); visibility:hidden; transition:transform .26s ease, visibility 0s linear .26s; }
+.sticky-cta.show{ transform:none; visibility:visible; transition:transform .26s ease; }
+.sticky-cta .cta{ max-inline-size:520px; margin-inline:auto; display:flex; padding-block:13px; font-size:15.5px; }
+.sticky-cta .cta .ic{ inline-size:18px; block-size:18px; }
+@media (prefers-reduced-motion: reduce){ .sticky-cta, .sticky-cta.show{ transition:none; } }
+@media (min-width:940px){ .sticky-cta{ display:none; } }
+/* while the bar is up, the footer's last row and the toasts must not end up underneath it */
+@media (max-width:939.98px){
+  body:has(.sticky-cta) footer.ft{ padding-block-end:calc(76px + env(safe-area-inset-bottom)); }
+  body:has(.sticky-cta.show) .toast-wrap{ inset-block-end:calc(86px + env(safe-area-inset-bottom)); }
+}
+/* landing: the widget comes straight after the H1 now, so the page's top padding is trimmed on a
+   phone; the closing band sends a reader who finished the article back up to it */
+@media (max-width:599.98px){
+  .landing-page.sec{ padding-block-start:24px; }
+  .landing-page .landing-widget{ margin-block:18px 26px; }
+}
+.land-cta{ margin-block:34px 8px; padding:22px 24px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); display:flex; align-items:center; justify-content:space-between; gap:16px 22px; flex-wrap:wrap; }
+[dir="rtl"] .land-cta{ background:linear-gradient(225deg,color-mix(in srgb,var(--primary) 13%,var(--surface)) 0%,var(--surface) 62%); }
+.land-cta-t{ min-inline-size:0; }
+.land-cta-t h2{ font-size:18px; font-weight:800; line-height:1.5; margin:0 0 4px; }
+.land-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
+.land-cta + .landing-related{ margin-block-start:30px; }
+/* the header's shortcut to the claim widget on pages without one (desktop; the phone menu leads
+   with the same action) */
+.hd-cta{ display:none; align-items:center; gap:7px; font-size:13.5px; font-weight:800; line-height:1.4; padding:9px 15px; border-radius:12px; color:#fff; text-decoration:none; white-space:nowrap; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); box-shadow:var(--glow-sm); transition:filter .18s,transform .1s; }
+[dir="rtl"] .hd-cta{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 55%,var(--cta-end))); }
+.hd-cta:hover{ filter:brightness(1.06); }
+.hd-cta:active{ transform:scale(.985); }
+.hd-cta:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.hd-cta .ic{ inline-size:16px; block-size:16px; }
+@media (min-width:1000px){ .hd-cta{ display:inline-flex; } }
+.sheet-cta{ margin-block-end:12px; text-decoration:none; }
+#claim, #rewards{ scroll-margin-block-start:84px; }
+.sheet .navlink.active .ic{ color:inherit; }
+.ft-more a.ft-more-all{ color:var(--link); font-weight:700; }
+/* homepage flags are links now: each picks its location in the widget; the "+N" opens /locations */
+.fbig-link{ display:block; flex:0 0 auto; border-radius:50%; transition:transform .14s; }
+.fbig-link:hover{ transform:translateY(-2px); }
+.fbig-link:focus-visible, a.flagmore:focus-visible{ outline:2px solid var(--ring); outline-offset:3px; }
+.fbig-link .fbig{ display:block; }
+a.flagmore{ text-decoration:none; }
+/* desktop: map beside the flags, across the row (V-11) */
+@media (min-width:900px){
+  .loccard{ max-width:980px; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:center; }
+  .locframe{ margin:22px; margin-inline-end:0; }
+  .locside{ padding:22px 26px; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .locside .locdiv{ display:none; }
+  .locside .flagstrip{ padding:0; }
+  .locside .loccap{ padding:14px 8px 4px; }
+  .locside .loccta{ border-block-start:0; padding:10px 14px; margin-block-start:0; }
+}
+/* guides: the second install source, the App Store's Apple ID caveat, the step-2 path to the widget,
+   and a step's screenshot when one has been dropped into public/guides/<platform>/<n>.webp */
+.dl-alt{ display:flex; align-items:center; gap:4px; inline-size:fit-content; margin-block-start:10px; font-size:13px; font-weight:700; color:var(--link); text-decoration:none; }
+.dl-alt:hover{ text-decoration:underline; }
+.dl-alt .ic{ inline-size:14px; block-size:14px; }
+.dl-note{ display:flex; align-items:flex-start; gap:8px; margin:12px 0 0; padding:10px 12px; font-size:13px; line-height:1.8; color:var(--text); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); }
+.dl-note .ic{ inline-size:16px; block-size:16px; flex:none; margin-block-start:4px; color:var(--muted); }
+.guide-get{ margin-block-start:12px; text-decoration:none; }
+.guide-get .ic{ inline-size:16px; block-size:16px; }
+.tshot{ display:block; inline-size:100%; block-size:auto; aspect-ratio:16/9; object-fit:cover; margin-block-start:14px; border-radius:var(--r-card); border:1px solid var(--border); background:var(--sunken); }
+/* the chip rail scrolls on a phone, which makes it a Tab stop in Chromium — so it needs a focus
+   ring like any other stop (inset: the rail's edge mask would fade an outer one away) */
+.trust-row:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; border-radius:var(--r-pill); }
+.loccta:focus-visible{ outline:2px solid var(--ring); outline-offset:-3px; }
