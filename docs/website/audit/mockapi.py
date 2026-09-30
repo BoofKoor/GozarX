@@ -38,6 +38,12 @@ import time
 import uuid
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+# The two figures the homepage renders SERVER-side. Next reads /config and /stats from its own
+# process, so no browser cookie can pick them per scenario — set these to prove a chip follows the
+# backend rather than a constant (e.g. MOCK_TRIAL_HOURS=12, MOCK_DELIVERED=900 hides the count chip).
+TRIAL_HOURS = int(os.environ.get("MOCK_TRIAL_HOURS", "24"))
+DELIVERED = int(os.environ.get("MOCK_DELIVERED", "48213"))
 from urllib.parse import parse_qs, unquote, urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -101,7 +107,7 @@ def _status(sess: dict) -> dict:
         "streak_count": 3,
         "streak_days": 7,
         "streak_active": False,
-        "trial_hours": 24,
+        "trial_hours": TRIAL_HOURS,
         "location": None,
         "link": None,
         "history": [],
@@ -240,11 +246,12 @@ class Handler(BaseHTTPRequestHandler):
                 "reward_push_mb": 150,
                 "reward_streak_mb": 300,
                 "streak_days": 7,
+                "trial_hours": TRIAL_HOURS,
             }, sid)
         if path == "/locations":
             return self._send(200, {"locations": LOCS.get(sess["locs"], LOCS["fa"])}, sid)
         if path == "/stats":
-            return self._send(200, {"configs_delivered": 48213, "uptime_pct": 99.7}, sid)
+            return self._send(200, {"configs_delivered": DELIVERED, "uptime_pct": 99.7}, sid)
         return self._send(404, {"detail": "not_found"}, sid)
 
     # ---- POST -----------------------------------------------------------------------------------

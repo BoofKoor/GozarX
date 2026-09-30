@@ -115,7 +115,7 @@ export function Footer({
         )}
         <div className="ft-bottom">
           <span>© {year} GozarX — {t("ft_rights")}</span>
-          <div className="ft-langs" role="group" aria-label="language">
+          <div className="ft-langs" role="group" aria-label={t("set_lang")}>
             <button aria-pressed={locale === "fa"} onClick={() => switchLocale("fa")}>
               فارسی
             </button>

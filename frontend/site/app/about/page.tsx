@@ -26,7 +26,7 @@ export default async function AboutPage() {
         <p className="mt-4">{a.body}</p>
 
         <div className="card card-pad mt-6">
-          <p style={{ color: "var(--faint)", fontSize: 14, marginBottom: 12 }}>{a.deflect}</p>
+          <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 12 }}>{a.deflect}</p>
           <div className="row" style={{ flexWrap: "wrap", gap: 12 }}>
             <Link href="/faq" className="btn btn-ghost">
               {t("nav.faq")}

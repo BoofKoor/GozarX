@@ -83,8 +83,11 @@ SITE_COPY_DEFAULTS: dict[str, dict[Language, str]] = {
     "hero_sub": {Language.fa: _HERO_SUB_FA, Language.en: _HERO_SUB_EN},
     "trust1": {Language.fa: "بدون ثبت‌نام", Language.en: "No signup"},
     "trust2": {Language.fa: "همیشه رایگان", Language.en: "Free forever"},
-    "trust3": {Language.fa: "هر ۲۴ ساعت تازه", Language.en: "Fresh every 24h"},
-    "trust4": {Language.fa: "+۱۲٬۰۰۰ کاربر", Language.en: "12,000+ users"},
+    # `{h}` is filled with site_trial_hours and `{n}` with the real configs-delivered count (rounded
+    # down to the thousand); the site hides the chip rather than print a guess when either value is
+    # missing. An override may keep the token or drop it — both render.
+    "trust3": {Language.fa: "هر {h} ساعت تازه", Language.en: "Fresh every {h}h"},
+    "trust4": {Language.fa: "+{n} کانفیگ تحویل‌شده", Language.en: "{n}+ configs delivered"},
     "w_title": {Language.fa: "کانفیگ رایگان امروز", Language.en: "Today's free config"},
     "w_sub": {
         Language.fa: "یک لوکیشن انتخاب کن و بگیر",

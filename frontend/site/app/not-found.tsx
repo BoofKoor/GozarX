@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getLocale } from "@/lib/server";
-import { translator } from "@/lib/i18n";
+import { faDigits, translator } from "@/lib/i18n";
 
 export default async function NotFound() {
   const locale = await getLocale();
@@ -8,7 +8,7 @@ export default async function NotFound() {
   return (
     <section>
       <div className="container center stack">
-        <h1 style={{ fontSize: 64 }}>404</h1>
+        <h1 style={{ fontSize: 64 }}>{faDigits(404, locale)}</h1>
         <p className="lead" style={{ marginInline: "auto" }}>
           {t("notfound.title")}
         </p>

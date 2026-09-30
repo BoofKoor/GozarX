@@ -172,8 +172,10 @@ PROBE_JS = r"""
   out.landmarks = { header: !!document.querySelector('header'), nav: document.querySelectorAll('nav').length, main: !!document.querySelector('main'), footer: !!document.querySelector('footer') };
   const first = document.querySelector('a[href^="#"]'); out.firstInPageLink = first ? first.getAttribute('href') : null;
 
-  // 10) stuff the reveal observer may have left invisible
-  out.stillHiddenReveals = [...document.querySelectorAll('.reveal')].filter(e => getComputedStyle(e).opacity === '0').length;
+  // 10) stuff the reveal observer left invisible — counted by settle() BEFORE it forces them in for
+  //     the shot (counting here, after, always read 0). Meaningful under reduced motion, where
+  //     nothing may wait on a scroll; with motion on, below-the-fold sections are hidden by design.
+  out.stillHiddenReveals = window.__hiddenReveals ?? [...document.querySelectorAll('.reveal')].filter(e => getComputedStyle(e).opacity === '0').length;
   return out;
 }
 """
@@ -218,9 +220,9 @@ def settle(page, ms=900):
         pass
     page.wait_for_timeout(ms)
     # A full-page capture never scrolls, so the IntersectionObserver never marks the sections below
-    # the fold `.in` — and under reduced motion they stay at opacity 0 anyway, because the duplicate
-    # `#app.reveal-js .reveal` rule at globals.css:779 outranks the reduced-motion override at :503
-    # (a real bug, reported as V-finding). Count them for the probe, then reveal them for the shot.
+    # the fold `.in`. Under reduced motion they must be visible regardless (V-12: a duplicate
+    # `.reveal` rule once outranked the reduced-motion override and left them at opacity 0). Count
+    # them for the probe, then reveal them for the shot.
     page.evaluate("window.__hiddenReveals = [...document.querySelectorAll('.reveal')]"
                   ".filter(e => getComputedStyle(e).opacity === '0').length")
     page.evaluate("document.querySelectorAll('.reveal').forEach(e => e.classList.add('in'))")

@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { api, type ClaimResponse } from "@/lib/api";
-import { copyText } from "@/lib/clipboard";
-import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, faDigits, fill, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
@@ -211,7 +211,7 @@ export function ClaimWidget({
         onTsRetry={retryTurnstile}
         tsError={tsError}
         tsReset={tsReset}
-        trialHours={status?.trial_hours}
+        trialHours={config?.trial_hours ?? status?.trial_hours}
       />
     </div>
   );
@@ -221,7 +221,10 @@ export function ClaimWidget({
     return (
       // Skeleton mirrors the S1 picker's shape (title · location grid · CTA) so it fills the
       // reserved widget height — the resolve into the real picker doesn't visibly jump.
-      <div className="widget wskel" aria-busy>
+      // The key makes the resolve a REPLACEMENT: without it React recycles the skeleton's divs
+      // (the grid placeholder became S1's `.cta-anchor`), and a recycled node that moves is a
+      // layout shift — 0.13 CLS on a phone once the skeleton actually painted.
+      <div className="widget wskel" aria-busy key="loading">
         <div className="skeleton" style={{ height: 40, width: "55%", marginBottom: 8 }} />
         <div className="skeleton" style={{ height: 18, width: "72%", marginBottom: 18 }} />
         <div className="skeleton wskel-grid" style={{ marginBottom: 16 }} />
@@ -238,7 +241,9 @@ export function ClaimWidget({
           <button className="btn" onClick={() => { setErrState(false); void reload(); }}>
             {t("err_retry")}
           </button>
-          <a className="btn ghost" href="/faq">{t("err_help")}</a>
+          <Link className="btn ghost" href="/faq">
+            {t("err_help")}
+          </Link>
         </CenterState>
       </div>
     );
@@ -284,6 +289,8 @@ export function ClaimWidget({
             pct={pct}
             locale={locale}
             remainingBytes={status ? Math.max(0, status.daily_limit_bytes - status.usage_bytes) : 0}
+            // only a LIVE zero is "nothing used" — with the panel unreachable usage_bytes is 0 too
+            note={status?.live && status.usage_bytes <= 0 ? t("usage_none") : undefined}
           />
           {status?.remaining && status.remaining !== "—" ? (
             <>
@@ -354,7 +361,9 @@ export function ClaimWidget({
     return (
       <div className="widget">
         <CenterState kind="empty" title={t("empty_title")} sub={t("empty_sub")}>
-          <a className="btn secondary" href="/faq">{t("empty_link")}</a>
+          <Link className="btn secondary" href="/faq">
+            {t("empty_link")}
+          </Link>
         </CenterState>
       </div>
     );
@@ -522,6 +531,9 @@ function CtaBlock({
   trialHours?: number;
 }) {
   const t = translator(locale);
+  // the renewal window is the operator's setting — unknown means say nothing, never a guessed 24
+  const renew = fill(t("reassure3"), { h: trialHours });
+  const reassure3 = renew && faDigits(renew, locale);
   return (
     <div className="cta-wrap">
       {needsTurnstile && siteKey && (
@@ -546,6 +558,7 @@ function CtaBlock({
       <button
         className="btn cta"
         disabled={disabled || busy || (needsTurnstile && !token)}
+        aria-busy={busy}
         onClick={onClaim}
       >
         {busy ? (
@@ -563,7 +576,11 @@ function CtaBlock({
       <div className="reassure">
         <span className="r"><Icon name="check" sw={2.6} /> {t("reassure1")}</span>
         <span className="r"><Icon name="check" sw={2.6} /> {t("reassure2")}</span>
-        <span className="r"><Icon name="check" sw={2.6} /> {faDigits(t("reassure3").replace("{h}", String(trialHours ?? 24)), locale)}</span>
+        {reassure3 && (
+          <span className="r">
+            <Icon name="check" sw={2.6} /> {reassure3}
+          </span>
+        )}
       </div>
       <div className="antibot">
         <Icon name="shield" sw={2} /> {t("antibot")}
@@ -614,15 +631,14 @@ function CenterState({
 
 function ReviveBlock({ locale, refCode }: { locale: Locale; refCode: string }) {
   const t = translator(locale);
-  const [copied, setCopied] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/?ref=${refCode}` : "";
+  // The link sits in the same framed CopyField as the config link (the bare <code> overflowed the
+  // card on a phone); the system share sheet is offered only where one exists — elsewhere a second
+  // "copy" button would just repeat the one inside the field.
+  const canShare = typeof navigator !== "undefined" && !!navigator.share;
   async function share() {
     try {
-      if (navigator.share) await navigator.share({ title: "GozarX", url: link });
-      else if (await copyText(link)) {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 1600);
-      }
+      await navigator.share({ title: "GozarX", url: link });
     } catch {
       /* cancelled */
     }
@@ -638,12 +654,12 @@ function ReviveBlock({ locale, refCode }: { locale: Locale; refCode: string }) {
       <span className="field-label" style={{ marginBlockEnd: 8 }}>
         {t("invite_label")}
       </span>
-      <div className="copyfield">
-        <code dir="ltr">{link}</code>
-        <button className="btn secondary" style={{ flex: "none" }} onClick={share}>
-          <Icon name="share" sw={2} /> {copied ? t("copied") : t("share")}
+      <CopyField value={link} locale={locale} />
+      {canShare && (
+        <button type="button" className="btn secondary block revive-share" onClick={share}>
+          <Icon name="share" sw={2} /> {t("share")}
         </button>
-      </div>
+      )}
     </div>
   );
 }

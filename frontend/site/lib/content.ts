@@ -134,9 +134,9 @@ export const FAQ_CATS: Record<Locale, FaqCategory[]> = {
 
 export const FAQ_ITEMS: Record<Locale, FaqItem[]> = {
   fa: [
-    { cat: "start", q: "کانفیگ رایگان چطور کار می‌کند؟", a: "هر ۲۴ ساعت یک کانفیگ رایگان می‌گیری؛ لوکیشن را انتخاب کن، دکمه را بزن و لینک را در اپت وارد کن." },
+    { cat: "start", q: "کانفیگ رایگان چطور کار می‌کند؟", a: "هر بار که زمان کانفیگت تمام شود، یک کانفیگ رایگان تازه می‌گیری؛ لوکیشن را انتخاب کن، دکمه را بزن و لینک را در اپت وارد کن." },
     { cat: "start", q: "برای دریافت باید ثبت‌نام کنم؟", a: "نه. دریافت کاملاً بدون ثبت‌نام است و هیچ ایمیل یا شماره‌ای نمی‌خواهد." },
-    { cat: "vol", q: "چطور حجم روزانه‌ام را بیشتر کنم؟", a: "با دعوت دوستان، نصب وب‌اپ و روشن‌کردن اعلان‌ها — از بخش «حجم بیشتر»." },
+    { cat: "vol", q: "چطور حجم روزانه‌ام را بیشتر کنم؟", a: "با دعوت دوستان، نصب وب‌اپ و روشن‌کردن اعلان‌ها؛ هر کدام حجم روزانه‌ات را بیشتر می‌کند." },
     { cat: "vol", q: "اگر حجم امروزم تمام شود؟", a: "با یک دعوت موفق، همان کانفیگ همان لحظه دوباره فعال می‌شود." },
     { cat: "apps", q: "با چه اپ‌هایی کار می‌کند؟", a: "v2rayNG (اندروید)، Streisand (آیفون/مک) و Happ (همهٔ دستگاه‌ها)." },
     { cat: "apps", q: "روی ویندوز نصب می‌شود؟", a: "بله، با کلاینت Happ ویندوز." },
@@ -144,9 +144,9 @@ export const FAQ_ITEMS: Record<Locale, FaqItem[]> = {
     { cat: "trouble", q: "سرعت کم است", a: "لوکیشن نزدیک‌تر را انتخاب کن و مطمئن شو حجم روزانه‌ات تمام نشده." },
   ],
   en: [
-    { cat: "start", q: "How does the free config work?", a: "Every 24 hours you get a free config; pick a location, press the button and import the link into your app." },
+    { cat: "start", q: "How does the free config work?", a: "Each time your config's time runs out you can claim a fresh free one; pick a location, press the button and import the link into your app." },
     { cat: "start", q: "Do I need to sign up?", a: "No. Claiming is entirely signup-free and needs no email or phone number." },
-    { cat: "vol", q: "How do I grow my daily volume?", a: "By inviting friends, installing the web app and enabling notifications — from the 'More volume' section." },
+    { cat: "vol", q: "How do I grow my daily volume?", a: "By inviting friends, installing the web app and enabling notifications — each one adds to your daily volume." },
     { cat: "vol", q: "What if today's volume runs out?", a: "One successful invite revives the same config instantly." },
     { cat: "apps", q: "Which apps does it work with?", a: "v2rayNG (Android), Streisand (iOS/macOS) and Happ (all devices)." },
     { cat: "apps", q: "Can I install it on Windows?", a: "Yes, with the Happ Windows client." },

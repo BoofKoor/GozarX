@@ -20,9 +20,11 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "locale": "fa",
         "category": "start",
         "question": "کانفیگ رایگان چطور کار می‌کند؟",
+        # No hour count: the window is the site_trial_hours setting, and a number frozen into
+        # seeded copy goes stale the day an operator changes it.
         "answer": (
-            "هر ۲۴ ساعت یک کانفیگ رایگان می‌گیری؛ لوکیشن را انتخاب کن، دکمه را بزن و لینک را در"
-            " اپت وارد کن."
+            "هر بار که زمان کانفیگت تمام شود، یک کانفیگ رایگان تازه می‌گیری؛ لوکیشن را انتخاب کن،"
+            " دکمه را بزن و لینک را در اپت وارد کن."
         ),
         "position": 0,
     },
@@ -37,7 +39,9 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "locale": "fa",
         "category": "vol",
         "question": "چطور حجم روزانه‌ام را بیشتر کنم؟",
-        "answer": "با دعوت دوستان، نصب وب‌اپ و روشن‌کردن اعلان‌ها — از بخش «حجم بیشتر».",
+        "answer": (
+            "با دعوت دوستان، نصب وب‌اپ و روشن‌کردن اعلان‌ها؛ هر کدام حجم روزانه‌ات را بیشتر می‌کند."
+        ),
         "position": 2,
     },
     {
@@ -80,8 +84,8 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "category": "start",
         "question": "How does the free config work?",
         "answer": (
-            "Every 24 hours you get a free config; pick a location, press the button and import"
-            " the link into your app."
+            "Each time your config's time runs out you can claim a fresh free one; pick a location,"
+            " press the button and import the link into your app."
         ),
         "position": 0,
     },
@@ -97,8 +101,8 @@ DEFAULT_SITE_FAQ: tuple[dict[str, str | int], ...] = (
         "category": "vol",
         "question": "How do I grow my daily volume?",
         "answer": (
-            "By inviting friends, installing the web app and enabling notifications — from the"
-            " 'More volume' section."
+            "By inviting friends, installing the web app and enabling notifications — each one"
+            " adds to your daily volume."
         ),
         "position": 2,
     },

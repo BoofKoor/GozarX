@@ -10,6 +10,7 @@
 | ۳ | [`mockapi.py`](mockapi.py)، [`audit.py`](audit.py)، [`probe_extra.py`](probe_extra.py) | ابزار رندر: API ساختگی + ۹۱ تصویر + پروب‌ها |
 | ۴ | [`03-visual-review.md`](03-visual-review.md)، [`04-probes.md`](04-probes.md)، [`shots/`](shots/) | سنجش نقدها روی تصویر، ۱۴ یافتهٔ بصری تازه (`V-xx`)، اندازه‌گیری‌ها، ۲۴ تصویر شاهد |
 | ۵ | [`05-fix-plan.md`](05-fix-plan.md)، [`report.html`](report.html) | گزارش نهایی، تصمیم‌های مالک، پلن ۶ فازی با معیار پذیرش |
+| A | [`06-phase-a.md`](06-phase-a.md)، [`shots/phase-a/`](shots/phase-a/) | اجرای فاز A: سنجش قبل/بعد، انحراف‌ها، ۹ تصویر شاهد |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -28,4 +29,6 @@ python3 docs/website/audit/probe_extra.py /tmp/shots
 ```
 
 `mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`)
-— جدول کامل در docstring همان فایل.
+— جدول کامل در docstring همان فایل. دو عددی که صفحهٔ اول **سمت سرور** می‌خواند از کوکی نمی‌آیند و با
+متغیر محیطی تنظیم می‌شوند: `MOCK_TRIAL_HOURS` (پیش‌فرض ۲۴) و `MOCK_DELIVERED` (پیش‌فرض ۴۸۲۱۳؛ زیر ۱۰۰۰ چیپ
+پنهان می‌شود).

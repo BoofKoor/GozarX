@@ -16,10 +16,35 @@ export function dir(locale: Locale): "rtl" | "ltr" {
 }
 
 // Latin → Persian digits for fa (the design renders all numerals localized). Technical strings
-// (config links, transfer codes) stay Latin/LTR — never run this on those.
+// (config links, transfer codes) stay Latin/LTR — never run this on those. The separators between
+// two digits count too: "1.5" becomes «۱٫۵» and "12,000" «۱۲٬۰۰۰», the marks Intl's fa-IR output
+// already uses — a hand-built «۱.۵» beside an Intl «۹۹٫۷» spelled one idea two ways.
 export function faDigits(s: string | number, locale: Locale): string {
   const str = String(s);
-  return locale === "fa" ? str.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]) : str;
+  if (locale !== "fa") return str;
+  return str
+    .replace(/(\d)\.(?=\d)/g, "$1٫")
+    .replace(/(\d),(?=\d{3}(?!\d))/g, "$1٬")
+    .replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[+d]);
+}
+
+// Substitute `{token}`s in a copy string. Returns null when any token has no value, so the caller
+// hides the sentence instead of printing a guess ("24") or a raw "{h}". A string with no tokens —
+// e.g. a panel override that dropped them — comes back unchanged.
+export function fill(
+  text: string,
+  tokens: Record<string, string | number | null | undefined>,
+): string | null {
+  let missing = false;
+  const out = text.replace(/\{(\w+)\}/g, (whole, key: string) => {
+    const v = tokens[key];
+    if (v === null || v === undefined || v === "") {
+      missing = true;
+      return whole;
+    }
+    return String(v);
+  });
+  return missing ? null : out;
 }
 
 // Copyright year, localized: Jalali for fa (Intl, Persian digits), Gregorian for en. Compute this on
@@ -148,6 +173,14 @@ const fa: Dict = {
   "notfound.title": "صفحه پیدا نشد",
   "notfound.home": "بازگشت به خانه",
   "common.close": "بستن",
+  menu_open: "باز کردن منو",
+  menu_title: "منوی سایت",
+  tm_gen_err: "ساخت کد انجام نشد. چند دقیقهٔ دیگر دوباره امتحان کن.",
+  invite_copied: "لینک دعوت کپی شد",
+  reward_added: "{v} به حجم روزانه‌ات اضافه شد",
+  reward_taken: "این جایزه را قبلاً گرفته‌ای.",
+  reward_err: "ثبت جایزه انجام نشد — دوباره تلاش کن.",
+  usage_none: "هنوز مصرفی نداشتی",
 };
 
 const en: Dict = {
@@ -242,6 +275,14 @@ const en: Dict = {
   "notfound.title": "Page not found",
   "notfound.home": "Back home",
   "common.close": "Close",
+  menu_open: "Open menu",
+  menu_title: "Site menu",
+  tm_gen_err: "Couldn't create a code. Try again in a few minutes.",
+  invite_copied: "Invite link copied",
+  reward_added: "{v} added to your daily volume",
+  reward_taken: "You've already claimed this reward.",
+  reward_err: "Couldn't add the reward — please try again.",
+  usage_none: "Nothing used yet",
 };
 
 const DICTS: Record<Locale, Dict> = { fa, en };

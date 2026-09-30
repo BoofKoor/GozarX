@@ -7,6 +7,7 @@ Unit tests (cookie HMAC, rate limit, Turnstile) run without a DB; the endpoint t
 
 from __future__ import annotations
 
+import json
 import uuid
 from collections.abc import AsyncIterator
 
@@ -16,9 +17,10 @@ import pytest_asyncio
 from httpx import ASGITransport, MockTransport, Response
 from sqlalchemy import func, select
 
-from gozar.cache.redis import site_ratelimit_key
+from gozar.cache.redis import SETTINGS_KEY, site_ratelimit_key
 from gozar.config.settings import get_settings
 from gozar.db.models.site_device import SiteDevice
+from gozar.services.settings_service import SiteSettingKey
 from gozar.web.app import create_app
 from gozar.web.routes.public.identity import (
     DEVICE_COOKIE,
@@ -163,3 +165,31 @@ async def test_config_returns_public_keys_unconfigured(site_client: httpx.AsyncC
     assert body["turnstile_enabled"] is False
     assert body["turnstile_site_key"] == ""
     assert body["vapid_public_key"] == ""
+    assert body["trial_hours"] == 24  # the default window, never absent
+
+
+async def _config_with(db_sessions, **settings: str) -> dict:
+    get_settings.cache_clear()
+    app = create_app()
+    app.state.sessionmaker = db_sessions
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    await redis.set(SETTINGS_KEY, json.dumps(settings))
+    app.state.redis = redis
+    app.state.panel = None
+    async with httpx.AsyncClient(transport=ASGITransport(app=app), base_url="http://t") as client:
+        resp = await client.get("/api/public/config")
+    get_settings.cache_clear()
+    assert resp.status_code == 200
+    return resp.json()
+
+
+async def test_config_carries_the_trial_hours_setting(db_sessions) -> None:
+    # The site renders "fresh every Nh" from this server-side, so it must follow the panel setting
+    # rather than the 24 the copy used to hardcode.
+    body = await _config_with(db_sessions, **{SiteSettingKey.SITE_TRIAL_HOURS: "12"})
+    assert body["trial_hours"] == 12
+
+
+async def test_config_trial_hours_never_below_one(db_sessions) -> None:
+    body = await _config_with(db_sessions, **{SiteSettingKey.SITE_TRIAL_HOURS: "0"})
+    assert body["trial_hours"] == 1

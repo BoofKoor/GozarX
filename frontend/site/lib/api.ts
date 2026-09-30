@@ -84,6 +84,7 @@ export interface PublicConfig {
   reward_push_mb: number;
   reward_streak_mb: number;
   streak_days: number;
+  trial_hours?: number; // the rolling window a config lasts — optional: an older backend omits it
 }
 
 export interface PublicStats {

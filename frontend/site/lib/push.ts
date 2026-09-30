@@ -12,6 +12,17 @@ function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return arr;
 }
 
+// Whether this browser can take a push subscription at all. iOS Safari outside an installed web
+// app has no PushManager, so offering it the notifications reward was a button that could only fail.
+export function pushSupported(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    "serviceWorker" in navigator &&
+    "PushManager" in window &&
+    typeof Notification !== "undefined"
+  );
+}
+
 // Whether THIS browser currently holds a PushManager subscription. Granted permission alone is NOT
 // "notifications on" — a user who allowed the site from browser settings has permission but no
 // subscription, so nothing would ever be delivered. UI state must key off this, not permission.
