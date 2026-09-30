@@ -187,7 +187,7 @@ async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:
 
 
 async def test_a_landing_preselects_only_a_location_the_site_offers(
-    site_client: httpx.AsyncClient,
+    site_client: httpx.AsyncClient, monkeypatch
 ) -> None:
     """The fifth writer of a location name. Free text, a typo — or a name the squad stopped
     serving — saved fine and the landing's widget then preselected nothing."""
@@ -208,6 +208,28 @@ async def test_a_landing_preselects_only_a_location_the_site_offers(
     assert blank.status_code == 201
     # Changing the page's COPY does not re-check an unchanged location.
     page_id = ok.json()["id"]
+    # A stored subset is matched against the LIVE names, as the public picker does. Once the squad
+    # drops Germany, a saved ["Finland", "Germany"] offers Finland alone: Germany can no longer be
+    # preselected however long it sits in the saved list, and Norway — served, never ticked — can't
+    # either.
+    saved = await site_client.put(
+        "/api/admin/site/settings/", json={"locations": ["Finland", "Germany"]}
+    )
+    assert saved.status_code == 200
+
+    async def germany_dropped(self: object, squad_uuid: str) -> list[str]:
+        return ["Finland", "Norway"]
+
+    monkeypatch.setattr(_StubPanel, "squad_location_names", germany_dropped)
+    for slug, remark, code in (
+        ("de-2", "Germany", 400),
+        ("no", "Norway", 400),
+        ("fi", "Finland", 201),
+    ):
+        r = await site_client.post(
+            "/api/admin/site/pages/", json={**base, "slug": slug, "location_remark": remark}
+        )
+        assert r.status_code == code, (remark, r.json())
     upd = await site_client.put(
         f"/api/admin/site/pages/{page_id}",
         json={**base, "title": "عنوان نو", "location_remark": "Germany"},

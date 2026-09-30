@@ -30,6 +30,7 @@ import {
 import { useI18n, type MessageKey } from "@/i18n";
 import { apiErrorMessage } from "@/lib/api";
 import { formatNumber, langLabel } from "@/lib/format";
+import { normalizeRemark, resolveSelection } from "@/lib/locations";
 import { htmlToText, sanitizeArticleHtml } from "@/lib/sanitize";
 import type { SiteLandingInput, SiteLandingPage } from "@/types/api";
 
@@ -452,8 +453,9 @@ function LandingEditor({
  * The landing's pre-selected location, picked from what the site's picker OFFERS.
  *
  * It was free text: a typo — or a name the squad has since stopped serving — saved without a word,
- * and the widget on that landing then preselected nothing. The offered list is the site's stored
- * subset, or every name the squad serves when that is empty (`[]` means "all"). A stored value no
+ * and the widget on that landing then preselected nothing. The offered list is what the public
+ * picker offers: the site's stored subset matched against the squad's live names, or every live
+ * name when that is empty or matches none of them (`[]` means "all"). A stored value no
  * longer on it stays visible and marked, so opening an old page never silently changes it. With
  * nothing to offer (no squad yet, or the panel down) it falls back to a text box; the server makes
  * the same best-effort check on save.
@@ -469,9 +471,14 @@ function LandingLocationField({
   const { data: settings } = useSiteSettings();
   const squad = settings?.trial_squad ?? "";
   const stored = settings?.locations ?? [];
-  const live = useSiteDerivableLocations(stored.length ? "" : squad);
-  const offered = stored.length ? stored : (live.data ?? []);
-  const stale = Boolean(value) && !offered.includes(value!);
+  const live = useSiteDerivableLocations(squad);
+  // Matched against the LIVE names, as the public picker does: the stored list alone kept offering
+  // names the squad had dropped, which the site never shows — so the widget preselected nothing.
+  const selection = live.data ? resolveSelection(stored, live.data) : null;
+  const offered = !live.data ? stored : selection?.all ? live.data : (selection?.save ?? []);
+  // By NORMALISED name, as the server checks it — a spelling difference is not a stale value.
+  const stale =
+    Boolean(value) && !offered.some((o) => normalizeRemark(o) === normalizeRemark(value!));
 
   if (offered.length === 0) {
     return (
