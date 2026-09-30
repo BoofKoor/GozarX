@@ -336,6 +336,15 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   guides lead Android with Happ's own APK (Play serves nothing to an Iranian IP) and tell iOS
   about the Apple ID; `/articles` indexes every article. `docs/website/audit/accept_c.py` checks
   all of it against the mock.
+24 The site audit's Phase D: the accessibility and language plumbing. One `useFocusTrap` (the
+  panel's contract) now holds the phone menu, the rewards overlays and the reset confirmation —
+  Tab used to walk out of the open menu into the widget behind it; every phone control is a 44px
+  target (58 were not); a skip link, announced copy confirmations and form errors, accordions with
+  `aria-controls` whose closed answers Ctrl-F can still find, and a heading outline without skipped
+  levels. The theme gets its third state back («سیستم»), with one `lib/prefs` behind every theme
+  and language control; location names follow the visitor's language (`locLabel`: "Germany" in
+  the English UI, never the Persian remark); and every volume prints through one `formatVolume`,
+  which ended the reversed «GB ۱». `docs/website/audit/accept_d.py` checks all of it.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -675,10 +684,11 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   one-to-two-line phone version (`hero_sub_short`, CSS picks — no hydration guess), the chips come
   after the widget in the DOM (the desktop grid puts them back under the copy), and the widget head
   is compact up to 460px. `accept_c.py` fails if the CTA leaves a 360×740 or 390×844 first screen.
-- **A widget height reservation is S1's MEASURED natural height at that width** (520 up to 460px,
-  564 above, 570 under 360). Too tall is a band of empty card under the button; too short is a
-  layout shift when the skeleton resolves. Re-measure whenever the head, cards or CTA change —
-  `accept_c.py` fails past 3px.
+- **A widget height reservation is S1's MEASURED natural height at that width** (523 up to 460px,
+  564 above; 551 under 350 and 572 under 330, where the reassurance line wraps). Too tall is a
+  band of empty card under the button; too short is a layout shift when the skeleton resolves.
+  Re-measure whenever the head, cards or CTA change — Phase D's 44px "all locations" button moved
+  it by 3px — and `accept_c.py` fails past 3px.
 - **A choice made elsewhere arrives chosen.** A location link into the widget is
   `/?loc=<display name>#hero-widget` — never `/#hero`, which offered the popular location to
   someone who had just tapped another. (A /locations cell opens its landing where one exists; the
@@ -696,6 +706,28 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - **A scrollable rail is a Tab stop in Chromium** (keyboard-focusable scrollers), so where it sits
   in the DOM counts toward "Tab presses to the CTA": the chip rail moving below the widget took it
   from 7 to 6.
+- **Every modal surface uses `lib/useFocusTrap`** — the menu sheet, `Overlay` (named through
+  `<OverlayTitle>`) and the reset confirmation: Esc, focus in and back, Tab kept inside, the page
+  behind locked. It reads `onClose` through a ref, because callers pass inline arrows and an effect
+  keyed on the callback re-ran every render, re-capturing "what had focus" as the dialog itself.
+- **A phone control is a 44px box** (`@media (max-width:999.98px)`, the burger's breakpoint). Where
+  it must LOOK smaller — the id copy plate, the switch's 46×26 track — the box is transparent and
+  the visual is drawn inside it; where a bar must not grow, negative block margins hand the box
+  back to the layout. `accept_d.py` walks every control on 16 pages at 360 and 390.
+- **A location has a KEY and a LABEL.** `locName` is the remark, and it is what matching uses —
+  preselect, popular, landings, `?loc=`. `locLabel(remark, lang)` is what a person reads: the
+  remark itself when it is already in their script, else the country in their language
+  (`Intl.DisplayNames`, through a short-form table: USA, UK, UAE), numbering kept, anything more
+  specific than a country left as written rather than half-translated.
+- **A volume is printed from BYTES by `formatVolume`** (`lib/format`) — «۱٫۵ گیگابایت» / "1.5 GB".
+  The API's `human_bytes` strings put a Latin unit inside Persian copy, which is what reversed the
+  allowance chip into «GB ۱». In Persian the unit is a Persian word, so nothing is left to reorder.
+- **"System" theme is the ABSENCE of a choice** — no `theme` cookie and no `data-theme` — which is
+  exactly what the stylesheet's auto blocks answer. `lib/prefs` owns the cookie, the attributes and
+  the event every control listens to, so the header, the menu and the settings cannot disagree.
+- **React 19 renders `hidden="until-found"` as `hidden=""`**, so `AccItem` sets the value after
+  hydration — and an accordion answer must never be hidden with `display:none`, which is what made
+  closed FAQ answers invisible to find-in-page.
 - **An install source must work from Iran.** Android leads with Happ's GitHub APK and keeps Play
   second; the App Store platforms say that store has no Iranian storefront and needs another
   country's Apple ID. A guide step's screenshot is an ASSET drop — `public/guides/<platform>/<n>.webp`

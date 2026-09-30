@@ -3,12 +3,13 @@
 import { type ReactNode, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type Locale, translator } from "@/lib/i18n";
 import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { pushSupported, subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
+import { formatMb } from "@/lib/format";
 import { IosSteps } from "@/components/widget/Overlay";
 
 // Closing the strip holds until tomorrow (local midnight) rather than until the next render — it
@@ -87,7 +88,7 @@ export function Missions({ locale, refCode }: { locale: Locale; refCode: string 
 
   // The amount a chip earns, as a pill — the reason to tap it. `fallback` covers an unset (0) reward.
   const amount = (mb: number | undefined, fallback: ReactNode) =>
-    mb && mb > 0 ? <bdi dir="ltr">+{faDigits(mb, locale)} MB</bdi> : fallback;
+    mb && mb > 0 ? <bdi>+{formatMb(mb, locale)}</bdi> : fallback;
 
   const chips: {
     key: string;

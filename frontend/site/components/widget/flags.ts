@@ -95,3 +95,74 @@ export function flagCC(name: string): string | null {
 export function locName(name: string): string {
   return name.replace(/^[\p{Extended_Pictographic}\p{Regional_Indicator}️\s]+/u, "").trim() || name;
 }
+
+// ── display names ──────────────────────────────────────────────────────────────────────────────
+// `locName` is the MATCHING key (preselect, popular, landings, `?loc=`) and stays the operator's
+// remark. `locLabel` is what a visitor READS: the production remarks are Persian, so the English UI
+// said «آلمان، هلند…» (C-44). A remark already in the visitor's script is shown as written — it is
+// the operator's wording. Otherwise, when the remark is just a country (a keyword or a bare code,
+// optionally numbered: «آلمان ۲»), the country is named in the visitor's language by
+// `Intl.DisplayNames`, through a short-form table for the few whose official names don't fit a
+// picker card («ایالات متحده» / "United States"). Anything else — a city, a tag — is left alone
+// rather than half-translated.
+
+type Lang = "fa" | "en";
+
+const SHORT: Record<Lang, Record<string, string>> = {
+  en: { us: "USA", gb: "UK", ae: "UAE", hk: "Hong Kong", kr: "South Korea", cz: "Czechia" },
+  fa: { us: "آمریکا", gb: "انگلیس", ae: "امارات", hk: "هنگ‌کنگ", kr: "کره جنوبی", cz: "چک", nl: "هلند" },
+};
+
+const ARABIC_SCRIPT = /[؀-ۿ]/;
+const LATIN_SCRIPT = /[A-Za-z]/;
+// longest first, so «کره جنوبی ۲» is not read as «کره» + «جنوبی ۲», nor "UK 2" as "ukraine"
+const BY_LENGTH = Object.entries(KEYWORD).sort((a, b) => b[0].length - a[0].length);
+const NUMBERING = /^[\s\d۰-۹٠-٩#.\-–()]*$/;
+const regionNames = new Map<Lang, Intl.DisplayNames | null>();
+
+function regionName(cc: string, lang: Lang): string | null {
+  const short = SHORT[lang][cc];
+  if (short) return short;
+  let names = regionNames.get(lang);
+  if (names === undefined) {
+    try {
+      names = new Intl.DisplayNames([lang], { type: "region" });
+    } catch {
+      names = null;
+    }
+    regionNames.set(lang, names);
+  }
+  const name = names?.of(cc.toUpperCase());
+  return name && name.toUpperCase() !== cc.toUpperCase() ? name : null;
+}
+
+/** The country a remark names, and what is left of it when that is only numbering. */
+function countryOf(name: string): { cc: string; rest: string } | null {
+  const text = name.trim();
+  const key = text.toLowerCase();
+  if (/^[a-z]{2}$/.test(key)) return { cc: key, rest: "" };
+  for (const [word, cc] of BY_LENGTH) {
+    let rest: string | null = null;
+    if (key === word) rest = "";
+    else if (key.startsWith(word)) rest = text.slice(word.length);
+    else if (key.endsWith(word)) rest = text.slice(0, text.length - word.length);
+    if (rest !== null && NUMBERING.test(rest)) return { cc, rest: rest.replace(/[()#]/g, "").trim() };
+  }
+  return null;
+}
+
+const toLatinDigits = (s: string) =>
+  s.replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 0x06f0)).replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+const toPersianDigits = (s: string) => s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+
+export function locLabel(remark: string, lang: Lang): string {
+  const name = locName(remark);
+  const bareCode = /^[A-Za-z]{2}$/.test(name.trim()); // "DE" is a code, not a name in any script
+  const inScript = lang === "fa" ? ARABIC_SCRIPT.test(name) : LATIN_SCRIPT.test(name) && !ARABIC_SCRIPT.test(name);
+  if (inScript && !bareCode) return name;
+  const part = countryOf(name);
+  const country = part && regionName(part.cc, lang);
+  if (!part || !country) return name;
+  const rest = lang === "fa" ? toPersianDigits(part.rest) : toLatinDigits(part.rest);
+  return rest ? `${country} ${rest}` : country;
+}

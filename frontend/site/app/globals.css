@@ -164,7 +164,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 /* Theme + language live in the burger sheet on mobile, so the header controls hide there and appear
    on desktop (where the burger is gone) — otherwise a desktop visitor has no way to switch either. */
 .hd-lang{ display:none; }
-.hd-ctrls .theme-switch{ display:none; }
+.hd-ctrls .theme-seg{ display:none; }
 .hd-lang button{ border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px; font-weight:700; padding:5px 11px; border-radius:var(--r-pill); cursor:pointer; }
 .hd-lang button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); }
 /* desktop (≥1000px): show the "My status" button + theme/lang controls, hide the burger */
@@ -172,7 +172,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
   .status-btn{ display:inline-flex; }
   .burger{ display:none; }
   .hd-lang{ display:inline-flex; padding:2px; gap:2px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
-  .hd-ctrls .theme-switch{ display:inline-block; }
+  .hd-ctrls .theme-seg{ display:inline-flex; }
 }
 .th-btn .sun{ display:none; }
 .th-btn .moon{ display:block; }
@@ -189,21 +189,14 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .sheet .navlink .ic{ inline-size:19px; block-size:19px; color:var(--muted); }
 .sheet-sep{ block-size:1px; background:var(--border); margin-block:12px; }
 .sheet-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
-/* Theme toggle — an icon-only sliding sun⇄moon switch (no text). Geometry is exact: the padding box
-   is 64×32 (66×34 outer − 1px border each side, border-box); two 32px halves centred at x=16 and
-   x=48; the 28px thumb is inset 2px in each half so its centre lands on 16 / 48 — the same as each
-   slot's centre — so the active glyph sits dead-centre on the thumb. `direction:ltr` keeps sun-left
-   / moon-right regardless of the RTL sheet. */
-.theme-switch{ position:relative; inline-size:66px; block-size:34px; flex:none; border-radius:99px; background:var(--sunken); border:1px solid var(--border); padding:0; cursor:pointer; direction:ltr; -webkit-tap-highlight-color:transparent; }
-.theme-switch:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
-.theme-switch .thumb{ position:absolute; inset-block-start:2px; inset-inline-start:2px; inline-size:28px; block-size:28px; border-radius:50%; background:var(--primary); box-shadow:0 3px 8px -1px color-mix(in srgb,var(--primary) 55%,transparent); transition:transform .28s cubic-bezier(.34,1.4,.5,1); z-index:1; }
-.theme-switch.is-dark .thumb{ transform:translateX(32px); }
-.theme-switch .slot{ position:absolute; inset-block-start:0; block-size:100%; inline-size:32px; display:grid; place-items:center; z-index:2; pointer-events:none; color:var(--muted); transition:color .2s; }
-.theme-switch .slot.sun{ inset-inline-start:0; }
-.theme-switch .slot.moon{ inset-inline-start:32px; }
-.theme-switch .slot .ic{ inline-size:15px; block-size:15px; }
-.theme-switch:not(.is-dark) .slot.sun{ color:var(--on-primary); }
-.theme-switch.is-dark .slot.moon{ color:var(--on-primary); }
+/* three-state theme control (system · light · dark — decision D6): icon buttons in a pill, in the
+   header and the phone menu; the account settings use the labelled .mini-seg shape of it */
+.theme-seg{ display:inline-flex; align-items:center; padding:3px; gap:2px; flex:none; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
+.theme-seg button{ inline-size:32px; block-size:32px; border:0; border-radius:var(--r-pill); background:transparent; color:var(--muted); display:grid; place-items:center; cursor:pointer; padding:0; transition:background .15s,color .15s; }
+.theme-seg button:hover{ color:var(--text); }
+.theme-seg button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); box-shadow:0 3px 8px -2px color-mix(in srgb,var(--primary) 55%,transparent); }
+.theme-seg button:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.theme-seg .ic{ inline-size:16px; block-size:16px; }
 /* ============ sections ============ */
   section{ position:relative; }
 .sec{ padding-block:56px; }
@@ -273,18 +266,23 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
    async status/config/locations fetch resolving doesn't shove the page down ~320px (the headline
    CLS the RUM data flagged on `#how`). The picker is the common fresh-visitor state; shorter states
    (cooldown / out of volume) centre inside the reserved box. Each value is S1's MEASURED natural
-   height in Persian at that width (docs/website/audit/08-phase-c.md) — a reservation above it is a
-   band of empty card under the button, one below it is a layout shift. Up to 460px the head is
-   compact and the cards smaller; under 360px the reassurance lines under the button wrap. */
+   height in Persian at that width (docs/website/audit/08-phase-c.md, 09-phase-d.md) — a reservation
+   above it is a band of empty card under the button, one below it is a layout shift. Up to 460px
+   the head is compact and the cards smaller; below 350px the reassurance line under the button
+   wraps once, below 330px twice. */
 #hero-widget .widget, .landing-widget .widget,
 .status-page .grid-main > div > .widget{ min-block-size:564px; }
 @media (max-width:460px){
   #hero-widget .widget, .landing-widget .widget,
-  .status-page .grid-main > div > .widget{ min-block-size:520px; }
+  .status-page .grid-main > div > .widget{ min-block-size:523px; }
 }
-@media (max-width:359.98px){
+@media (max-width:349.98px){
   #hero-widget .widget, .landing-widget .widget,
-  .status-page .grid-main > div > .widget{ min-block-size:570px; }
+  .status-page .grid-main > div > .widget{ min-block-size:551px; }
+}
+@media (max-width:329.98px){
+  #hero-widget .widget, .landing-widget .widget,
+  .status-page .grid-main > div > .widget{ min-block-size:572px; }
 }
 .widget::before{ content:""; position:absolute; inset:0; z-index:-1; border-radius:inherit; pointer-events:none; background:radial-gradient(120% 78% at 100% 0%,var(--card-sheen),transparent 58%); }
 [dir="rtl"] .widget::before{ background:radial-gradient(120% 78% at 0% 0%,var(--card-sheen),transparent 58%); }
@@ -309,7 +307,9 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .loc-card:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
 .loc-card[aria-checked="true"]{ border-color:var(--primary); background:var(--brand-tint); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 14%,transparent); }
 .flag{ display:block; inline-size:40px; block-size:40px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; }
-.loc-card .nm{ font-size:13px; font-weight:500; line-height:1.6; color:var(--text); max-inline-size:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-block-end:1px; }
+/* a name wraps to a second line rather than losing its end to an ellipsis (C-44) — «آذربایجان»
+   and "South Korea" were «آذربا…» and "South K…" in a 3-column phone grid */
+.loc-card .nm{ font-size:13px; font-weight:500; line-height:1.45; color:var(--text); max-inline-size:100%; text-align:center; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow-wrap:anywhere; padding-block-end:1px; }
 .loc-card[aria-checked="true"] .nm{ color:var(--brand-tint-ink); font-weight:700; }
 .loc-check{ position:absolute; inset-block-start:6px; inset-inline-end:6px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--primary); color:#fff; display:none; place-items:center; box-shadow:var(--glow-sm); }
 .loc-card[aria-checked="true"] .loc-check{ display:grid; }
@@ -521,8 +521,11 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 .acc-head:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; }
 .acc-head .ic{ inline-size:20px; block-size:20px; color:var(--muted); transition:transform .25s; flex:none; }
 .acc[data-open="true"] .acc-head .ic{ transform:rotate(180deg); }
-.acc-body{ display:none; padding:0 18px 16px; font-size:14px; color:var(--muted); line-height:1.8; }
-.acc[data-open="true"] .acc-body{ display:block; }
+.acc-hd{ margin:0; font:inherit; }
+/* closed = the `hidden` attribute (until-found once hydrated: find-in-page can still reach it), so
+   no display rule here — `display:none` is what made closed answers unsearchable */
+.acc-body{ padding:0 18px 16px; font-size:14px; color:var(--muted); line-height:1.8; }
+.acc-body[hidden]{ padding-block:0; }
 /* TRUST band */
   .trust-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); padding:36px 24px; text-align:center; box-shadow:var(--shadow-sm); position:relative; overflow:hidden; }
 .trust-card::before{ content:""; position:absolute; inset:0; background:radial-gradient(500px 220px at 50% -20%,var(--brand-tint),transparent 70%); }
@@ -547,7 +550,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
   footer.ft{ border-block-start:1px solid var(--border); background:var(--surface); margin-block-start:24px; }
 /* CTA-led band — a final "grab today's config" nudge above the link columns */
 .ft-cta{ margin-block:40px 36px; padding:26px 30px; border-radius:var(--r-lg); border:1px solid color-mix(in srgb,var(--primary) 26%,var(--border)); background:linear-gradient(135deg,color-mix(in srgb,var(--primary) 15%,var(--surface)) 0%,var(--surface) 60%); display:flex; align-items:center; justify-content:space-between; gap:22px; flex-wrap:wrap; }
-.ft-cta-t h3{ font-size:20px; font-weight:800; margin:0 0 6px; }
+.ft-cta-t h2{ font-size:20px; font-weight:800; margin:0 0 6px; }
 .ft-cta-t p{ font-size:13.5px; color:var(--muted); margin:0; }
 .ft-cta-btn{ display:inline-flex; align-items:center; gap:8px; background:var(--primary); color:var(--on-primary); font-weight:800; font-size:14.5px; padding:12px 20px; border-radius:var(--r-btn); text-decoration:none; white-space:nowrap; box-shadow:0 8px 22px -10px color-mix(in srgb,var(--primary) 60%,transparent); transition:transform .1s,filter .18s; }
 .ft-cta-btn:hover{ filter:brightness(1.05); }
@@ -557,7 +560,7 @@ nav.mainnav{ display:none; align-items:center; gap:4px; margin-inline-start:14px
 @media (min-width:820px){ .ft-grid{ grid-template-columns:1.7fr 1fr 1fr 1fr; } }
 .ft-brand .brandmark{ margin-block-end:12px; }
 .ft-brand p{ font-size:13.5px; color:var(--muted); max-width:34ch; line-height:1.85; margin:0; }
-.ft-col h4{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
+.ft-col h3{ font-size:13.5px; font-weight:800; margin:0 0 15px; color:var(--text); }
 .ft-col a{ display:block; font-size:13.5px; color:var(--muted); text-decoration:none; padding-block:6.5px; transition:color .15s; }
 .ft-col a:hover{ color:var(--link); }
 /* Article-landing link row (above the bottom bar) — wraps freely, so it never disturbs .ft-grid. */
@@ -836,7 +839,7 @@ footer.foot{ padding-block:34px; border-block-start:1px solid var(--border); fon
 .modal .mh{ display:flex; align-items:center; gap:12px; margin-block-end:8px; }
 .modal .mhi{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; flex:none; background:var(--brand-tint); color:var(--brand-tint-ink); }
 .modal .mhi .ic{ inline-size:23px; block-size:23px; }
-.modal h3{ font-size:18px; font-weight:800; margin:0; }
+.modal h3, .modal .ov-title{ font-size:18px; font-weight:800; margin:0; }
 .modal .msub{ font-size:13.5px; color:var(--muted); margin:0 0 18px; line-height:1.7; }
 .modal .close{ margin-inline-start:auto; }
 .bigcode{ display:flex; align-items:center; gap:8px; }
@@ -1002,7 +1005,7 @@ footer.ft{ border-block-start:1px solid var(--border); background:var(--surface)
 .mission{ font-size:16px; line-height:1.9; color:var(--text); }
 .mission .lead{ font-size:18px; font-weight:600; margin-block-end:12px; }
 .deflect{ margin-block-start:22px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:16px 18px; }
-.deflect h4{ font-size:14px; font-weight:700; margin:0 0 10px; }
+.deflect h2{ font-size:14px; font-weight:700; margin:0 0 10px; }
 .deflect a{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--link); text-decoration:none; margin-inline-end:14px; }
 .deflect a .ic{ inline-size:14px; block-size:14px; }
 .form-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:24px; box-shadow:var(--shadow-sm); }
@@ -1021,7 +1024,8 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 .form-card.sent .form-success{ display:block; }
 .form-success .ok{ inline-size:56px; block-size:56px; border-radius:50%; background:var(--success-surface); color:var(--success-ink); display:grid; place-items:center; margin:0 auto 14px; }
 .form-success .ok .ic{ inline-size:30px; block-size:30px; }
-.form-success h3{ font-size:18px; font-weight:800; margin:0 0 6px; }
+.form-success h2{ font-size:18px; font-weight:800; margin:0 0 6px; }
+.form-success h2:focus{ outline:none; }
 .form-success p{ font-size:14px; color:var(--muted); margin:0; }
 .field.err .inp{ border-color:var(--danger); }
 .field .errmsg{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:5px; }
@@ -1185,7 +1189,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .rw2-cnt b{ color:var(--success-ink); }
 
 .rw2-side{ flex:none; display:flex; align-items:center; gap:8px; }
-.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; direction:ltr; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; }
+.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; white-space:nowrap; }
 .rw2-amt u{ text-decoration:none; font-size:10px; font-weight:700; opacity:.8; }
 .rw2-amt.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
 .rw2-amt.success{ background:var(--success-surface); color:var(--success-ink); }
@@ -1214,7 +1218,7 @@ button.rw2-row:disabled{ cursor:default; background:none; }
 .push-head{ display:flex; align-items:center; gap:12px; margin-block-end:14px; }
 .push-ic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
 .push-ic .ic{ inline-size:22px; block-size:22px; }
-.push-head h3{ font-size:16px; font-weight:700; }
+.push-head h3, .push-head .ov-title{ font-size:16px; font-weight:700; }
 .plist{ display:flex; flex-direction:column; gap:10px; margin-block-end:6px; }
 .pitem{ display:flex; align-items:flex-start; gap:11px; }
 .pio{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--sunken); color:var(--primary); flex:none; }
@@ -1542,3 +1546,49 @@ a.flagmore{ text-decoration:none; }
    ring like any other stop (inset: the rail's edge mask would fade an outer one away) */
 .trust-row:focus-visible{ outline:2px solid var(--ring); outline-offset:-2px; border-radius:var(--r-pill); }
 .loccta:focus-visible{ outline:2px solid var(--ring); outline-offset:-3px; }
+
+/* ── Phase D: keyboard, touch and language plumbing ──────────────────────────────────────────── */
+/* "skip to content": off-screen until it has focus, then the first thing on the page (C-41) */
+.skip-link{ position:absolute; inset-inline-start:12px; inset-block-start:-80px; z-index:100; display:inline-flex; align-items:center; min-block-size:44px; padding:10px 16px; font-weight:800; font-size:14px; color:var(--link); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); box-shadow:var(--shadow-md); text-decoration:none; }
+.skip-link:focus{ inset-block-start:12px; outline:2px solid var(--ring); outline-offset:2px; }
+main:focus{ outline:none; }
+/* the phone menu's top row: the handle, and a close button a screen reader (and a thumb) can find */
+.sheet-top{ position:relative; display:flex; align-items:center; justify-content:center; min-block-size:44px; margin-block-end:8px; }
+.sheet-top .sheet-handle{ margin:0; }
+.sheet-close{ position:absolute; inset-block-start:0; inset-inline-end:-6px; }
+.sheet .theme-seg button{ inline-size:44px; block-size:44px; }
+.sheet .theme-seg .ic{ inline-size:19px; block-size:19px; }
+.offline-h{ margin:0; font-size:15px; font-weight:700; }
+/* Touch targets ≥44px wherever the layout is the phone/tablet one (the burger's breakpoint) — the
+   spec's number, and Apple's. Measured before: 58 controls under it, from the header's 38px buttons
+   and a 23px breadcrumb to a 32px copy button (C-40). Where a control must LOOK smaller than its
+   target (the copy plate, the switch), the 44px box is transparent and the visual is drawn inside
+   it; where a bar must not grow, negative block margins give the box back to the layout. */
+@media (max-width:999.98px){
+  .hd-row{ padding-block:9px; }
+  .icon-only, .acct-btn, .acct-btn.status-btn{ inline-size:44px; block-size:44px; }
+  .brandmark{ min-block-size:44px; }
+  .link-more, .deflect a, .app-get, .dl-alt{ min-block-size:44px; }
+  .app-get, .dl-alt{ margin-block-start:2px; }
+  .loc-more, .btn.sm, .tab, .landing-related .chip{ min-block-size:44px; }
+  .mini-seg button, .sheet .seg button, .ft-langs button{ min-block-size:44px; min-inline-size:44px; padding-inline:16px; }
+  .ft-col a{ display:flex; align-items:center; min-block-size:44px; padding-block:0; }
+  .ft-more{ gap:0 16px; }
+  .ft-more a{ display:inline-flex; align-items:center; min-block-size:44px; }
+  .landing-page .crumbs a{ display:inline-flex; align-items:center; min-block-size:44px; margin-block:-10px; padding-inline:11px; margin-inline:-11px; }
+  .guide-page details > summary{ min-block-size:44px; padding-block:8px; margin-block:-8px; }
+  .x-btn{ inline-size:44px; block-size:44px; margin-block:-6px; margin-inline-end:-10px; }
+  .id-bar .id-tr{ min-block-size:44px; margin-block:-10px; }
+  /* the id copy button: a 44px target around the design's 32px plate */
+  .id-bar .id-cp{ position:relative; inline-size:44px; block-size:44px; margin:-6px; border:0; background:transparent; }
+  .id-bar .id-cp::before{ content:""; position:absolute; inset:6px; border-radius:9px; border:1px solid var(--border); background:var(--sunken); transition:border-color .15s; }
+  .id-bar .id-cp:hover::before{ border-color:var(--primary); }
+  .id-bar .id-cp.done::before{ border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+  .id-bar .id-cp .ic{ position:relative; }
+  /* the switch: a 44px-tall button, its 46×26 track drawn as ::before */
+  .switch, .switch[aria-checked="true"]{ inline-size:50px; block-size:44px; background:transparent; border-radius:12px; }
+  .switch::before{ content:""; position:absolute; inset-block:9px; inset-inline:2px; border-radius:9999px; background:var(--border-strong); transition:background .2s; }
+  .switch[aria-checked="true"]::before{ background:var(--primary); }
+  .switch::after{ inset-block-start:12px; inset-inline-start:5px; z-index:1; }
+  .switch[aria-checked="true"]::after{ inset-inline-start:25px; }
+}

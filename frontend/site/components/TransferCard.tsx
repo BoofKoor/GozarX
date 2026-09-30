@@ -5,6 +5,7 @@ import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { Icon } from "@/components/Icon";
+import { Announce } from "@/components/Announce";
 
 // Device transfer — faithful reproduction of the design's `.transfer-card`. Two halves:
 //  • Generate: mint a one-time 8-char code (XXXX-XXXX, LTR) with a live mm:ss expiry to move this
@@ -116,6 +117,8 @@ export function TransferCard({ locale }: { locale: Locale }) {
             <button className="btn" type="button" onClick={copyCode}>
               {copied ? t("copied") : t("tm_copy")}
             </button>
+            {/* mounted with the code, so it is there before its text changes */}
+            <Announce text={copied ? t("copied") : ""} />
           </div>
           <div className="expiry">
             <Icon name="clock" sw={2} />

@@ -6,6 +6,8 @@ import { copyText } from "@/lib/clipboard";
 import { type Locale, faDigits, translator } from "@/lib/i18n";
 import { flagCC, locName } from "@/components/widget/flags";
 import { Icon } from "@/components/Icon";
+import { Announce } from "@/components/Announce";
+import { formatVolume } from "@/lib/format";
 
 // ---- Flag: circular SVG (public/flags/{cc}.svg), fallback = tinted initials tile ----
 // `fluid` leaves the size to the stylesheet (`.flag` is 40px), for a place that resizes it by
@@ -67,6 +69,7 @@ export function CopyField({ value, locale }: { value: string; locale: Locale }) 
         {copied ? t("copied") : t("copy")}
       </button>
       {failed && <span className="copy-manual">{t("copy_manual")}</span>}
+      <Announce text={copied ? t("copied") : failed ? t("copy_manual") : ""} />
     </div>
   );
 }
@@ -163,38 +166,28 @@ export function AppButtons({ link, locale }: { link: string; locale: Locale }) {
   );
 }
 
-// Mirror the backend's `human_bytes` (1024-based, 1 decimal, round values drop the ".0") so a
-// client-derived "remaining volume" formats identically to the server strings ("800 MB", "1.5 GB").
-function humanBytes(n: number): string {
-  const fmt = (v: number, u: string) =>
-    u === "B" ? `${Math.round(v)} ${u}` : `${v.toFixed(1).replace(/\.0$/, "")} ${u}`;
-  let v = Math.max(0, n);
-  for (const u of ["B", "KB", "MB", "GB"]) {
-    if (v < 1024) return fmt(v, u);
-    v /= 1024;
-  }
-  return fmt(v, "TB");
-}
-
 // ---- UsageMeter (design `.meter` > `.row`/`.k`/`.v` + `.bar`) ----
 // Passing `remainingBytes` switches on the boxed "metric" layout: a % chip beside the label and a
 // "remaining volume" footer (the config card). Without it, the plain meter is used (exhausted state).
 // `note` replaces the "used of total" figures with a sentence — a fresh config read «۰ B از ۱ GB».
+// Figures arrive as BYTES and go through the one volume formatter (lib/format): the backend's
+// "380 MB" strings put a Latin unit inside a Persian sentence. `null` = not known yet (a dash).
 export function UsageMeter({
-  used,
-  total,
+  usedBytes,
+  totalBytes,
   pct,
   locale,
   remainingBytes,
   note,
 }: {
-  used: string;
-  total: string;
+  usedBytes: number | null;
+  totalBytes: number | null;
   pct: number;
   locale: Locale;
   remainingBytes?: number;
   note?: string;
 }) {
+  const vol = (b: number | null) => (b == null ? "—" : formatVolume(b, locale));
   const t = translator(locale);
   const cls = pct >= 90 ? "bar full" : pct >= 75 ? "bar warn" : "bar";
   const metric = remainingBytes != null;
@@ -211,14 +204,12 @@ export function UsageMeter({
             </span>
           )}
         </span>
-        {/* Each "<number> MB" is bidi-isolated so the Latin unit stays glued to its figure under
-            RTL (else it renders reversed, e.g. "MB ۷۰۰.۰ از MB ۶۶۶.۵"). */}
+        {/* each figure isolated, so «۳۸۰ مگابایت از ۱ گیگابایت» keeps its order in either direction */}
         {note ? (
           <span className="v">{note}</span>
         ) : (
           <span className="v tnum">
-            <bdi dir="ltr">{faDigits(used, locale)}</bdi> {t("of")}{" "}
-            <bdi dir="ltr">{faDigits(total, locale)}</bdi>
+            <bdi>{vol(usedBytes)}</bdi> {t("of")} <bdi>{vol(totalBytes)}</bdi>
           </span>
         )}
       </div>
@@ -229,7 +220,7 @@ export function UsageMeter({
         <div className="meter-foot">
           {t("remaining_vol")}{" "}
           <b>
-            <bdi dir="ltr">{faDigits(humanBytes(remainingBytes), locale)}</bdi>
+            <bdi>{formatVolume(remainingBytes, locale)}</bdi>
           </b>
         </div>
       )}

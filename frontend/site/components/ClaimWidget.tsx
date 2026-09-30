@@ -10,7 +10,8 @@ import { useBackoffPoll, useExpired, useVisiblePoll } from "@/lib/usePoll";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
-import { locName } from "@/components/widget/flags";
+import { locLabel, locName } from "@/components/widget/flags";
+import { formatMb, formatVolume } from "@/lib/format";
 import { AppButtons, CopyField, Countdown, Flag, UsageMeter } from "@/components/widget/pieces";
 import { Missions } from "@/components/widget/Missions";
 
@@ -23,8 +24,6 @@ interface Revived {
   friend: boolean; // the referral count moved — a friend's first claim did it
   addedBytes: number; // how much the daily allowance grew
 }
-
-const MB = 1024 * 1024;
 
 // ---- courtesy auto-scroll helpers -------------------------------------------------------------
 // The widget's height changes a lot across its states (a 22-location picker vs. a compact config
@@ -472,7 +471,12 @@ export function ClaimWidget({
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <StatusHead kind="warn" title={t("ex_title")} sub={t("ex_sub")} />
-        <UsageMeter used={status?.usage ?? "—"} total={status?.daily_limit ?? "—"} pct={100} locale={locale} />
+        <UsageMeter
+          usedBytes={status?.usage_bytes ?? null}
+          totalBytes={status?.daily_limit_bytes ?? null}
+          pct={100}
+          locale={locale}
+        />
         <ReviveBlock
           locale={locale}
           refCode={status?.ref_code ?? ""}
@@ -500,7 +504,7 @@ export function ClaimWidget({
           {loc && (
             <div className="cfg-loc">
               <Flag name={loc} size={34} />
-              <span className="nm">{locName(loc)}</span>
+              <span className="nm">{locLabel(loc, locale)}</span>
               <span className="ok">
                 <Icon name="check" sw={2.6} /> {t("ready")}
               </span>
@@ -510,8 +514,8 @@ export function ClaimWidget({
           <CopyField value={link ?? ""} locale={locale} />
           <AppButtons link={link ?? ""} locale={locale} />
           <UsageMeter
-            used={status?.usage ?? "0"}
-            total={status?.daily_limit ?? "—"}
+            usedBytes={status?.usage_bytes ?? 0}
+            totalBytes={status?.daily_limit_bytes ?? null}
             pct={pct}
             locale={locale}
             remainingBytes={status ? Math.max(0, status.daily_limit_bytes - status.usage_bytes) : 0}
@@ -540,7 +544,7 @@ export function ClaimWidget({
                 <CtaBlock
                   {...ctaProps}
                   disabled={!switchTo}
-                  label={(switchTo && fill(t("change_to"), { loc: locName(switchTo) })) || t("change_pick")}
+                  label={(switchTo && fill(t("change_to"), { loc: locLabel(switchTo, locale) })) || t("change_pick")}
                   onCancel={() => {
                     setChangeLoc(false);
                     setPicked(null);
@@ -630,7 +634,11 @@ export function ClaimWidget({
           locale={locale}
           title={title ?? t("w_title")}
           sub={compact ? null : t("w_sub")}
-          allowance={status?.daily_limit}
+          allowance={
+            status && status.daily_limit_bytes > 0
+              ? formatVolume(status.daily_limit_bytes, locale)
+              : undefined
+          }
         />
         <Picker
           locale={locale}
@@ -829,7 +837,7 @@ function Picker({
               {/* sized by CSS (smaller on a phone); no green "online" dot — every card had one,
                   so it said nothing about any of them */}
               <Flag name={loc} fluid />
-              <span className="nm">{locName(loc)}</span>
+              <span className="nm">{locLabel(loc, locale)}</span>
             </button>
           );
         })}
@@ -1051,8 +1059,7 @@ function CenterState({
 // Why the config came back, and by how much — the growth loop's payoff, so it is spelled out.
 function RevivedNote({ locale, revived }: { locale: Locale; revived: Revived }) {
   const t = translator(locale);
-  const mb = Math.round(revived.addedBytes / MB);
-  const amount = mb > 0 ? `${faDigits(mb, locale)} ${t("mb_unit")}` : null;
+  const amount = revived.addedBytes > 0 ? formatVolume(revived.addedBytes, locale) : null;
   const text = revived.friend
     ? amount
       ? fill(t("revived_friend"), { v: amount })
@@ -1090,7 +1097,7 @@ function ReviveBlock({
         <Icon name="spark" sw={2.2} /> {t("revive_t")}
         {rewardMb ? (
           <span className="rv-amt">
-            <bdi dir="ltr">+{faDigits(rewardMb, locale)} MB</bdi>
+            <bdi>+{formatMb(rewardMb, locale)}</bdi>
           </span>
         ) : null}
       </div>

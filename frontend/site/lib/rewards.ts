@@ -1,5 +1,6 @@
 import type { RewardResponse } from "@/lib/api";
-import { type Locale, faDigits, fill, translator } from "@/lib/i18n";
+import { type Locale, fill, translator } from "@/lib/i18n";
+import { formatMb } from "@/lib/format";
 
 // What a reward claim did, in words — a bare «✓» / «—» told the visitor neither how much they got
 // nor why nothing happened. `doneKey` is the sentence for a success that carries no amount (a
@@ -15,7 +16,7 @@ export function rewardMessage(
   if (r?.ok) {
     const mb = r.amount_mb ?? fallbackMb ?? 0;
     const added =
-      mb > 0 ? fill(t("reward_added"), { v: `${faDigits(mb, locale)} ${t("mb_unit")}` }) : null;
+      mb > 0 ? fill(t("reward_added"), { v: formatMb(mb, locale) }) : null;
     return added ?? t(doneKey);
   }
   return r?.reason === "already_claimed" ? t("reward_taken") : t("reward_err");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
@@ -24,6 +24,15 @@ export function ContactForm({ locale }: { locale: Locale }) {
   const [tsError, setTsError] = useState(false);
   const [tsReset, setTsReset] = useState(0);
   const msgRef = useRef<HTMLTextAreaElement>(null);
+  const sentRef = useRef<HTMLHeadingElement>(null);
+  // Stable: <Turnstile> rebuilds the Cloudflare challenge whenever a callback changes identity, and
+  // an inline arrow here rebuilt it on every keystroke in the message box.
+  const onTsError = useCallback(() => setTsError(true), []);
+  // The form body disappears on success, taking the focused button with it — land on the
+  // confirmation instead of nowhere, so a screen reader says the message went (C-42).
+  useEffect(() => {
+    if (sent) sentRef.current?.focus();
+  }, [sent]);
 
   const topics = [t("c_t1"), t("c_t2"), t("c_t3"), t("c_t4")];
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
@@ -117,7 +126,7 @@ export function ContactForm({ locale }: { locale: Locale }) {
               siteKey={config.turnstile_site_key}
               locale={locale}
               onToken={setToken}
-              onError={() => setTsError(true)}
+              onError={onTsError}
               resetSignal={tsReset}
             />
             {tsError && (
@@ -140,7 +149,11 @@ export function ContactForm({ locale }: { locale: Locale }) {
             )}
           </div>
         )}
-        {sendErr && <p className="err-text">{sendErr}</p>}
+        {sendErr && (
+          <p className="err-text" role="alert">
+            {sendErr}
+          </p>
+        )}
         <button className="btn cta block" disabled={busy || (needsTurnstile && !token)}>
           <Icon name="send" sw={2} cls="ic-dir" />
           {t("c_send")}
@@ -154,7 +167,9 @@ export function ContactForm({ locale }: { locale: Locale }) {
         <div className="ok">
           <Icon name="check" sw={2.6} />
         </div>
-        <h3>{t("c_sent_t")}</h3>
+        <h2 ref={sentRef} tabIndex={-1}>
+          {t("c_sent_t")}
+        </h2>
         <p>{t("c_sent_p")}</p>
       </div>
     </form>

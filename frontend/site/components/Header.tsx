@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { type Locale, translator } from "@/lib/i18n";
+import { useLocaleSwitch } from "@/lib/prefs";
+import { useFocusTrap } from "@/lib/useFocusTrap";
 import { Icon } from "@/components/Icon";
-
-function setCookie(name: string, value: string) {
-  document.cookie = `${name}=${value}; path=/; max-age=${400 * 24 * 3600}; samesite=lax`;
-}
+import { ThemeChoice } from "@/components/ThemeChoice";
 
 const NAV: { href: string; key: string; icon: string }[] = [
   { href: "/locations", key: "nav_loc", icon: "pin" },
@@ -37,12 +36,18 @@ function isCurrent(pathname: string, href: string): boolean {
 
 // Clean header — brand + nav + "My status" + burger. Language is auto-detected and theme follows
 // the device by default; both can be changed from the header's desktop controls, the mobile sheet,
-// the footer, or the status-page settings.
+// the footer, or the status-page settings — all through `lib/prefs`, so they cannot disagree.
 export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "dark" }) {
-  const router = useRouter();
   const pathname = usePathname() ?? "/";
   const t = translator(locale);
   const [sheet, setSheet] = useState(false);
+  const switchLocale = useLocaleSwitch(locale);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const closeSheet = useCallback(() => setSheet(false), []);
+  // The phone menu is a modal surface and keeps the whole contract (C-24): focus moves into it and
+  // back to the burger, Tab stays inside, Esc closes, and the page behind does not scroll — before,
+  // Tab walked out of the open menu into the claim widget under it.
+  useFocusTrap(sheetRef, closeSheet, sheet);
   // Every page is a path to the widget (C-23): the header's shortcut on desktop, the top of the
   // menu on a phone. A landing and the account page carry a widget of their own.
   const ctaHref = pathname.startsWith("/l/")
@@ -50,50 +55,7 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
     : pathname === "/status"
       ? "#claim"
       : "/#hero-widget";
-  const [themeState, setThemeState] = useState<string>(theme ?? "");
-
-  // Reflect the EFFECTIVE theme in the toggle. An explicit choice sets `data-theme`; with no cookie
-  // the page follows the OS via `prefers-color-scheme` and `data-theme` is unset — so read the media
-  // query in that case (otherwise the switch wrongly shows light while a dark OS renders dark). Stay
-  // in sync if the OS theme changes while no explicit choice is active.
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const sync = () => {
-      const attr = document.getElementById("app")?.getAttribute("data-theme");
-      setThemeState(attr === "light" || attr === "dark" ? attr : mq.matches ? "dark" : "light");
-    };
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  // Let Escape close the mobile nav sheet (it's a modal surface).
-  useEffect(() => {
-    if (!sheet) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setSheet(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [sheet]);
-
-  function switchLocale(next: Locale) {
-    if (next === locale) return;
-    setCookie("locale", next);
-    const html = document.documentElement;
-    html.setAttribute("lang", next);
-    html.setAttribute("dir", next === "fa" ? "rtl" : "ltr");
-    document.getElementById("app")?.setAttribute("data-locale", next);
-    setSheet(false);
-    router.refresh();
-  }
-
-  function setTheme(next: "light" | "dark") {
-    setCookie("theme", next);
-    document.documentElement.setAttribute("data-theme", next);
-    document.getElementById("app")?.setAttribute("data-theme", next);
-    setThemeState(next);
-  }
+  const serverTheme = theme ?? "system";
 
   return (
     <>
@@ -134,11 +96,11 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
                 EN
               </button>
             </div>
-            <ThemeSwitch
+            <ThemeChoice
+              locale={locale}
+              serverChoice={serverTheme}
+              variant="icons"
               className="hd-theme"
-              state={themeState}
-              label={t("set_theme")}
-              onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
             />
             {/* brand-tint chip + person icon — the account cards' tile language. On mobile the
                 label hides and the chip collapses to the burger's exact footprint (CSS). */}
@@ -170,13 +132,20 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
       <div className={`sheet-ov${sheet ? " open" : ""}`} onClick={() => setSheet(false)} />
       <div
         id="site-menu"
+        ref={sheetRef}
         className={`sheet${sheet ? " open" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-label={t("menu_title")}
+        tabIndex={-1}
       >
-        <div className="sheet-handle" />
-        <Link className="btn cta sheet-cta" href={ctaHref} onClick={() => setSheet(false)}>
+        <div className="sheet-top">
+          <div className="sheet-handle" aria-hidden />
+          <button type="button" className="icon-only sheet-close" aria-label={t("menu_close")} onClick={closeSheet}>
+            <Icon name="x" sw={2.2} />
+          </button>
+        </div>
+        <Link className="btn cta sheet-cta" href={ctaHref} onClick={closeSheet}>
           <Icon name="bolt" sw={2.2} />
           {t("cta_get")}
         </Link>
@@ -187,7 +156,7 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               className={`navlink${isCurrent(pathname, n.href) ? " active" : ""}`}
               aria-current={isCurrent(pathname, n.href) ? "page" : undefined}
               href={n.href}
-              onClick={() => setSheet(false)}
+              onClick={closeSheet}
             >
               <Icon name={n.icon} sw={2} />
               {t(n.key)}
@@ -204,45 +173,9 @@ export function Header({ locale, theme }: { locale: Locale; theme?: "light" | "d
               English
             </button>
           </div>
-          <ThemeSwitch
-            state={themeState}
-            label={t("set_theme")}
-            onToggle={() => setTheme(themeState === "dark" ? "light" : "dark")}
-          />
+          <ThemeChoice locale={locale} serverChoice={serverTheme} variant="icons" />
         </div>
       </div>
     </>
-  );
-}
-
-// The icon-only sliding sun⇄moon theme switch — shared by the header (desktop) and the mobile sheet.
-function ThemeSwitch({
-  state,
-  label,
-  onToggle,
-  className,
-}: {
-  state: string;
-  label: string;
-  onToggle: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      className={`theme-switch${className ? ` ${className}` : ""}${state === "dark" ? " is-dark" : ""}`}
-      type="button"
-      role="switch"
-      aria-checked={state === "dark"}
-      aria-label={label}
-      onClick={onToggle}
-    >
-      <span className="thumb" aria-hidden />
-      <span className="slot sun" aria-hidden>
-        <Icon name="sun" sw={2} />
-      </span>
-      <span className="slot moon" aria-hidden>
-        <Icon name="moon" sw={2} />
-      </span>
-    </button>
   );
 }

@@ -9,7 +9,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { StickyCta } from "@/components/StickyCta";
-import { locName } from "@/components/widget/flags";
+import { locLabel } from "@/components/widget/flags";
 
 // SEO keyword landing — one URL per admin-authored `site_landing_pages` row («کانفیگ آلمان»,
 // «آیپی آمریکا», …). Server-rendered so crawlers get the full article + metadata without JS; the
@@ -67,7 +67,7 @@ export default async function LandingPage({ params }: { params: Promise<{ slug: 
   const rtl = row.locale === "fa";
   // A location landing names its location in the widget and the closing band; an article landing
   // keeps the widget's own title.
-  const loc = row.location_remark ? locName(row.location_remark) : null;
+  const loc = row.location_remark ? locLabel(row.location_remark, locale) : null;
   const widgetTitle = loc ? (fill(t("land_w_title"), { loc }) ?? undefined) : undefined;
   const ctaHead = (loc && fill(t("land_cta_h"), { loc })) || t("land_cta_h_any");
 

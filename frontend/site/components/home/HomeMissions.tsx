@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { type CopyOverrides, type Locale, faDigits, translator } from "@/lib/i18n";
+import { type CopyOverrides, type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
 import { Icon } from "@/components/Icon";
+import { MB, formatMb, volumeParts } from "@/lib/format";
 
 // MORE VOLUME — the ways to grow the daily allowance, as a horizontal list (icon · title/desc ·
 // reward amount). The reward is the REAL configured figure (reward_referral/pwa/push/streak_mb),
@@ -42,14 +43,7 @@ export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOver
                   <h3>{t(m.t)}</h3>
                   <p>{t(m.d)}</p>
                 </div>
-                {mb != null && (
-                  <span className="mvamt" aria-label={`+${mb} MB`}>
-                    <b>
-                      <bdi dir="ltr">{`+${faDigits(String(mb), locale)}`}</bdi>
-                    </b>
-                    <i>MB</i>
-                  </span>
-                )}
+                {mb != null && <Amount mb={mb} locale={locale} />}
               </Link>
             );
           })}
@@ -61,5 +55,16 @@ export function HomeMissions({ locale, copy }: { locale: Locale; copy?: CopyOver
         </div>
       </div>
     </section>
+  );
+}
+
+// The reward tile: the figure over its unit, both in the visitor's language («+۵۰۰» over «مگابایت»).
+function Amount({ mb, locale }: { mb: number; locale: Locale }) {
+  const { num, unit } = volumeParts(mb * MB, locale);
+  return (
+    <span className="mvamt" aria-label={`+${formatMb(mb, locale)}`}>
+      <b aria-hidden>+{num}</b>
+      <i aria-hidden>{unit}</i>
+    </span>
   );
 }

@@ -9,13 +9,14 @@ import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
 import { promptInstall, usePwaState } from "@/lib/pwa";
 import { Icon } from "@/components/Icon";
-import { IosSteps, Overlay } from "@/components/widget/Overlay";
+import { MB, formatMb, volumeParts } from "@/lib/format";
+import { IosSteps, Overlay, OverlayTitle } from "@/components/widget/Overlay";
 
 // Account rewards card — the daily-claim streak (day-dots) + the three ways to grow the daily
 // allowance (invite / install the web app / enable notifications). Unlike the old decorative strip,
 // the actions are REAL: install fires the native prompt (or shows the iOS steps), notifications
 // actually subscribe, and each chip shows its live state (installed / enabled / blocked). The
-// "+N MB" figures come from the public config — never hardcoded.
+// "+N MB" figures come from the public config — never hardcoded — and print through lib/format.
 export function AccountRewards({ locale }: { locale: Locale }) {
   const t = translator(locale);
   // Push state is SHARED via the provider so this mission and the status page's Settings switch
@@ -145,7 +146,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
           </span>
           <span className="rw2-side">
             <span className="rw2-amt brand">
-              +{faDigits(String(config?.reward_referral_mb ?? 0), locale)} <u>MB</u>
+              <Volume mb={config?.reward_referral_mb ?? 0} locale={locale} />
             </span>
             <Icon name="share" sw={2} cls="rw2-end" />
           </span>
@@ -287,7 +288,7 @@ function MissionRow({
       </span>
       <span className="rw2-side">
         <span className={`rw2-amt ${tone}`}>
-          {busy ? "…" : <>+{faDigits(String(amountMb ?? 0), locale)} <u>MB</u></>}
+          {busy ? "…" : <Volume mb={amountMb ?? 0} locale={locale} />}
         </span>
         {end === "check" ? (
           <Icon name="check" sw={2.6} cls="rw2-end ok" />
@@ -403,7 +404,7 @@ function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number })
           )}
         </span>
         {cap.amt && (
-          <b className="amt">{`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}</b>
+          <b className="amt">{`+${formatMb(rewardMb ?? 0, locale)}`}</b>
         )}
       </div>
     </div>
@@ -434,7 +435,7 @@ function PushPrompt({
           <Icon name="bell" sw={2} />
         </span>
         <div>
-          <h3>{t("pre_h")}</h3>
+          <OverlayTitle>{t("pre_h")}</OverlayTitle>
           <p className="msub">{t("pre_d")}</p>
         </div>
       </div>
@@ -452,7 +453,7 @@ function PushPrompt({
         ))}
       </div>
       <span className="rw" style={{ display: "inline-flex", alignItems: "center", gap: 4, marginBlock: 4 }}>
-        <Icon name="bolt" sw={2.2} /> {`+${faDigits(String(rewardMb ?? 0), locale)} ${t("mb_unit")}`}
+        <Icon name="bolt" sw={2.2} /> {`+${formatMb(rewardMb ?? 0, locale)}`}
       </span>
       <div style={{ display: "flex", gap: 10, marginBlockStart: 10 }}>
         <button className="btn ghost block" onClick={onClose}>
@@ -475,7 +476,7 @@ function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void 
           <Icon name="bell" sw={2} />
         </span>
         <div>
-          <h3>{t("ps_bl_h")}</h3>
+          <OverlayTitle>{t("ps_bl_h")}</OverlayTitle>
           <p className="msub">{t("ps_bl_d")}</p>
         </div>
       </div>
@@ -484,5 +485,16 @@ function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void 
         {t("common.close")}
       </button>
     </Overlay>
+  );
+}
+
+// "+500" over a smaller unit — «مگابایت» in Persian, so the pill no longer needs `direction: ltr`
+// to hold a Latin "MB" beside a Persian figure.
+function Volume({ mb, locale }: { mb: number; locale: Locale }) {
+  const { num, unit } = volumeParts(mb * MB, locale);
+  return (
+    <>
+      +{num} <u>{unit}</u>
+    </>
   );
 }

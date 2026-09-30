@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { type Locale, translator } from "@/lib/i18n";
 import { useSite } from "@/lib/useSite";
-import { locName } from "@/components/widget/flags";
+import { locLabel, locName } from "@/components/widget/flags";
 import { Flag } from "@/components/widget/pieces";
 
 // Live location grid for /locations — the full flag list from the trial squad (client island; the
@@ -49,7 +49,7 @@ export function LocationsGrid({
             return (
               <Link key={loc} className="loccell" href={href} title={t("loc_go")}>
                 <Flag name={loc} size={34} />
-                <span className="ln">{locName(loc)}</span>
+                <span className="ln">{locLabel(loc, locale)}</span>
               </Link>
             );
           })}
