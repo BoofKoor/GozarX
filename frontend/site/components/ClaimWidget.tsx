@@ -804,7 +804,7 @@ function Picker({
             });
           }}
         >
-          {faDigits(fill(t("loc_all"), { n: locations.length }) ?? "", locale)}
+          {faDigits(fill(t("loc_more_all"), { n: locations.length }) ?? "", locale)}
           <Icon name="chev" sw={2.4} />
         </button>
       )}
