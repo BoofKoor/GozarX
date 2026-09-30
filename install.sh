@@ -11,7 +11,9 @@
 # verifies health, migrations, the admin login, and the Telegram webhook.
 #
 # Re-running is safe: existing secrets and the Postgres password are reused (never
-# rotated), and an already-installed certificate can be kept.
+# rotated), an already-installed certificate can be kept, a blank admin password keeps
+# the current one, and any .env key this script does not manage is carried over.
+# `sudo ./install.sh --tls-only` re-renders just the nginx TLS config from .env.
 #
 # The script is organised as functions with a guarded entrypoint, so the file can
 # be sourced in tests to exercise the generators without running an install.
@@ -50,6 +52,26 @@ gen_secret() { openssl rand -hex 32; }
 env_get() {
     [ -f "$ENV_FILE" ] || return 0
     grep -E "^$1=" "$ENV_FILE" | head -1 | cut -d= -f2- || true
+}
+
+# A key's current .env value, or DEFAULT when it has none. `$(env_get X || echo d)` never fell
+# back: env_get succeeds (printing nothing) for an absent key, so the "default" was always blank.
+env_or() {
+    local __v; __v="$(env_get "$1")"
+    printf '%s' "${__v:-$2}"
+}
+
+# Every KEY=value line of the current .env whose key is NOT in the given list, verbatim.
+unmanaged_env_lines() {
+    [ -f "$ENV_FILE" ] || return 0
+    local __managed=" $* " __line __key
+    while IFS= read -r __line || [ -n "$__line" ]; do
+        case "$__line" in '' | '#'*) continue ;; esac
+        __key="${__line%%=*}"
+        [ "$__key" = "$__line" ] && continue # not a KEY=value line
+        case "$__managed" in *" $__key "*) continue ;; esac
+        printf '%s\n' "$__line"
+    done <"$ENV_FILE"
 }
 
 # Docker Compose interpolates env-file values, so a literal '$' (bcrypt hashes are
@@ -95,6 +117,19 @@ ask_secret() {
         read -r -s -p "Confirm: " __b </dev/tty; printf '\n' >&2
         [ -n "$__a" ] && [ "$__a" = "$__b" ] && break
         warn "empty or mismatched — try again"
+    done
+    printf -v "$__var" '%s' "$__a"
+}
+
+# ask_secret_optional VAR "Label" — like ask_secret, but a blank answer is accepted (VAR = "").
+ask_secret_optional() {
+    local __var="$1" __label="$2" __a="" __b=""
+    while :; do
+        read -r -s -p "$__label: " __a </dev/tty; printf '\n' >&2
+        [ -z "$__a" ] && break
+        read -r -s -p "Confirm: " __b </dev/tty; printf '\n' >&2
+        [ "$__a" = "$__b" ] && break
+        warn "mismatched — try again"
     done
     printf -v "$__var" '%s' "$__a"
 }
@@ -212,7 +247,19 @@ intake_panel() {
 
 intake_admin() {
     step "Admin panel login"
-    ask ADMIN_USERNAME "Admin username" "$(env_get ADMIN_USERNAME || echo admin)"
+    ask ADMIN_USERNAME "Admin username" "$(env_or ADMIN_USERNAME admin)"
+    # A re-run can keep the password: only its HASH is in .env, so it cannot be offered as a
+    # default, and minting a fresh hash — even of the same password — ends every admin session
+    # (each token carries a credential version derived from the hash).
+    if [ -z "${ADMIN_PASSWORD:-}" ] && [ -n "$(env_get ADMIN_PASSWORD_HASH)" ]; then
+        if [ "${NONINTERACTIVE:-0}" = "1" ]; then
+            ADMIN_PASSWORD=""
+        else
+            ask_secret_optional ADMIN_PASSWORD "Admin password (blank keeps the current one)"
+        fi
+        [ -n "$ADMIN_PASSWORD" ] || ok "keeping the current admin password"
+        return 0
+    fi
     ask_secret ADMIN_PASSWORD "Admin password"
 }
 
@@ -220,17 +267,18 @@ intake_optional() {
     step "Optional settings"
     ask_optional ADMIN_DOMAIN "Separate admin domain (blank to serve on $DOMAIN)" "$(env_get ADMIN_DOMAIN)"
     ask_optional BACKUP_CHANNEL_ID "Telegram channel ID for DB backups (blank to disable)" "$(env_get BACKUP_CHANNEL_ID)"
-    ask TZ_VALUE "Timezone" "$(env_get TZ || echo UTC)"
+    ask TZ_VALUE "Timezone" "$(env_or TZ UTC)"
 }
 
 intake_site() {
     step "Website"
     # Same as $DOMAIN ⇒ website + panel share one host (panel under /admin). A DIFFERENT domain ⇒
     # the public site gets its own host and the panel/admin API are hidden there (served on $DOMAIN).
-    ask SITE_DOMAIN "Website domain (same as $DOMAIN ⇒ shared; different ⇒ site on its own host, admin stays on $DOMAIN)" "$(env_get SITE_DOMAIN || echo "$DOMAIN")"
+    ask SITE_DOMAIN "Website domain (same as $DOMAIN ⇒ shared; different ⇒ site on its own host, admin stays on $DOMAIN)" "$(env_or SITE_DOMAIN "$DOMAIN")"
     ask_optional TURNSTILE_SITE_KEY "Cloudflare Turnstile site key (blank to disable)" "$(env_get TURNSTILE_SITE_KEY)"
     ask_optional TURNSTILE_SECRET "Cloudflare Turnstile secret (blank to disable)" "$(env_get TURNSTILE_SECRET)"
-    ask VAPID_SUBJECT "Web Push contact for VAPID (mailto:…)" "$(env_get VAPID_SUBJECT || echo "mailto:admin@$DOMAIN")"
+    ask VAPID_SUBJECT "Web Push contact for VAPID (mailto:…)" "$(env_or VAPID_SUBJECT "mailto:admin@$DOMAIN")"
+    ask_optional GOOGLE_SITE_VERIFICATION "Google Search Console verification token (blank to skip)" "$(env_get GOOGLE_SITE_VERIFICATION)"
 }
 
 generate_secrets() {
@@ -252,7 +300,10 @@ generate_secrets() {
     ok "secrets ready (existing values preserved)"
 }
 
-# Write the full .env. ADMIN_PASSWORD_HASH is filled on the second call (post-mint).
+# Write the full .env with ADMIN_PASSWORD_HASH = $1 (already '$'-escaped). Called twice: first
+# with the hash already installed (empty on a fresh install) so `docker compose` can read the
+# file, then with the one mint_admin_hash settles on. Passing "" here used to blank a WORKING hash
+# for the whole build — and left it blank for good if the build or the mint then failed.
 write_env() {
     local hash_escaped="${1:-}"
     local tmp; tmp="$(mktemp)"
@@ -292,6 +343,7 @@ ADMIN_PASSWORD_HASH=$hash_escaped
 
 # ── Website ──
 SITE_DOMAIN=$SITE_DOMAIN
+GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
 SITE_COOKIE_SECRET=$SITE_COOKIE_SECRET
 TURNSTILE_SECRET=$TURNSTILE_SECRET
 TURNSTILE_SITE_KEY=$TURNSTILE_SITE_KEY
@@ -300,13 +352,22 @@ VAPID_PUBLIC_KEY=$VAPID_PUBLIC_KEY
 VAPID_SUBJECT=$VAPID_SUBJECT
 
 # ── Misc ──
-LOG_LEVEL=INFO
-LOG_JSON=false
+LOG_LEVEL=$(env_or LOG_LEVEL INFO)
+LOG_JSON=$(env_or LOG_JSON false)
 TZ=$TZ_VALUE
 BACKUP_CHANNEL_ID=$BACKUP_CHANNEL_ID
 EOF
+    # Anything else the current .env holds — a key added by hand, or one a newer release reads —
+    # is carried over verbatim. The file is regenerated from the list above, so it used to vanish.
+    local managed extra
+    managed="$(sed -n 's/^\([A-Za-z_][A-Za-z0-9_]*\)=.*/\1/p' "$tmp" | tr '\n' ' ')"
+    # shellcheck disable=SC2086  # word-splitting the key list is the point
+    extra="$(unmanaged_env_lines $managed)"
+    if [ -n "$extra" ]; then
+        printf '\n# ── Kept from the previous .env (not managed by install.sh) ──\n%s\n' "$extra" >>"$tmp"
+    fi
+    chmod 600 "$tmp"
     mv "$tmp" "$ENV_FILE"
-    chmod 600 "$ENV_FILE"
 }
 
 build_images() {
@@ -345,6 +406,12 @@ print(b(k.public_key().public_bytes(serialization.Encoding.X962, serialization.P
 }
 
 mint_admin_hash() {
+    if [ -z "${ADMIN_PASSWORD:-}" ]; then
+        local kept; kept="$(env_get ADMIN_PASSWORD_HASH)"
+        [ -n "$kept" ] || die "no admin password given and none installed"
+        write_env "$kept"   # stored escaped already; rewrite for the VAPID keys minted above
+        return 0
+    fi
     step "Minting admin password hash"
     local hash
     # Reuse the built backend image's bcrypt; password via env (never argv/logs);
@@ -651,14 +718,42 @@ bring_up() {
     step "Starting the stack"
     docker compose -f docker-compose.yml -f "$TLS_COMPOSE" up -d --build \
         || die "docker compose up failed"
+    restart_nginx
     ok "containers started"
 }
 
-verify() {
-    step "Verifying"
-    # 1) App health via the origin directly (-k: the origin cert isn't browser-trusted;
-    #    --resolve: hit this server, bypassing Cloudflare). Health implies migrations ran
-    #    (the entrypoint runs `alembic upgrade head` before uvicorn).
+# nginx reads its config — and resolves `app:8000` to an address — only when it starts, and
+# `up -d` leaves a container whose image and compose config are unchanged running. So a rewritten
+# nginx.tls.conf sat unread, and a recreated app container was proxied at its OLD address (502).
+restart_nginx() {
+    docker compose -f docker-compose.yml -f "$TLS_COMPOSE" restart nginx \
+        || die "nginx restart failed — see: docker compose logs nginx"
+}
+
+# The `--tls-only` path: re-render the TLS config from .env and restart nginx onto it — for a
+# release that changes the nginx template, without re-asking for everything and without touching
+# .env or the admin password.
+tls_only() {
+    step "Re-rendering the TLS config from .env"
+    [ -f "$ENV_FILE" ] || die "no .env here — run the full installer first"
+    DOMAIN="$(env_get DOMAIN)"
+    SITE_DOMAIN="$(env_get SITE_DOMAIN)"
+    ADMIN_DOMAIN="$(env_get ADMIN_DOMAIN)"
+    [ -n "$DOMAIN" ] || die "DOMAIN is not set in .env"
+    { [ -s "$CERT_FILE" ] && [ -s "$KEY_FILE" ]; } || die "no certificate installed — run the full installer"
+    generate_tls
+    # --no-deps: this is about nginx alone, and a plain `up` would also recreate any dependency
+    # whose config drifted since the last deploy — restarting the app as a side effect.
+    docker compose -f docker-compose.yml -f "$TLS_COMPOSE" up -d --no-deps nginx \
+        || die "docker compose up failed"
+    restart_nginx
+    check_health
+}
+
+# App health via the origin directly (-k: the origin cert isn't browser-trusted; --resolve: hit
+# this server, bypassing Cloudflare). Health implies migrations ran (the entrypoint runs
+# `alembic upgrade head` before uvicorn).
+check_health() {
     local code=""
     for _ in $(seq 30); do
         code="$(curl -sk -o /dev/null -w '%{http_code}' --max-time 5 \
@@ -671,6 +766,11 @@ verify() {
     else
         warn "health did not return 200 (got '${code:-none}') — see: docker compose logs app"
     fi
+}
+
+verify() {
+    step "Verifying"
+    check_health
 
     # 1b) Website root + admin panel. Under domain separation the website lives on SITE_DOMAIN and
     #     /admin is hidden there; otherwise both share $DOMAIN (panel under /admin).
@@ -700,16 +800,21 @@ verify() {
         fi
     fi
 
-    # 2) Admin login round-trip — proves the bcrypt hash survived Compose's interpolation.
-    local login
-    login="$(curl -sk --max-time 8 --resolve "$DOMAIN:443:127.0.0.1" \
-        -H 'Content-Type: application/json' \
-        -d "{\"username\":\"$ADMIN_USERNAME\",\"password\":\"$ADMIN_PASSWORD\"}" \
-        "https://$DOMAIN/api/admin/auth/login" 2>/dev/null || true)"
-    if printf '%s' "$login" | grep -q 'access_token'; then
-        ok "admin login works"
+    # 2) Admin login round-trip — proves the bcrypt hash survived Compose's interpolation. A kept
+    #    password was never typed here, so there is nothing to log in with (the hash is unchanged).
+    if [ -z "${ADMIN_PASSWORD:-}" ]; then
+        info "admin login check skipped — the password was kept"
     else
-        warn "admin login check failed — verify ADMIN_* in .env"
+        local login
+        login="$(curl -sk --max-time 8 --resolve "$DOMAIN:443:127.0.0.1" \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"$ADMIN_USERNAME\",\"password\":\"$ADMIN_PASSWORD\"}" \
+            "https://$DOMAIN/api/admin/auth/login" 2>/dev/null || true)"
+        if printf '%s' "$login" | grep -q 'access_token'; then
+            ok "admin login works"
+        else
+            warn "admin login check failed — verify ADMIN_* in .env"
+        fi
     fi
 
     # 3) Telegram webhook — the app self-registers it on boot; confirm with getWebhookInfo.
@@ -755,7 +860,9 @@ report() {
 
   Logs        : docker compose -f docker-compose.yml -f docker-compose.tls.yml logs -f
   Update      : git pull && docker compose -f docker-compose.yml -f docker-compose.tls.yml up -d --build
-  Re-run      : sudo ./install.sh   (safe; reuses secrets)
+                then:  docker compose -f docker-compose.yml -f docker-compose.tls.yml restart nginx
+  Re-run      : sudo ./install.sh   (safe; reuses secrets, a blank password keeps it)
+  nginx only  : sudo ./install.sh --tls-only   (re-renders the TLS config from .env)
 
   Finish setup in the panel's first-run wizard (trial squad, locations, economics).
 EOF
@@ -773,7 +880,17 @@ then the Telegram/panel/admin details, and brings the stack up behind TLS.
 Non-interactive: set NONINTERACTIVE=1 and provide values via environment
 variables (DOMAIN, BOT_TOKEN, OWNERS, PANEL_BASE_URL, PANEL_API_TOKEN,
 ADMIN_PASSWORD, TLS_CERT, TLS_KEY — the last two may be file paths or PEM text).
+On a re-run, anything already in .env is reused, and ADMIN_PASSWORD may be
+left out to keep the current one.
+
+  --tls-only   re-render nginx/nginx.tls.conf + the TLS overlay from .env and
+               restart nginx (for a release that changes the nginx template).
 EOF
+            exit 0
+            ;;
+        --tls-only)
+            preflight
+            tls_only
             exit 0
             ;;
     esac
@@ -787,7 +904,7 @@ EOF
     intake_optional
     intake_site
     generate_secrets
-    write_env ""          # initial .env (empty hash) so `docker compose run` can read it
+    write_env "$(env_get ADMIN_PASSWORD_HASH)"   # so `docker compose` can read it; keeps a working hash
     build_images
     mint_vapid            # mint the VAPID keypair in the built image, before the .env rewrite
     mint_admin_hash       # rewrites .env with the real hash + the minted VAPID keys

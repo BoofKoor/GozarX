@@ -56,6 +56,18 @@ services:
   worker:
     <<: *backend
     command: ["python", "-m", "gozar.worker.main"]
+    # After the APP is healthy, not just the databases: the app's entrypoint runs `alembic upgrade
+    # head` before it answers /health, and a worker that starts first runs the new code against the
+    # old schema — a scheduled broadcast due during the deploy fails on a column the migration has
+    # not added yet, and a job is never retried (max_tries=1). A merge key is shallow, so the whole
+    # `depends_on` is restated.
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      app:
+        condition: service_healthy
 
   site:
     # The Next.js website (standalone server on :3100). nginx proxies `/` here in production.

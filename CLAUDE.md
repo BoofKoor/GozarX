@@ -212,13 +212,15 @@ sleep 8
 curl -sS -o /dev/null -w "%{http_code}\n" https://gozarx.gozarxservices.com/health   # expect 200
 ```
 When a change needs a server deploy, hand the owner exactly these commands. A change to the nginx
-config also needs `sudo ./install.sh` re-run on the server: the live `nginx/nginx.tls.conf` is written
-from the installer's OWN template (keep it in step with `nginx/nginx.conf`), and a `git pull` never
-touches it (re-running is safe — secrets are reused). Then RESTART nginx: nginx reads its config only
-at start, and the installer's own `up -d --build` leaves the container running when the image is
-already current, so the rewritten file sits unread until the next restart. Re-running the installer
-asks for the admin password again (only its hash is in `.env`) and mints a fresh hash, which ends
-every admin session (the tokens' credential version, see Security). The admin panel
+config also needs `sudo ./install.sh --tls-only` on the server, after the commands above: the live
+`nginx/nginx.tls.conf` is written from the installer's OWN template (keep it in step with
+`nginx/nginx.conf`), a `git pull` never touches it, and `--tls-only` re-renders it from `.env` and
+restarts nginx without asking for anything else. The restart is not optional — nginx reads its config,
+and resolves `app:8000`, only at start, and `up -d` leaves an unchanged container running — which is
+why the deploy commands restart it too, and why the installer now does so itself. A full re-run is
+safe as well: secrets are reused, `.env` keys the installer does not manage are carried over, and a
+BLANK admin password keeps the current hash (a freshly minted one, even of the same password, ends
+every admin session — the tokens' credential version, see Security). The admin panel
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
@@ -234,7 +236,9 @@ prompts for the **domain first, then a TLS certificate** (Cloudflare Origin Cert
 collects the Telegram/panel/admin details, generates all secrets, writes a chmod-600 `.env`, builds +
 starts the stack behind TLS (`docker-compose.tls.yml` + `nginx/nginx.tls.conf`, both server-only and
 git-ignored), and verifies health, admin login, and the Telegram webhook. Re-running is safe — secrets
-and the Postgres password are reused, never rotated. In Cloudflare: the DNS record must be **Proxied**
+and the Postgres password are reused, never rotated; a blank admin password keeps the current one; and
+`.env` keys it does not manage survive (it regenerates the file from a fixed list, which used to drop
+`GOOGLE_SITE_VERIFICATION` and anything added by hand). In Cloudflare: the DNS record must be **Proxied**
 (orange cloud) and SSL/TLS mode **Full (strict)**.
 
 ## Build phases
