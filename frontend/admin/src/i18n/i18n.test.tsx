@@ -24,6 +24,27 @@ describe("catalogue", () => {
     expect(missing).toEqual([]);
   });
 
+  it("isolates every markup or address run inside a Persian message", () => {
+    // Unisolated in an RTL sentence these reorder, and «<» is MIRRORED: «&lt;» read «;lt&»,
+    // «tg://» read «//:tg», «/status» read «status/», and the «<» the message tells the operator to
+    // type showed as «>». Each needs LRI…PDI around it (U+2066…U+2069), as `bc.kb.urlBad` has.
+    const RUN =
+      /[a-z]+:\/\/|&[a-z]+;|[a-z-]+="[^"]*"|<\/?[a-z][^>]*>|«<»|(?<![\w:/])\/[a-z][\w/-]*/gi;
+    const bare: string[] = [];
+    for (const [key, text] of Object.entries(MESSAGES.fa)) {
+      for (const m of text.matchAll(RUN)) {
+        const before = text.slice(0, m.index);
+        const open = before.lastIndexOf("\u2066");
+        const inside =
+          open >= 0 &&
+          !before.slice(open).includes("\u2069") &&
+          text.indexOf("\u2069", m.index) >= 0;
+        if (!inside) bare.push(`${key}: ${m[0]}`);
+      }
+    }
+    expect(bare).toEqual([]);
+  });
+
   it("substitutes only the placeholders it is given", () => {
     expect(translate("en", "chart.trendLabel", { days: 14 })).toBe("Trend over the last 14 days");
     // An unsupplied token stays literal rather than rendering "undefined" into the page.

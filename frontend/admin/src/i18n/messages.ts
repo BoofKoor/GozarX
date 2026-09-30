@@ -134,21 +134,21 @@ const FA = {
   "bc.audience.nobody": "هیچ کاربری در این مخاطب نیست؛ فیلترها را تغییر دهید.",
   // Telegram HTML parse mode — shared by the broadcast composer and the texts editor.
   "tg.html.stray":
-    "تلگرام این متن را رد می‌کند: نویسهٔ {at} یک «<» است که برچسب نیست. برای خودِ «<» بنویسید &lt;",
+    "تلگرام این متن را رد می‌کند: نویسهٔ {at} یک «⁦<⁩» است که برچسب نیست. برای خودِ «⁦<⁩» بنویسید ⁦&lt;⁩",
   "tg.html.unsupported":
-    "تلگرام این متن را رد می‌کند: {tag} برچسبی نیست که تلگرام بشناسد. برای خودِ «<» بنویسید &lt;",
+    "تلگرام این متن را رد می‌کند: {tag} برچسبی نیست که تلگرام بشناسد. برای خودِ «⁦<⁩» بنویسید ⁦&lt;⁩",
   "tg.html.mismatch":
     "تلگرام این متن را رد می‌کند: {tag} در نویسهٔ {at} برچسبی را می‌بندد که باز نیست.",
   "tg.html.unclosed": "تلگرام این متن را رد می‌کند: {tag} باز شده و بسته نشده است.",
   "tg.html.spoiler":
-    'تلگرام این متن را رد می‌کند: {tag} باید class="tg-spoiler" داشته باشد (یا از tg-spoiler استفاده کنید).',
+    'تلگرام این متن را رد می‌کند: {tag} باید ⁦class="tg-spoiler"⁩ داشته باشد (یا از ⁦tg-spoiler⁩ استفاده کنید).',
   "bc.audience.unreachable": "شمارش گیرندگان در دسترس نیست.",
   "bc.audience.outside": "خارج از فیلتر",
   "bc.compose": "نگارش پیام",
   "bc.text": "متن پیام",
   "bc.text.placeholder": "متن پیام…",
   "bc.text.hint":
-    "قالب‌بندی HTML تلگرام مجاز است: <b> <i> <a> <code>. پیش‌نمایش پیش از نمایش ضدعفونی می‌شود.",
+    "قالب‌بندی HTML تلگرام مجاز است: ⁦<b> <i> <a> <code>⁩. پیش‌نمایش پیش از نمایش ضدعفونی می‌شود.",
   "bc.draft.save": "ذخیرهٔ پیش‌نویس",
   "bc.draft.saved": "پیش‌نویس ذخیره شد.",
   "bc.draft.failed": "ذخیرهٔ پیش‌نویس ناموفق بود.",
@@ -325,7 +325,7 @@ const FA = {
   "set.adButton.textPlaceholder": "مثال: کانال ما",
   "set.adButton.url": "لینک دکمه",
   "set.adButton.urlInvalid":
-    "لینک باید با https://، http:// یا tg:// شروع شود؛ وگرنه ربات دکمه را نمی‌سازد.",
+    "لینک باید با ⁦https://⁩، ⁦http://⁩ یا ⁦tg://⁩ شروع شود؛ وگرنه ربات دکمه را نمی‌سازد.",
   "set.adButton.emoji": "آی‌دی ایموجی پریمیوم (اختیاری)",
   "set.adButton.emojiPlaceholder": "مثلاً 5368324170671202286",
   "set.adButton.emojiHint":
@@ -549,7 +549,7 @@ const FA = {
   "sp.headline": "عنوان اعلان",
   "sp.body": "متن اعلان",
   "sp.url": "لینک مقصد (اختیاری)",
-  "sp.url.hint": "یک مسیر داخلی مثل /status یا یک آدرس https://. آدرس دیگری پذیرفته نمی‌شود.",
+  "sp.url.hint": "یک مسیر داخلی مثل ⁦/status⁩ یا یک آدرس ⁦https://⁩. آدرس دیگری پذیرفته نمی‌شود.",
   "sp.worker": "ارسال در پس‌زمینه (ورکر arq) انجام می‌شود.",
   "sp.send": "ارسال اعلان",
   "sp.send.title": "ارسال اعلان",
@@ -681,7 +681,7 @@ const FA = {
   "sl.filter.draft": "پیش‌نویس",
   "sl.empty": "صفحه‌ای نیست",
   "sl.pick": "یک صفحه را برای ویرایش انتخاب کنید",
-  "sl.pick.msg": "یا صفحهٔ جدیدی بسازید — هر صفحه یک نشانی /l/… در سایت می‌گیرد.",
+  "sl.pick.msg": "یا صفحهٔ جدیدی بسازید — هر صفحه یک نشانی ⁦/l/…⁩ در سایت می‌گیرد.",
   "sl.seo": "چک‌لیست سئو",
   "sl.seo.titleLen": "طول عنوان: {n} نویسه",
   "sl.seo.titleHint": "بین ۲۰ تا ۶۰ نویسه بهترین است.",
@@ -1951,7 +1951,8 @@ const EN: Record<keyof typeof FA, string> = {
   "d.usage.mem": "Panel memory {pct} of {total}",
   "d.usage.noBaseline": "No previous window to compare",
   "d.usage.trafficDaily": "Daily traffic",
-  "d.usage.trafficDaily.sub": "How far the panel's cumulative counter climbed between each day's hourly samples",
+  "d.usage.trafficDaily.sub":
+    "How far the panel's cumulative counter climbed between each day's hourly samples",
   "d.usage.online": "Concurrent users",
   "d.usage.online.sub": "The highest number online on each day",
   "d.usage.peakAt": "Peak {n}",
