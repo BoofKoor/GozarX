@@ -15,6 +15,7 @@
 | C | [`08-phase-c.md`](08-phase-c.md)، [`accept_c.py`](accept_c.py)، [`shots/phase-c/`](shots/phase-c/) | اجرای فاز C: دکمه در صفحهٔ اول موبایل، مسیرهای ورود به ویجت، پذیرش خودکار (۳۶ بررسی)، شاهدها |
 | D | [`09-phase-d.md`](09-phase-d.md)، [`accept_d.py`](accept_d.py)، [`shots/phase-d/`](shots/phase-d/) | اجرای فاز D: تلهٔ فوکوس، هدف لمسی ۴۴px، تم سه‌حالته، نام بومی لوکیشن، یک فرمت‌گر حجم (۱۲ بررسی)، شاهدها |
 | E | [`10-phase-e.md`](10-phase-e.md)، [`accept_e.py`](accept_e.py)، [`shots/phase-e/`](shots/phase-e/) | اجرای فاز E: «کانفیگ من»، دربارهٔ ما/تماس جدا، صفحات حقوقی، ۴۰۴/خطا/آفلاین، یک منبع FAQ، متن صادق، QR (۱۱ بررسی)، شاهدها |
+| F | [`11-phase-f.md`](11-phase-f.md)، [`accept_f.py`](accept_f.py)، [`shots/phase-f/`](shots/phase-f/) | اجرای فاز F: صفحه‌های استاتیک/ISR با انتخاب زبان در `proxy.ts` (D3)، کپی بیرون از bundle، CSS جداشده (صفحهٔ اصلی ۹٫۴KB)، کارت اشتراک هر لندینگ، SW و manifest دوزبانه (۱۹ بررسی)، شاهدها |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -35,9 +36,14 @@ python3 docs/website/audit/accept_c.py /tmp/shots     # فولد موبایل و
 python3 docs/website/audit/accept_d.py /tmp/shots     # کیبورد، هدف لمسی، تم، زبان و حجم (~۳ دقیقه)
 pip install zxing-cpp                                 # اختیاری: accept_e کد QR را واقعاً رمزگشایی می‌کند
 python3 docs/website/audit/accept_e.py /tmp/shots     # نام‌ها، صفحات محتوا، ۴۰۴/آفلاین، FAQ، QR (~۲ دقیقه)
+python3 docs/website/audit/accept_f.py /tmp/shots     # استاتیک/ISR، زبان، وزن JS/CSS، کارت OG، SW، manifest (~۱ دقیقه)
 ```
 
 `mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`، `mock_refs`، `mock_hist`)
 — جدول کامل در docstring همان فایل. دو عددی که صفحهٔ اول **سمت سرور** می‌خواند از کوکی نمی‌آیند و با
 متغیر محیطی تنظیم می‌شوند: `MOCK_TRIAL_HOURS` (پیش‌فرض ۲۴) و `MOCK_DELIVERED` (پیش‌فرض ۴۸۲۱۳؛ زیر ۱۰۰۰ چیپ
 پنهان می‌شود).
+
+از فاز F صفحه‌ها یک بار رندر و پنج دقیقه در کش سرور نگه داشته می‌شوند (`revalidate = 300`). پس بعد از
+عوض کردن این متغیرها، `next start` را دوباره راه بیندازید. کش فقط در حافظه است و با restart خالی می‌شود.
+حالت‌های کوکی (`mock_*`) این مشکل را ندارند، چون مرورگر آن‌ها را از API می‌خواند، نه از صفحه.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useId, useState } from "react";
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { Icon } from "@/components/Icon";
 
 // The config link as a QR code (C-09, decision D5) — for the case the copy button cannot serve: the
@@ -11,7 +12,7 @@ import { Icon } from "@/components/Icon";
 // dark modules on a light ground, and an inverted code is exactly the one many of them miss. The
 // quiet zone is the spec's four modules.
 export function QrToggle({ value, locale }: { value: string; locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const [open, setOpen] = useState(false);
   const [code, setCode] = useState<{ size: number; path: string; for: string } | null>(null);
   const [failed, setFailed] = useState(false);

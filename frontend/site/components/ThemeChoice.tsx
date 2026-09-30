@@ -1,6 +1,7 @@
 "use client";
 
-import { type Locale, translator } from "@/lib/i18n";
+import { type Locale } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { type ThemeChoice as Choice, useTheme } from "@/lib/prefs";
 import { Icon } from "@/components/Icon";
 
@@ -16,17 +17,15 @@ const OPTIONS: { value: Choice; icon: string; key: string }[] = [
 
 export function ThemeChoice({
   locale,
-  serverChoice,
   variant,
   className,
 }: {
   locale: Locale;
-  serverChoice?: Choice;
   variant: "icons" | "labels";
   className?: string;
 }) {
-  const t = translator(locale);
-  const { choice, setChoice } = useTheme(serverChoice);
+  const t = useT();
+  const { choice, setChoice } = useTheme();
   return (
     <div
       className={`${variant === "icons" ? "theme-seg" : "mini-seg"}${className ? ` ${className}` : ""}`}

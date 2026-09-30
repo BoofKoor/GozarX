@@ -1,0 +1,177 @@
+/* The claim widget AFTER a claim — the delivered config (copy field, app buttons, QR, usage meter,
+   countdown, the change-location row), the missions strip and the revive (C-59). Imported by
+   components/widget/after.tsx, the module the widget loads on demand, so it arrives with the views
+   that draw it: a first visit, which only sees the picker, never downloads it. /offline imports it
+   too, for the saved config its inline script draws. Loaded after base.css: `.app-get`'s 44px phone
+   margin is here for that reason — in base.css it would lose to the rule it adjusts. */
+
+/* «فعلی» — the location in use, when switching — is the popular badge's shape in the brand tone */
+.loc-rec.loc-now{ color:var(--brand-tint-ink); border-color:color-mix(in srgb,var(--primary) 45%,var(--border)); }
+.chg-cancel{ margin-block-start:10px; }
+/* the way out when the deep links assume an app that is not installed */
+.app-get{ display:inline-flex; align-items:center; gap:4px; margin-block-start:10px; font-size:12.5px; font-weight:600; color:var(--link); text-decoration:none; }
+.app-get:hover{ text-decoration:underline; }
+.app-get .ic{ inline-size:14px; block-size:14px; }
+@media (max-width:999.98px){ .app-get{ margin-block-start:2px; } }
+.revive .rt .rv-amt{ margin-inline-start:auto; font-size:12px; font-weight:800; font-variant-numeric:tabular-nums; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:2px 9px; }
+
+.status-ic{ inline-size:46px; block-size:46px; border-radius:14px; display:grid; place-items:center; flex:none; }
+.status-ic .ic{ inline-size:25px; block-size:25px; }
+.status-ic.ok{ background:var(--success-surface); color:var(--success-ink); }
+.status-head .st-t{ font-size:17px; font-weight:800; margin:0; line-height:1.35; }
+.status-head .st-d{ font-size:12.5px; color:var(--muted); margin:3px 0 0; }
+.cfg-loc{ display:flex; align-items:center; gap:11px; padding:12px 14px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); margin-block-end:14px; }
+.cfg-loc .flag{ inline-size:34px; block-size:34px; }
+.cfg-loc .nm{ font-size:15px; font-weight:700; }
+.cfg-loc .ok{ margin-inline-start:auto; display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:4px 10px; }
+.cfg-loc .ok .ic{ inline-size:12px; block-size:12px; }
+.field-label{ font-size:12.5px; font-weight:600; color:var(--muted); margin-block-end:8px; display:block; }
+/* LTR layout for the technical config field so the copyable code sits at the reading start (left)
+   and the copy button lands on the RIGHT in both locales — easier thumb reach, esp. in RTL. */
+/* one standard 44px control height for BOTH the link box and the copy button */
+.copyfield{ display:flex; align-items:center; gap:8px; direction:ltr; --ctl-h:44px; flex-wrap:wrap; }
+/* shown only when BOTH clipboard paths fail (rare) — the link is auto-selected for manual copy */
+.copy-manual{ flex-basis:100%; font-size:12px; color:var(--danger-ink); direction:inherit; }
+.copyfield .code-shell{ position:relative; flex:1; min-inline-size:0; block-size:var(--ctl-h); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); overflow:hidden; }
+.copyfield code{ display:block; block-size:100%; direction:ltr; unicode-bidi:isolate; text-align:left; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12.5px; line-height:calc(var(--ctl-h) - 2px); padding-inline:13px 34px; white-space:nowrap; overflow-x:auto; color:var(--text); }
+.copyfield code::-webkit-scrollbar{ height:0; }
+/* fade the CONTENT's tail INSIDE the box — the border/frame itself never fades */
+.copyfield .code-shell::after{ content:""; position:absolute; inset-block:1px; inset-inline-end:1px; inline-size:32px; background:linear-gradient(90deg,transparent,var(--sunken)); border-start-end-radius:calc(var(--r-ctl) - 2px); border-end-end-radius:calc(var(--r-ctl) - 2px); pointer-events:none; }
+.copyfield .btn{ flex:none; padding-inline:16px; block-size:var(--ctl-h); }
+.copyfield .btn.copied{ background:var(--success); color:#fff; }
+#app[data-theme="dark"] .copyfield .btn.copied{ color:#04231a; }
+.apps{ margin-block-start:12px; }
+.apps .lbl{ font-size:12px; color:var(--muted); margin-block-end:8px; }
+.apps-row{ display:flex; gap:8px; }
+/* 3+ apps (desktop detection) don't fit side-by-side with the chevron rows — stack them as a list */
+.apps-row:has(> :nth-child(3)){ flex-direction:column; }
+/* direction:ltr keeps the app icon on the LEFT of its (Latin) name in both locales. */
+/* list-row style: icon → name → trailing chevron (the whole row is the deep link) */
+.app-btn{ display:inline-flex; align-items:center; gap:9px; flex:1; justify-content:flex-start; direction:ltr; font:inherit; font-size:12.5px; font-weight:600; color:var(--text); text-decoration:none; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; transition:border-color .15s; }
+.app-btn .app-chev{ margin-inline-start:auto; inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s, transform .15s; }
+.app-btn:hover{ border-color:var(--primary); }
+.app-btn:hover .app-chev{ color:var(--primary); opacity:1; transform:translateX(2px); }
+.app-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.app-ico{ inline-size:26px; block-size:26px; border-radius:7px; flex:none; object-fit:cover; box-shadow:inset 0 0 0 1px var(--flag-ring),0 1px 2px rgba(2,6,23,.18); }
+.cfg-actions{ display:flex; gap:8px; margin-block-start:12px; }
+.icon-btn{ display:inline-flex; align-items:center; justify-content:center; gap:7px; flex:1; min-block-size:44px; font:inherit; font-size:13px; font-weight:600; color:var(--text); background:var(--surface); border:1px solid var(--border-strong); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; }
+.icon-btn:hover{ border-color:var(--primary); color:var(--link); background:var(--brand-tint); }
+.icon-btn .ic{ inline-size:16px; block-size:16px; }
+.qr-panel{ margin-block-start:12px; display:none; justify-content:center; }
+.qr-panel.show{ display:flex; }
+.qr-box{ display:block; background:#fff; border-radius:var(--r-card); padding:8px; box-shadow:var(--shadow-sm); }
+/* the code carries its own quiet zone (four modules), so the box only rounds and lifts it */
+.qr-box svg{ display:block; inline-size:184px; block-size:184px; }
+.qr-wait{ inline-size:200px; block-size:200px; }
+.qr-fig{ margin:0; display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; }
+.qr-fig .hint{ margin:0; max-inline-size:26ch; }
+
+.meter .row{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:8px; font-size:12.5px; }
+.meter .k{ color:var(--muted); display:inline-flex; align-items:center; gap:6px; }
+.meter .k .ic{ inline-size:14px; block-size:14px; }
+.meter .v{ font-weight:700; font-variant-numeric:tabular-nums; }
+.bar{ block-size:9px; border-radius:var(--r-pill); background:var(--sunken-2); overflow:hidden; }
+.bar>i{ display:block; block-size:100%; border-radius:var(--r-pill); background:linear-gradient(90deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); transition:inline-size .5s ease; }
+/* a fill grows from inline-start, so its gradient runs that way too — else RTL lights the wrong end */
+[dir="rtl"] .bar>i{ background-image:linear-gradient(270deg,var(--primary),color-mix(in srgb,var(--primary) 60%,var(--hero-2))); }
+/* Countdown segments are `.cd-seg`, NOT `.seg`: `.seg` is the header's pill toggle, and inheriting
+   its display:inline-flex put each unit label BESIDE its digits instead of under them. The label is
+   copy (11px, --muted, AA) — the old 9px --faint caps measured 3.5:1, and letter-spacing broke the
+   Persian words apart; only the Latin labels get the small-caps treatment. */
+.cd{ display:flex; align-items:center; justify-content:center; gap:6px; direction:ltr; unicode-bidi:isolate; margin-block:6px; }
+.cd .cd-seg{ display:flex; flex-direction:column; align-items:center; gap:1px; min-inline-size:54px; padding:7px 8px 5px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); }
+.cd .cd-seg b{ font-size:24px; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.15; color:var(--text); }
+.cd .cd-seg span{ font-size:11px; font-weight:600; line-height:1.4; color:var(--muted); }
+#app[data-locale="en"] .cd .cd-seg span{ font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; }
+.cd .colon{ font-size:20px; font-weight:800; color:var(--muted); padding-block-end:16px; }
+.cd-label{ text-align:center; font-size:12.5px; color:var(--muted); margin-block-end:4px; }
+
+.missions-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:11px; }
+.missions-head .t{ font-size:13.5px; font-weight:700; display:inline-flex; align-items:center; gap:7px; }
+.missions-head .t .ic{ inline-size:16px; block-size:16px; color:var(--warning); }
+.x-btn{ border:0; background:transparent; color:var(--muted); cursor:pointer; inline-size:32px; block-size:32px; border-radius:8px; display:grid; place-items:center; margin-inline-end:-4px; }
+.x-btn:hover{ background:var(--border); color:var(--text); }
+.m-chips{ display:flex; flex-direction:column; gap:7px; }
+.m-chip{ display:flex; align-items:center; gap:10px; text-align:start; font-size:13px; font-weight:500; color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:var(--r-ctl); padding:10px 12px; cursor:pointer; text-decoration:none; transition:border-color .15s,transform .12s; }
+.m-chip:hover{ border-color:var(--primary); transform:translateX(2px); }
+[dir="rtl"] .m-chip:hover{ transform:translateX(-2px); }
+.m-chip .mi{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
+.m-chip .mi .ic{ inline-size:16px; block-size:16px; }
+.m-chip .mt{ flex:1; min-inline-size:0; display:flex; flex-direction:column; gap:1px; }
+.m-chip .mn{ display:block; font-weight:600; font-size:13px; }
+.m-chip .md{ display:block; font-size:11px; color:var(--muted); }
+.m-chip .rw{ font-weight:800; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-pill); padding:3px 9px; font-size:11.5px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+/* ---- status header (success/active/cooldown/exhausted) ---- */
+  .status-head{ display:flex; align-items:center; gap:13px; margin-block-end:18px; }
+.status-ic.wait{ background:var(--brand-tint); color:var(--brand-tint-ink); }
+.status-ic.warn{ background:var(--warning-surface); color:var(--warning-ink); }
+/* ---- config location line ---- */
+  .cfg{ animation:reveal .4s ease; }
+.icon-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+/* usage meter */
+  .meter{ margin-block-start:16px; }
+.bar.warn>i{ background:linear-gradient(90deg,var(--warning),#fbbf24); }
+.bar.full>i{ background:linear-gradient(90deg,var(--danger),#f87171); }
+/* segmented countdown */
+/* missions strip */
+  .missions{ margin-block-start:18px; border:1px solid var(--border); border-radius:var(--r-card); padding:14px; background:linear-gradient(180deg,var(--brand-tint),transparent); }
+.x-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.m-chip .mt .mn{ display:block; font-weight:600; font-size:13px; }
+.m-chip .mt .md{ display:block; font-size:11px; color:var(--muted); }
+/* revive */
+  .revive{ border:1.5px solid color-mix(in srgb,var(--warning) 42%,var(--border)); background:var(--warning-surface); border-radius:var(--r-card); padding:16px; margin-block-start:14px; }
+.revive .rt{ font-size:14px; font-weight:800; color:var(--warning-ink); display:flex; align-items:center; gap:8px; margin-block-end:7px; }
+.revive .rt .ic{ inline-size:18px; block-size:18px; }
+.revive .rd{ font-size:13px; line-height:1.7; color:var(--text); margin:0 0 14px; }
+.revive .rd b{ color:var(--warning-ink); }
+.revive .revive-share{ margin-block-start:10px; }
+.revived-note{ display:none; align-items:center; gap:8px; margin-block-start:12px; font-size:13px; font-weight:700; color:var(--success-ink); background:var(--success-surface); border-radius:var(--r-ctl); padding:11px 14px; animation:reveal .35s ease; }
+.revived-note.show{ display:flex; }
+.revived-note .ic{ inline-size:17px; block-size:17px; }
+.m-chip:disabled{ cursor:default; opacity:1; }
+.m-chip:disabled:hover{ border-color:var(--border); transform:none; }
+
+/* ── config card refresh: metrics usage box + polished countdown + "+" app hint ────────────────
+   The S3/S4 delivered-config view. <UsageMeter remainingBytes> renders `.meter.metric`; the plain
+   meter (exhausted state) is unaffected. Countdown polish is scoped to `.cfg` so the cooldown
+   countdown keeps the base style. */
+.meter.metric{ background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:14px; }
+.pct-chip{ display:inline-flex; align-items:center; margin-inline-start:7px; font-size:11px; font-weight:800;
+  color:var(--brand-tint-ink); background:var(--brand-tint); border-radius:var(--r-pill); padding:2px 8px; }
+.meter-foot{ margin-block-start:9px; font-size:12px; color:var(--muted); }
+.meter-foot b{ color:var(--text); font-weight:800; }
+/* the track sits on the sunken box → in light --sunken-2 ≈ --sunken so the empty bar vanished; a
+   --border-strong fill keeps the neutral track clearly visible in both themes. */
+.meter.metric .bar{ block-size:10px; background:var(--border-strong); }
+/* countdown scaled to the card's own type scale (title 17-18px) — 27px digits shouted over the
+   whole page; 20px keeps the timer prominent without dominating */
+.cfg .cd .cd-seg{ padding:6px 8px 5px; border-color:var(--border-strong);
+  background:linear-gradient(160deg, var(--sunken), color-mix(in srgb,var(--primary) 6%,var(--sunken))); }
+.cfg .cd .cd-seg b{ font-size:20px; }
+.cfg .cd .colon{ font-size:16px; padding-block-end:15px; }
+/* a standard-size "+" before the quick-add hint sentence */
+.apps .lbl{ display:flex; align-items:center; gap:6px; }
+.apps .lbl .ic{ inline-size:15px; block-size:15px; color:var(--primary); flex:none; }
+.pick-anchor{ scroll-margin-block-start:84px; scroll-margin-block-end:16px; }
+
+/* change-location: an inviting list row — rotating swap chip + label + real alternatives count */
+.chg-btn{ display:flex; align-items:center; gap:12px; inline-size:100%; margin-block-start:16px; padding:9px 12px; background:transparent; border:1px solid var(--border); border-radius:var(--r-ctl); cursor:pointer; font:inherit; color:var(--text); text-align:start; transition:border-color .15s, background .15s; }
+.chg-btn:hover{ border-color:var(--primary); background:var(--brand-tint); }
+.chg-btn:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.chg-btn .ci{ inline-size:36px; block-size:36px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); transition:transform .35s ease; }
+.chg-btn .ci .ic{ inline-size:18px; block-size:18px; }
+.chg-btn:hover .ci{ transform:rotate(180deg); }
+.chg-btn .ct{ flex:1; min-inline-size:0; display:grid; gap:1px; }
+.chg-btn .ct b{ font-size:13.5px; font-weight:700; }
+.chg-btn .ct small{ font-size:11.5px; color:var(--muted); }
+.chg-btn .chg-chev{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; transition:color .15s, opacity .15s; }
+.chg-btn:hover .chg-chev{ color:var(--primary); opacity:1; }
+[dir="rtl"] .chg-btn .chg-chev{ transform:scaleX(-1); }
+/* Touch targets ≥44px wherever the layout is the phone/tablet one (the burger's breakpoint) — the
+   spec's number, and Apple's. Measured before: 58 controls under it, from the header's 38px buttons
+   and a 23px breadcrumb to a 32px copy button (C-40). Where a control must LOOK smaller than its
+   target (the copy plate, the switch), the 44px box is transparent and the visual is drawn inside
+   it; where a bar must not grow, negative block margins give the box back to the layout. */
+@media (max-width:999.98px){
+  .x-btn{ inline-size:44px; block-size:44px; margin-block:-6px; margin-inline-end:-10px; }
+}

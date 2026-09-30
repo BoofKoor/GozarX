@@ -1,7 +1,7 @@
 """The website copy the panel may override, and the in-code default each key falls back to.
 
 Only four site strings were ever editable (hero title/sub, homepage meta) — everything else the
-visitor reads is a compile-time constant in ``frontend/site/lib/design-copy.ts``, so "edit the
+visitor reads is a compile-time constant in ``frontend/site/lib/copy/design.ts``, so "edit the
 website" from the panel was mostly impossible.
 
 The pattern here is deliberate and cheap to extend: a ``site_copy_<designKey>`` content row
@@ -99,7 +99,7 @@ _ABOUT_PRIVACY_EN = (
     " daily cap can apply."
 )
 
-# Verbatim from frontend/site/lib/design-copy.ts. Keep in sync when the design copy changes — a
+# Verbatim from frontend/site/lib/copy/design.ts. Keep in sync when the design copy changes — a
 # drift here only affects the placeholder the panel shows, never what the site renders.
 SITE_COPY_DEFAULTS: dict[str, dict[Language, str]] = {
     "hero_eyebrow": {

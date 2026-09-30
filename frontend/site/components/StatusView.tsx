@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { type Locale, timeAgo, translator } from "@/lib/i18n";
+import { type Locale, timeAgo } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { useSite } from "@/lib/useSite";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
@@ -9,7 +10,7 @@ import { Icon } from "@/components/Icon";
 import { ClaimWidget } from "@/components/ClaimWidget";
 import { AccountRewards } from "@/components/widget/AccountRewards";
 import { TransferCard } from "@/components/TransferCard";
-import { Flag } from "@/components/widget/pieces";
+import { Flag } from "@/components/widget/Flag";
 import { locLabel } from "@/components/widget/flags";
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from "@/lib/push";
 import { usePwaState } from "@/lib/pwa";
@@ -24,7 +25,7 @@ import { Announce } from "@/components/Announce";
 // main grid (config+claim via the shared ClaimWidget • settings), device-transfer card, and a
 // destructive "reset this device" row with a confirm dialog. Device-identity based — no login.
 export function StatusView({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const { status, config, offline, reload } = useSite();
 
   return (
@@ -112,7 +113,7 @@ export function StatusView({ locale }: { locale: Locale }) {
 // The handle is the user's real, stable, shareable identity (also the referral code + transfer
 // anchor). LTR (it's an ASCII code).
 function IdentityBar({ handle, locale }: { handle: string; locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const [copied, setCopied] = useState(false);
   async function copy() {
     if (await copyText(handle)) {
@@ -159,7 +160,7 @@ function SettingsCard({
   pushEnabled: boolean | null;
   onReload: () => Promise<void> | void;
 }) {
-  const t = translator(locale);
+  const t = useT();
   // Push state is SHARED via the provider so this switch and the Rewards card's push mission agree.
   const { config, pushPerm: perm, pushOn, refreshPush } = useSite();
   const [busy, setBusy] = useState(false);
@@ -278,7 +279,7 @@ function SettingsCard({
 }
 
 function DangerRow({ locale, onReset }: { locale: Locale; onReset: () => Promise<void> | void }) {
-  const t = translator(locale);
+  const t = useT();
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);

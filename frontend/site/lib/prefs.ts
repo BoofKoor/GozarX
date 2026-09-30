@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
-import { useRouter } from "next/navigation";
 import type { Locale } from "@/lib/i18n";
 
 // The visitor's two display preferences, each with ONE implementation. The header, the phone menu,
@@ -64,37 +63,33 @@ export function applyTheme(choice: ThemeChoice) {
 }
 
 /** The visitor's theme choice and what it currently resolves to, kept in sync across every
- *  control on the page (and with the device, while the choice is "system"). `serverChoice` is what
- *  the server rendered from the cookie, so the first client render matches the HTML. */
-export function useTheme(serverChoice: ThemeChoice = "system"): {
+ *  control on the page (and with the device, while the choice is "system"). The pages are
+ *  prerendered, so the HTML cannot know the choice: it is always drawn as "system", the inline
+ *  script in the root layout puts the saved `data-theme` on before the first paint, and these
+ *  controls read it right after hydration. */
+export function useTheme(): {
   choice: ThemeChoice;
   effective: Theme;
   setChoice: (next: ThemeChoice) => void;
 } {
-  const choice = useSyncExternalStore(subscribeTheme, readChoice, () => serverChoice);
-  const effective = useSyncExternalStore(subscribeTheme, readEffective, () =>
-    serverChoice === "dark" ? "dark" : "light",
-  );
+  const choice = useSyncExternalStore(subscribeTheme, readChoice, () => "system" as ThemeChoice);
+  const effective = useSyncExternalStore(subscribeTheme, readEffective, () => "light" as Theme);
   const setChoice = useCallback((next: ThemeChoice) => applyTheme(next), []);
   return { choice, effective, setChoice };
 }
 
 // ── language ──────────────────────────────────────────────────────────────────────────────────
 
-/** Switch the site's language: the cookie the server reads, the document's lang/dir right away
- *  (so the page doesn't flip direction only after the round trip), then a server refresh. */
+/** Switch the site's language: set the cookie `proxy.ts` reads, then load the page again. Each
+ *  language is its own prerendered tree (`app/[lang]`), so this is a different ROOT layout — a
+ *  full load, not a soft refresh, which would try to patch one language's tree into the other's. */
 export function useLocaleSwitch(locale: Locale): (next: Locale) => void {
-  const router = useRouter();
   return useCallback(
     (next: Locale) => {
       if (next === locale) return;
       setCookie("locale", next);
-      const html = document.documentElement;
-      html.setAttribute("lang", next);
-      html.setAttribute("dir", next === "fa" ? "rtl" : "ltr");
-      document.getElementById("app")?.setAttribute("data-locale", next);
-      router.refresh();
+      window.location.reload();
     },
-    [locale, router],
+    [locale],
   );
 }

@@ -1,5 +1,6 @@
-import Link from "next/link";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import Link from "@/components/Link";
+import { type Locale, faDigits } from "@/lib/i18n";
+import { translator } from "@/lib/copy";
 import { LEGAL_IMPORTANT, LEGAL_TITLE, LEGAL_TOC, legalUpdated, type LegalSection } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 

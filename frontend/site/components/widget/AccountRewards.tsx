@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type Locale, faDigits } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { rewardMessage, shareInvite } from "@/lib/rewards";
 import { useSite } from "@/lib/useSite";
 import { subscribeToPush } from "@/lib/push";
@@ -18,7 +19,7 @@ import { BlockedHint, IosSteps, Overlay, OverlayTitle } from "@/components/widge
 // actually subscribe, and each chip shows its live state (installed / enabled / blocked). The
 // "+N MB" figures come from the public config — never hardcoded — and print through lib/format.
 export function AccountRewards({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   // Push state is SHARED via the provider so this mission and the status page's Settings switch
   // agree — enabling from one flips the other. `pushOn` = permission granted AND a live subscription
   // (granted alone delivers nothing, so the mission must still read as claimable in that case).
@@ -67,7 +68,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
   }
 
   async function invite() {
-    if (await shareInvite(link, locale)) return;
+    if (await shareInvite(link, t)) return;
     if (typeof navigator !== "undefined" && "share" in navigator) return; // a sheet exists; dismissed
     if (await copyText(link)) toast(t("invite_copied"));
   }
@@ -83,7 +84,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
       if (await promptInstall()) {
         const r = await api.claimReward("pwa").catch(() => null);
         await reload();
-        toast(rewardMessage(locale, r, config?.reward_pwa_mb, "m_pwa_done"));
+        toast(rewardMessage(t, locale, r, config?.reward_pwa_mb, "m_pwa_done"));
       }
     } finally {
       setBusy(null);
@@ -99,7 +100,7 @@ export function AccountRewards({ locale }: { locale: Locale }) {
       if (ok) {
         const r = await api.claimReward("push").catch(() => null);
         await reload();
-        toast(rewardMessage(locale, r, config?.reward_push_mb, "m_push_done"));
+        toast(rewardMessage(t, locale, r, config?.reward_push_mb, "m_push_done"));
       } else if (
         typeof Notification !== "undefined" &&
         Notification.permission !== "denied"
@@ -312,7 +313,7 @@ function MissionRow({
 // ahead, star = the final bonus day) and a live status banner. Read-only: the streak advances
 // server-side when a config is claimed.
 function StreakHero({ locale, rewardMb }: { locale: Locale; rewardMb?: number }) {
-  const t = translator(locale);
+  const t = useT();
   const { status } = useSite();
   if (!status || status.streak_days <= 0) return null;
 
@@ -422,7 +423,7 @@ function PushPrompt({
   onConfirm: () => void;
   onClose: () => void;
 }) {
-  const t = translator(locale);
+  const t = useT();
   const reasons = [
     { icon: "download", tt: t("pre_1t"), dd: t("pre_1d") },
     { icon: "gauge", tt: t("pre_2t"), dd: t("pre_2d") },

@@ -1,7 +1,8 @@
 "use client";
 
 import { type ReactNode, createContext, useContext, useId, useRef } from "react";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type Locale, faDigits } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { useFocusTrap } from "@/lib/useFocusTrap";
 import { Icon } from "@/components/Icon";
 
@@ -46,7 +47,7 @@ export function Overlay({ children, onClose }: { children: ReactNode; onClose: (
 }
 
 export function IosSteps({ locale, onClose }: { locale: Locale; onClose: () => void }) {
-  const t = translator(locale);
+  const t = useT();
   const steps = [
     { n: 1, text: t("ios_1"), icon: "share" },
     { n: 2, text: t("ios_2"), icon: "download" },
@@ -76,7 +77,7 @@ export function IosSteps({ locale, onClose }: { locale: Locale; onClose: () => v
 // Notifications blocked at the browser level: where to unblock them. Shared by the rewards card's
 // push mission and the settings switch, which used to sit disabled with no word of why (C-20).
 export function BlockedHint({ locale, onClose }: { locale: Locale; onClose: () => void }) {
-  const t = translator(locale);
+  const t = useT();
   return (
     <Overlay onClose={onClose}>
       <div className="push-head">

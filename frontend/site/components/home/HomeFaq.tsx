@@ -1,8 +1,8 @@
 "use client";
 
-import Link from "next/link";
+import Link from "@/components/Link";
 import { useState } from "react";
-import { type CopyOverrides, type Locale, translator } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import type { FaqItem } from "@/lib/content";
 import { AccItem } from "@/components/Accordion";
 
@@ -10,16 +10,8 @@ import { AccItem } from "@/components/Accordion";
 // questions are the first five of the panel's FAQ, in the panel's order (C-36) — read by the page on
 // the server, with the same in-code fallback as /faq, so reordering in the panel is how an operator
 // chooses what the home page asks. They used to be five strings of their own that no edit reached.
-export function HomeFaq({
-  locale,
-  copy,
-  items,
-}: {
-  locale: Locale;
-  copy?: CopyOverrides;
-  items: FaqItem[];
-}) {
-  const t = translator(locale, copy);
+export function HomeFaq({ items }: { items: FaqItem[] }) {
+  const t = useT();
   const [open, setOpen] = useState(0);
   if (items.length === 0) return null;
 

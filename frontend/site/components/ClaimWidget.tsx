@@ -1,21 +1,19 @@
 "use client";
 
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
-import Link from "next/link";
+import Link from "@/components/Link";
 import { api, type ClaimResponse, type StatusResponse } from "@/lib/api";
-import { type CopyOverrides, type Locale, faDigits, fill, translator } from "@/lib/i18n";
-import { shareInvite } from "@/lib/rewards";
+import { type Locale, faDigits, fill } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { clientDeadline } from "@/lib/time";
 import { useBackoffPoll, useExpired, useVisiblePoll } from "@/lib/usePoll";
 import { useSite } from "@/lib/useSite";
 import { Turnstile } from "@/components/Turnstile";
 import { Icon } from "@/components/Icon";
 import { locLabel, locName } from "@/components/widget/flags";
-import { formatMb, formatVolume } from "@/lib/format";
+import { formatVolume } from "@/lib/format";
 import { type LastConfig, readLastConfig, saveLastConfig } from "@/lib/lastConfig";
-import { AppButtons, CopyField, Countdown, Flag, UsageMeter } from "@/components/widget/pieces";
-import { Missions } from "@/components/widget/Missions";
-import { QrToggle } from "@/components/widget/QrToggle";
+import { Flag } from "@/components/widget/Flag";
 
 type Mode = "idle" | "provisioning";
 // A claim that did not go through but leaves S1 the right screen: said in place, under the picker,
@@ -25,6 +23,41 @@ type Notice = "loc_gone" | "busy" | "ts" | null;
 interface Revived {
   friend: boolean; // the referral count moved — a friend's first claim did it
   addedBytes: number; // how much the daily allowance grew
+}
+
+// ---- the post-claim views, loaded on demand ---------------------------------------------------
+// The picker is all a first visit sees, so everything shown only after a claim — the delivered
+// config, the countdown, the missions, the revive — lives in `widget/after` and is fetched when it
+// is about to be needed: with the claim request itself, or at once in a browser that has held a
+// config (`lib/lastConfig`), whose next view is most likely one of them. Until it arrives such a
+// view draws the loading skeleton it would have drawn while /status was on its way.
+type After = typeof import("@/components/widget/after");
+let afterModule: After | null = null;
+let afterLoad: Promise<After> | null = null;
+function loadAfter(): Promise<After> {
+  afterLoad ??= import("@/components/widget/after").then(
+    (m) => (afterModule = m),
+    (err: unknown) => {
+      afterLoad = null; // a failed fetch is tried again the next time it is needed
+      throw err;
+    },
+  );
+  return afterLoad;
+}
+function useAfter(need: boolean): After | null {
+  const [, loaded] = useState(0);
+  useEffect(() => {
+    if (!need || afterModule) return;
+    let live = true;
+    loadAfter().then(
+      () => live && loaded((n) => n + 1),
+      () => {},
+    );
+    return () => {
+      live = false;
+    };
+  }, [need]);
+  return afterModule;
 }
 
 // ---- courtesy auto-scroll helpers -------------------------------------------------------------
@@ -54,17 +87,14 @@ export function ClaimWidget({
   compact = false,
   preselect,
   title,
-  copy,
 }: {
   locale: Locale;
   compact?: boolean;
   preselect?: string;
   /** The picker's heading in place of «کانفیگ رایگان امروز» — a landing names its location. */
   title?: string;
-  /** Panel-authored copy overrides (w_title / w_sub / cta_get …), from the homepage. */
-  copy?: CopyOverrides;
 }) {
-  const t = translator(locale, copy);
+  const t = useT();
   const { status, statusAt, config, locations, loading, offline, reload, refreshLocations } =
     useSite();
   const [picked, setPicked] = useState<string | null>(null);
@@ -224,7 +254,8 @@ export function ClaimWidget({
     setNotice(null);
     let settled = true; // false only while the automatic 429 retry is pending
     try {
-      const res = await api.claim(selected, token || undefined);
+      // the views the outcome will need are fetched alongside, so the outcome is never held up by them
+      const [res] = await Promise.all([api.claim(selected, token || undefined), loadAfter().catch(() => null)]);
       clearToken(); // single-use token: clear it AND reset the widget for the next claim
       if (res.reason !== "rate_limited") retried.current = false;
       if (res.ok) {
@@ -411,6 +442,16 @@ export function ClaimWidget({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
 
+  // The post-claim views are drawn from `widget/after` (see loadAfter): until it is here they show the
+  // loading skeleton. S8 only offers the saved config with it, so it never waits — offline, the
+  // fetch may not succeed at all.
+  const postClaim = view === "s3" || view === "s4" || view === "rv" || view === "s5" || view === "s6";
+  const after = useAfter(postClaim || (view === "s8" && offline && !!saved));
+  const drawn = postClaim && !after ? "loading" : view;
+  useEffect(() => {
+    if (readLastConfig()) void loadAfter().catch(() => {});
+  }, []);
+
   const busy = mode === "provisioning" || retryPending;
   const ctaProps = {
     locale,
@@ -430,7 +471,7 @@ export function ClaimWidget({
   let body: ReactNode;
 
   // ---------- loading ----------
-  if (view === "loading") {
+  if (drawn === "loading") {
     body = (
       // Skeleton mirrors the S1 picker's shape (title · location grid · CTA) so it fills the
       // reserved widget height — the resolve into the real picker doesn't visibly jump.
@@ -447,7 +488,7 @@ export function ClaimWidget({
   }
 
   // ---------- S8 panel error ----------
-  else if (view === "s8") {
+  else if (drawn === "s8") {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <CenterState kind="err" title={t("err_title")} sub={t("err_sub")}>
@@ -464,13 +505,13 @@ export function ClaimWidget({
             {t("err_help")}
           </Link>
         </CenterState>
-        {offline && saved && <SavedConfig locale={locale} config={saved} />}
+        {offline && saved && after && <after.SavedConfig locale={locale} config={saved} />}
       </div>
     );
   }
 
   // ---------- S7 at claim time: nothing to hand out yet (not_ready / no_locations) ----------
-  else if (view === "s7x") {
+  else if (drawn === "s7x") {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <CenterState kind="empty" title={t("empty_title")} sub={t("empty_sub")}>
@@ -493,17 +534,17 @@ export function ClaimWidget({
   }
 
   // ---------- S6 revive (data exhausted) ----------
-  else if (view === "s6") {
+  else if (drawn === "s6" && after) {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <StatusHead kind="warn" title={t("ex_title")} sub={t("ex_sub")} />
-        <UsageMeter
+        <after.UsageMeter
           usedBytes={status?.usage_bytes ?? null}
           totalBytes={status?.daily_limit_bytes ?? null}
           pct={100}
           locale={locale}
         />
-        <ReviveBlock
+        <after.ReviveBlock
           locale={locale}
           refCode={status?.ref_code ?? ""}
           rewardMb={config?.reward_referral_mb}
@@ -513,7 +554,7 @@ export function ClaimWidget({
   }
 
   // ---------- S3/S4 delivered config (and its revived variant) ----------
-  else if (view === "rv" || view === "s3" || view === "s4") {
+  else if ((drawn === "rv" || drawn === "s3" || drawn === "s4") && after) {
     const loc = (fresh ? result?.location : status?.location) ?? status?.location ?? "";
     const head =
       view === "rv"
@@ -529,7 +570,7 @@ export function ClaimWidget({
           {view === "rv" && revived && <RevivedNote locale={locale} revived={revived} />}
           {loc && (
             <div className="cfg-loc">
-              <Flag name={loc} size={34} />
+              <Flag name={loc} size={34} eager />
               <span className="nm">{locLabel(loc, locale)}</span>
               <span className="ok">
                 <Icon name="check" sw={2.6} /> {t("ready")}
@@ -537,10 +578,10 @@ export function ClaimWidget({
             </div>
           )}
           <span className="field-label">{t("link_label")}</span>
-          <CopyField value={link ?? ""} locale={locale} />
-          <AppButtons link={link ?? ""} locale={locale} />
-          {link && <QrToggle value={link} locale={locale} />}
-          <UsageMeter
+          <after.CopyField value={link ?? ""} locale={locale} />
+          <after.AppButtons link={link ?? ""} locale={locale} />
+          {link && <after.QrToggle value={link} locale={locale} />}
+          <after.UsageMeter
             usedBytes={status?.usage_bytes ?? 0}
             totalBytes={status?.daily_limit_bytes ?? null}
             pct={pct}
@@ -552,7 +593,7 @@ export function ClaimWidget({
           {expiresAt != null && (
             <>
               <hr className="divider" />
-              <Countdown deadline={expiresAt} label={t("time_left")} locale={locale} />
+              <after.Countdown deadline={expiresAt} label={t("time_left")} locale={locale} />
             </>
           )}
           {changeLoc ? (
@@ -605,14 +646,14 @@ export function ClaimWidget({
               <Icon name="chevr" sw={2.4} cls="ic-dir chg-chev" />
             </button>
           )}
-          {view === "s3" && !changeLoc && <Missions locale={locale} refCode={status?.ref_code ?? ""} />}
+          {view === "s3" && !changeLoc && <after.Missions locale={locale} refCode={status?.ref_code ?? ""} />}
         </div>
       </div>
     );
   }
 
   // ---------- SB blocked by the operator ----------
-  else if (view === "sb") {
+  else if (drawn === "sb") {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <CenterState kind="err" title={t("blk_title")} sub={t("blk_sub")}>
@@ -625,22 +666,22 @@ export function ClaimWidget({
   }
 
   // ---------- S5 cooldown ----------
-  else if (view === "s5") {
+  else if (drawn === "s5" && after) {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <StatusHead kind="wait" title={t("cd_title")} sub={t("cd_sub")} />
         {cooldownAt != null && (
           <div style={{ paddingBlock: 6 }}>
-            <Countdown deadline={cooldownAt} label={t("cd_next")} locale={locale} />
+            <after.Countdown deadline={cooldownAt} label={t("cd_next")} locale={locale} />
           </div>
         )}
-        <Missions locale={locale} refCode={status?.ref_code ?? ""} />
+        <after.Missions locale={locale} refCode={status?.ref_code ?? ""} />
       </div>
     );
   }
 
   // ---------- S7 no locations ----------
-  else if (view === "s7") {
+  else if (drawn === "s7") {
     body = (
       <div className="widget is-short" ref={rootRef} tabIndex={-1} data-view={view}>
         <CenterState kind="empty" title={t("empty_title")} sub={t("empty_sub")}>
@@ -715,7 +756,7 @@ function WidgetHead({
   sub: string | null;
   allowance?: string;
 }) {
-  const t = translator(locale);
+  const t = useT();
   const chip = allowance ? fill(t("allowance"), { v: allowance }) : null;
   return (
     <div className="w-head">
@@ -740,7 +781,7 @@ function WidgetHead({
 // A visitor who arrived through a friend's invite link is told so — and that their first claim is
 // what credits the friend. A device that has claimed before, or its own link, gets nothing.
 function RefWelcome({ locale, status }: { locale: Locale; status: StatusResponse | null }) {
-  const t = translator(locale);
+  const t = useT();
   const [ref] = useState(() =>
     typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("ref") : null,
   );
@@ -778,7 +819,7 @@ function Picker({
   /** In change-location mode: the location in use, marked «فعلی». */
   current?: string | null;
 }) {
-  const t = translator(locale);
+  const t = useT();
   const labelId = useId();
   const gridRef = useRef<HTMLDivElement>(null);
   const [all, setAll] = useState(false);
@@ -863,7 +904,7 @@ function Picker({
               </span>
               {/* sized by CSS (smaller on a phone); no green "online" dot — every card had one,
                   so it said nothing about any of them */}
-              <Flag name={loc} fluid />
+              <Flag name={loc} fluid eager={i < limit} />
               <span className="nm">{locLabel(loc, locale)}</span>
             </button>
           );
@@ -889,7 +930,7 @@ function Picker({
   );
 }
 
-/** The grid's column count — the same 520px breakpoint globals.css switches it at. */
+/** The grid's column count — the same 520px breakpoint styles/base.css switches it at. */
 function useGridColumns(): number {
   const query = "(min-width:520px)";
   const [cols, setCols] = useState(() =>
@@ -940,7 +981,7 @@ function CtaBlock({
   trialHours?: number;
   notice: Notice;
 }) {
-  const t = translator(locale);
+  const t = useT();
   const switching = !!onCancel;
   // the renewal window is the operator's setting — unknown means say nothing, never a guessed 24
   const renew = fill(t("reassure3"), { h: trialHours });
@@ -1083,41 +1124,9 @@ function CenterState({
   );
 }
 
-// The last config this browser was shown, while /status cannot be reached. The link itself does not
-// depend on this site — an app that imported it keeps connecting — so it is worth handing back even
-// when everything else on the page has failed. Past its expiry it says so instead of a date.
-function SavedConfig({ locale, config }: { locale: Locale; config: LastConfig }) {
-  const t = translator(locale);
-  const until = config.expires_at ? Date.parse(config.expires_at) : NaN;
-  const note =
-    !Number.isNaN(until) && until > Date.now()
-      ? fill(t("offline.until"), {
-          t: new Date(until).toLocaleString(locale === "fa" ? "fa-IR" : "en-US", {
-            dateStyle: "medium",
-            timeStyle: "short",
-          }),
-        })
-      : t("offline.expired");
-  return (
-    <div className="saved-cfg" data-saved-config>
-      <p className="oc-head">
-        {t("offline.saved")}
-        {config.label && (
-          <>
-            {" · "}
-            <b>{config.label}</b>
-          </>
-        )}
-      </p>
-      <CopyField value={config.link} locale={locale} />
-      <p className="hint oc-note">{note}</p>
-    </div>
-  );
-}
-
 // Why the config came back, and by how much — the growth loop's payoff, so it is spelled out.
 function RevivedNote({ locale, revived }: { locale: Locale; revived: Revived }) {
-  const t = translator(locale);
+  const t = useT();
   const amount = revived.addedBytes > 0 ? formatVolume(revived.addedBytes, locale) : null;
   const text = revived.friend
     ? amount
@@ -1131,51 +1140,6 @@ function RevivedNote({ locale, revived }: { locale: Locale; revived: Revived }) 
     <div className="revived-note show">
       <Icon name="check" sw={2.6} />
       <span>{text}</span>
-    </div>
-  );
-}
-
-function ReviveBlock({
-  locale,
-  refCode,
-  rewardMb,
-}: {
-  locale: Locale;
-  refCode: string;
-  rewardMb?: number;
-}) {
-  const t = translator(locale);
-  const link = typeof window !== "undefined" ? `${window.location.origin}/?ref=${refCode}` : "";
-  // The link sits in the same framed CopyField as the config link (the bare <code> overflowed the
-  // card on a phone); the system share sheet is offered only where one exists — elsewhere a second
-  // "copy" button would just repeat the one inside the field.
-  const canShare = typeof navigator !== "undefined" && !!navigator.share;
-  return (
-    <div className="revive">
-      <div className="rt">
-        <Icon name="spark" sw={2.2} /> {t("revive_t")}
-        {rewardMb ? (
-          <span className="rv-amt">
-            <bdi>+{formatMb(rewardMb, locale)}</bdi>
-          </span>
-        ) : null}
-      </div>
-      {/* revive_d is verbatim design copy (a build-time constant in design-copy.ts) with intentional
-          <b> emphasis — never user/API data — so rendering it as HTML is safe. */}
-      <p className="rd" dangerouslySetInnerHTML={{ __html: t("revive_d") }} />
-      <span className="field-label" style={{ marginBlockEnd: 8 }}>
-        {t("invite_label")}
-      </span>
-      <CopyField value={link} locale={locale} />
-      {canShare && (
-        <button
-          type="button"
-          className="btn secondary block revive-share"
-          onClick={() => void shareInvite(link, locale)}
-        >
-          <Icon name="share" sw={2} /> {t("share")}
-        </button>
-      )}
     </div>
   );
 }

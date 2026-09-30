@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { copyText } from "@/lib/clipboard";
-import { type Locale, faDigits, translator } from "@/lib/i18n";
+import { type Locale, faDigits } from "@/lib/i18n";
+import { useT } from "@/lib/useT";
 import { Icon } from "@/components/Icon";
 import { Announce } from "@/components/Announce";
 import { useSite } from "@/lib/useSite";
@@ -28,7 +29,7 @@ function mmss(s: number): string {
 }
 
 export function TransferCard({ locale }: { locale: Locale }) {
-  const t = translator(locale);
+  const t = useT();
   const [code, setCode] = useState<string | null>(null);
   const [deadline, setDeadline] = useState(0); // ms epoch when the code expires; 0 = no active code
   const [left, setLeft] = useState(0);

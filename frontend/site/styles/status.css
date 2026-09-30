@@ -1,0 +1,268 @@
+/* /status only (imported by app/[lang]/status/page.tsx): the account page's cards, the rewards card,
+   the device transfer, the settings and the modals they open. Loaded after base.css (C-59). */
+
+.btn.danger{ background:var(--danger); color:#fff; }
+#app[data-theme="dark"] .btn.danger{ color:#2b0707; }
+.btn.danger.o{ background:transparent; color:var(--danger-ink); border-color:color-mix(in srgb,var(--danger) 40%,var(--border)); }
+/* Only the status dashboard uses the flex space-between header (phase-6); content pages (contact/
+   faq) are a plain block, so this must not be a bare `.page-head` rule (it bled onto them). */
+/* Block column so every line shares one inline-start edge. The account dashboard drops the marketing
+   .sec top padding (56px) to a standard header→title gap; the page-head no longer adds its own top. */
+.sec.status-sec{ padding-block-start:32px; }
+/* The claim widget reuses `.widget`, whose dramatic `--shadow-hero` is meant for the landing hero
+   floating over open space. On the stacked dashboard it's just one card among calm `.card` siblings,
+   and — being position:relative — it paints ABOVE the static rewards card 16px below it, so that big
+   shadow lands on the neighbor's surface. Wear the same calm elevation as the sibling cards here. */
+.status-page .grid-main .widget{ box-shadow:var(--shadow-sm); }
+/* margin-block-end restores the section gap the removed stat row used to provide (its margin-top),
+   so the config card / offline banner isn't jammed against the identity note. */
+.status-page .page-head{ display:block; padding-block:0; margin-block-end:24px; }
+.status-page .page-head .eyebrow{ margin-block-end:8px; }
+.grid-main{ display:grid; gap:16px; grid-template-columns:minmax(0,1fr); }
+@media (min-width:860px){ .grid-main{ grid-template-columns:minmax(0,1.35fr) minmax(0,1fr); align-items:start; } }
+.block-title{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-block-end:14px; }
+.block-title h2{ font-size:17px; font-weight:800; margin:0; display:inline-flex; align-items:center; gap:8px; }
+/* card-header icons carry a brand accent (matches the streak sub-header .rw-t .ic) */
+.block-title h2 .ic{ inline-size:18px; block-size:18px; color:var(--primary); flex:none; }
+/* header icon tile — the rewards gift-tile treatment (semi-transparent brand tint, no border),
+   reusable on sibling card headers so the account column keeps one rhythm */
+.block-title .htile{ inline-size:40px; block-size:40px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.block-title .htile .ic{ inline-size:20px; block-size:20px; color:inherit; }
+.block-title h2:has(.htile){ gap:12px; }
+.block-title a{ font-size:13px; font-weight:700; color:var(--link); text-decoration:none; display:inline-flex; align-items:center; gap:5px; }
+.block-title a .ic{ inline-size:14px; block-size:14px; }
+.hist{ padding:20px; }
+.hrow{ display:flex; align-items:center; gap:12px; padding-block:12px; border-block-end:1px solid var(--border); }
+.hrow:last-child{ border-block-end:0; }
+.hrow .flag{ inline-size:30px; block-size:30px; border-radius:50%; box-shadow:0 0 0 1px var(--flag-ring); object-fit:cover; flex:none; }
+.hrow .ht{ min-inline-size:0; }
+.hrow .hn{ font-size:14px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hrow .hd2{ font-size:12px; color:var(--muted); }
+.empty .ei{ inline-size:56px; block-size:56px; border-radius:16px; background:var(--sunken); color:var(--muted); display:grid; place-items:center; margin:0 auto 14px; }
+.empty .ei .ic{ inline-size:28px; block-size:28px; }
+.empty .et{ font-size:15px; font-weight:700; margin:0 0 6px; }
+.empty .ed{ font-size:13px; color:var(--muted); margin:0 0 14px; }
+.settings{ padding:8px 20px; }
+.srow{ display:flex; align-items:center; padding-block:16px; border-block-end:1px solid var(--border); }
+.srow:last-child{ border-block-end:0; }
+/* leading icon column — bare brand-accent icons (no tile), snug to their label */
+.srow{ gap:10px; }
+.srow .si{ inline-size:22px; block-size:22px; display:grid; place-items:center; flex:none; color:var(--primary); }
+.srow .si .ic{ inline-size:20px; block-size:20px; }
+.srow .sk{ font-size:14.5px; font-weight:600; flex:1; }
+.srow .skd{ font-size:12px; color:var(--muted); font-weight:400; }
+.switch{ inline-size:46px; block-size:26px; border-radius:9999px; background:var(--border-strong); position:relative; cursor:pointer; border:0; flex:none; transition:background .2s; }
+.switch::after{ content:""; position:absolute; inset-block-start:3px; inset-inline-start:3px; inline-size:20px; block-size:20px; border-radius:50%; background:#fff; transition:inset-inline-start .2s; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+.switch[aria-checked="true"]{ background:var(--primary); }
+.switch[aria-checked="true"]::after{ inset-inline-start:23px; }
+.switch:focus-visible{ outline:2px solid var(--ring); outline-offset:2px; }
+.perm-tag{ font-size:11px; font-weight:700; border-radius:var(--r-pill); padding:3px 9px; }
+.perm-tag.denied{ color:var(--danger-ink); background:var(--danger-surface); }
+.perm-tag.granted{ color:var(--success-ink); background:var(--success-surface); }
+.mini-seg{ display:inline-flex; padding:2px; gap:2px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-pill); }
+.mini-seg button{ border:0; background:transparent; color:var(--muted); font:inherit; font-size:12.5px; font-weight:600; padding:5px 12px; border-radius:var(--r-pill); cursor:pointer; }
+.mini-seg button[aria-pressed="true"]{ background:var(--primary); color:var(--on-primary); font-weight:700; }
+.danger-row{ margin-block-start:16px; padding:18px 20px; border:1px solid color-mix(in srgb,var(--danger) 30%,var(--border)); border-radius:var(--r-lg); display:flex; align-items:center; gap:14px; flex-wrap:wrap; background:color-mix(in srgb,var(--danger-surface) 40%,transparent); }
+.danger-row .dt{ flex:1; min-inline-size:200px; }
+.danger-row .dt .dn{ font-size:14.5px; font-weight:700; }
+.danger-row .dt .dd{ font-size:12.5px; color:var(--muted); }
+/* transfer / restore */
+  .transfer-card{ padding:22px; }
+.transfer-card .th{ display:flex; align-items:center; gap:13px; margin-block-end:8px; }
+.transfer-card .ti{ inline-size:46px; block-size:46px; border-radius:13px; flex:none; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 50%,var(--hero-2))); box-shadow:var(--glow-sm); }
+[dir="rtl"] .transfer-card .ti{ background:linear-gradient(225deg,var(--hero-1),color-mix(in srgb,var(--hero-1) 50%,var(--hero-2))); }
+.transfer-card .ti .ic{ inline-size:24px; block-size:24px; }
+.transfer-card h2{ font-size:17px; font-weight:800; margin:0; }
+.transfer-card p{ font-size:13px; color:var(--muted); margin:2px 0 0; }
+.code-input{ display:flex; gap:8px; margin-block-start:14px; }
+.code-input input{ flex:1; min-inline-size:0; font:inherit; font-family:ui-monospace,Consolas,monospace; font-size:16px; letter-spacing:.15em; text-transform:uppercase; text-align:center; color:var(--text); background:var(--surface); border:1.5px solid var(--border-strong); border-radius:var(--r-ctl); padding:12px; direction:ltr; }
+.code-input input::placeholder{ font-family:var(--font); font-size:14px; letter-spacing:normal; text-transform:none; color:var(--muted); }
+.code-input input:focus-visible{ outline:none; border-color:var(--ring); box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 22%,transparent); }
+.code-input.err input{ border-color:var(--danger); }
+.code-err{ display:none; font-size:12.5px; color:var(--danger-ink); margin-block-start:8px; }
+.code-input.err ~ .code-err{ display:block; }
+.code-err.show{ display:block; }
+/* modal */
+  .overlay{ position:fixed; inset:0; z-index:100; background:var(--backdrop); display:none; align-items:center; justify-content:center; padding:20px; }
+.overlay.open{ display:flex; }
+.modal{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-hero); box-shadow:var(--shadow-hero); max-inline-size:440px; inline-size:100%; padding:26px; animation:pop .28s ease; max-block-size:90vh; overflow-y:auto; }
+.modal h3, .modal .ov-title{ font-size:18px; font-weight:800; margin:0; }
+.modal .msub{ font-size:13.5px; color:var(--muted); margin:0 0 18px; line-height:1.7; }
+.bigcode{ display:flex; align-items:center; gap:8px; }
+.bigcode code{ flex:1; text-align:center; direction:ltr; unicode-bidi:isolate; font-family:ui-monospace,Consolas,monospace; font-size:26px; font-weight:800; letter-spacing:.12em; background:var(--sunken); border:1px dashed var(--border-strong); border-radius:var(--r-card); padding:16px; color:var(--text); }
+.expiry{ display:flex; align-items:center; justify-content:center; gap:7px; margin-block-start:14px; font-size:13px; color:var(--muted); }
+.expiry .ic{ inline-size:15px; block-size:15px; }
+.expiry b{ color:var(--warning-ink); font-variant-numeric:tabular-nums; direction:ltr; unicode-bidi:isolate; }
+.modal .center{ text-align:center; }
+.modal .expired-ic{ inline-size:60px; block-size:60px; border-radius:50%; background:var(--warning-surface); color:var(--warning-ink); display:grid; place-items:center; margin:0 auto 14px; }
+.modal .expired-ic .ic{ inline-size:30px; block-size:30px; }
+
+/* ============ Account rewards — streak day-dots + real install/notifications (phase-3/7 chrome) ============ */
+/* Public account-id chip in the page head */
+
+/* Identity bar — the handle as one tidy component (id badge + code + icon copy + transfer). */
+.id-bar{ display:inline-flex; align-items:center; gap:10px; margin-block-start:14px; max-inline-size:100%; background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:8px 10px 8px 14px; box-shadow:var(--shadow-sm); }
+.id-bar .id-icb{ inline-size:34px; block-size:34px; border-radius:10px; background:var(--brand-tint); color:var(--brand-tint-ink); display:grid; place-items:center; flex:none; }
+.id-bar .id-icb .ic{ inline-size:18px; block-size:18px; }
+.id-bar .id-code{ font-family:ui-monospace,"SF Mono",Consolas,monospace; font-weight:800; letter-spacing:.6px; font-size:15px; color:var(--text); min-inline-size:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.id-bar .id-cp{ inline-size:32px; block-size:32px; border-radius:9px; border:1px solid var(--border); background:var(--sunken); display:grid; place-items:center; cursor:pointer; color:var(--muted); flex:none; transition:color .15s,border-color .15s; }
+.id-bar .id-cp:hover{ color:var(--primary); border-color:var(--primary); }
+.id-bar .id-cp.done{ color:var(--success-ink); border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+.id-bar .id-cp .ic{ inline-size:15px; block-size:15px; }
+.id-bar .id-sep{ inline-size:1px; align-self:stretch; background:var(--border); margin-inline:2px; flex:none; }
+.id-bar .id-tr{ display:inline-flex; align-items:center; gap:5px; color:var(--link); font-weight:700; font-size:13px; text-decoration:none; flex:none; white-space:nowrap; }
+.id-bar .id-tr .ic{ inline-size:15px; block-size:15px; }
+.id-cap{ margin-block-start:11px; font-size:12px; color:var(--muted); }
+/* reserves the identity-bar + caption height until the handle loads (no grid drop) */
+.id-slot{ block-size:105px; }
+.rw .ic{ inline-size:13px; block-size:13px; flex:none; }
+
+/* the rewards card had no inner padding — content ran edge-to-edge; inset it like the sibling cards */
+.rewards-card{ padding:8px 20px 18px; }
+/* holds the rewards card's footprint while /status loads (see AccountRewards) — no pop-in shove.
+   Sized to the resolved card (measured ~561 mobile / ~517 desktop with the full mission set). */
+.rw2-skel{ min-block-size:560px; background:
+  linear-gradient(90deg,var(--skel-1),var(--skel-2),var(--skel-1)) 0 0/200% 100%;
+  animation:shimmer 1.3s linear infinite; opacity:.5; }
+@media (min-width:640px){ .rw2-skel{ min-block-size:518px; } }
+.rewards-card .block-title{ margin-block-end:12px; }
+/* ===== rewards card v2 — "daily rewards": streak hero + tinted mission rows + footer note ===== */
+.rw2{ --violet:#7C6CF0; --violet-tint:color-mix(in srgb,var(--violet) 14%,var(--surface)); --violet-ink:color-mix(in srgb,var(--violet) 72%,var(--text)); }
+#app[data-theme="dark"] .rw2{ --violet-tint:color-mix(in srgb,var(--violet) 20%,var(--surface)); --violet-ink:color-mix(in srgb,var(--violet) 60%,#fff); }
+
+.rw2-head{ display:flex; align-items:flex-start; gap:12px; padding-block:8px 14px; }
+.rw2-gift{ inline-size:40px; block-size:40px; border-radius:12px; flex:none; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-gift .ic{ inline-size:20px; block-size:20px; }
+.rw2-head h2{ font-size:17px; font-weight:800; margin:0; line-height:1.3; }
+.rw2-head p{ font-size:12.5px; color:var(--muted); margin:3px 0 0; }
+
+/* streak hero */
+.rw2-streak{ background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-card); padding:14px; margin-block-end:14px; }
+.rw2-srow{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.rw2-ring{ position:relative; inline-size:52px; block-size:52px; flex:none; display:grid; place-items:center; }
+.rw2-ring svg{ position:absolute; inset:0; inline-size:100%; block-size:100%; transform:rotate(-90deg); }
+[dir="rtl"] .rw2-ring svg{ transform:rotate(-90deg) scaleY(-1); }
+.rw2-ring circle{ fill:none; stroke-width:3.5; }
+.rw2-ring .tr{ stroke:var(--border-strong); }
+.rw2-ring .pr{ stroke:var(--success); stroke-linecap:round; }
+/* flame stays neutral — the ring's arc alone carries the progress colour */
+.rw2-ring > .ic{ inline-size:24px; block-size:24px; color:var(--muted); position:relative; }
+.rw2-stxt{ min-inline-size:0; }
+.rw2-stxt b{ display:block; font-size:15.5px; font-weight:800; }
+.rw2-stxt b i{ font-style:normal; color:var(--success-ink); }
+.rw2-stxt small{ font-size:12px; color:var(--muted); }
+/* day rail: check = earned · number = ahead · star = the final bonus day */
+.rw2-rail{ display:flex; align-items:center; flex:1 1 100%; margin-block-start:12px; min-inline-size:0; }
+.rw2-node{ inline-size:27px; block-size:27px; border-radius:50%; flex:none; display:grid; place-items:center; font-size:11.5px; font-weight:700; color:var(--muted); background:var(--surface); border:1.5px solid var(--border-strong); }
+.rw2-node .ic{ inline-size:12px; block-size:12px; }
+/* earned days: SOFT green (tinted surface + ink check) — solid fills piled too much saturation */
+.rw2-node.on{ background:var(--success-surface); border-color:color-mix(in srgb,var(--success) 45%,transparent); color:var(--success-ink); }
+.rw2-node.today{ border-color:color-mix(in srgb,var(--success) 45%,transparent); color:var(--success-ink); box-shadow:0 0 0 3px color-mix(in srgb,var(--success) 12%,transparent); }
+.rw2-node.last:not(.on){ border-color:color-mix(in srgb,var(--primary) 55%,var(--border-strong)); color:var(--primary); }
+.rw2-line{ flex:1; block-size:2px; min-inline-size:6px; background:var(--border-strong); }
+.rw2-line.on{ background:color-mix(in srgb,var(--success) 35%,transparent); }
+/* one clean status caption under the rail (replaces the old tinted banner box) */
+.rw2-cap{ display:flex; align-items:center; gap:7px; margin-block-start:12px; font-size:12.5px; color:var(--muted); }
+.rw2-cap > .ic{ inline-size:14px; block-size:14px; flex:none; color:var(--brand-tint-ink); }
+.rw2-cap > .ic.ok{ color:var(--success); }
+.rw2-cap b{ color:var(--text); font-weight:700; }
+.rw2-cap .amt{ margin-inline-start:auto; color:var(--success-ink); font-variant-numeric:tabular-nums; white-space:nowrap; }
+
+/* mission rows */
+.rw2-list{ display:flex; flex-direction:column; }
+.rw2-row{ display:flex; align-items:center; gap:13px; inline-size:100%; padding:14px 2px; text-align:start; background:none; border:0; font:inherit; color:inherit; }
+button.rw2-row{ cursor:pointer; -webkit-tap-highlight-color:transparent; border-radius:12px; transition:background .14s; }
+button.rw2-row:hover{ background:color-mix(in srgb,var(--primary) 5%,transparent); }
+button.rw2-row:disabled{ cursor:default; background:none; }
+.rw2-row + .rw2-row{ border-block-start:1px solid var(--border); }
+
+.rw2-tile{ position:relative; inline-size:46px; block-size:46px; border-radius:14px; flex:none; display:grid; place-items:center; }
+.rw2-tile > .ic{ inline-size:21px; block-size:21px; }
+.rw2-tile.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-tile.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-tile.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-mini{ position:absolute; inset-block-end:-4px; inset-inline-end:-4px; inline-size:18px; block-size:18px; border-radius:50%; background:var(--success); color:#fff; display:grid; place-items:center; border:2.5px solid var(--surface); }
+.rw2-mini.bad{ background:var(--violet); }
+.rw2-mini .ic{ inline-size:10px; block-size:10px; }
+
+.rw2-bd{ flex:1; min-inline-size:0; display:grid; justify-items:start; gap:3px; }
+.rw2-bd > b{ font-size:14px; font-weight:800; line-height:1.35; }
+.rw2-bd > small{ font-size:12px; color:var(--muted); }
+.rw2-pill{ display:inline-flex; align-items:center; font-size:10.5px; font-weight:700; padding:2.5px 9px; border-radius:var(--r-pill); }
+.rw2-pill.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-pill.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-pill.danger{ background:var(--danger-surface); color:var(--danger-ink); }
+.rw2-track{ inline-size:100%; block-size:6px; border-radius:99px; background:var(--sunken-2); overflow:hidden; }
+.rw2-track > i{ display:block; block-size:100%; border-radius:99px; background:linear-gradient(90deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
+[dir="rtl"] .rw2-track > i{ background-image:linear-gradient(270deg,var(--success),color-mix(in srgb,var(--success) 55%,#34d399)); }
+.rw2-cnt{ font-size:11px; font-weight:700; color:var(--muted); }
+.rw2-cnt b{ color:var(--success-ink); }
+
+.rw2-side{ flex:none; display:flex; align-items:center; gap:8px; }
+.rw2-amt{ display:inline-flex; align-items:baseline; gap:3px; font-variant-numeric:tabular-nums; font-size:14px; font-weight:900; padding:7px 11px; border-radius:12px; white-space:nowrap; }
+.rw2-amt u{ text-decoration:none; font-size:10px; font-weight:700; opacity:.8; }
+.rw2-amt.brand{ background:var(--brand-tint); color:var(--brand-tint-ink); }
+.rw2-amt.success{ background:var(--success-surface); color:var(--success-ink); }
+.rw2-amt.violet{ background:var(--violet-tint); color:var(--violet-ink); }
+.rw2-end{ inline-size:15px; block-size:15px; color:var(--muted); opacity:.75; flex:none; }
+.rw2-end.ok{ color:var(--success-ink); opacity:1; }
+
+.rw2-foot{ display:flex; align-items:center; gap:8px; margin-block-start:10px; padding:10px 12px; border-radius:12px; background:var(--sunken); border:1px solid var(--border); font-size:12px; color:var(--muted); }
+.rw2-foot .ic{ inline-size:14px; block-size:14px; flex:none; }
+
+/* iOS install steps modal */
+.ios-steps{ display:flex; flex-direction:column; gap:10px; }
+.ios-step{ display:flex; align-items:center; gap:12px; background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); padding:12px 14px; }
+.ios-n{ inline-size:26px; block-size:26px; border-radius:50%; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); font-weight:800; font-size:13px; flex:none; }
+.ios-t{ flex:1; font-size:13.5px; }
+.ios-badge{ inline-size:32px; block-size:32px; border-radius:9px; display:grid; place-items:center; background:var(--surface); border:1px solid var(--border); color:var(--muted); flex:none; }
+.ios-badge .ic{ inline-size:18px; block-size:18px; }
+
+/* push pre-prompt modal */
+.push-head{ display:flex; align-items:center; gap:12px; margin-block-end:14px; }
+.push-ic{ inline-size:44px; block-size:44px; border-radius:12px; display:grid; place-items:center; background:var(--brand-tint); color:var(--brand-tint-ink); flex:none; }
+.push-ic .ic{ inline-size:22px; block-size:22px; }
+.push-head h3, .push-head .ov-title{ font-size:16px; font-weight:700; }
+.plist{ display:flex; flex-direction:column; gap:10px; margin-block-end:6px; }
+.pitem{ display:flex; align-items:flex-start; gap:11px; }
+.pio{ inline-size:30px; block-size:30px; border-radius:9px; display:grid; place-items:center; background:var(--sunken); color:var(--primary); flex:none; }
+.pio .ic{ inline-size:16px; block-size:16px; }
+.pt{ display:block; font-size:13.5px; font-weight:600; }
+.pd{ display:block; font-size:12px; color:var(--muted); }
+.acct-btn[aria-current="page"]{ border-color:color-mix(in srgb,var(--primary) 45%,transparent); }
+/* Touch targets ≥44px wherever the layout is the phone/tablet one (the burger's breakpoint) — the
+   spec's number, and Apple's. Measured before: 58 controls under it, from the header's 38px buttons
+   and a 23px breadcrumb to a 32px copy button (C-40). Where a control must LOOK smaller than its
+   target (the copy plate, the switch), the 44px box is transparent and the visual is drawn inside
+   it; where a bar must not grow, negative block margins give the box back to the layout. */
+@media (max-width:999.98px){
+  .id-bar .id-tr{ min-block-size:44px; margin-block:-10px; }
+  /* the id copy button: a 44px target around the design's 32px plate */
+  .id-bar .id-cp{ position:relative; inline-size:44px; block-size:44px; margin:-6px; border:0; background:transparent; }
+  .id-bar .id-cp::before{ content:""; position:absolute; inset:6px; border-radius:9px; border:1px solid var(--border); background:var(--sunken); transition:border-color .15s; }
+  .id-bar .id-cp:hover::before{ border-color:var(--primary); }
+  .id-bar .id-cp.done::before{ border-color:color-mix(in srgb,var(--success) 40%,var(--border)); }
+  .id-bar .id-cp .ic{ position:relative; }
+  /* the switch: a 44px-tall button, its 46×26 track drawn as ::before */
+  .switch, .switch[aria-checked="true"]{ inline-size:50px; block-size:44px; background:transparent; border-radius:12px; }
+  .switch::before{ content:""; position:absolute; inset-block:9px; inset-inline:2px; border-radius:9999px; background:var(--border-strong); transition:background .2s; }
+  .switch[aria-checked="true"]::before{ background:var(--primary); }
+  .switch::after{ inset-block-start:12px; inset-inline-start:5px; z-index:1; }
+  .switch[aria-checked="true"]::after{ inset-inline-start:25px; }
+}
+
+/* ===== My config page (C-17, C-20) ===== */
+/* A button that reads as a link inside a sentence; on a phone its hit box grows to 44px without
+   moving the line (the Phase D pattern: padding out, the same margin back). */
+.link-btn{ font:inherit; font-weight:600; color:var(--link); background:none; border:0; padding:0; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+@media (max-width:999.98px){ .link-btn{ padding-block:12px; margin-block:-12px; } }
+.srow .skd-why{ color:var(--warning-ink); margin-block-start:4px; }
+/* redeeming a code re-points this browser; one with anything to lose is asked first */
+.restore-warn{ margin-block-start:12px; background:var(--warning-surface); border:1px solid color-mix(in srgb,var(--warning) 35%,var(--border)); border-radius:var(--r-card); padding:14px 16px; }
+.restore-warn p{ margin:0 0 12px; font-size:13.5px; line-height:1.8; color:var(--text); }
+.rw-actions{ display:flex; gap:8px; flex-wrap:wrap; }
+/* the settings' segmented buttons as 44px phone targets — after the .mini-seg rules above, which
+   they adjust (in base.css, loaded first, the rules above would win the padding back) */
+@media (max-width:999.98px){
+  .mini-seg button{ min-block-size:44px; min-inline-size:44px; padding-inline:16px; }
+}
