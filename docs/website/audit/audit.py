@@ -217,6 +217,14 @@ def settle(page, ms=900):
     except Exception:
         pass
     page.wait_for_timeout(ms)
+    # A full-page capture never scrolls, so the IntersectionObserver never marks the sections below
+    # the fold `.in` — and under reduced motion they stay at opacity 0 anyway, because the duplicate
+    # `#app.reveal-js .reveal` rule at globals.css:779 outranks the reduced-motion override at :503
+    # (a real bug, reported as V-finding). Count them for the probe, then reveal them for the shot.
+    page.evaluate("window.__hiddenReveals = [...document.querySelectorAll('.reveal')]"
+                  ".filter(e => getComputedStyle(e).opacity === '0').length")
+    page.evaluate("document.querySelectorAll('.reveal').forEach(e => e.classList.add('in'))")
+    page.wait_for_timeout(150)
 
 
 # ---------------------------------------------------------------------------------------------------
