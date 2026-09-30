@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 
@@ -81,6 +82,13 @@ class Delivered:
 
 
 @dataclass(frozen=True)
+class Blocked:
+    """The operator blocked this device. It gets nothing, whatever its cooldown says — before this
+    existed the claim path never looked at the status, so a blocked device claimed again as soon as
+    its cooldown ran out, and that very claim flipped it back to ``active_config``."""
+
+
+@dataclass(frozen=True)
 class LocationUnavailable:
     """The picked location isn't one the squad serves right now (renamed/disabled/stale tab).
 
@@ -93,7 +101,13 @@ class LocationUnavailable:
 
 # Reuses the bot's storage-agnostic result variants for the shared states.
 SiteClaimResult = (
-    Delivered | AlreadyClaimedToday | NotReady | NoLocations | PanelError | LocationUnavailable
+    Delivered
+    | AlreadyClaimedToday
+    | NotReady
+    | NoLocations
+    | PanelError
+    | LocationUnavailable
+    | Blocked
 )
 
 
@@ -209,12 +223,22 @@ class SiteTrialService:
         site_claim_repo: SiteClaimRepository,
         site_reward_repo: SiteRewardRepository,
         redis: Redis,
+        *,
+        commit: Callable[[], Awaitable[None]] | None = None,
     ) -> None:
         self._panel = panel
         self._settings = settings
         self._claims = site_claim_repo
         self._rewards = site_reward_repo
         self._redis = redis
+        self._commit_hook = commit
+
+    async def _commit(self) -> None:
+        """End the open transaction before a panel round trip, when the route handed over its
+        commit. ``/status`` and ``/claim`` used to hold a pooled connection for as long as the panel
+        took; the bot's webhook draws from the same pool."""
+        if self._commit_hook is not None:
+            await self._commit_hook()
 
     # --- settings / cache -----------------------------------------------------------------------
     async def _hours(self) -> int:
@@ -246,6 +270,29 @@ class SiteTrialService:
         await self._redis.delete(site_sub_cache_key(uuid))
 
     async def squad_locations(self) -> list[str] | None:
+        """The locations the site OFFERS: the squad's live names, narrowed to the admin's ticked
+        subset (``SITE_LOCATIONS``, matched by NORMALISED name) — or ``None`` when unknown.
+
+        An empty stored list means "all of them", so a host added in the panel appears on its own.
+        The subset used to be ignored whenever the panel answered: unticking a location in the
+        settings saved, said "saved", and changed nothing on the site. A subset that matches NONE of
+        the live names (every ticked host since renamed) is treated as "all" rather than offering
+        nothing — the picker shows it that way too, and an empty site is never what was chosen.
+        """
+        live = await self._live_squad_locations()
+        if live is None:
+            return None
+        chosen = await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
+        if not chosen:
+            return live
+        keys = {normalize_remark(name) for name in chosen}
+        subset = [name for name in live if normalize_remark(name) in keys]
+        if not subset and live:
+            logger.warning("site locations: the ticked subset matches no live host; offering all")
+            return live
+        return subset
+
+    async def _live_squad_locations(self) -> list[str] | None:
         """The configured squad's location names, LIVE — or ``None`` when they can't be determined.
 
         ``None`` is a distinct answer from ``[]`` and the difference matters everywhere downstream:
@@ -267,6 +314,7 @@ class SiteTrialService:
                 return [str(x) for x in json.loads(cached)]
             except (ValueError, TypeError):
                 pass  # poisoned entry — fall through and re-derive
+        await self._commit()
         try:
             names = await self._panel.squad_location_names(squad)
         except RemnawaveError:
@@ -282,7 +330,7 @@ class SiteTrialService:
         return names
 
     async def _last_good_locations(self, squad: str) -> list[str] | None:
-        """Newest successful derivation, else the stored list, else ``None`` (still unknown)."""
+        """Newest successful derivation, else the stored subset, else ``None`` (still unknown)."""
         raw = await self._redis.get(site_squad_locations_last_good_key(squad))
         if raw is not None:
             try:
@@ -324,6 +372,7 @@ class SiteTrialService:
         if not username:
             await self._reset(device)
             return None
+        await self._commit()
         try:
             sub, links = await self._panel.subscription(username)
         except RemnawaveError as exc:
@@ -394,20 +443,21 @@ class SiteTrialService:
         )
 
     # --- public flow ----------------------------------------------------------------------------
-    async def available_locations(self, device: SiteDevice) -> list[str] | PanelError:
+    async def available_locations(self, device: SiteDevice | None) -> list[str] | PanelError:
         """Location names for the picker.
 
         Active device: its own live subscription map (what it can actually switch between). Fresh
-        device: the squad's LIVE names — previously a hand-maintained ``SITE_LOCATIONS`` snapshot
+        device — or none at all, for a caller with no cookie: the squad's LIVE names — previously a
+        hand-maintained ``SITE_LOCATIONS`` snapshot
         that nothing re-derived, so every host added, renamed or removed in Remnawave stayed
         invisible until an admin remembered to press a button. ``squad_locations`` falls back to the
         last successful derivation (and then to the stored list) when the panel is unreachable, so
         an outage degrades to slightly-stale rather than an empty picker.
         """
-        cached = await self._load_cache(device.uuid)
+        cached = await self._load_cache(device.uuid) if device is not None else None
         if cached is not None:
             return list(cached.links.keys())
-        if device.status == SiteDeviceStatus.active_config:
+        if device is not None and device.status == SiteDeviceStatus.active_config:
             try:
                 refreshed = await self._refresh_active(device)
             except RemnawaveError:
@@ -421,6 +471,9 @@ class SiteTrialService:
         return await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
 
     async def claim(self, device: SiteDevice, location_name: str) -> SiteClaimResult:
+        # 0. Blocked by the operator: nothing is provisioned, and the status is left as it is.
+        if device.status == SiteDeviceStatus.blocked:
+            return Blocked()
         # 1. Already holding a live config? Re-read (self-heals an ended trial). If still valid,
         #    this is a change-location: deliver the chosen link from the account (no new provision).
         if device.status == SiteDeviceStatus.active_config:
@@ -465,6 +518,7 @@ class SiteTrialService:
         )
         expire_at = claim_at + timedelta(hours=hours)
         username = self._username(device)
+        await self._commit()  # two panel calls follow; hold no pooled connection across them
         try:
             await self._panel.create_trial_user(username, traffic, expire_at, [squad])
         except RemnawaveError:
@@ -551,7 +605,7 @@ class SiteTrialService:
             usage_bytes=usage_bytes,
             remaining=remaining,
             cooldown=cooldown_remaining(device.last_claim_at, hours) if cooling else "",
-            can_claim=not cooling,
+            can_claim=not cooling and device.status != SiteDeviceStatus.blocked,
             configs=await self._claims.count_for_device(device.uuid),
             referral_count=device.referral_count,
             referral_cap=await self._settings.get_int(SiteSettingKey.SITE_REFERRAL_REWARD_LIMIT, 0),

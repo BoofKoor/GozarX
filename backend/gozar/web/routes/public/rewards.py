@@ -10,6 +10,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from gozar.db.models.site_device import SiteDeviceStatus
 from gozar.db.repositories.push_subscription import PushSubscriptionRepository
 from gozar.db.repositories.site_reward import SiteRewardRepository
 from gozar.services.settings_service import SettingsService
@@ -48,6 +49,8 @@ async def claim_reward(
     ):
         raise HTTPException(status_code=429, detail="rate_limited")
 
+    if device.status == SiteDeviceStatus.blocked:
+        return RewardResponse(ok=False, reason="blocked")
     service = SiteRewardService(
         SiteRewardRepository(session),
         SettingsService(session, redis),

@@ -3,7 +3,8 @@
 One row per overridden button ``key``; absence = use the code/catalogue default. ``labels`` is a
 partial ``{lang: text}`` override (missing langs fall back to the i18n default); ``row_index`` /
 ``position`` reorder it (null = keep the structural default); ``is_visible=False`` hides a
-non-critical button. Read through ``services.button_service.ButtonService`` (Redis-cached).
+non-critical button. ``screens`` narrows order and visibility to one screen. Read through
+``services.button_service.ButtonService`` (Redis-cached).
 """
 
 from __future__ import annotations
@@ -27,6 +28,13 @@ class ButtonConfig(Base):
     position: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Bot API 9.4 inline-button color: 'primary' | 'success' | 'danger' (null = app default).
     style: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    # Per-SCREEN order and visibility: ``{screen: {"row": int|null, "position": int|null,
+    # "visible": bool|null}}``. A key can sit on several screens (change_location is on three), and
+    # the columns above apply to all of them at once — moving or hiding it on one screen moved or
+    # hid it on the other two. The columns stay as the fallback for a screen with no entry, so an
+    # override written before this existed keeps working. Labels and colour stay per key: a
+    # button's name is its name on every screen.
+    screens: Mapped[dict[str, dict] | None] = mapped_column(JSONB, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from gozar.db.models.content import Content
@@ -43,6 +43,23 @@ class ContentRepository(BaseRepository):
         stmt = pg_insert(Content).values(key=key, language=language, body=body)
         stmt = stmt.on_conflict_do_nothing(index_elements=[Content.key, Content.language])
         await self.session.execute(stmt)
+
+    async def restore_blank(self, key: str, language: Language, body: str) -> bool:
+        """Write ``body`` over a row that exists but is BLANK; True when one was restored.
+
+        Only for keys where blank is never a valid state (the seeded site copy, whose push nudges
+        have nothing to fall back to). A blank bot translation means "use Persian"; leave it be.
+        """
+        result = await self.session.execute(
+            update(Content)
+            .where(
+                Content.key == key,
+                Content.language == language,
+                func.btrim(Content.body) == "",
+            )
+            .values(body=body)
+        )
+        return bool(result.rowcount)
 
     async def all(self) -> list[Content]:
         result = await self.session.scalars(select(Content))

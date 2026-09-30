@@ -1,4 +1,5 @@
 import { clsx } from "clsx";
+import { type KeyboardEvent, useRef } from "react";
 
 import { useI18n } from "@/i18n";
 import { localizeDigits } from "@/lib/format";
@@ -9,8 +10,10 @@ import { localizeDigits } from "@/lib/format";
  * The same data the dashboard derives its peak hour from, put where a timing decision is actually
  * made — scheduling blind is how a broadcast lands at 04:00.
  *
- * With `onPick` each bar becomes a real control, so the hour can be chosen by keyboard as well as
- * by mouse; without it the strip is a read-only chart and stays out of the tab order entirely.
+ * With `onPick` the strip is a real control: a radio group of 24 hours. Each hour is the FULL
+ * column, not its bar — the bar itself was the button, so a quiet hour was a 2px-tall target — and
+ * the group is ONE tab stop with the arrows walking it, where it used to be 24 stops between the
+ * composer and its Send button. Without `onPick` it is a read-only chart, out of the tab order.
  * `mark` highlights one hour — the peak, or the hour a message would land in.
  */
 export function HourStrip({
@@ -29,31 +32,75 @@ export function HourStrip({
   const { t } = useI18n();
   const max = Math.max(1, ...counts);
   const hourLabel = (h: number) => localizeDigits(`${String(h).padStart(2, "0")}:00`);
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  // The one hour in the tab order: the chosen one, or the first when none is.
+  const current = mark != null && mark >= 0 && mark < counts.length ? mark : 0;
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
+    if (!onPick) return;
+    // PHYSICAL arrows: the strip is a clock laid out left to right in both languages, so right is
+    // later whatever the page's reading direction.
+    const next =
+      e.key === "ArrowRight" || e.key === "ArrowUp"
+        ? Math.min(counts.length - 1, current + 1)
+        : e.key === "ArrowLeft" || e.key === "ArrowDown"
+          ? Math.max(0, current - 1)
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? counts.length - 1
+              : null;
+    if (next == null) return;
+    e.preventDefault();
+    onPick(next);
+    buttons.current[next]?.focus();
+  }
 
   return (
     <div className={className}>
       {/* Hours run left-to-right in both languages: a clock is not a sentence. */}
-      <div className="flex h-11 items-end gap-[2px]" dir="ltr" aria-hidden={!onPick}>
+      <div
+        className="flex h-11 items-stretch gap-[2px]"
+        dir="ltr"
+        aria-hidden={!onPick}
+        role={onPick ? "radiogroup" : undefined}
+        aria-label={onPick ? t("hours.aria") : undefined}
+        onKeyDown={onKeyDown}
+      >
         {counts.map((v, h) => {
-          const bar = clsx(
-            "min-h-[2px] flex-1 rounded-t-sm transition",
-            h === mark ? "bg-brand" : "bg-brand/20",
+          const bar = (
+            <span
+              aria-hidden
+              style={{ height: `${Math.max(4, (v / max) * 100)}%` }}
+              className={clsx(
+                "mt-auto block min-h-[2px] w-full rounded-t-sm transition",
+                h === mark ? "bg-brand" : "bg-brand/20",
+                onPick && "group-hover:bg-brand/60",
+              )}
+            />
           );
-          const style = { height: `${Math.max(4, (v / max) * 100)}%` };
           return onPick ? (
             <button
               key={h}
+              ref={(el) => {
+                buttons.current[h] = el;
+              }}
               type="button"
+              role="radio"
+              aria-checked={h === mark}
+              tabIndex={h === current ? 0 : -1}
               onClick={() => onPick(h)}
-              // A bar is a couple of pixels wide, so it has to SAY which hour it is rather than
-              // leave that to its position.
+              // A column is a few pixels wide, so it has to SAY which hour it is rather than leave
+              // that to its position.
               aria-label={t("hours.pick", { h: hourLabel(h) })}
-              aria-pressed={h === mark}
-              style={style}
-              className={clsx(bar, "cursor-pointer hover:bg-brand/60")}
-            />
+              className="group flex flex-1 cursor-pointer flex-col rounded-t-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
+              {bar}
+            </button>
           ) : (
-            <span key={h} style={style} className={bar} />
+            <span key={h} className="flex flex-1 flex-col">
+              {bar}
+            </span>
           );
         })}
       </div>

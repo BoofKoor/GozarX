@@ -3,8 +3,8 @@ import { Navigate, Route, Routes } from "react-router-dom";
 
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { RouteFallback } from "@/components/layout/RouteFallback";
 import { SetupGate } from "@/components/layout/SetupGate";
-import { Spinner } from "@/components/ui/Spinner";
 
 /**
  * Every route is lazy.
@@ -14,8 +14,10 @@ import { Spinner } from "@/components/ui/Spinner";
  * 434 KB `charts` chunk was pulled in with it. That made 1.09 MB of JavaScript (314 KB gzipped)
  * the cost of rendering the LOGIN form, a page with two inputs and a button on it.
  *
- * The shell stays eager: it renders the fallback, and lazily loading the thing that shows a spinner
- * buys nothing.
+ * The shell stays eager, and it carries its OWN Suspense boundary around the page outlet. With only
+ * the one below, a page still downloading suspended the whole route tree: the rail and the top bar
+ * vanished behind a centred spinner on the first visit to every page. This boundary now only
+ * catches the routes outside the shell (login, the wizard).
  */
 const Login = lazy(() => import("@/pages/Login").then((m) => ({ default: m.Login })));
 const Setup = lazy(() => import("@/pages/setup/Setup").then((m) => ({ default: m.Setup })));
@@ -53,16 +55,6 @@ const SitePush = lazy(() => import("@/pages/site/SitePush").then((m) => ({ defau
 const SiteStats = lazy(() =>
   import("@/pages/site/SiteStats").then((m) => ({ default: m.SiteStats })),
 );
-
-/** What a route shows while its chunk arrives. Centred in whatever box it lands in, so it reads the
- *  same inside the shell's content well and on the full-screen login and wizard routes. */
-function RouteFallback() {
-  return (
-    <div className="flex min-h-[50vh] items-center justify-center">
-      <Spinner className="h-6 w-6 text-brand" />
-    </div>
-  );
-}
 
 export default function App() {
   return (

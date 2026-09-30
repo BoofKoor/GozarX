@@ -158,6 +158,42 @@ async def test_returning_device_not_reminted(site_client: httpx.AsyncClient, db_
     assert count == 1  # exactly one device across both requests
 
 
+async def _devices(db_sessions) -> tuple[int, int]:
+    """``(minted, seen)`` — every device row, and those that came back with their cookie."""
+    async with db_sessions() as session:
+        minted = await session.scalar(select(func.count()).select_from(SiteDevice))
+        seen = await session.scalar(
+            select(func.count()).select_from(SiteDevice).where(SiteDevice.last_seen_at.is_not(None))
+        )
+    return int(minted or 0), int(seen or 0)
+
+
+async def test_a_cookieless_page_load_mints_one_device_and_no_visitor(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """A crawler or a cookie-blocking window: the site calls /status, then /locations, and the
+    client sends neither request a cookie. That used to mint TWO devices per page load, both
+    counted as visitors; `/locations` now mints nothing, and a mint is not a visit."""
+    first = await site_client.get("/api/public/status")
+    assert first.status_code == 200
+    site_client.cookies.clear()  # the client drops what it was given
+    second = await site_client.get("/api/public/locations")
+    assert second.status_code == 200
+    assert DEVICE_COOKIE not in second.cookies
+    assert await _devices(db_sessions) == (1, 0)
+
+
+async def test_a_browser_that_returns_its_cookie_is_seen(
+    site_client: httpx.AsyncClient, db_sessions
+) -> None:
+    """The same page load in a real browser: /locations carries the cookie /status set, and that
+    is the visit — a single-page bounce is still counted."""
+    await site_client.get("/api/public/status")
+    assert await _devices(db_sessions) == (1, 0)  # minted, not yet seen
+    await site_client.get("/api/public/locations")
+    assert await _devices(db_sessions) == (1, 1)
+
+
 async def test_config_returns_public_keys_unconfigured(site_client: httpx.AsyncClient) -> None:
     resp = await site_client.get("/api/public/config")
     assert resp.status_code == 200

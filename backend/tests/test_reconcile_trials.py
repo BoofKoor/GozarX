@@ -178,3 +178,74 @@ async def test_reconcile_skips_user_disabled_reminders(db_sessions) -> None:
     # Still reset (so they can claim again), but no message when reminders are off.
     assert await _status(db_sessions, 3) is UserStatus.available
     assert bot.sent == []
+
+
+class _DownPanel(FakePanel):
+    async def delete_user_by_username(self, username: str) -> bool:
+        from gozar.remnawave import RemnawaveError
+
+        raise RemnawaveError("panel down")
+
+
+async def test_the_sweep_finishes_a_ban_the_panel_did_not_answer(db_sessions) -> None:
+    """A ban keeps the handle when the delete fails; the sweep is the retry the panel promises."""
+    async with db_sessions() as session:
+        session.add(User(telegram_id=7, status=UserStatus.banned, panel_username="g7"))
+        session.add(User(telegram_id=8, status=UserStatus.banned, panel_username=None))
+        await session.commit()
+
+    panel = FakePanel({})
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": panel,
+        "bot": FakeBot(),
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    assert panel.deleted == ["g7"]
+    async with db_sessions() as session:
+        user = await UserRepository(session).get(7)
+        assert user.status is UserStatus.banned and user.panel_username is None
+
+
+async def test_a_pending_revoke_survives_a_panel_that_is_still_down(db_sessions) -> None:
+    async with db_sessions() as session:
+        session.add(User(telegram_id=9, status=UserStatus.banned, panel_username="g9"))
+        await session.commit()
+
+    ctx = {
+        "sessionmaker": db_sessions,
+        "panel": _DownPanel({}),
+        "bot": FakeBot(),
+        "cache_redis": fakeredis.aioredis.FakeRedis(decode_responses=True),
+    }
+    await reconcile_trials(ctx)
+
+    # Still pending: forgetting the handle would leave the account impossible to revoke.
+    async with db_sessions() as session:
+        assert (await UserRepository(session).get(9)).panel_username == "g9"
+
+
+async def test_a_sweep_that_runs_out_of_budget_resumes_where_it_stopped(
+    db_sessions, monkeypatch
+) -> None:
+    """Killed at arq's 300 s, the sweep restarted from the top every run, so the trials at the end
+    of the list were never checked. Now each run stops inside its budget and the next resumes."""
+    from gozar.worker import tasks
+
+    for tid in (1, 2, 3):
+        await _add(db_sessions, tid, f"g{tid}")
+    monkeypatch.setattr(tasks, "_RECONCILE_MAX_PER_RUN", 1)
+    redis = fakeredis.aioredis.FakeRedis(decode_responses=True)
+    panel = FakePanel({"g1": "ACTIVE", "g2": "ACTIVE", "g3": "EXPIRED"})
+    ctx = {"sessionmaker": db_sessions, "panel": panel, "bot": FakeBot(), "cache_redis": redis}
+
+    for _ in range(3):
+        await reconcile_trials(ctx)
+
+    # One probe per run, each run carrying on after the last: the third run reaches user 3.
+    assert panel.probed == ["g1", "g2", "g3"]
+    assert await _status(db_sessions, 3) is UserStatus.available
+    await reconcile_trials(ctx)
+    assert panel.probed[-1] == "g1"  # a full pass wraps back to the start

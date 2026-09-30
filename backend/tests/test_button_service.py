@@ -111,3 +111,38 @@ async def test_list_for_editor_merges_default_and_override(session) -> None:
     backs = [i for i in await svc.list_for_editor() if i.key == "back"]
     assert len(backs) > 1
     assert all(b.is_critical for b in backs)
+
+
+async def test_an_order_set_on_one_screen_leaves_the_others_alone(session) -> None:
+    # change_location sits on landing, config_delivered and status; the override table is keyed by
+    # the button alone, so arranging it on one screen used to rearrange all three.
+    svc, _ = _svc(session)
+    await svc.reorder([("change_location", 1, 1)], screen="landing")
+    snap = await svc.snapshot()
+    assert snap.row("change_location", "landing") == 1
+    assert snap.position("change_location", "landing") == 1
+    assert snap.row("change_location", "status") is None  # still the catalogue default
+    by = {(b.screen, b.key): b for b in await svc.list_for_editor()}
+    assert by[("landing", "change_location")].effective_row == 1
+    assert by[("status", "change_location")].effective_row == 0
+
+
+async def test_hiding_on_one_screen_hides_there_only(session) -> None:
+    svc, _ = _svc(session)
+    await svc.set_appearance(
+        "change_location", labels={"en": "Move"}, is_visible=False, screen="status"
+    )
+    snap = await svc.snapshot()
+    assert snap.is_visible("change_location", "status") is False
+    assert snap.is_visible("change_location", "landing") is True
+    # The label is the button's name everywhere.
+    assert snap.label("change_location", Language.en) == "Move"
+
+
+async def test_an_edit_is_invalidated_again_after_the_commit(session) -> None:
+    # Deleted only before the commit, a bot update in between re-cached the OLD rows for the TTL.
+    from gozar.cache.redis import SESSION_INVALIDATE_KEY
+
+    svc, _ = _svc(session)
+    await svc.reorder([("menu_help", 0, 1)], screen="main_menu")
+    assert BUTTON_CONFIGS_KEY in session.sync_session.info.get(SESSION_INVALIDATE_KEY, set())

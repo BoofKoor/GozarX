@@ -5,6 +5,7 @@ import { toast } from "sonner";
 
 import { KeyboardBuilder, MAX_CHARS, MessageField } from "@/components/broadcast/Composer";
 import { DraftList } from "@/components/broadcast/DraftList";
+import { describeHtmlProblem } from "@/components/broadcast/htmlProblem";
 import { BroadcastHistory } from "@/components/broadcast/History";
 import { HourStrip } from "@/components/charts/HourStrip";
 import { Button } from "@/components/ui/Button";
@@ -13,15 +14,16 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Switch } from "@/components/ui/Switch";
 import { useConfirm } from "@/components/ui/confirm";
 import {
+  useActivityHours,
   useAudience,
   useDeleteDraft,
   useDrafts,
   useSaveDraft,
   useSendBroadcast,
 } from "@/hooks/useBroadcast";
-import { useDashboardAnalytics } from "@/hooks/useDashboard";
 import { useSystemHealth } from "@/hooks/useSystem";
 import { useI18n } from "@/i18n";
+import { apiErrorMessage } from "@/lib/api";
 import {
   formatNumber,
   joinList,
@@ -29,6 +31,8 @@ import {
   localizeDigits,
   telegramPreviewHtml,
 } from "@/lib/format";
+import { checkTelegramHtml } from "@/lib/telegramHtml";
+import { nextZonedHour } from "@/lib/time";
 import type { BroadcastButton, BroadcastDraft, Lang } from "@/types/api";
 
 const ALL_LANGS: Lang[] = ["fa", "en", "ru"];
@@ -87,15 +91,6 @@ function Chip({
   );
 }
 
-/** The next occurrence of a given hour, as an ISO instant. */
-function nextOccurrence(hour: number): Date {
-  const at = new Date();
-  at.setMinutes(0, 0, 0);
-  at.setHours(hour);
-  if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
-  return at;
-}
-
 export function Broadcast() {
   const { t } = useI18n();
   const [text, setText] = useState("");
@@ -110,7 +105,11 @@ export function Broadcast() {
   const [draftId, setDraftId] = useState<number | null>(null);
 
   const filter = { only_active: onlyActive, only_referrers: onlyReferrers };
-  const { data: audience, isError: audienceError } = useAudience(langs, filter);
+  const {
+    data: audience,
+    isError: audienceError,
+    isFetching: audienceFetching,
+  } = useAudience(langs, filter);
   const { data: everyone } = useAudience(ALL_LANGS);
   // One cheap COUNT per language gives the reach bar a real breakdown, using only the endpoint the
   // page already has. Inventing the split was the alternative.
@@ -119,7 +118,7 @@ export function Broadcast() {
     useAudience(["en"], filter),
     useAudience(["ru"], filter),
   ];
-  const { data: analytics } = useDashboardAnalytics(30);
+  const { data: activity } = useActivityHours();
   const { data: health } = useSystemHealth();
   const send = useSendBroadcast();
   const { data: drafts } = useDrafts();
@@ -136,19 +135,31 @@ export function Broadcast() {
 
   const body = text.trim();
   const overLimit = text.length > MAX_CHARS;
+  // Sent as HTML: markup Telegram cannot parse fails EVERY send, so it is caught here as it is typed
+  // (the server refuses it too) rather than as a whole audience counted "failed" an hour later.
+  const htmlProblem = checkTelegramHtml(text);
   const filled = buttons.filter((b) => b.text.trim() && b.url.trim());
   const buttonsOk = filled.every((b) => b.url.startsWith("https://"));
   // The broadcast is queued in Redis for the arq worker; if Redis is down it cannot be queued at
   // all, which is worth knowing BEFORE composing rather than after pressing send.
   const queueOk = health?.redis.ok !== false;
-  const canSend = Boolean(body) && langs.length > 0 && !overLimit && queueOk && buttonsOk;
+  // Only a count that has ARRIVED for this exact audience may be put in front of the operator:
+  // while a filter change refetched it (or when it failed) the figure read 0, the dialog asked
+  // "send to 0 users?", and the server then sent to the real audience.
+  const audienceReady =
+    langs.length > 0 && audience !== undefined && !audienceError && !audienceFetching;
+  const canSend =
+    Boolean(body) &&
+    langs.length > 0 &&
+    !overLimit &&
+    htmlProblem === null &&
+    queueOk &&
+    buttonsOk &&
+    audienceReady &&
+    recipients > 0;
   const minutes = Math.max(1, Math.round(recipients / RATE_PER_SEC / 60));
 
-  const byHour = (() => {
-    const acc: number[] = new Array(24).fill(0);
-    for (const cell of analytics?.heatmap ?? []) acc[cell.hour] += cell.count;
-    return acc;
-  })();
+  const byHour = activity?.hours.length === 24 ? activity.hours : new Array<number>(24).fill(0);
   const peakHour = byHour.some((n) => n > 0) ? byHour.indexOf(Math.max(...byHour)) : -1;
   // Scheduling defaults to the hour users are most active — the whole reason the strip is here is
   // that scheduling blind is how a broadcast lands at 04:00.
@@ -163,7 +174,10 @@ export function Broadcast() {
         languages: langs,
         only_active: onlyActive,
         only_referrers: onlyReferrers,
-        buttons: filled,
+        // Every button that has ANYTHING in it, as typed: a draft is unfinished by definition, and
+        // a link still missing its https:// used to make the whole draft unsaveable — the work
+        // was lost at exactly the moment it was being kept. Sending still requires a valid link.
+        buttons: buttons.filter((b) => b.text.trim() || b.url.trim()),
         send_hour: scheduled ? sendHour : null,
       },
       {
@@ -171,14 +185,16 @@ export function Broadcast() {
           setDraftId(d.id);
           toast.success(t("bc.draft.saved"));
         },
-        onError: () => toast.error(t("bc.draft.failed")),
+        onError: (err) => toast.error(apiErrorMessage(err, t("bc.draft.failed"))),
       },
     );
   }
 
   function restore(d: BroadcastDraft) {
     setText(d.body);
-    setLangs(d.languages ? (d.languages.split(",") as Lang[]) : ALL_LANGS);
+    // "" is a draft saved with NO language ticked, which this page means as nobody — restored as
+    // "everyone", it silently widened the audience to the whole bot.
+    setLangs(d.languages ? (d.languages.split(",") as Lang[]) : []);
     setOnlyActive(d.only_active);
     setOnlyReferrers(d.only_referrers);
     setButtons(d.buttons);
@@ -197,7 +213,7 @@ export function Broadcast() {
     // — "send this to 8,412 users?" — and the hour only appeared in the toast, i.e. after the
     // decision. The last checkpoint before an irreversible send has to state the one thing the
     // operator just chose.
-    const at = scheduled ? nextOccurrence(sendHour) : undefined;
+    const at = scheduled ? nextZonedHour(sendHour) : undefined;
     const clock = localizeDigits(`${String(sendHour).padStart(2, "0")}:00`);
     const ok = await confirm({
       title: t("bc.send.confirmTitle"),
@@ -232,7 +248,8 @@ export function Broadcast() {
           if (draftId !== null) removeDraft.mutate(draftId);
           setDraftId(null);
         },
-        onError: () => toast.error(t("bc.send.failed")),
+        // The server names the refusal (an empty audience, markup Telegram would reject, no worker).
+        onError: (err) => toast.error(apiErrorMessage(err, t("bc.send.failed"))),
       },
     );
   }
@@ -302,12 +319,21 @@ export function Broadcast() {
             {langs.length === 0 && (
               <p className="text-xs font-medium text-danger-700">{t("bc.audience.empty")}</p>
             )}
+            {audienceReady && recipients === 0 && (
+              <p className="text-xs font-medium text-danger-700">{t("bc.audience.nobody")}</p>
+            )}
           </Card>
 
           <Card className="space-y-2.5">
             <h3 className="text-sm font-bold text-content">{t("bc.compose")}</h3>
             <MessageField value={text} onChange={setText} placeholder={t("bc.text.placeholder")} />
-            <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
+            {htmlProblem ? (
+              <p role="alert" className="text-xs font-medium text-danger-700">
+                {describeHtmlProblem(t, htmlProblem)}
+              </p>
+            ) : (
+              <p className="text-xs text-content-subtle">{t("bc.text.hint")}</p>
+            )}
 
             <KeyboardBuilder buttons={buttons} onChange={setButtons} />
 

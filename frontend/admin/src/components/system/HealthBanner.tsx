@@ -11,6 +11,13 @@ const STATUS_META: Record<HealthStatus, { label: MessageKey; ring: string; dot: 
   down: { label: "sys.status.down", ring: "bg-danger-500/15", dot: "bg-danger" },
 };
 
+/** The server's probe `detail` is a stable CODE, not copy (`services/health.py`). Printed as-is it
+ *  was English — «unreachable», «bot disabled» — on a Persian page. An unknown one reads as "down". */
+const PROBE_DETAIL: Record<string, MessageKey> = {
+  unreachable: "sys.probe.unreachable",
+  "bot disabled": "sys.probe.botDisabled",
+};
+
 function ProbeChip({ label, probe }: { label: string; probe: Probe }) {
   const { t } = useI18n();
   // The reading went out as a raw template — Latin digits, no space before the unit, no isolate —
@@ -24,7 +31,7 @@ function ProbeChip({ label, probe }: { label: string; probe: Probe }) {
     ? probe.latency_ms != null
       ? formatMs(probe.latency_ms)
       : t("sys.status.ok")
-    : (probe.detail ?? t("sys.status.down"));
+    : t((probe.detail && PROBE_DETAIL[probe.detail]) || "sys.status.down");
   return (
     <div className="flex items-center gap-2 rounded-lg border border-line px-3 py-2">
       <span

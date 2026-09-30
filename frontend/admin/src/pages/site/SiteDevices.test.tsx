@@ -70,6 +70,19 @@ describe("SiteDevices", () => {
     expect(await screen.findByText(/فقط دستگاه‌های پشت IP/)).toBeInTheDocument();
   });
 
+  it("lands filtered when a link passes ?search= (the inbox's sender-device link)", async () => {
+    const seen: (string | undefined)[] = [];
+    mock.onGet("/admin/site/devices/").reply((config) => {
+      seen.push(config.params.search);
+      return [200, { items: [DEVICE], total: 1, page: 1, page_size: 25 }];
+    });
+    renderAt("/site/devices?search=dev-a");
+    expect(await screen.findByText("GZ-AAAA")).toBeInTheDocument();
+    // The FIRST request is already the filtered one, and the box shows what it is filtered by.
+    expect(seen[0]).toBe("dev-a");
+    expect(screen.getByDisplayValue("dev-a")).toBeInTheDocument();
+  });
+
   it("shows an empty state rather than a bare table", async () => {
     mock.onGet("/admin/site/devices/").reply(200, {
       items: [],

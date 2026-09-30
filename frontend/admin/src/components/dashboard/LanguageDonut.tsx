@@ -4,7 +4,7 @@ import { Card, CardHeader } from "@/components/ui/Card";
 import { useIsDark } from "@/hooks/useIsDark";
 import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { seriesColor } from "@/lib/chartTheme";
-import { formatNumber, langLabel } from "@/lib/format";
+import { faPct, formatNumber, langLabel } from "@/lib/format";
 import type { NamedCount } from "@/types/api";
 import { useI18n } from "@/i18n";
 
@@ -54,8 +54,8 @@ export function LanguageDonut({ data }: { data: NamedCount[] }) {
                 <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: s.color }} />
                 <span className="flex-1 text-content-muted">{s.name}</span>
                 <span className="font-medium tabular-nums">{formatNumber(s.value)}</span>
-                <span className="w-10 text-left text-xs text-content-subtle tabular-nums">
-                  {Math.round((s.value / total) * 100)}%
+                <span className="w-10 text-end text-xs text-content-subtle tabular-nums">
+                  {faPct(Math.round((s.value / total) * 100))}
                 </span>
               </li>
             ))}

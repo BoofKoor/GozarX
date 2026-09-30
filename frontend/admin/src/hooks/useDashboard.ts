@@ -8,13 +8,16 @@ export const RANGES = [7, 14, 30, 90] as const;
 export type Range = (typeof RANGES)[number];
 
 /** Dashboard stats for a chart window. keepPreviousData holds the current view while a range switch
- * refetches (no skeleton flash). */
+ * refetches (no skeleton flash).
+ *
+ * Once a minute: the panel-derived figures in it are themselves recorded at most that often, so a
+ * faster poll re-reads the same numbers. */
 export function useDashboard(days: number) {
   return useQuery({
     queryKey: ["dashboard", days],
     queryFn: async () =>
       (await api.get<DashboardStats>("/admin/dashboard/stats", { params: { days } })).data,
-    refetchInterval: 30_000,
+    refetchInterval: 60_000,
     placeholderData: keepPreviousData,
   });
 }
@@ -35,13 +38,15 @@ export function useDashboardAnalytics(days: number) {
  *
  * Polled on the same cadence as the analytics: the sampler writes hourly, so anything faster is
  * asking a question whose answer cannot have changed. */
-export function useDashboardUsage(days: number) {
+export function useDashboardUsage(days: number, enabled = true) {
   return useQuery({
     queryKey: ["dashboard-usage", days],
     queryFn: async () =>
       (await api.get<DashboardUsage>("/admin/dashboard/usage", { params: { days } })).data,
     refetchInterval: 60_000,
     placeholderData: keepPreviousData,
+    // Only the usage tab draws it; fetching it for every tab was ~10 queries a minute for nothing.
+    enabled,
   });
 }
 

@@ -24,11 +24,11 @@ SITE_COPY_PREFIX = "site_copy_"
 # group -> ordered keys. The grouping is what the panel renders as sections; it has no runtime
 # meaning, but "hero", "widget", "sections" is how an operator thinks about the page.
 SITE_COPY_GROUPS: dict[str, list[str]] = {
+    # Not hero_h1_a / hero_h1_b / hero_sub: the page draws its title and subtitle from the seeded
+    # site_hero_title / site_hero_sub rows whenever they are set — and they always are — so those
+    # three were fields whose edits never reached the page. One editable field per text.
     "hero": [
         "hero_eyebrow",
-        "hero_h1_a",
-        "hero_h1_b",
-        "hero_sub",
         "trust1",
         "trust2",
         "trust3",

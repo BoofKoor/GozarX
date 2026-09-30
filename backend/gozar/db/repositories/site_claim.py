@@ -50,6 +50,28 @@ class SiteClaimRepository(BaseRepository):
             or 0
         )
 
+    async def latest_for_devices(
+        self, device_uuids: Sequence[str]
+    ) -> dict[str, tuple[datetime, datetime | None]]:
+        """``{uuid: (latest claim of any kind, latest real provision)}`` in ONE grouped query — the
+        device list's "last claim" and the input to whether each row's streak is still live.
+
+        From the claim LOG rather than ``site_devices.last_claim_at``: that column is the cooldown
+        anchor, which an admin reset clears, so a device with claims read "last claim: —".
+        """
+        if not device_uuids:
+            return {}
+        rows = await self.session.execute(
+            select(
+                SiteClaim.device_uuid,
+                func.max(SiteClaim.created_at),
+                func.max(SiteClaim.created_at).filter(SiteClaim.is_change.is_(False)),
+            )
+            .where(SiteClaim.device_uuid.in_(list(device_uuids)))
+            .group_by(SiteClaim.device_uuid)
+        )
+        return {uuid: (latest, provision) for uuid, latest, provision in rows.all()}
+
     async def latest_created_at_for_device(self, device_uuid: str) -> datetime | None:
         return await self.session.scalar(
             select(func.max(SiteClaim.created_at)).where(SiteClaim.device_uuid == device_uuid)

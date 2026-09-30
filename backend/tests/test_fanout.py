@@ -1,7 +1,8 @@
 """Worker fan-out: a broadcast removes a user ONLY on a permanent delivery failure (v1 lesson #4).
 
 ``_should_remove`` is the strict allowlist; the ``fanout`` integration test proves a blocked user is
-deleted while a transient failure keeps the user.
+marked unreachable (never deleted — see test_broadcast_unreachable) while a transient failure keeps
+the user untouched.
 """
 
 from __future__ import annotations
@@ -35,7 +36,10 @@ def test_remove_on_deactivated() -> None:
 
 
 def test_remove_on_chat_not_found() -> None:
-    # aiogram 3: "chat not found" is a TelegramNotFound, NOT a TelegramBadRequest.
+    # What Telegram actually sends: a 400, which aiogram raises as TelegramBadRequest. Matching only
+    # TelegramNotFound, a gone chat was a "failed" send on every broadcast, forever.
+    assert _should_remove(_exc(TelegramBadRequest, "Bad Request: chat not found"))
+    # A real 404 is accepted as well.
     assert _should_remove(_exc(TelegramNotFound, "Not Found: chat not found"))
 
 
@@ -62,7 +66,8 @@ def test_keep_on_generic_error() -> None:
 
 
 class _Bot:
-    """Per-user send outcomes: 1 ok · 2 blocked · 3 transient · 4 chat-not-found.
+    """Per-user send outcomes: 1 ok · 2 blocked · 3 transient · 4 chat-not-found (404) · 5 chat-not-
+    found as Telegram really sends it (400) · 6 another bad request.
 
     Users 2 and 4 are removed, 3 is kept. User 4 exercises the except-clause routing:
     TelegramNotFound is a sibling of BadRequest (not a subclass), so it must be named in the removal
@@ -82,6 +87,10 @@ class _Bot:
             raise RuntimeError("transient send error")
         if chat_id == 4:
             raise _exc(TelegramNotFound, "Not Found: chat not found")
+        if chat_id == 5:
+            raise _exc(TelegramBadRequest, "Bad Request: chat not found")
+        if chat_id == 6:
+            raise _exc(TelegramBadRequest, "Bad Request: message is too long")
         return None
 
 
@@ -93,10 +102,11 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
             pass
 
         async def list_all_ids(self) -> list[int]:
-            return [1, 2, 3, 4]
+            return [1, 2, 3, 4, 5, 6]
 
-        async def delete(self, telegram_id: int) -> None:
-            removed.append(telegram_id)
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            removed.extend(telegram_ids)
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -117,8 +127,9 @@ async def test_fanout_removes_only_permanent_failures(monkeypatch) -> None:
     ctx = {"bot": _Bot(), "sessionmaker": lambda: FakeSession()}
     await fanout(ctx, "broadcast", chat_id=100, message_id=200, admin_id=999)
 
-    # Blocked (2) and chat-not-found (4) are removed; the transient failure (3) keeps the user.
-    assert removed == [2, 4]
+    # Blocked (2) and chat-not-found (4, 5) are marked; the transient failure (3) and an unrelated
+    # bad request (6) keep the user.
+    assert sorted(removed) == [2, 4, 5]
 
 
 class _TextBot:
@@ -152,8 +163,9 @@ async def test_broadcast_text_sends_and_removes_blocked(monkeypatch) -> None:
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 2, 3]
 
-        async def delete(self, telegram_id: int) -> None:
-            removed.append(telegram_id)
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            removed.extend(telegram_ids)
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -220,8 +232,10 @@ async def test_broadcast_flood_is_retried_not_dropped(monkeypatch) -> None:
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return [1, 5, 6, 7]
 
-        async def delete(self, telegram_id: int) -> None:
-            raise AssertionError("a flood-controlled user must NEVER be removed")
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            if telegram_ids:
+                raise AssertionError("a flood-controlled user must NEVER be removed")
+            return 0
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -263,8 +277,8 @@ async def test_broadcast_delivers_whole_audience_across_chunks(monkeypatch) -> N
         async def audience_ids(self, langs=None, **kw) -> list[int]:
             return list(ids)
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -326,8 +340,8 @@ async def test_broadcast_text_targets_only_chosen_languages(monkeypatch) -> None
             seen_langs.append(kw)
             return [10, 11]
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:
@@ -377,8 +391,8 @@ async def test_broadcast_attaches_the_inline_keyboard_and_narrows_the_audience(m
             seen.update(kw)
             return [21, 22]
 
-        async def delete(self, telegram_id: int) -> None:
-            return None
+        async def mark_unreachable(self, telegram_ids: list[int], at: object) -> int:
+            return len(telegram_ids)
 
     class FakeSession:
         async def __aenter__(self) -> FakeSession:

@@ -3,6 +3,7 @@ import { LogOut, X } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 
+import { useFocusTrap } from "@/components/ui/useFocusTrap";
 import { useI18n } from "@/i18n";
 import { logout } from "@/hooks/useAuth";
 
@@ -104,19 +105,12 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => onClose(), [pathname]);
 
-  // Esc-to-close + lock body scroll while the drawer is open.
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
-    };
-  }, [open, onClose]);
+  // The whole modal contract, not just its Esc: the drawer said `aria-modal` while focus stayed on
+  // the menu button BEHIND the overlay, Tab walked the page underneath, and its links were reachable
+  // only backwards with Shift+Tab. The shared trap moves focus in, keeps Tab inside, restores focus
+  // to the menu button on close, and holds the scroll lock (see `useFocusTrap`).
+  const panelRef = useRef<HTMLElement>(null);
+  useFocusTrap(panelRef, onClose, open);
 
   return (
     <div
@@ -132,6 +126,7 @@ export function MobileNav({ open, onClose }: { open: boolean; onClose: () => voi
         onClick={onClose}
       />
       <aside
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-label={t("shell.nav")}

@@ -16,6 +16,7 @@ from pydantic import BaseModel
 
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.repositories.site_landing_page import SiteLandingPageRepository
+from gozar.services.article_html import sanitize_article_html
 from gozar.web.dependencies import DbSession
 
 router = APIRouter(tags=["public"])
@@ -36,7 +37,7 @@ class PageSummary(BaseModel):
 
 class PageOut(PageSummary):
     heading: str | None
-    body: str  # trusted admin-authored HTML markup (see admin/landing.py) — rendered by the site
+    body: str  # admin-authored HTML, SANITISED here (services/article_html) — rendered by the site
 
 
 def _require_locale(locale: str) -> None:
@@ -81,4 +82,10 @@ async def get_page(slug: str, session: DbSession, locale: str = Query(default="f
         page = await repo.get_by_slug(slug, "fa")
     if page is None or not page.published:  # get_by_slug is unpublished-agnostic — check here
         raise HTTPException(http_status.HTTP_404_NOT_FOUND, "page not found")
-    return PageOut(**_summary(page).model_dump(), heading=page.heading, body=page.body)
+    # Sanitised on the way OUT, so every stored row is covered — including any written before this
+    # existed — and the admin's text is kept exactly as typed for the editor.
+    return PageOut(
+        **_summary(page).model_dump(),
+        heading=page.heading,
+        body=sanitize_article_html(page.body),
+    )

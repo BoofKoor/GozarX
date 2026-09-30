@@ -10,7 +10,7 @@ from sqlalchemy import func, or_, select, update
 from sqlalchemy.sql import Select
 
 from gozar.db.models.site_message import SiteMessage
-from gozar.db.repositories.base import BaseRepository
+from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
 
 def _message_filter(
@@ -23,12 +23,12 @@ def _message_filter(
     if locale:
         stmt = stmt.where(SiteMessage.locale == locale)
     if search and search.strip():
-        like = f"%{search.strip()}%"
+        like = contains_pattern(search.strip())
         stmt = stmt.where(
             or_(
-                SiteMessage.subject.ilike(like),
-                SiteMessage.body.ilike(like),
-                SiteMessage.reply_handle.ilike(like),
+                SiteMessage.subject.ilike(like, escape=LIKE_ESCAPE),
+                SiteMessage.body.ilike(like, escape=LIKE_ESCAPE),
+                SiteMessage.reply_handle.ilike(like, escape=LIKE_ESCAPE),
             )
         )
     return stmt

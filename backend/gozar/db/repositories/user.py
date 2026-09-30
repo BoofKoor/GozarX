@@ -2,35 +2,37 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import String, bindparam, cast, delete, func, or_, select
+from sqlalchemy import String, cast, delete, func, or_, select, update
 from sqlalchemy.sql import Select
 
 from gozar.config.reporting import DISPLAY_TZ_NAME
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
-from gozar.db.repositories.base import BaseRepository
+from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
 
-def _latest_claim_location() -> Select:
-    """`(user_id, location)` for every user's MOST RECENT claim.
+def _latest_claim_location():  # a correlated scalar subquery
+    """The location of THIS user's most recent claim, as a correlated scalar subquery.
 
     "Which location is this user on" is the latest claim, not any claim: a user who tried Germany
     once and has been on Finland ever since must not appear under Germany.
+
+    Correlated (one ``LIMIT 1`` probe per user on ``ix_config_logs_user_created_id``) rather than
+    a window function ranking every claim ever made: measured 0.37s against 0.92s on 1.3M claims,
+    and the gap grows with the table while the per-user probe does not. ``id`` breaks the tie
+    between two claims in the same microsecond, as ``ConfigLogRepository.latest_locations`` does.
     """
-    ranked = select(
-        ConfigLog.user_id.label("user_id"),
-        ConfigLog.location.label("location"),
-        func.row_number()
-        .over(
-            partition_by=ConfigLog.user_id,
-            order_by=(ConfigLog.created_at.desc(), ConfigLog.id.desc()),
-        )
-        .label("rn"),
-    ).subquery()
-    return select(ranked.c.user_id).where(ranked.c.rn == 1, ranked.c.location == bindparam("loc"))
+    return (
+        select(ConfigLog.location)
+        .where(ConfigLog.user_id == User.telegram_id)
+        .order_by(ConfigLog.created_at.desc(), ConfigLog.id.desc())
+        .limit(1)
+        .correlate(User)
+        .scalar_subquery()
+    )
 
 
 def _filtered(
@@ -42,14 +44,15 @@ def _filtered(
     if status is not None:
         stmt = stmt.where(User.status == status)
     if search and search.strip():
-        like = f"%{search.strip()}%"
+        like = contains_pattern(search.strip())
         stmt = stmt.where(
-            or_(cast(User.telegram_id, String).ilike(like), User.panel_username.ilike(like))
+            or_(
+                cast(User.telegram_id, String).ilike(like, escape=LIKE_ESCAPE),
+                User.panel_username.ilike(like, escape=LIKE_ESCAPE),
+            )
         )
     if location and location.strip():
-        stmt = stmt.where(
-            User.telegram_id.in_(_latest_claim_location().params(loc=location.strip()))
-        )
+        stmt = stmt.where(_latest_claim_location() == location.strip())
     return stmt
 
 
@@ -117,6 +120,42 @@ class UserRepository(BaseRepository):
         result = await self.session.scalars(stmt)
         return list(result.all())
 
+    @staticmethod
+    def export_statement(
+        *,
+        status: UserStatus | None = None,
+        search: str | None = None,
+        location: str | None = None,
+    ) -> Select:
+        """The export's rows (user columns + latest location + lifetime claims), filtered like the
+        page.
+
+        One statement with both extras as correlated subqueries (index probes on
+        ``config_logs (user_id, created_at, id)``) — so the export needs no second query keyed by a
+        list of ids, which is what broke it past 32,767 users.
+        """
+        claims = (
+            select(func.count())
+            .select_from(ConfigLog)
+            .where(ConfigLog.user_id == User.telegram_id)
+            .correlate(User)
+            .scalar_subquery()
+        )
+        # Plain columns, not ORM entities: at 100k+ rows the identity map was most of the cost.
+        stmt = select(
+            User.telegram_id,
+            User.status,
+            User.language,
+            User.referral_count,
+            User.panel_username,
+            _latest_claim_location().label("location"),
+            claims.label("claims"),
+            User.last_claim_at,
+            User.created_at,
+        )
+        stmt = _filtered(stmt, status, search, location)
+        return stmt.order_by(User.created_at.desc(), User.telegram_id.desc())
+
     async def count_filtered(
         self,
         *,
@@ -127,6 +166,36 @@ class UserRepository(BaseRepository):
         """Total rows matching the same filter — drives the page count."""
         stmt = _filtered(select(func.count()).select_from(User), status, search, location)
         return int(await self.session.scalar(stmt) or 0)
+
+    async def summary(
+        self, **signups_since: datetime | tuple[datetime, datetime]
+    ) -> dict[str, int]:
+        """The dashboard's user-table headline from ONE scan: totals by status, referrals, reminder
+        opt-ins, and a signup count per named window (a bound, or a half-open ``(start, end)``).
+
+        These used to be eleven separate statements — three ``count_by_status`` calls, five
+        ``count_created_since`` calls and three more — each its own pass over ``users``.
+        """
+        columns = [
+            func.count(),
+            func.count().filter(User.status == UserStatus.available),
+            func.count().filter(User.status == UserStatus.active_config),
+            func.count().filter(User.status == UserStatus.banned),
+            func.coalesce(func.sum(User.referral_count), 0),
+            func.count().filter(User.reminder_enabled.is_(True)),
+        ]
+        for bound in signups_since.values():
+            if isinstance(bound, tuple):
+                start, end = bound
+                columns.append(func.count().filter(User.created_at >= start, User.created_at < end))
+            else:
+                columns.append(func.count().filter(User.created_at >= bound))
+        row = (await self.session.execute(select(*columns).select_from(User))).one()
+        keys = ("total", "available", "active", "banned", "referrals", "reminder_enabled")
+        out = {key: int(value or 0) for key, value in zip(keys, row[: len(keys)], strict=True)}
+        for name, value in zip(signups_since, row[len(keys) :], strict=True):
+            out[name] = int(value or 0)
+        return out
 
     async def count_created_since(self, since: datetime) -> int:
         """Users registered at/after ``since`` — backs the new-today / new-this-week KPIs."""
@@ -183,10 +252,22 @@ class UserRepository(BaseRepository):
         return [(d.isoformat(), int(n)) for d, n in rows.all()]
 
     async def list_all_ids(self) -> list[int]:
-        """Every telegram_id — the broadcast/forward audience. Materialised once so the worker can
-        throttle its fan-out without holding a DB cursor open for the whole (minutes-long) send."""
-        result = await self.session.scalars(select(User.telegram_id))
+        """Every REACHABLE telegram_id — the broadcast/forward audience. Materialised once so the
+        worker can throttle its fan-out without holding a DB cursor open for the whole send."""
+        result = await self.session.scalars(
+            select(User.telegram_id).where(User.unreachable_at.is_(None))
+        )
         return list(result.all())
+
+    async def mark_unreachable(self, telegram_ids: list[int], at: datetime) -> int:
+        """Record that Telegram says these chats are gone. The rows — and their claim history —
+        stay; the next update from any of them clears the mark (see the context middleware)."""
+        if not telegram_ids:
+            return 0
+        result = await self.session.execute(
+            update(User).where(User.telegram_id.in_(telegram_ids)).values(unreachable_at=at)
+        )
+        return int(result.rowcount or 0)
 
     @staticmethod
     def _audience(
@@ -202,7 +283,8 @@ class UserRepository(BaseRepository):
         unconditionally: they cannot receive anything, and counting them would inflate every
         pre-flight figure the composer shows.
         """
-        stmt = stmt.where(User.status != UserStatus.banned)
+        # Unreachable users too: Telegram has already said the chat is gone.
+        stmt = stmt.where(User.status != UserStatus.banned, User.unreachable_at.is_(None))
         if langs:
             stmt = stmt.where(User.language.in_(langs))
         if only_active:
@@ -240,7 +322,7 @@ class UserRepository(BaseRepository):
     async def list_ids_by_languages(self, langs: list[Language]) -> list[int]:
         """telegram_ids of users whose language is in ``langs`` (empty ⇒ all) — the language-
         targeted broadcast audience. Materialised once, like ``list_all_ids``."""
-        stmt = select(User.telegram_id)
+        stmt = select(User.telegram_id).where(User.unreachable_at.is_(None))
         if langs:
             stmt = stmt.where(User.language.in_(langs))
         result = await self.session.scalars(stmt)
@@ -268,6 +350,17 @@ class UserRepository(BaseRepository):
         rows = await self.session.execute(
             select(User.telegram_id, User.panel_username).where(
                 User.status == UserStatus.active_config, User.panel_username.is_not(None)
+            )
+        )
+        return [(int(tid), name) for tid, name in rows.all() if name]
+
+    async def list_revoke_pending(self) -> list[tuple[int, str]]:
+        """``(telegram_id, panel_username)`` for every BANNED user still holding a panel handle: the
+        ban could not reach the panel, so the account still works until someone deletes it. The
+        reconcile sweep does, and clears the handle once it is gone."""
+        rows = await self.session.execute(
+            select(User.telegram_id, User.panel_username).where(
+                User.status == UserStatus.banned, User.panel_username.is_not(None)
             )
         )
         return [(int(tid), name) for tid, name in rows.all() if name]
@@ -358,8 +451,13 @@ class UserRepository(BaseRepository):
 
     async def referral_cap_stats(self, cap: int) -> tuple[int, int]:
         """``(at_cap, any_referrals)`` for the configured reward cap — how many inviters have
-        hit the ceiling and stopped earning. A cap of 0 means "no cap configured", so nobody is
-        at it."""
+        hit the ceiling and stopped earning.
+
+        A cap of 0 means NO invite is rewarded (the quota math everywhere is
+        ``min(referrals, cap)``), so every inviter is already at it. It used to be reported as
+        "no cap configured — unlimited", the opposite of what the bot actually did: an operator who
+        set 0 for "no limit" had switched invite rewards off.
+        """
         any_referrals = int(
             await self.session.scalar(
                 select(func.count()).select_from(User).where(User.referral_count > 0)
@@ -367,7 +465,7 @@ class UserRepository(BaseRepository):
             or 0
         )
         if cap <= 0:
-            return 0, any_referrals
+            return any_referrals, any_referrals
         at_cap = int(
             await self.session.scalar(
                 select(func.count()).select_from(User).where(User.referral_count >= cap)
@@ -375,6 +473,52 @@ class UserRepository(BaseRepository):
             or 0
         )
         return at_cap, any_referrals
+
+    async def active_config_split(self, trial_hours: int, *, now: datetime) -> tuple[int, int]:
+        """``(live, stale)`` among users whose status is ``active_config``.
+
+        The bot's twin of ``SiteDeviceRepository.active_config_split``. The status column is healed
+        only by the panel webhook or the reconcile sweep, and the sweep skips a user whenever the
+        panel does not answer — so the raw count kept dead trials in "active" for as long as the
+        panel was down. "Live" is a trial whose window (``last_claim_at + trial_hours``) has not
+        elapsed; a missing anchor is stale, since nothing says the trial is still running.
+        """
+        cutoff = now - timedelta(hours=max(trial_hours, 1))
+        live = func.count().filter(User.last_claim_at > cutoff)
+        stale = func.count().filter(or_(User.last_claim_at <= cutoff, User.last_claim_at.is_(None)))
+        row = (
+            await self.session.execute(
+                select(live, stale).select_from(User).where(User.status == UserStatus.active_config)
+            )
+        ).one()
+        return int(row[0] or 0), int(row[1] or 0)
+
+    async def signup_conversion(
+        self, **windows: tuple[datetime, datetime | None]
+    ) -> dict[str, tuple[int, int]]:
+        """``{name: (signed_up, claimed)}`` for each half-open signup window, in ONE scan.
+
+        ``claimed`` counts the window's signups who have EVER taken a config. This is the windowed
+        conversion the dashboard's radar needs: the old figure divided every claimer ever by every
+        user ever, so it sat beside three windowed rates without moving when the range did.
+        """
+        claimed = select(ConfigLog.id).where(ConfigLog.user_id == User.telegram_id).exists()
+        columns = []
+        for start, end in windows.values():
+            in_window = User.created_at >= start
+            if end is not None:
+                in_window = in_window & (User.created_at < end)
+            columns.append(func.count().filter(in_window))
+            columns.append(func.count().filter(in_window & claimed))
+        earliest = min(start for start, _ in windows.values())
+        row = (
+            await self.session.execute(
+                select(*columns).select_from(User).where(User.created_at >= earliest)
+            )
+        ).one()
+        return {
+            name: (int(row[2 * i] or 0), int(row[2 * i + 1] or 0)) for i, name in enumerate(windows)
+        }
 
     async def status_breakdown(self) -> list[tuple[str, int]]:
         """Users grouped by status → ``[(status_value, count), …]``. One grouped query in place of

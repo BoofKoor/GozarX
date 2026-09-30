@@ -12,7 +12,25 @@ import { Input } from "@/components/ui/Input";
 import { LanguagePill } from "@/components/layout/LanguagePill";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { useLogin } from "@/hooks/useAuth";
-import { useI18n } from "@/i18n";
+import { useI18n, type MessageKey } from "@/i18n";
+
+/**
+ * Why the sign-in did not work, in the operator's words.
+ *
+ * Everything but a 503 used to read «نام کاربری یا رمز عبور نادرست است»: a dropped connection, a
+ * timeout, a 502 while the app restarted after a deploy, the rate limit — an operator with the right
+ * password was told it was wrong, and the natural response (retype it, try again) walks straight
+ * into the login rate limit.
+ */
+function loginError(err: unknown, t: (key: MessageKey) => string): string {
+  const response = (err as AxiosError).response;
+  if (!response) return t("login.network"); // offline, DNS, a timeout: nothing answered at all
+  if (response.status === 401) return t("login.failed");
+  if (response.status === 429) return t("login.rateLimited");
+  if (response.status === 503) return t("login.notConfigured");
+  if (response.status >= 500) return t("login.server");
+  return t("login.failed");
+}
 
 export function Login() {
   const { t } = useI18n();
@@ -28,10 +46,7 @@ export function Login() {
       { username, password },
       {
         onSuccess: () => navigate("/", { replace: true }),
-        onError: (err) => {
-          const status = (err as AxiosError).response?.status;
-          toast.error(status === 503 ? t("login.notConfigured") : t("login.failed"));
-        },
+        onError: (err) => toast.error(loginError(err, t)),
       },
     );
   }

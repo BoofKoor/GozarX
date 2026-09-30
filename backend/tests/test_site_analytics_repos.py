@@ -52,8 +52,43 @@ async def test_site_active_since(session):
 async def test_streak_distribution_and_active(session):
     await _seed(session)
     devices = SiteDeviceRepository(session)
-    assert await devices.streak_distribution() == {"0": 1, "3-6": 2, "7+": 1}
-    assert await devices.active_streak_count(3) == 3  # d1(5), d3(3), d4(8)
+    now = datetime.now(UTC)
+    # d4 carries a stored 8 but has never provisioned, so nothing keeps that streak alive: it
+    # counts as 0. d1 (5) and d3 (3) claimed just now.
+    assert await devices.streak_distribution(24, now=now) == {"0": 2, "3-6": 2}
+    assert await devices.active_streak_count(3, 24, now=now) == 2  # d1(5), d3(3)
+
+
+async def test_a_lapsed_streak_stops_counting(session):
+    """The stored counter is written on a claim and never on the ABSENCE of one, so a device that
+    stopped claiming used to keep its streak — and its place among the "active" — forever."""
+    now = datetime.now(UTC)
+    session.add_all(
+        [
+            SiteDevice(uuid="live", streak_count=6),
+            SiteDevice(uuid="gone", streak_count=6),
+        ]
+    )
+    await session.flush()
+    session.add_all(
+        [
+            # Within the grace window (two 24h trial windows): still running.
+            SiteClaim(device_uuid="live", location="DE", created_at=now - timedelta(hours=30)),
+            # Three days ago: the next claim would restart this streak at 1.
+            SiteClaim(device_uuid="gone", location="DE", created_at=now - timedelta(days=3)),
+            # A change-location is not a provision and must not revive it.
+            SiteClaim(
+                device_uuid="gone",
+                location="NL",
+                is_change=True,
+                created_at=now - timedelta(hours=1),
+            ),
+        ]
+    )
+    await session.commit()
+    devices = SiteDeviceRepository(session)
+    assert await devices.active_streak_count(3, 24, now=now) == 1
+    assert await devices.streak_distribution(24, now=now) == {"0": 1, "3-6": 1}
 
 
 async def test_anti_abuse_signals(session):
@@ -80,7 +115,7 @@ async def test_push_health(session):
 async def test_site_analytics_empty(session):
     devices = SiteDeviceRepository(session)
     assert await devices.active_since(datetime.now(UTC) - timedelta(days=7)) == 0
-    assert await devices.streak_distribution() == {}
+    assert await devices.streak_distribution(24, now=datetime.now(UTC)) == {}
     assert await devices.top_ip_buckets() == []
     assert await devices.shared_fingerprint_device_count() == 0
     assert await SiteRewardRepository(session).totals_by_type() == []

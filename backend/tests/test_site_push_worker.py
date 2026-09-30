@@ -218,3 +218,63 @@ async def test_site_push_broadcast_without_a_log_id_still_sends(db_sessions, mon
     monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
     await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b")
     assert sent == ["https://e/x"]
+
+
+async def test_site_reconcile_finishes_a_block_the_panel_did_not_answer(db_sessions) -> None:
+    async with db_sessions() as s:
+        s.add(
+            SiteDevice(uuid="d-blocked", status=SiteDeviceStatus.blocked, site_panel_username="s-b")
+        )
+        await s.commit()
+
+    panel = _ReconcilePanel({})
+    await site_reconcile(
+        {"sessionmaker": db_sessions, "panel": panel, "cache_redis": await _cache_redis()}
+    )
+
+    assert panel.deleted == ["s-b"]
+    async with db_sessions() as s:
+        device = await s.get(SiteDevice, "d-blocked")
+        assert device.status == SiteDeviceStatus.blocked and device.site_panel_username is None
+
+
+async def test_a_cancelled_push_fan_out_still_records_how_far_it_got(
+    db_sessions, monkeypatch
+) -> None:
+    # A worker restart CANCELS the job; `except Exception` never saw it, and the row stayed on
+    # "sending" forever with nothing recorded.
+    import asyncio
+
+    import pytest
+
+    async with db_sessions() as s:
+        s.add(SiteDevice(uuid="dev-1"))
+        await s.flush()
+        repo = PushSubscriptionRepository(s)
+        for ep in ("https://e/1", "https://e/2", "https://e/3"):
+            await repo.upsert(device_uuid="dev-1", endpoint=ep, p256dh="k", auth="a", locale="fa")
+        log = await SitePushLogRepository(s).create(
+            title="t", body="b", url="", locale=None, recipients=99
+        )
+        log_id = log.id
+        await s.commit()
+
+    calls = 0
+
+    async def _send(info, payload):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise asyncio.CancelledError
+        return push.PushOutcome.SENT
+
+    monkeypatch.setattr(push, "send_push", _send)
+    monkeypatch.setattr(push, "PUSH_SEND_DELAY", 0)
+
+    with pytest.raises(asyncio.CancelledError):
+        await site_push_broadcast({"sessionmaker": db_sessions}, "t", "b", "", None, log_id)
+
+    async with db_sessions() as s:
+        row = await SitePushLogRepository(s).get(log_id)
+    assert row.status == "failed" and row.sent == 1
+    assert row.recipients == 3  # the audience actually walked, not the enqueue-time guess

@@ -13,6 +13,7 @@ from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.setting import Setting
 from gozar.db.models.site_claim import SiteClaim
 from gozar.db.models.site_device import SiteDevice, SiteDeviceStatus
+from gozar.db.models.site_device_day import SiteDeviceDay
 from gozar.db.models.site_faq_item import FAQ_CATEGORIES, SiteFaqItem
 from gozar.db.models.site_landing_page import SiteLandingPage
 from gozar.db.models.site_message import SiteMessage
@@ -34,6 +35,7 @@ __all__ = [
     "Setting",
     "SiteClaim",
     "SiteDevice",
+    "SiteDeviceDay",
     "SiteDeviceStatus",
     "SiteFaqItem",
     "SiteLandingPage",

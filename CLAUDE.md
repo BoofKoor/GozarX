@@ -47,8 +47,10 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 - **No process-global mutable state for per-user data** — per-user state in FSM/DB; shared caches in
   Redis, keyed properly.
 - **Panel calls are single, bounded attempts** — log and move on; never `while result is None: retry`.
-- **Broadcasts run in the arq worker**, never inside a handler. A broadcast removes a user **only** on
-  a genuine "bot blocked / deactivated" error — never on transient failures.
+- **Broadcasts run in the arq worker**, never inside a handler. A broadcast MARKS a user unreachable
+  (`users.unreachable_at`) **only** on a genuine "bot blocked / deactivated / chat not found" error —
+  never on transient failures — and never deletes the row. "Chat not found" arrives as a 400
+  (`TelegramBadRequest`): aiogram picks the class by HTTP status (`services/telegram_errors`).
 - **Admin multi-step flows use aiogram FSM (Redis)**, never a module-global dict.
 - **Use the configured referral reward everywhere** — never hardcode reward/cap numbers.
 - **Remnawave: VERIFY every endpoint** against the live OpenAPI (`{PANEL_BASE_URL}/api`) before wiring;
@@ -76,7 +78,11 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 ## Data model
 - `users`: telegram_id (PK bigint) · status enum(available/active_config/banned) · language enum ·
   referral_count · panel_username · reminder_enabled bool · referred_by bigint · created_at tz ·
-  last_claim_at tz (provision time — the rolling-cooldown anchor, aligned with the trial's expiry).
+  last_claim_at tz (provision time — the rolling-cooldown anchor, aligned with the trial's expiry) ·
+  unreachable_at tz (a broadcast learned the chat is gone). A gone chat is MARKED, never deleted:
+  the delete cascaded the claim history away (every past day's figures shrank after a broadcast)
+  and orphaned the live panel account. Marked users leave every audience and reminders; their next
+  update clears the mark.
 - `config_logs`: id · user_id FK · location · created_at tz (one row per claim).
 - `content`: unique (key, language) → body text. Editable bot copy, plus the website's `site_*`
   keys. A `site_copy_<designKey>` row OVERRIDES that key in the site's in-code `DESIGN_COPY`; a
@@ -86,16 +92,20 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   referral_reward_mb, referral_reward_limit, trial_hours, ads_enabled, configs_per_page,
   ad_button_enabled/ad_button_text/ad_button_url/ad_button_emoji_id — the Persian-only promo button
   beside "change location" on the delivered config) — set via the first-run wizard, editable from
-  the panel. NOT env vars.
+  the panel. NOT env vars. A location list of `[]` means ALL the squad's live names (the wizards,
+  both refreshes and "every box ticked" all store it), so a host added later appears by itself;
+  a subset matching no live host falls back to all. `seeded_site_faq` / `seeded_site_landings`
+  are markers: those defaults are seeded ONCE, so a deleted or reworded default stays so.
 - `site_push_logs`: one row per website Web-Push broadcast (title/body/url/locale · status ·
   recipients/sent/failed/pruned · created_at/finished_at). Written at ENQUEUE time by the route and
   completed by the arq worker — the fan-out is async, so without the row a broadcast that never ran
   would vanish silently instead of showing as stuck on `queued`.
 - `site_faq_items`: the public site's FAQ (locale · category · question · answer · position ·
   published), unique on (locale, question). The site used to compile these 16 strings into its
-  bundle, so a new recurring question cost a redeploy. Defaults are seeded from `seed_faq` on boot
-  (`add_default`, never clobbering an edit) so the panel opens showing exactly what the site shows;
-  the site keeps its in-code `FAQ_ITEMS` as the fallback for an empty/unreachable response.
+  bundle, so a new recurring question cost a redeploy. Defaults are seeded from `seed_faq` on the
+  first boot only (the `seeded_site_faq` marker — per row on every boot resurrected deletions) so the
+  panel opens showing exactly what the site shows; the site keeps its in-code `FAQ_ITEMS` as the
+  fallback for an empty/unreachable response.
 - `broadcast_logs`: one row per panel-composed Telegram broadcast (body · languages · the two
   audience refinements · buttons JSON · status · recipients/sent/failed/**removed** ·
   scheduled_for/created_at/finished_at). Written at ENQUEUE time by the route and completed by the
@@ -124,7 +134,15 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   identity-bearing request (throttled to once an hour, so a page load is not a row write). Without
   it every website figure was claim-derived plus an all-time "identities minted" counter — and that
   counter is not traffic: a cookieless client mints a fresh row per request, so it only grows and
-  drags the conversion rate down with it.
+  drags the conversion rate down with it. A device is minted UNSEEN (NULL) and becomes a visitor
+  when its cookie comes back — `/locations` follows `/status` on every page load, so a real browser
+  is seen at once and a crawler never is.
+- `site_device_days`: (device_uuid, LOCAL day) → first_at, one row per device per day it was seen.
+  `last_seen_at` is overwritten on every visit, so a window that has ENDED cannot be counted from it
+  (the previous period counted only devices that never came back); past windows and the daily
+  series read this, and a window from before it began reports unknown (`None`), not zero.
+- `button_configs.screens`: per-SCREEN order and visibility overrides for a button key. A key sits
+  on several screens (`change_location` on three), and a key-wide override moved or hid it on all.
 
 ## Reporting conventions
 - **A cumulative counter is not a series, and it can go BACKWARDS.** `nodes.totalBytesLifetime`
@@ -152,6 +170,25 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   unreachable — so it is split into live vs stale (`active_config_split`) rather than overstated.
 - **A capped list says what it hid** (`locations_total` next to a top-10), or it reads as the whole
   picture.
+- **A share of an EMPTY group is unknown, not 0%.** Activation over a cohort of nobody read 0% and,
+  against a previous window that had one, "-100%". `_pct_or_none` → `None` → «—».
+- **Unknown is not zero.** A figure only the panel can give is `None` when the panel did not answer
+  (traffic, nodes, online): «0 B» said the service carried nothing. And never substitute a
+  different quantity under the same label — "online now" used to fall back to the database's
+  active-config count.
+- **A gauge divides a count by its OWN population.** The squad-scoped online count was ringed
+  against the whole panel's week, which also held the operator's own users; the worker's sweep
+  records the squad's week beside its online figure (`online_week`).
+- **A counter written on an event goes stale on the ABSENCE of one.** `streak_count` is written on a
+  claim and never on a missed day, so every lapsed streak stayed "active"; read it through a
+  liveness check (the last real provision within the grace window).
+- **The previous window is the current one shifted back**, so both are the same length at any hour
+  (`previous_window`); an "equal-length" window that was really a full one read ~14% down at 00:30.
+- **Weeks are LOCAL weeks** — Saturday to Friday on the display clock (`local_week_start`). ISO weeks
+  on UTC put a Monday 02:00 signup into the previous week's cohort.
+- **The still-filling last bucket is not a collapse.** Today is drawn dashed (`partialLast`), and a
+  sparkline ends on the last complete day. Two series of different magnitude get their own axes
+  (`secondaryTicks`): signups at ~1% of claims were a flat stroke along the floor.
 
 ## Dev workflow
 - Deps via **uv** (`uv sync`, `uv add <pkg>`). Lint/format with **ruff**; gate every change with
@@ -174,7 +211,10 @@ docker compose -f docker-compose.yml -f docker-compose.tls.yml restart nginx
 sleep 8
 curl -sS -o /dev/null -w "%{http_code}\n" https://gozarx.gozarxservices.com/health   # expect 200
 ```
-When a change needs a server deploy, hand the owner exactly these commands. The admin panel
+When a change needs a server deploy, hand the owner exactly these commands. A change to the nginx
+config also needs `sudo ./install.sh` re-run on the server: the live `nginx/nginx.tls.conf` is written
+from the installer's OWN template (keep it in step with `nginx/nginx.conf`), and a `git pull` never
+touches it (re-running is safe — secrets are reused). The admin panel
 (`/api/admin/*`) needs `ADMIN_USERNAME` / `ADMIN_PASSWORD_HASH` / `ADMIN_JWT_SECRET` in `.env`
 (installer-generated; mint the hash with `python -m gozar.web.auth.passwords`).
 
@@ -258,7 +298,19 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   real signed `user.expired` webhook exercised on each. The same audit removed the raw-subscription
   fallback: its path exists in no panel version, so an empty link list (rare — the panel normally
   answers with placeholder links) became a 404 "account gone" and deleted a live trial.
-20 The public site audited the way phase 18 audited the panel — by rendering it (`docs/website/
+20 The admin panel audited end to end — measured on a copy at the live install's volume (108k users,
+  1.3M claims, a 12k-user mock panel) and rendered in Chromium — and all 76 findings fixed, in four
+  packages. Speed: the dashboard stopped paging every panel user inline (24.6s → 1.5s; the squad
+  online count moved to the worker), panel readings are shared and bounded, nginx caches hashed
+  assets and 404s a missing chunk. Correctness: user actions no longer crash the panel, bans and
+  blocks survive a dead panel (revoke pending + retry), gone chats are marked not deleted, commits
+  land before the response and inside the claim locks, Telegram-refused HTML is caught before a
+  send, location lists store `[]` for "all" (the reported "29 of 25 selected" save error), buttons
+  are per screen, sweeps resume within a time budget. Reporting: past website windows from
+  `site_device_days`, a mint is not a visit, windows shift back, traffic steps across counter
+  resets, gauges and rates keep one population and one window, unknowns are «—». Security: tokens
+  carry a credential version and a 30-day session cap.
+21 The public site audited the way phase 18 audited the panel — by rendering it (`docs/website/
   audit/`: 68 code findings, 14 visual, measured probes, a six-phase fix plan A–F) — and its Phase A
   shipped: skeletons that painted nothing, a reduced-motion override a duplicate rule outranked, the
   revive block's broken invite field, the countdown's labels, three RTL fills/rails, Persian digits,
@@ -506,6 +558,34 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
   the fan-out. Banned users are excluded unconditionally — they can receive nothing, and counting
   them inflated every pre-flight number.
 
+- **An effect returns a cleanup function or nothing.** `useEffect(() => onChange?.(dirty))` returned
+  the callback's value, React called it as a cleanup, and the page crashed with "destroy is not a
+  function" the first time it was `true`. Write effects with braces.
+- **A search box is debounced, its page belongs to its filters, and its pattern is escaped.**
+  `useDeferredValue` is a render hint, not a debounce (a request per keystroke); a page reset in an
+  effect ran one render late and fetched the OLD page under the NEW filter (`useFilterPage` keys
+  the page on the filters instead); and a raw `%{term}%` made `_` and `%` wildcards
+  (`contains_pattern` + `escape=`).
+- **A paused query is offline, not empty.** With the browser offline TanStack pauses: not loading,
+  not an error, no data — and the Users page said nobody had ever started the bot. Branch on
+  `fetchStatus === "paused"`.
+- **An editor asks before it discards** (`useDiscardGuard`): Esc, a backdrop click, Cancel, or a
+  click on another record. Each one used to throw the typing away silently.
+- **Keep what the SERVER saved.** A save the server normalised (bidi marks stripped out of a
+  `{token}`) left the editor comparing against the typed text and reading "unsaved" for good.
+- **A draft validates loosely, a send strictly.** A draft is unfinished by definition; making a
+  half-typed button link unsaveable lost the whole message at the moment it was being kept.
+- **A link that looks like a button is `LinkButton` / `ExternalLinkButton`**, never `<Link><Button>`
+  — invalid HTML, two tab stops, "link, button".
+- **`role="radiogroup"` is the same promise as `tablist`**: one tab stop on the checked option,
+  arrows that step and select (swapped in RTL), Home/End — `Segmented` and the broadcast
+  `HourStrip` keep it. A target is the whole column, not a bar that can be 2px tall.
+- **A global shortcut stands down while the operator is typing.** Ctrl+K then Enter in the
+  composer navigated away with the message.
+- **`faDate` prints an INSTANT on the Tehran clock and a DAY KEY as that date.** Formatted in UTC, a
+  timestamp from 00:00–03:30 local read as the day before.
+- **A unit is the locale's word** — `humanHours` said «۲۱s» (see `humanUptime`).
+
 ## Website conventions (`frontend/site`)
 - **The site never states a number the backend does not.** A renewal window is `trial_hours`
   (`/config`), a reward is `reward_*_mb`, social proof is `/stats`. Copy carries `{token}`s filled by
@@ -551,3 +631,9 @@ and the Postgres password are reused, never rotated. In Cloudflare: the DNS reco
 - TLS verification on for all panel calls. Installer auto-generates secrets; `.env` is chmod 600.
 - Webhook protected by the secret path segment + Telegram secret_token header.
 - Never log secrets or full update/panel payloads.
+- **Admin tokens carry a credential version** (`cv`, a keyed fingerprint of the username and the
+  password hash) and the login's `auth_time`, kept through every refresh. A new password hash (and
+  the restart that loads it) ends every existing session; a refresh chain ends 30 days after the
+  login (`SESSION_MAX`) — a rotated refresh token used to buy another seven days each time.
+- Login is rate-limited per IP, and a 401 from `/admin/auth/*` never triggers the SPA's refresh
+  retry (a wrong password on /login used to wipe the stored session).

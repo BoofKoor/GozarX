@@ -32,8 +32,8 @@ import { useSeriesAnimation } from "@/hooks/useReducedMotion";
 import { useSiteAnalytics, useSiteStats } from "@/hooks/useSite";
 import { useI18n, type MessageKey } from "@/i18n";
 import { CHART_MARGIN, Y_AXIS_WIDTH, chartTheme, seriesColor } from "@/lib/chartTheme";
-import { faPct, formatNumber, shortDay } from "@/lib/format";
-import type { DayPoint, SiteStats as SiteStatsData } from "@/types/api";
+import { faDate, faPct, formatNumber, shortDay } from "@/lib/format";
+import type { DayPoint, SiteStats as SiteStatsData, VisitPoint } from "@/types/api";
 
 const RANGES = [7, 14, 30, 90];
 
@@ -43,9 +43,12 @@ const STATUS_LABEL: Record<string, MessageKey> = {
   blocked: "st.device.blocked",
 };
 
-/** Union the visitors and claims series onto one x-axis so the funnel gap is visible per day. */
-function mergeSeries(visitors: DayPoint[], claims: DayPoint[]) {
-  const by = new Map<string, { day: string; visitors: number; claims: number }>();
+/** Union the visitors and claims series onto one x-axis so the funnel gap is visible per day.
+ *
+ * A visitor count of `null` stays null — a day the visit record does not cover is a GAP in the
+ * line, not a zero: drawn as 0 it would read as "nobody came" on every day before the recorder. */
+function mergeSeries(visitors: VisitPoint[], claims: DayPoint[]) {
+  const by = new Map<string, { day: string; visitors: number | null; claims: number }>();
   for (const p of visitors) by.set(p.day, { day: p.day, visitors: p.count, claims: 0 });
   for (const p of claims) {
     const e = by.get(p.day) ?? { day: p.day, visitors: 0, claims: 0 };
@@ -74,7 +77,11 @@ export function SiteStats() {
   const [days, setDays] = useState(14);
   const { data, isError, refetch } = useSiteStats(days);
   // Same window as the funnel above — the range control moves the WHOLE page.
-  const { data: analytics } = useSiteAnalytics(days);
+  const {
+    data: analytics,
+    isError: analyticsError,
+    refetch: refetchAnalytics,
+  } = useSiteAnalytics(days);
 
   return (
     <div className="space-y-6">
@@ -115,6 +122,12 @@ export function SiteStats() {
 
           {analytics ? (
             <SiteAnalyticsSection data={analytics} />
+          ) : analyticsError ? (
+            <>
+              <Section title={t("st.deep")} />
+              {/* A failed query, not a slow one: skeletons here used to wait forever. */}
+              <ErrorState onRetry={() => void refetchAnalytics()} />
+            </>
           ) : (
             <>
               <Section title={t("st.deep")} />
@@ -145,8 +158,12 @@ function FunnelKpis({ data, days }: { data: SiteStatsData; days: number }) {
         icon={Globe}
         tone="brand"
         delta={data.visitors.change_pct}
-        hint={t("st.prev", { n: formatNumber(data.visitors.previous) })}
-        spark={data.visitors_series.map((p) => p.count)}
+        hint={
+          data.visitors.previous === null
+            ? t("st.prevUnrecorded")
+            : t("st.prev", { n: formatNumber(data.visitors.previous) })
+        }
+        spark={data.visitors_series.flatMap((p) => (p.count === null ? [] : [p.count]))}
       />
       <StatCard
         label={t("st.kpi.newVisitors", { range: rangeLabel })}
@@ -172,7 +189,8 @@ function FunnelKpis({ data, days }: { data: SiteStatsData; days: number }) {
         delta={data.claimers.change_pct}
         hint={t("st.kpi.conversionHint", {
           now: faPct(data.conversion_pct),
-          prev: faPct(data.conversion_pct_prev),
+          // Unknown, not 0%: the previous window's visits are not recorded yet.
+          prev: data.conversion_pct_prev === null ? "—" : faPct(data.conversion_pct_prev),
         })}
         spark={data.claims_series.map((p) => p.count)}
       />
@@ -208,7 +226,12 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
   const anim = useSeriesAnimation();
   const visitorsColor = seriesColor(1);
   const claimsColor = seriesColor(0);
-  const empty = points.every((p) => p.visitors === 0 && p.claims === 0);
+  const empty = points.every((p) => !p.visitors && p.claims === 0);
+  // The per-day visit record began after this window did: say so, or the gap before it reads as
+  // a service nobody visited. The server marks each uncovered day, so the first covered one is the
+  // day the record starts from.
+  const partial = data.visitors_series.some((p) => p.count === null);
+  const firstRecorded = data.visitors_series.find((p) => p.count !== null)?.day;
 
   return (
     <Card>
@@ -238,6 +261,7 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
               stroke={visitorsColor}
               strokeWidth={2}
               fill="url(#g-site-visitors)"
+              connectNulls={false}
             />
             <Area
               {...anim}
@@ -251,6 +275,13 @@ function ActivityCard({ data, days }: { data: SiteStatsData; days: number }) {
           </AreaChart>
         </ResponsiveContainer>
       </ChartFrame>
+      {partial && (
+        <p className="mt-3 text-xs text-content-subtle">
+          {firstRecorded
+            ? t("st.daily.since", { date: faDate(firstRecorded) })
+            : t("st.daily.notRecording")}
+        </p>
+      )}
     </Card>
   );
 }

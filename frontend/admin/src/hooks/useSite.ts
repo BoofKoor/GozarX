@@ -1,6 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
+import { stillInFlight } from "@/lib/inflight";
 import type {
   SiteAnalytics,
   SiteDeviceAction,
@@ -70,10 +71,14 @@ export function useCompleteSiteSetup() {
   return useMutation({
     mutationFn: async (payload: SiteSetupPayload) =>
       (await api.post<SetupStatus>("/admin/site/setup/", payload)).data,
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["site-setup-status"] });
-      qc.invalidateQueries({ queryKey: ["site-settings"] });
-    },
+    // Returned, so the mutation — and the caller's navigate to the settings page — waits for the
+    // refetch. That page fills its form ONCE, and filled from the pre-wizard cache it showed the old
+    // squad's numbers; its next save then put them back, or 400'd on the old squad's names.
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: ["site-setup-status"] }),
+        qc.invalidateQueries({ queryKey: ["site-settings"] }),
+      ]),
   });
 }
 
@@ -290,10 +295,7 @@ export function useSitePushHistory() {
   return useQuery({
     queryKey: ["site-push-history"],
     queryFn: async () => (await api.get<SitePushLog[]>("/admin/site/push/history")).data,
-    refetchInterval: (query) =>
-      (query.state.data ?? []).some((r) => r.status === "queued" || r.status === "sending")
-        ? 5_000
-        : false,
+    refetchInterval: (query) => (stillInFlight(query.state.data) ? 5_000 : false),
   });
 }
 
