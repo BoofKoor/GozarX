@@ -22,7 +22,9 @@ export interface LandingSummary {
 
 export interface Landing extends LandingSummary {
   heading: string | null;
-  body: string; // trusted admin-authored HTML (see backend admin/landing.py) — rendered verbatim
+  // Admin-authored HTML, SANITISED by the server before it is sent (backend
+  // routes/public/pages.py → services/article_html) — so it is rendered as given.
+  body: string;
 }
 
 export async function fetchLanding(slug: string, locale: Locale): Promise<Landing | null> {

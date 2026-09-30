@@ -17,6 +17,7 @@ from fastapi import HTTPException, Request, status
 
 from gozar.remnawave import RemnawaveError
 from gozar.remnawave.links import normalize_remark
+from gozar.services.site_trial import offered_subset
 
 logger = logging.getLogger("gozar.web.admin.site_locations")
 
@@ -78,11 +79,16 @@ async def reject_unknown_squad(request: Request, squad: str) -> None:
 
 
 async def offered_locations(request: Request, squad: str | None, stored: list[str]) -> list[str]:
-    """What the picker offers for a stored list: the list itself, or — when it is empty, which
-    means "all of them" — the squad's live names (``[]`` when those can't be read right now)."""
-    if stored:
-        return stored
-    return await known_squad_locations(request, squad) or []
+    """What the public site offers for a stored list — the same rule it applies itself
+    (``offered_subset``): the stored names that still match a live host, or every live name.
+
+    The stored list used to be returned as it was, so a name the squad had since dropped could be
+    starred or preselected on a landing that the public picker never shows — the widget then
+    preselected nothing. Unverifiable (no squad, panel down): the stored list, or ``[]``."""
+    live = await known_squad_locations(request, squad)
+    if live is None:
+        return list(stored)
+    return offered_subset(live, stored)
 
 
 def reject_popular_outside_list(popular: str, locations: list[str]) -> None:

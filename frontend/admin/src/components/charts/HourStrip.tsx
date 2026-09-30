@@ -39,16 +39,19 @@ export function HourStrip({
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (!onPick) return;
     // PHYSICAL arrows: the strip is a clock laid out left to right in both languages, so right is
-    // later whatever the page's reading direction.
+    // later whatever the page's reading direction. Down is later too, and the ends wrap — a radio
+    // group's keys, which `Segmented` keeps and a screen reader describes. Up used to be "later",
+    // the opposite of what the operator had just been told, and 23:00 stopped dead.
+    const n = counts.length;
     const next =
-      e.key === "ArrowRight" || e.key === "ArrowUp"
-        ? Math.min(counts.length - 1, current + 1)
-        : e.key === "ArrowLeft" || e.key === "ArrowDown"
-          ? Math.max(0, current - 1)
+      e.key === "ArrowRight" || e.key === "ArrowDown"
+        ? (current + 1) % n
+        : e.key === "ArrowLeft" || e.key === "ArrowUp"
+          ? (current - 1 + n) % n
           : e.key === "Home"
             ? 0
             : e.key === "End"
-              ? counts.length - 1
+              ? n - 1
               : null;
     if (next == null) return;
     e.preventDefault();

@@ -66,6 +66,26 @@ logger = logging.getLogger("gozar.services.site_trial")
 _DEFAULT_SITE_TRIAL_HOURS = 24
 
 
+def offered_subset(live: list[str], chosen: list[str]) -> list[str]:
+    """The locations the site OFFERS: the squad's ``live`` names narrowed to the ``chosen`` subset,
+    matched by NORMALISED name and kept in the squad's spelling and order.
+
+    An empty ``chosen`` means "all of them". So does a subset that matches NONE of the live names
+    (every ticked host since renamed) — an empty site is never what was chosen. Shared by the public
+    picker and the admin checks, so a name the site does not show can never be starred or
+    preselected in the panel.
+    """
+    if not chosen:
+        return list(live)
+    keys = {normalize_remark(name) for name in chosen}
+    subset = [name for name in live if normalize_remark(name) in keys]
+    if subset:
+        return subset
+    if live:
+        logger.warning("site locations: the ticked subset matches no live host; offering all")
+    return list(live)
+
+
 def _iso(dt: datetime) -> str:
     """A stored (server-default now()) timestamp as UTC ISO-8601 the SPA can parse."""
     return (dt if dt.tzinfo else dt.replace(tzinfo=UTC)).isoformat()
@@ -295,15 +315,7 @@ class SiteTrialService:
         live = await self._live_squad_locations()
         if live is None:
             return None
-        chosen = await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS)
-        if not chosen:
-            return live
-        keys = {normalize_remark(name) for name in chosen}
-        subset = [name for name in live if normalize_remark(name) in keys]
-        if not subset and live:
-            logger.warning("site locations: the ticked subset matches no live host; offering all")
-            return live
-        return subset
+        return offered_subset(live, await self._settings.get_list(SiteSettingKey.SITE_LOCATIONS))
 
     async def _live_squad_locations(self) -> list[str] | None:
         """The configured squad's location names, LIVE — or ``None`` when they can't be determined.

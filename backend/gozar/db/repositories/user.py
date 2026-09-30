@@ -13,6 +13,9 @@ from gozar.db.models.enums import Language, UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.base import LIKE_ESCAPE, BaseRepository, contains_pattern
 
+#: Ids per ``mark_unreachable`` statement — far under asyncpg's 32,767 bind-parameter ceiling.
+MARK_BATCH = 5_000
+
 
 def _latest_claim_location():  # a correlated scalar subquery
     """The location of THIS user's most recent claim, as a correlated scalar subquery.
@@ -261,13 +264,19 @@ class UserRepository(BaseRepository):
 
     async def mark_unreachable(self, telegram_ids: list[int], at: datetime) -> int:
         """Record that Telegram says these chats are gone. The rows — and their claim history —
-        stay; the next update from any of them clears the mark (see the context middleware)."""
-        if not telegram_ids:
-            return 0
-        result = await self.session.execute(
-            update(User).where(User.telegram_id.in_(telegram_ids)).values(unreachable_at=at)
-        )
-        return int(result.rowcount or 0)
+        stay; the next update from any of them clears the mark (see the context middleware).
+
+        Written in batches of ``MARK_BATCH``: an ``IN`` list binds one parameter per id, and asyncpg
+        refuses a statement with more than 32,767 of them — so a broadcast that found 40,000 gone
+        chats marked none of them, and failed its log row on the way out."""
+        marked = 0
+        for start in range(0, len(telegram_ids), MARK_BATCH):
+            batch = telegram_ids[start : start + MARK_BATCH]
+            result = await self.session.execute(
+                update(User).where(User.telegram_id.in_(batch)).values(unreachable_at=at)
+            )
+            marked += int(result.rowcount or 0)
+        return marked
 
     @staticmethod
     def _audience(
@@ -366,8 +375,9 @@ class UserRepository(BaseRepository):
         return [(int(tid), name) for tid, name in rows.all() if name]
 
     async def delete(self, telegram_id: int) -> None:
-        """Remove a user row (a broadcast removes a user ONLY on a genuine blocked/deactivated send
-        error — never on a transient failure). ``config_logs`` cascade-delete via the FK."""
+        """Remove a user row; ``config_logs`` cascade-delete via the FK. No broadcast calls this
+        any more — a gone chat is MARKED (``mark_unreachable``), because the delete took the user's
+        claim history and the only mapping back to their live panel account with it."""
         await self.session.execute(delete(User).where(User.telegram_id == telegram_id))
 
     # --- analytics (Phase B) ---------------------------------------------------------------------

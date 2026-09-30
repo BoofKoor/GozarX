@@ -16,7 +16,7 @@ defaults (the live location list, the apps the site actually links). Blank is th
 "use the site's copy". Anything an operator reworded is untouched.
 
 Revision ID: 5b7e2c9d4a61
-Revises: 1d81a25d3ea5
+Revises: c7f62cc5a366
 Create Date: 2026-09-30
 """
 
@@ -26,7 +26,9 @@ import sqlalchemy as sa
 from alembic import op
 
 revision: str = "5b7e2c9d4a61"
-down_revision: str | None = "1d81a25d3ea5"
+# Re-parented onto c7f62cc5a366 when the #97 follow-up landed first — data only, independent of it,
+# and it had not run anywhere yet.
+down_revision: str | None = "c7f62cc5a366"
 branch_labels: str | None = None
 depends_on: str | None = None
 

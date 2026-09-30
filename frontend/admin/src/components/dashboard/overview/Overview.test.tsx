@@ -158,6 +158,19 @@ describe("Overview", () => {
     expect(radar.textContent).toContain("۶۵٫۶٪");
   });
 
+  it("reads «—», not «۰٪», for a rate nothing has measured yet", () => {
+    // A young install: no cohort has a week two, and nobody has claimed. A 0 there drew two spokes
+    // collapsed to the centre — a service nobody returns to — out of no data at all.
+    renderOverview({
+      analytics: analytics({ claims_distribution: {} }),
+      retention: { weeks: 8, cohorts: [{ week: "2026-06-15", size: 300, retention: [100] }] },
+    });
+    const radar = screen.getByRole("img", { name: "نرخ‌های کلیدی، بر حسب درصد" });
+    const marks = [...radar.querySelectorAll("text")].map((n) => n.textContent);
+    expect(marks.filter((m) => m === "—")).toHaveLength(2);
+    expect(marks).not.toContain("۰٪");
+  });
+
   it("prints each rate beside its own axis", () => {
     // Hovering a vertex was the only way to read a value off this chart: undiscoverable, useless
     // at a glance, and absent from a screenshot.

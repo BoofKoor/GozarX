@@ -155,6 +155,7 @@ function ScreenGroup({
       rows.map((r) => ({ row: r.row, keys: r.buttons.map((b) => b.key) })),
       activeId,
       overId,
+      new Set(buttons.filter((b) => b.is_critical).map((b) => b.key)),
     );
     if (!updates) return;
     reorder.mutate(

@@ -109,12 +109,14 @@ describe("SiteStats", () => {
     mock.onGet("/admin/site/stats/").reply(200, {
       ...STATS,
       visitors: { value: 120, previous: null, change_pct: null },
+      new_visitors: { value: 90, previous: null, change_pct: null },
       conversion_pct_prev: null,
       visits_recorded_since: "2026-07-10T09:00:00Z",
       visitors_series: days,
     });
     renderPage();
-    expect(await screen.findByText("دورهٔ قبل: هنوز ثبت نمی‌شد")).toBeInTheDocument();
+    // Visitors AND new visitors: before the recorder, a mint counted as a visit.
+    expect(await screen.findAllByText("دورهٔ قبل: هنوز ثبت نمی‌شد")).toHaveLength(2);
     expect(screen.getByText(/قبل: —/)).toBeInTheDocument();
     expect(screen.getByText(/بازدیدها از .* روزبه‌روز ثبت می‌شوند/)).toBeInTheDocument();
   });

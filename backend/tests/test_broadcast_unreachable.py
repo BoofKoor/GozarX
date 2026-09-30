@@ -43,3 +43,17 @@ async def test_marking_keeps_the_row_and_its_history_and_leaves_the_audience(db_
         assert await repo.count_audience() == 1
         assert await repo.audience_ids() == [2]
         assert await repo.list_all_ids() == [2]
+
+
+async def test_marking_more_ids_than_one_statement_can_bind(db_sessions) -> None:
+    # An IN list binds one parameter per id and asyncpg refuses more than 32,767 of them, so a
+    # broadcast that found 40,000 gone chats marked none — and failed its log row on the way out.
+    async with db_sessions() as s:
+        s.add_all([User(telegram_id=7), User(telegram_id=39_999)])
+        await s.commit()
+    async with db_sessions() as s:
+        repo = UserRepository(s)
+        assert await repo.mark_unreachable(list(range(1, 40_001)), datetime.now(UTC)) == 2
+        await s.commit()
+    async with db_sessions() as s:
+        assert await UserRepository(s).list_all_ids() == []

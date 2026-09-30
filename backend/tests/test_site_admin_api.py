@@ -187,7 +187,7 @@ async def test_landing_crud_flow(site_client: httpx.AsyncClient) -> None:
 
 
 async def test_a_landing_preselects_only_a_location_the_site_offers(
-    site_client: httpx.AsyncClient,
+    site_client: httpx.AsyncClient, monkeypatch
 ) -> None:
     """The fifth writer of a location name. Free text, a typo — or a name the squad stopped
     serving — saved fine and the landing's widget then preselected nothing."""
@@ -208,6 +208,28 @@ async def test_a_landing_preselects_only_a_location_the_site_offers(
     assert blank.status_code == 201
     # Changing the page's COPY does not re-check an unchanged location.
     page_id = ok.json()["id"]
+    # A stored subset is matched against the LIVE names, as the public picker does. Once the squad
+    # drops Germany, a saved ["Finland", "Germany"] offers Finland alone: Germany can no longer be
+    # preselected however long it sits in the saved list, and Norway — served, never ticked — can't
+    # either.
+    saved = await site_client.put(
+        "/api/admin/site/settings/", json={"locations": ["Finland", "Germany"]}
+    )
+    assert saved.status_code == 200
+
+    async def germany_dropped(self: object, squad_uuid: str) -> list[str]:
+        return ["Finland", "Norway"]
+
+    monkeypatch.setattr(_StubPanel, "squad_location_names", germany_dropped)
+    for slug, remark, code in (
+        ("de-2", "Germany", 400),
+        ("no", "Norway", 400),
+        ("fi", "Finland", 201),
+    ):
+        r = await site_client.post(
+            "/api/admin/site/pages/", json={**base, "slug": slug, "location_remark": remark}
+        )
+        assert r.status_code == code, (remark, r.json())
     upd = await site_client.put(
         f"/api/admin/site/pages/{page_id}",
         json={**base, "title": "عنوان نو", "location_remark": "Germany"},
@@ -473,6 +495,7 @@ async def test_site_stats_compares_against_the_previous_window(
 
     body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
     assert body["visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
+    assert body["new_visitors"] == {"value": 1, "previous": 2, "change_pct": -50.0}
     # change_pct is None (not 0.0) with no baseline, so a launch week reads as "new", not "flat".
     assert body["claimers"] == {"value": 1, "previous": 0, "change_pct": None}
 
@@ -512,6 +535,9 @@ async def test_visits_before_the_record_began_are_unknown_not_zero(
     body = (await site_client.get("/api/admin/site/stats/?days=7")).json()
     assert body["visitors"] == {"value": 1, "previous": None, "change_pct": None}
     assert body["returning_visitors"]["previous"] is None
+    # Before the recorder, the mint itself counted as a visit (every cookieless page load a "new
+    # visitor"), so that window is not comparable either — unknown, not a fake drop.
+    assert body["new_visitors"] == {"value": 1, "previous": None, "change_pct": None}
     assert body["conversion_pct_prev"] is None
     assert body["visits_recorded_since"] is not None
     counts = [p["count"] for p in body["visitors_series"]]

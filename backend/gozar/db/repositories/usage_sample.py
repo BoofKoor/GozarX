@@ -24,9 +24,10 @@ class DayUsage:
     bytes: int
     peak_online: int
     avg_online: int
-    #: The lifetime counter went DOWN across this day's boundary — a panel restart, a node removed
-    #: and re-added, or an admin resetting traffic. The delta is reported as 0 rather than as a
-    #: negative, and this flag is why the chart can say so instead of just drawing a gap.
+    #: The lifetime counter went DOWN between two readings, the later one on this day — a panel
+    #: restart, a node removed and re-added, or an admin resetting traffic. That one step counts as
+    #: 0 rather than as a negative while the day's other steps still count, so ``bytes`` is a floor;
+    #: this flag is why the chart can say so instead of presenting it as the whole day.
     counter_reset: bool
 
 

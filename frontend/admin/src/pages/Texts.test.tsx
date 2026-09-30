@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import MockAdapter from "axios-mock-adapter";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -65,5 +65,24 @@ describe("Texts", () => {
     await userEvent.click(screen.getByRole("button", { name: "ذخیره" }));
     await waitFor(() => expect(screen.queryByText("ذخیره‌نشده")).not.toBeInTheDocument());
     expect(screen.getAllByRole("textbox")[1]).toHaveValue("سلام {name}");
+  });
+
+  it("keeps what was typed while the save was in flight, and still calls it unsaved", async () => {
+    let land: () => void = () => {};
+    mock.onPut("/admin/texts/welcome").reply(
+      () =>
+        new Promise((resolve) => {
+          land = () => resolve([200, text("welcome", "سلام دوباره")]);
+        }),
+    );
+    renderPage();
+    await userEvent.click(await screen.findByText("welcome"));
+    const fa = screen.getAllByRole("textbox")[1];
+    await userEvent.type(fa, " دوباره");
+    await userEvent.click(screen.getByRole("button", { name: "ذخیره" }));
+    await userEvent.type(fa, "!!!"); // typed after pressing save, before the answer
+    await act(async () => land());
+    await waitFor(() => expect(screen.getAllByRole("textbox")[1]).toHaveValue("سلام دوباره!!!"));
+    expect(screen.getByText("ذخیره‌نشده")).toBeInTheDocument();
   });
 });

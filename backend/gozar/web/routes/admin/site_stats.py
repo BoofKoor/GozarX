@@ -106,7 +106,10 @@ class SiteStatsOut(BaseModel):
 
     # --- windowed funnel ---
     visitors: VisitMetric  # devices seen in the window
-    new_visitors: Metric  # devices whose identity was minted in the window
+    #: Devices minted in the window that came back with their cookie. Before the recorder shipped
+    #: the mint request itself counted as a visit — every cookieless page load a "new visitor" — so
+    #: a previous window from then is not comparable, and is unknown rather than a fake drop.
+    new_visitors: VisitMetric
     returning_visitors: VisitMetric  # seen in the window, minted before it
     claimers: Metric  # distinct devices that provisioned in the window
     claims: Metric  # provisions in the window (change-location re-picks excluded)
@@ -247,9 +250,9 @@ async def site_stats(
     return SiteStatsOut(
         range_days=window,
         visitors=_visit_metric(visitors, visitors_prev),
-        new_visitors=_metric(
+        new_visitors=_visit_metric(
             await devices.count_new_between(since, now),
-            await devices.count_new_between(prev_start, prev_end),
+            await devices.count_new_between(prev_start, prev_end) if prev_known else None,
         ),
         returning_visitors=_visit_metric(
             await devices.count_returning_since(since), returning_prev

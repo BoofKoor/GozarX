@@ -4,17 +4,23 @@ const FOCUSABLE =
   'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
 /**
- * Focusable descendants, in DOM order, skipping anything explicitly hidden.
+ * TABBABLE descendants, in DOM order, skipping anything explicitly hidden.
  *
  * Hiddenness is read from ATTRIBUTES rather than from `offsetParent`. Layout is the tempting
  * signal, but `offsetParent` is null for any `position: fixed` element — which every dialog panel
  * here is — and it is null for everything under jsdom, where it silently emptied this list and
  * made the whole trap untestable.
+ *
+ * A native control taken out of the tab order (`tabIndex={-1}`) is skipped too: the selector
+ * matches every `button`, so the command palette's options — deliberately untabbable, focus lives
+ * in its input — became the trap's "last" element. Tab was then never caught at the end and walked
+ * out of the dialog, and Shift+Tab from the input focused the last option, where Enter ran it.
  */
 function focusable(container: HTMLElement | null): HTMLElement[] {
   if (!container) return [];
   return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (el) => !el.closest("[hidden]") && el.getAttribute("aria-hidden") !== "true",
+    (el) =>
+      el.tabIndex >= 0 && !el.closest("[hidden]") && el.getAttribute("aria-hidden") !== "true",
   );
 }
 

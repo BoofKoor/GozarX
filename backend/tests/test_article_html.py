@@ -21,6 +21,10 @@ ALLOWED = set("p br h2 h3 h4 ul ol li strong b em i blockquote code pre hr small
         '<a href="javascript:alert(1)">x</a>',
         '<a href="//evil.example">x</a>',
         '<a href="/\\evil.example">x</a>',
+        # The URL parser drops a tab or newline anywhere: `/<TAB>/evil` is followed as `//evil`.
+        '<a href="/\t/evil.example">x</a>',
+        '<a href="/\n/evil.example">x</a>',
+        '<a href="https://ok.example\t@evil.example">x</a>',
         '<p onclick="alert(1)">x</p>',
         "<svg onload=alert(1)>",
     ],
@@ -35,6 +39,7 @@ def test_nothing_executable_survives(evil: str) -> None:
             href = re.fullmatch(r'\s+href="([^"]*)"(?: target="_blank" rel="[^"]*")?', attrs)
             assert href is not None, (attrs, out)
             target = href.group(1)
+            assert not re.search(r"[\s\x00-\x1f\x7f]", target), out
             assert target.startswith(("https://", "http://")) or (
                 target.startswith("/") and not target.startswith("//") and "\\" not in target
             ), out

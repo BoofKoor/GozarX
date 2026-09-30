@@ -126,9 +126,14 @@ export function SiteSetup() {
   const setNum = (key: keyof Econ) => (n: number) => setEcon((s) => ({ ...s, [key]: n }));
   const picker = derivable.data;
   const pickerUnavailable = derivable.isError || (!derivable.isLoading && !picker);
+  // The wizard pre-fills the SAVED list, and resolved against a picker that has not arrived every
+  // name read as stale: finishing in that second saved `[]` ("all of them") over a chosen subset.
+  // The setup call writes the whole configuration, so it waits for the list instead.
+  const pickerLoading = Boolean(trialSquad) && !pickerUnavailable && !picker;
 
   function submit(e: FormEvent) {
     e.preventDefault();
+    if (pickerLoading) return;
     if (!trialSquad) {
       toast.error(t("setup.pickSquad"));
       return;
@@ -178,7 +183,7 @@ export function SiteSetup() {
             type="submit"
             form="site-setup"
             loading={complete.isPending}
-            disabled={!trialSquad}
+            disabled={!trialSquad || pickerLoading}
           >
             {t("ssu.submit")}
           </Button>

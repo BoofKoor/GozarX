@@ -19,11 +19,12 @@ const STATUS: Record<string, { key: MessageKey; tone: BadgeTone }> = {
 /**
  * Past broadcasts, and how each one went.
  *
- * The outcome is THREE figures, not one bar. "Removed" carries its own colour because the rule
- * behind it is the one an operator has to trust: a user is dropped only on a genuine
- * blocked/deactivated error and never on a transient one. Folded into "failed" that distinction
- * disappears, and a broadcast that pruned 70 dead accounts looks identical to one that hit 70
- * network errors.
+ * The outcome is THREE figures, not one bar. "Unreachable" carries its own colour because the rule
+ * behind it is the one an operator has to trust: a user is marked only when Telegram says the chat
+ * is gone (blocked / deactivated / chat not found) and never on a transient error — and marked,
+ * not deleted: their row and history stay, and their next message to the bot clears it. Folded
+ * into "failed" that distinction disappears, and a broadcast that found 70 dead chats looks
+ * identical to one that hit 70 network errors.
  */
 export function BroadcastHistory() {
   const { t } = useI18n();

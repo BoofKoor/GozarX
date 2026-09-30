@@ -20,10 +20,15 @@ _BARE = re.compile(rf"&lt;(/?(?:{_TAGS}))\s*/?&gt;", re.IGNORECASE)
 _LINK = re.compile(r"""&lt;a\s+href=(&quot;|"|')([^"'&<>]+)\1&gt;""", re.IGNORECASE)
 _LINK_END = re.compile(r"&lt;/a&gt;", re.IGNORECASE)
 _EXTERNAL = re.compile(r"^https?://", re.IGNORECASE)
+#: Whitespace or a control character. The URL parser drops tabs and newlines ANYWHERE in a link, so
+#: `/<TAB>/evil.example` passed as an in-site path and was followed as `//evil.example`.
+_HIDDEN = re.compile(r"[\s\x00-\x1f\x7f]")
 
 
 def _link(match: re.Match[str]) -> str:
     href = match.group(2)
+    if _HIDDEN.search(href):
+        return match.group(0)
     if _EXTERNAL.match(href):
         return f'<a href="{href}" target="_blank" rel="noopener noreferrer nofollow">'
     # An in-site path — every default landing links to /locations, /faq, /guides. Never `//host`

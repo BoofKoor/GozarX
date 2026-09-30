@@ -17,6 +17,16 @@ describe("stillInFlight", () => {
     );
   });
 
+  it("counts a scheduled broadcast's age from when it could start, not from when it was written", () => {
+    // Written at 02:00 for 11:00: sending at 12:00 is one hour into the job, not ten.
+    const row = {
+      status: "sending",
+      created_at: "2026-09-30T02:00:00Z",
+      scheduled_for: "2026-09-30T11:00:00Z",
+    };
+    expect(stillInFlight([row], now)).toBe(true);
+  });
+
   it("does not poll finished rows", () => {
     expect(stillInFlight([{ status: "done", created_at: "2026-09-30T11:59:00Z" }], now)).toBe(
       false,

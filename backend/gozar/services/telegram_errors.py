@@ -14,7 +14,8 @@ Telegram answers ``sendMessage`` to a chat that no longer exists with a 400 ("Ba
 found"). Matching only ``TelegramNotFound`` (a 404), the rule never fired and every gone chat was a
 "failed" send on every broadcast, forever. ``TelegramNotFound`` is still accepted in case a method
 answers with a real 404. A user this marks is only flagged unreachable — never deleted — and the
-flag clears the next time they message the bot, so a wrong match costs one skipped broadcast.
+flag clears the next time they message the bot. Until then they are out of EVERY audience, so a
+wrong match is not one skipped broadcast: for a user who rarely writes to the bot it is all of them.
 """
 
 from __future__ import annotations
@@ -26,11 +27,17 @@ DEACTIVATED = "user is deactivated"
 CHAT_NOT_FOUND = "chat not found"
 
 
-def is_unreachable(exc: Exception) -> bool:
-    """True only for the three permanent 'this chat is gone forever' delivery failures."""
+def is_unreachable(exc: Exception, *, names_source_chat: bool = False) -> bool:
+    """True only for the three permanent 'this chat is gone forever' delivery failures.
+
+    ``names_source_chat``: the failed call named a SECOND chat as well (``copy_message`` /
+    ``forward_message`` read from the admin's chat), so its "chat not found" may be about that one —
+    and matching it would mark the entire audience in a single fan-out. Only blocked/deactivated,
+    which can only be about the recipient, count there.
+    """
     msg = str(getattr(exc, "message", exc)).lower()
     if isinstance(exc, TelegramForbiddenError):
         return BLOCKED in msg or DEACTIVATED in msg
     if isinstance(exc, (TelegramNotFound, TelegramBadRequest)):
-        return CHAT_NOT_FOUND in msg
+        return not names_source_chat and CHAT_NOT_FOUND in msg
     return False
