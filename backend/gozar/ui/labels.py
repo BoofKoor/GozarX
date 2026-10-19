@@ -129,6 +129,11 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.en: "📍 Locations",
         Language.ru: "📍 Локации",
     },
+    "admin_nodes": {
+        Language.fa: "🖥 نودها و سرورها",
+        Language.en: "🖥 Nodes & servers",
+        Language.ru: "🖥 Ноды и серверы",
+    },
     "admin_look": {
         Language.fa: "🎨 ظاهر",
         Language.en: "🎨 Appearance",

@@ -207,6 +207,7 @@ def admin_menu_keyboard(
             ButtonSpec(key="admin_refresh_locations", callback_data=cb.ADMIN_LOCATIONS),
             ButtonSpec(key="admin_reset_all", callback_data=cb.ADMIN_RESET_ALL),
         ],
+        [ButtonSpec(key="admin_nodes", callback_data=cb.OPS_NODES)],
         [
             ButtonSpec(key="admin_look", callback_data=cb.ADMIN_LOOK),
             ButtonSpec(key="admin_close", callback_data=cb.ADMIN_CLOSE),

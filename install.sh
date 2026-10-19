@@ -47,6 +47,8 @@ have() { command -v "$1" >/dev/null 2>&1; }
 
 # A URL-safe, .env-safe random secret (hex never needs escaping in a URL or YAML).
 gen_secret() { openssl rand -hex 32; }
+# VAULT_KEY: 32 random bytes, base64 (what gozar.vault reads).
+gen_vault_key() { openssl rand -base64 32 | tr -d '\n'; }
 
 # Read a single key's current value out of an existing .env (empty if absent).
 env_get() {
@@ -293,6 +295,10 @@ generate_secrets() {
     POSTGRES_USER="$(env_get POSTGRES_USER)";                 POSTGRES_USER="${POSTGRES_USER:-gozar}"
     POSTGRES_DB="$(env_get POSTGRES_DB)";                     POSTGRES_DB="${POSTGRES_DB:-gozar}"
     POSTGRES_PASSWORD="$(env_get POSTGRES_PASSWORD)";         POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-$(gen_secret)}"
+    # Seals the console's SSH key (and any sudo password) in the database. Never rotated: a new
+    # key would leave every sealed value unopenable — the bot would have to log into each server
+    # with its password again.
+    VAULT_KEY="$(env_get VAULT_KEY)";                         VAULT_KEY="${VAULT_KEY:-$(gen_vault_key)}"
     # VAPID keypair is minted post-build (needs the app image); seed from any existing .env so the
     # first write_env has them set (set -u) and mint_vapid only generates when absent.
     VAPID_PRIVATE_KEY="$(env_get VAPID_PRIVATE_KEY)"
@@ -340,6 +346,9 @@ ADMIN_JWT_SECRET=$ADMIN_JWT_SECRET
 ADMIN_USERNAME=$ADMIN_USERNAME
 # bcrypt hash; '\$' is doubled so Compose passes it through verbatim.
 ADMIN_PASSWORD_HASH=$hash_escaped
+
+# ── Console SSH operations (🖥 nodes): seals the bot's SSH key — never change it once set ──
+VAULT_KEY=$VAULT_KEY
 
 # ── Website ──
 SITE_DOMAIN=$SITE_DOMAIN
@@ -750,6 +759,38 @@ tls_only() {
     check_health
 }
 
+# The `--secrets` path: give an installed .env a secret a newer release reads and it lacks
+# (VAULT_KEY, since the console's SSH operations) — generated here, never replacing one that is
+# set — then recreate app + worker so they read it, and nginx onto the new app. Nothing else in
+# .env changes; nothing is asked.
+add_secrets() {
+    step "Adding missing secrets to .env"
+    [ -f "$ENV_FILE" ] || die "no .env here — run the full installer first"
+    DOMAIN="$(env_get DOMAIN)"
+    local added=""
+    if [ -z "$(env_get VAULT_KEY)" ]; then
+        local key; key="$(gen_vault_key)"
+        if grep -q '^VAULT_KEY=' "$ENV_FILE"; then   # a blank one (copied from .env.example)
+            sed -i "s|^VAULT_KEY=.*|VAULT_KEY=$key|" "$ENV_FILE"
+        else
+            printf '\n# ── Console SSH operations: seals the bot SSH key — never change it once set ──\nVAULT_KEY=%s\n' \
+                "$key" >>"$ENV_FILE"
+        fi
+        added="VAULT_KEY"
+    fi
+    chmod 600 "$ENV_FILE"
+    if [ -z "$added" ]; then
+        ok "nothing missing — .env unchanged"
+        return 0
+    fi
+    ok "added $added"
+    docker compose -f docker-compose.yml -f "$TLS_COMPOSE" up -d --no-deps app worker \
+        || die "docker compose up failed"
+    restart_nginx
+    [ -n "$DOMAIN" ] && check_health
+    return 0
+}
+
 # App health via the origin directly (-k: the origin cert isn't browser-trusted; --resolve: hit
 # this server, bypassing Cloudflare). Health implies migrations ran (the entrypoint runs
 # `alembic upgrade head` before uvicorn).
@@ -863,6 +904,7 @@ report() {
                 then:  docker compose -f docker-compose.yml -f docker-compose.tls.yml restart nginx
   Re-run      : sudo ./install.sh   (safe; reuses secrets, a blank password keeps it)
   nginx only  : sudo ./install.sh --tls-only   (re-renders the TLS config from .env)
+  new secrets : sudo ./install.sh --secrets    (adds what a release needs and .env lacks)
 
   Finish setup in the panel's first-run wizard (trial squad, locations, economics).
 EOF
@@ -885,12 +927,19 @@ left out to keep the current one.
 
   --tls-only   re-render nginx/nginx.tls.conf + the TLS overlay from .env and
                restart nginx (for a release that changes the nginx template).
+  --secrets    add a secret a newer release needs and .env lacks (VAULT_KEY),
+               never replacing one that is set; restarts app + worker.
 EOF
             exit 0
             ;;
         --tls-only)
             preflight
             tls_only
+            exit 0
+            ;;
+        --secrets)
+            preflight
+            add_secrets
             exit 0
             ;;
     esac

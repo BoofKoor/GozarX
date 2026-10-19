@@ -26,6 +26,7 @@ def test_admin_menu_keyboard() -> None:
         cb.ADMIN_FORWARD,
         cb.ADMIN_LOCATIONS,
         cb.ADMIN_RESET_ALL,
+        cb.OPS_NODES,
         cb.ADMIN_LOOK,
         cb.ADMIN_CLOSE,
     ]

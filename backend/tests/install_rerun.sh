@@ -46,7 +46,7 @@ check "the username default comes from .env" '[ "$ADMIN_USERNAME" = "root" ]'
 BOT_TOKEN=123:abc DOMAIN=example.com
 BOT_USERNAME=bot OWNERS=1 ADMIN_DOMAIN="" WEBHOOK_SECRET=w WEBHOOK_HEADER_SECRET=h
 PANEL_WEBHOOK_SECRET=p PANEL_BASE_URL=https://panel PANEL_API_TOKEN=t POSTGRES_USER=gozar
-POSTGRES_PASSWORD=pg POSTGRES_DB=gozar ADMIN_JWT_SECRET=j SITE_DOMAIN=example.com
+POSTGRES_PASSWORD=pg POSTGRES_DB=gozar ADMIN_JWT_SECRET=j SITE_DOMAIN=example.com VAULT_KEY=vk
 SITE_COOKIE_SECRET=c TURNSTILE_SECRET="" TURNSTILE_SITE_KEY="" VAPID_PRIVATE_KEY=vp
 VAPID_PUBLIC_KEY=vq VAPID_SUBJECT=mailto:a@b TZ_VALUE=UTC BACKUP_CHANNEL_ID=""
 GOOGLE_SITE_VERIFICATION="$(env_get GOOGLE_SITE_VERIFICATION)"
@@ -59,6 +59,7 @@ check "GOOGLE_SITE_VERIFICATION survives" 'grep -qx "GOOGLE_SITE_VERIFICATION=g-
 check "a hand-added key is carried over" 'grep -qx "CUSTOM_FLAG=on" "$ENV_FILE"'
 check "edited LOG_LEVEL survives" 'grep -qx "LOG_LEVEL=DEBUG" "$ENV_FILE"'
 check "edited LOG_JSON survives" 'grep -qx "LOG_JSON=true" "$ENV_FILE"'
+check "VAULT_KEY is written" 'grep -qx "VAULT_KEY=vk" "$ENV_FILE"'
 check "the kept section holds ONLY the unmanaged key" \
     '[ "$(sed -n "/^# ── Kept from/,\$p" "$ENV_FILE" | grep -c "=")" = 1 ]'
 check ".env stays chmod 600" '[ "$(stat -c %a "$ENV_FILE")" = "600" ]'
@@ -71,6 +72,34 @@ check "the hash is unchanged after the rewrite" \
     'grep -qx "ADMIN_PASSWORD_HASH=\$\$2b\$\$12\$\$abcdefghijklmnopqrstuv" "$ENV_FILE"'
 check "a carried key is not duplicated by the second write" '[ "$(grep -c "^CUSTOM_FLAG=" "$ENV_FILE")" = "1" ]'
 check "every key appears once" '[ -z "$(sed -n "s/=.*//p" "$ENV_FILE" | sort | uniq -d)" ]'
+
+# ── generate_secrets keeps a VAULT_KEY that is set and mints one that is not ──
+VAULT_KEY=""
+generate_secrets 2>/dev/null
+check "a re-run keeps the VAULT_KEY in .env" '[ "$VAULT_KEY" = "vk" ]'
+sed -i '/^VAULT_KEY=/d' "$ENV_FILE"
+VAULT_KEY=""
+generate_secrets 2>/dev/null
+check "a missing VAULT_KEY is minted as 32 base64 bytes" \
+    '[ "$(printf %s "$VAULT_KEY" | base64 -d 2>/dev/null | wc -c)" = 32 ]'
+
+# ── --secrets: adds a missing VAULT_KEY (or fills a blank one), never replaces one, restarts ──
+printf 'DOMAIN=example.com\nCUSTOM_FLAG=on\n' >"$ENV_FILE"
+: >"$DOCKER_CALLS"
+add_secrets 2>/dev/null
+check "--secrets adds VAULT_KEY" '[ "$(env_get VAULT_KEY | base64 -d 2>/dev/null | wc -c)" = 32 ]'
+check "--secrets leaves the rest of .env alone" 'grep -qx "CUSTOM_FLAG=on" "$ENV_FILE" && grep -qx "DOMAIN=example.com" "$ENV_FILE"'
+check "--secrets recreates app + worker, then nginx" \
+    'grep -q "up -d --no-deps app worker" "$DOCKER_CALLS" && grep -q "restart nginx" "$DOCKER_CALLS"'
+check "--secrets keeps .env chmod 600" '[ "$(stat -c %a "$ENV_FILE")" = "600" ]'
+first="$(env_get VAULT_KEY)"
+: >"$DOCKER_CALLS"
+add_secrets 2>/dev/null
+check "a second --secrets changes nothing" '[ "$(env_get VAULT_KEY)" = "$first" ] && [ ! -s "$DOCKER_CALLS" ]'
+printf 'VAULT_KEY=\nDOMAIN=example.com\n' >"$ENV_FILE"
+add_secrets 2>/dev/null
+check "a blank VAULT_KEY line is filled, not doubled" \
+    '[ "$(grep -c "^VAULT_KEY=" "$ENV_FILE")" = 1 ] && [ -n "$(env_get VAULT_KEY)" ]'
 
 # ── a fresh install still needs a password ──
 rm -f "$ENV_FILE"

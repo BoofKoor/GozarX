@@ -28,6 +28,8 @@ from gozar.db.repositories.broadcast_log import BroadcastLogRepository
 from gozar.db.repositories.site_push_log import SitePushLogRepository
 from gozar.db.session import create_engine, create_sessionmaker
 from gozar.remnawave import RemnawaveClient
+from gozar.services.ops import JOB_TIMEOUT
+from gozar.worker.ops import close_interrupted, ops_run
 from gozar.worker.tasks import (
     backup_database,
     broadcast_text,
@@ -66,6 +68,8 @@ async def _startup(ctx: dict) -> None:
     if ctx["bot"] is None:
         logger.warning("worker started without BOT_TOKEN — fan-out tasks will no-op")
     await _close_interrupted_sends(ctx)
+    # the console's SSH jobs a dead worker left "running" (their messages say so)
+    await close_interrupted(ctx)
     # The premium emoji check runs daily; once now too, so a fresh install draws only ids Telegram
     # knows from its first day. Queued (not awaited) so a slow Telegram never holds up the start.
     try:
@@ -119,6 +123,10 @@ class WorkerSettings:
         # queue again. One try: a failed sweep is simply retried by the next stale read.
         func(refresh_squad_online, keep_result=0, max_tries=1),
         func(verify_premium_emoji, keep_result=0, max_tries=1),
+        # The console's SSH jobs (services/ops_jobs): an install pulls an image and waits for the
+        # panel, so far past 300s; one try, because SSH work that half happened is never re-run on
+        # its own — the admin sees where it stopped and picks 🧹 or 🔁.
+        func(ops_run, timeout=JOB_TIMEOUT, max_tries=1, keep_result=0),
         # The rest keep arq's defaults (300s timeout, retry) — they're short, bounded per-item work.
         reset_all_active,
         reconcile_trials,

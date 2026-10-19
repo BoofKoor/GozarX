@@ -6,10 +6,11 @@ the console never leaks); the filter is the PARENT router's, so it covers every 
 the 🎨 look (rich messages, premium emoji, coloured buttons — ``bot/screens``).
 
 Sections, in dispatch order: ``home`` and ``look`` first, so ``/admin`` and ``/simple`` win over a
-flow that is waiting for typed input; then the screens; the two flows that read typed messages
-(``users``, ``fanout``) last.
+flow that is waiting for typed input; then the screens; the flows that read typed messages
+(``nodes``/``servers``, ``users``, ``fanout``) last.
 
-Bulk work (broadcast/forward fan-out, reset-all-active) runs in the worker — handlers only enqueue.
+Bulk work (broadcast/forward fan-out, reset-all-active) and every SSH job (🖥 nodes, 🗄 servers)
+run in the worker — handlers only enqueue.
 """
 
 from __future__ import annotations
@@ -17,9 +18,10 @@ from __future__ import annotations
 from aiogram import Router
 
 from gozar.bot.filters import IsOwner
-from gozar.bot.handlers.admin import fanout, home, locations, look, stats, users
+from gozar.bot.handlers.admin import fanout, home, locations, look, nodes, servers, stats, users
 from gozar.bot.handlers.admin.console import Console, ConsoleMiddleware
 from gozar.bot.handlers.admin.fanout import FanoutFlow
+from gozar.bot.handlers.admin.nodes import OpsFlow
 from gozar.bot.handlers.admin.users import UserActionFlow
 
 router = Router(name="admin")
@@ -27,7 +29,7 @@ router.message.filter(IsOwner())
 router.callback_query.filter(IsOwner())
 router.message.middleware(ConsoleMiddleware())
 router.callback_query.middleware(ConsoleMiddleware())
-for section in (home, look, stats, locations, users, fanout):
+for section in (home, look, stats, locations, nodes, servers, users, fanout):
     router.include_router(section.router)
 
-__all__ = ["Console", "FanoutFlow", "UserActionFlow", "router"]
+__all__ = ["Console", "FanoutFlow", "OpsFlow", "UserActionFlow", "router"]

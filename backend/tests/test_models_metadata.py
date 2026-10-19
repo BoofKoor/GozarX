@@ -22,6 +22,10 @@ def test_all_tables_registered() -> None:
         "button_configs",
         "broadcast_drafts",
         "broadcast_logs",
+        # the console's operations (Phase 30)
+        "ops_servers",
+        "ops_keys",
+        "ops_jobs",
         # website (separate product, shared infra)
         "site_devices",
         "site_device_days",
