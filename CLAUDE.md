@@ -25,9 +25,10 @@ users, and broadcasts. Everything is Dockerized and installs near zero-touch.
 
 ## Layout & layering
 Import package is `gozar` (under `backend/`). Imports flow **one direction only**:
-`web/` + `bot/` (delivery) → `services/` (logic) → `db/repositories` + `remnawave/` + `cache/` (infra)
-→ `config/`. Services never import delivery code, so the arq worker reuses logic without pulling in
-FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
+`web/` + `bot/` (delivery) → `services/` (logic) → `db/repositories` + `remnawave/` + `cache/` +
+`ops/` (infra; `ops/` is SSH to servers) → `config/`. Services never import delivery code, so the
+arq worker reuses logic without pulling in FastAPI/aiogram; the worker itself may draw with
+`bot/screens`, `bot/progress` and `bot/ops_view`, which import no handler. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 `alembic upgrade head` → `python -m gozar.seed` → `uvicorn gozar.web.app:create_app --factory`.
 
 ## Conventions (non-negotiable)
@@ -151,6 +152,20 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   `last_seen_at` is overwritten on every visit, so a window that has ENDED cannot be counted from it
   (the previous period counted only devices that never came back); past windows and the daily
   series read this, and a window from before it began reports unknown (`None`), not zero.
+- `ops_servers`: every server the console logged into once (label · host · port · username · ip ·
+  country · os · host_key · key_ok · sudo_password · created_at · last_login_at), unique on
+  (host, port, username). NO login password: the first login installs the bot's own key and
+  every later one uses it (`key_ok` = a FRESH key-only login worked). `host_key` is pinned on that
+  first login (trust on first use) and a different one is refused BEFORE a password is sent;
+  `sudo_password` exists only for a non-root user whose sudo asks for one, and is SEALED.
+- `ops_keys`: the bot's own SSH key pair (`ssh_bot`), the private half sealed with `VAULT_KEY`.
+- `ops_jobs`: one row per SSH job (id hex · kind · status queued/running/ok/failed/interrupted ·
+  chat_id/message_id — the console message it reports in · lang · params · result · error ·
+  created_by · created/started/finished). Written at ENQUEUE time by the handler and closed by the
+  worker, like `broadcast_logs`; `params` and `result` never hold a secret. A job's last screen is
+  drawn from its row alone, so a later redraw shows the same thing. An install records its plan
+  on the row at every step, so a worker that dies half way still leaves 🧹 undo something to undo;
+  the next worker start closes such a row as `interrupted` and says so in its message.
 - `button_configs.screens`: per-SCREEN order and visibility overrides for a button key. A key sits
   on several screens (`change_location` on three), and a key-wide override moved or hid it on all.
 
@@ -222,7 +237,9 @@ docker compose -f docker-compose.yml -f docker-compose.tls.yml restart nginx
 sleep 8
 curl -sS -o /dev/null -w "%{http_code}\n" https://gozarx.gozarxservices.com/health   # expect 200
 ```
-When a change needs a server deploy, hand the owner exactly these commands. A change to the nginx
+When a change needs a server deploy, hand the owner exactly these commands. A release that reads a
+NEW secret (Phase 30's `VAULT_KEY`) also needs `sudo ./install.sh --secrets` once, after them: it
+adds only what `.env` lacks, never replaces a value, and restarts app + worker (and nginx). A change to the nginx
 config also needs `sudo ./install.sh --tls-only` on the server, after the commands above: the live
 `nginx/nginx.tls.conf` is written from the installer's OWN template (keep it in step with
 `nginx/nginx.conf`), a `git pull` never touches it, and `--tls-only` re-renders it from `.env` and
@@ -408,6 +425,17 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   locations, a user card with its claim timeline, 📍 locations, 🎨 appearance with a self-test and
   `/simple`. The users' picker draws each location's flag as a premium icon and the delivered
   config as a premium emoji, and falls back to exactly the old screen when Telegram refuses one.
+30 🖥 Nodes and 🗄 servers in the console: an SSH address and one password turn a server into a
+  Remnawave node. tunnelbot's verified engine is ported into `gozar/ops` (infra: `ssh`, `access`,
+  `node`, `packages`, `geo`, `report`) and the panel's management API into `remnawave/ops`
+  (`OpsPanel`, errors that say WHY — a missing scope named, a WAF page told apart from the panel);
+  every SSH step runs in the worker as an `ops_jobs` row (`services/ops_jobs` → `worker/ops`) while
+  `bot/progress` edits the console message step by step. Two jobs with a summary between them —
+  `node_prepare` leaves a `NodeDraft` (name, country, config profile, ports checked against the
+  server) the admin edits before ✅ queues `node_install`; a failed install offers 🧹 undo from the
+  plan it recorded as it went. Saved servers log in with the bot's own ed25519 key; passwords are
+  used once and never stored. `VAULT_KEY` (installer-made; `install.sh --secrets` adds it to an
+  older `.env`) seals what must be kept. Verified on a real 3.4.4 panel and a real remnanode.
 
 ## Telegram console conventions (`/admin`)
 - **Rich messages are for the console only.** A user on an old app sees a "not supported"
@@ -434,6 +462,43 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   test holds the table to 403 numeric ids and 256 distinct flags.
 - **A location's country is read like the site reads it** (`ui/flags.country_code`: flag emoji →
   Persian/English name as a WHOLE word → bare code), so «چک» never matches inside «کوچک».
+
+## Console SSH operations (🖥 nodes, 🗄 servers)
+- **A password is consumed before anything else and used ONCE.** The handler deletes the message,
+  then hands the password to the worker sealed for that one job (`services/ops.hand_over`: Redis,
+  `SECRET_TTL`, read by `GETDEL`) — never into FSM data, a job's params or result, a screen, or a
+  log line (`Server.redact` masks it in the job's debug lines too). The job uses it to install the
+  bot's key and drops it. The only secret kept is the sudo password of a user whose sudo asks for
+  one, sealed on the server row — the summary says so, and root or NOPASSWD sudo keeps nothing.
+- **`VAULT_KEY` is never rotated.** It seals the bot's private key and those sudo passwords with
+  AES-GCM, each bound to WHERE it belongs (the purpose is the associated data), so a value copied to
+  another row fails to open. A new key orphans every sealed value. A release that needs a new
+  secret adds it with `install.sh --secrets`, which never replaces one already set.
+- **SSH runs in the worker, one job per admin chat.** A handler only writes the `ops_jobs` row and
+  queues `ops_run` (`max_tries=1`: SSH work that half happened is never re-run on its own — the admin
+  sees where it stopped and picks 🧹 or 🔁). A row that can no longer be in flight (queued past the
+  secret's lifetime, running past the job timeout) is closed on the way rather than blocking the
+  chat forever. A handler's own panel read is one bounded call (`PANEL_TIMEOUT`), because the
+  webhook waits on the handler.
+- **A host key is pinned on the first login and compared on the SAME type every time**
+  (`ssh.host_key_algs`): a server offering several keys must not read as "changed" because the
+  negotiation picked another one. A different key is refused before any password is sent; it is
+  accepted only after the admin confirms (`unpin`), and the next login pins what it shows then.
+- **Every remote step is a `bash -s` script on stdin** — nothing secret in a command line or `ps`,
+  every value `shlex.quote`d. A step reports through `Reporter` stages (`ops/report`), and its
+  failure is a `RemoteError` whose message is for the admin and whose `detail` is the redacted
+  output (shown folded, and in the 📄 log file).
+- **A node is named by its flag, then its country** — «🇩🇪 آلمان», then «🇩🇪 آلمان 2» — the owner's
+  convention, the same as the locations'. The summary suggests it; the admin may rename.
+- **The panel side is verified against the panel's OWN catalogue**: every endpoint `OpsPanel`
+  calls exists in the 3.4.4 OpenAPI (`/opt/app/openapi.json` in the backend image) and maps to the
+  scope the console checks (`/api/tokens/scopes`). Scopes are asked without changing anything — a
+  GET, or a write with an EMPTY body: the scope guard runs before validation, so it answers 403
+  without the scope and 400 with it. A direct `http://` panel URL needs `X-Forwarded-For` +
+  `X-Forwarded-Proto: https` (the panel drops the socket otherwise), which `OpsPanel` adds.
+- **The engine is tunnelbot's, the copy is the console's.** `gozar/ops` carries tunnelbot's steps
+  as they were verified on real servers; its sentences are in the console's register («است»,
+  «می‌شود», «را»), so one screen never mixes two voices.
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
@@ -936,3 +1001,8 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   login (`SESSION_MAX`) — a rotated refresh token used to buy another seven days each time.
 - Login is rate-limited per IP, and a 401 from `/admin/auth/*` never triggers the SPA's refresh
   retry (a wrong password on /login used to wipe the stored session).
+- **SSH (the console's 🖥/🗄): login passwords are never stored**, a server's host key is pinned on
+  first use, and the bot logs in with its own ed25519 key from then on. What must be kept (that key,
+  a sudo password) is sealed with `VAULT_KEY`, so a database dump — the nightly backup sent to
+  Telegram included — holds nothing usable without `.env`. Taking a server off the console also
+  takes the bot's key back off the server.

@@ -63,6 +63,39 @@ ADMIN_LOOK_TEST_YES = "admin:look:test:yes"
 ADMIN_LOOK_TEST_NO = "admin:look:test:no"
 ADMIN_LOOK_SAMPLE = "admin:look:sample"  # the self-test's coloured sample buttons (a toast only)
 
+# 🖥 nodes and 🗄 servers (Phase 30). The SSH work runs in the worker as ``ops_jobs`` rows; a button
+# about one job or one server carries its id (a job id is 16 hex characters), so a screen left over
+# from earlier still acts on what it showed. Every prefix below is unique: none is the start of
+# another, so ``startswith`` matches exactly one handler.
+OPS_NODES = "ops:nodelist"
+OPS_NODES_ADD = "ops:nodeadd"
+OPS_NODE_SSH = "ops:nodessh:"  # + panel node uuid: save the server behind an existing node
+OPS_SERVERS = "ops:srvlist"
+OPS_SERVERS_ADD = "ops:srvadd"
+OPS_SERVER_OPEN = "ops:srvopen:"  # + server id
+OPS_SERVER_TEST = "ops:srvtest:"
+OPS_SERVER_NODE = "ops:srvnode:"  # make this saved server a node
+OPS_SERVER_FORGET = "ops:srvforget:"  # asks first
+OPS_SERVER_FORGET_OK = "ops:srvforgetok:"
+OPS_SERVER_DROP = "ops:srvdrop:"  # forget without touching the server (it can't be reached)
+OPS_SERVER_TRUST = "ops:srvtrust:"  # accept the server's new SSH host key
+OPS_TOKEN = "ops:token"
+OPS_CANCEL = "ops:cancel"
+OPS_JOB = "ops:job:"  # + job id: draw that job's screen again
+OPS_JOB_LOG = "ops:joblog:"  # the job's log, as a file
+OPS_JOB_RETRY = "ops:jobretry:"  # the same job again (asks the password when it needs one)
+OPS_JOB_UNDO = "ops:jobundo:"  # + install job id: reverse what it got done
+OPS_DRAFT_GO = "ops:draftgo:"  # + prepare job id: install the node
+OPS_DRAFT_NAME = "ops:draftname:"
+OPS_DRAFT_COUNTRY = "ops:draftcc:"
+OPS_DRAFT_PROFILES = "ops:draftprof:"
+OPS_DRAFT_PICK = "ops:draftpick:"  # + job id + ":" + profile index
+OPS_DRAFT_BACK = "ops:draftback:"  # back to the summary
+
+
+def ops_cb(prefix: str, *parts: object) -> str:
+    return prefix + ":".join(str(p) for p in parts)
+
 
 def lang_cb(code: str) -> str:
     return f"{LANG_PREFIX}{code}"

@@ -17,6 +17,7 @@ from pydantic import SecretStr, ValidationError
 
 from gozar.remnawave.errors import RemnawaveError
 from gozar.remnawave.links import parse_remark
+from gozar.remnawave.ops import OpsPanel
 from gozar.remnawave.schemas import (
     Host,
     InternalSquad,
@@ -65,6 +66,11 @@ class RemnawaveClient:
         self._http = http
         self._base = base_url.rstrip("/")
         self._token = token.get_secret_value() if isinstance(token, SecretStr) else token
+
+    def ops(self, *, timeout: float = 20.0) -> OpsPanel:
+        """The same panel, token and HTTP client, for the console's operations (nodes, profiles,
+        hosts — ``remnawave/ops``), whose errors say WHY in words the admin can act on."""
+        return OpsPanel(self._http, self._base, self._token, timeout=timeout)
 
     async def _request(self, method: str, path: str, *, json: Any | None = None) -> Any:
         url = f"{self._base}/api{path}"

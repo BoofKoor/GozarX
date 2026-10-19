@@ -9,6 +9,7 @@ from gozar.db.models.button_config import ButtonConfig
 from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.content import Content
 from gozar.db.models.enums import Language, UserStatus, language_enum, user_status_enum
+from gozar.db.models.ops import OpsJob, OpsJobStatus, OpsKey, OpsServer
 from gozar.db.models.push_subscription import PushSubscription
 from gozar.db.models.setting import Setting
 from gozar.db.models.site_claim import SiteClaim
@@ -31,6 +32,10 @@ __all__ = [
     "ConfigLog",
     "Content",
     "Language",
+    "OpsJob",
+    "OpsJobStatus",
+    "OpsKey",
+    "OpsServer",
     "PushSubscription",
     "Setting",
     "SiteClaim",

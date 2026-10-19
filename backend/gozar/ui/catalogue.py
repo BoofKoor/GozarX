@@ -109,8 +109,9 @@ CATALOGUE: tuple[CatalogueEntry, ...] = tuple(
             ("admin_forward", 1, 1),
             ("admin_refresh_locations", 2, 0),
             ("admin_reset_all", 2, 1),
-            ("admin_look", 3, 0),
-            ("admin_close", 3, 1),
+            ("admin_nodes", 3, 0),
+            ("admin_look", 4, 0),
+            ("admin_close", 4, 1),
         ],
     )
     + _entries(

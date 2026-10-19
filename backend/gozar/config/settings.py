@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     vapid_public_key: str = ""
     vapid_subject: str = ""  # mailto: or https: contact for the VAPID 'sub' claim.
 
+    # ── Secrets at rest ───────────────────────────────────────────────────
+    # 32 random bytes, base64 (installer-generated, never rotated): seals what the console's
+    # operations keep in the database — the bot's own SSH key, a sudo password. A pg_dump
+    # without it holds nothing usable. Empty ⇒ those operations refuse to start.
+    vault_key: SecretStr = SecretStr("")
+
     # ── Misc ──────────────────────────────────────────────────────────────
     log_level: str = "INFO"
     log_json: bool = False

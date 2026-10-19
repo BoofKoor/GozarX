@@ -18,6 +18,8 @@ dependencies = [
     "bcrypt>=4.2",
     "pyjwt>=2.9",
     "pywebpush>=2.3.0",
+    "asyncssh>=2.24",
+    "cryptography>=45",
 ]
 
 [dependency-groups]
@@ -50,6 +52,9 @@ select = ["E", "F", "I", "UP", "B", "T20", "ASYNC"]
 "gozar/seed_landings.py" = ["E501"]  # long translated landing-page bodies
 "gozar/ui/icons.py" = ["E501"]  # an id table: each line carries its pack and sticker name
 "gozar/ui/console_text.py" = ["E501"]  # translated console copy
+# The SSH engine (ported from tunnelbot): long Persian messages for the admin, and remote scripts
+# whose time limit is handed to asyncssh (it bounds the remote command itself, not an await).
+"gozar/ops/*.py" = ["E501", "ASYNC109"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

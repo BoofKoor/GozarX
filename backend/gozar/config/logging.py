@@ -59,6 +59,8 @@ def configure_logging(level: str = "INFO", json_logs: bool = False) -> None:
                 "httpx": {"level": "WARNING"},
                 "httpcore": {"level": "WARNING"},
                 "aiogram.event": {"level": "WARNING"},
+                # one INFO line per SSH channel and auth step of the console's jobs
+                "asyncssh": {"level": "WARNING"},
             },
         }
     )
