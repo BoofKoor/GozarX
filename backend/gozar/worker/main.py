@@ -39,6 +39,7 @@ from gozar.worker.tasks import (
     sample_usage,
     site_push_broadcast,
     site_reconcile,
+    verify_premium_emoji,
 )
 
 logger = logging.getLogger("gozar.worker")
@@ -65,6 +66,12 @@ async def _startup(ctx: dict) -> None:
     if ctx["bot"] is None:
         logger.warning("worker started without BOT_TOKEN — fan-out tasks will no-op")
     await _close_interrupted_sends(ctx)
+    # The premium emoji check runs daily; once now too, so a fresh install draws only ids Telegram
+    # knows from its first day. Queued (not awaited) so a slow Telegram never holds up the start.
+    try:
+        await ctx["redis"].enqueue_job("verify_premium_emoji", _job_id="verify_premium_emoji")
+    except Exception:
+        logger.warning("could not queue the premium emoji check (it runs on its schedule)")
     logger.info("arq worker started")
 
 
@@ -111,6 +118,7 @@ class WorkerSettings:
         # sweep; keep_result=0 frees that id the moment the sweep ends, so the next stale read can
         # queue again. One try: a failed sweep is simply retried by the next stale read.
         func(refresh_squad_online, keep_result=0, max_tries=1),
+        func(verify_premium_emoji, keep_result=0, max_tries=1),
         # The rest keep arq's defaults (300s timeout, retry) — they're short, bounded per-item work.
         reset_all_active,
         reconcile_trials,
@@ -132,6 +140,8 @@ class WorkerSettings:
         cron(sample_usage, minute=30),
         cron(reconcile_trials, minute={0, 15, 30, 45}),
         cron(site_reconcile, minute={5, 20, 35, 50}),
+        # Daily, off the hour: which premium emoji ids Telegram still knows (services/look).
+        cron(verify_premium_emoji, hour=4, minute=17),
     ]
     on_startup = _startup
     on_shutdown = _shutdown

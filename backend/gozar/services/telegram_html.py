@@ -37,6 +37,7 @@ SUPPORTED_TAGS = frozenset(
         "tg-spoiler",
         "a",
         "tg-emoji",
+        "tg-time",  # Bot API 9.5: a date/time each reader sees in their own clock and format
         "code",
         "pre",
         "blockquote",

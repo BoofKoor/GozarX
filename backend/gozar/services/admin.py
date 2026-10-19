@@ -16,13 +16,15 @@ from dataclasses import dataclass
 from redis.asyncio import Redis
 
 from gozar.cache.redis import limited_notified_key, sub_cache_key
+from gozar.db.models.config_log import ConfigLog
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.db.repositories.user import UserRepository
 from gozar.remnawave import RemnawaveClient, RemnawaveError
+from gozar.remnawave.links import normalize_remark
 from gozar.services.settings_service import SettingKey, SettingsService
-from gozar.services.stats import start_of_today
+from gozar.services.stats import day_keys, start_of_today, window_start
 
 logger = logging.getLogger("gozar.services.admin")
 
@@ -55,6 +57,49 @@ class UserCard:
 
     user: User
     configs: int
+    #: Their latest claims, newest first (the console card's timeline).
+    recent: tuple[ConfigLog, ...] = ()
+
+
+@dataclass(frozen=True)
+class ConsoleHome:
+    """The console home's summary — all from the DB, so ``/admin`` never waits on the panel."""
+
+    total: int
+    new_today: int
+    claims_today: int
+    active: int
+
+
+@dataclass(frozen=True)
+class ConsoleStats:
+    """The console's stats screen: the totals, today, the last seven local days, today's
+    locations (capped, with how many there were) and the biggest inviters."""
+
+    totals: AdminStats
+    new_today: int
+    active_users_today: int
+    #: ``(YYYY-MM-DD, claims, signups)`` for each of the last seven local days, oldest first.
+    week: list[tuple[str, int, int]]
+    locations: list[tuple[str, int]]
+    locations_total: int
+    top_referrers: list[tuple[int, int]]
+
+
+@dataclass(frozen=True)
+class LocationOverview:
+    """What the users' picker offers right now.
+
+    ``names`` is every location the trial squad serves (``None`` when the panel did not answer);
+    ``offered`` is what the picker shows after the stored allowlist (``[]`` = all, and a subset
+    naming no live host falls back to all — the trial service's own rule)."""
+
+    squad_uuid: str | None
+    squad_name: str
+    names: list[str] | None
+    offered: list[str]
+    allow: list[str]
+    today: dict[str, int]
 
 
 class AdminService:
@@ -84,11 +129,67 @@ class AdminService:
             referrals=await self._users.sum_referrals(),
         )
 
+    async def home(self) -> ConsoleHome:
+        return ConsoleHome(
+            total=await self._users.count(),
+            new_today=await self._users.count_created_since(start_of_today()),
+            claims_today=await self._logs.count_since(start_of_today()),
+            active=await self._users.count_by_status(UserStatus.active_config),
+        )
+
+    async def console_stats(self) -> ConsoleStats:
+        today = start_of_today()
+        since = window_start(7)
+        claims = dict(await self._logs.daily_counts(since))
+        signups = dict(await self._users.signups_daily(since))
+        return ConsoleStats(
+            totals=await self.stats(),
+            new_today=await self._users.count_created_since(today),
+            active_users_today=await self._logs.active_user_count_since(today),
+            week=[(day, claims.get(day, 0), signups.get(day, 0)) for day in day_keys(7)],
+            locations=await self._logs.location_counts(today, limit=8),
+            locations_total=await self._logs.location_total(today),
+            top_referrers=await self._users.top_referrers(5),
+        )
+
     async def lookup(self, target_id: int) -> UserCard | None:
         user = await self._users.get(target_id)
         if user is None:
             return None
-        return UserCard(user=user, configs=await self._logs.count_for_user(target_id))
+        return UserCard(
+            user=user,
+            configs=await self._logs.count_for_user(target_id),
+            recent=tuple(await self._logs.recent_for_user(target_id, limit=5)),
+        )
+
+    async def location_overview(self) -> LocationOverview:
+        """The trial squad's live locations and what the picker offers of them (one bounded
+        pair of panel reads; ``names`` is None when the panel did not answer)."""
+        squad = await self._settings.get(SettingKey.TRIAL_SQUAD) or None
+        allow = await self._settings.get_list(SettingKey.LOCATIONS)
+        today = dict(await self._logs.location_counts(start_of_today(), limit=200))
+        names: list[str] | None = []
+        squad_name = ""
+        if squad:
+            try:
+                found, names = await self._panel.squad_locations(squad)
+                squad_name = found.name if found is not None else ""
+            except RemnawaveError:
+                logger.warning("location_overview: panel call failed")
+                names = None
+        offered = list(names or [])
+        if allow and names:  # matched like the trial service does: by the normalised remark
+            allowed = {normalize_remark(name) for name in allow}
+            picked = [n for n in names if normalize_remark(n) in allowed]
+            offered = picked or offered
+        return LocationOverview(
+            squad_uuid=squad,
+            squad_name=squad_name,
+            names=names,
+            offered=offered,
+            allow=allow,
+            today=today,
+        )
 
     async def ban(self, target_id: int) -> User | None:
         """Block in the bot AND revoke access now: delete the live panel user, then flip

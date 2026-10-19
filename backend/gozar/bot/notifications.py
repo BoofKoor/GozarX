@@ -21,10 +21,8 @@ from gozar.bot.replies import preview_options
 logger = logging.getLogger("gozar.bot.notifications")
 
 
-def _is_custom_emoji_error(exc: TelegramBadRequest) -> bool:
-    """A premium/custom-emoji icon Telegram won't accept (stale id, or the bot owner lacks Premium
-    and hasn't bought Fragment usernames) makes it reject the WHOLE sendMessage/editMessageText."""
-    return "emoji" in str(exc).lower()
+def _is_not_modified(exc: TelegramBadRequest) -> bool:
+    return "not modified" in str(exc).lower()
 
 
 class PendingNotifications:
@@ -60,12 +58,17 @@ class PendingNotifications:
         *,
         link_preview: bool = True,
         fallback_reply_markup: InlineKeyboardMarkup | None = None,
+        fallback_text: str | None = None,
+        on_fallback: Callable[[str], Awaitable[None]] | None = None,
     ) -> None:
         """Queue an edit of the triggering message (uses the message's bound bot).
 
-        ``fallback_reply_markup`` is a safety net for the premium-emoji ad button: if Telegram
-        rejects the markup because of a custom-emoji icon, retry once with the fallback (same
-        keyboard, no icon) so a bad emoji never costs the user their delivered config."""
+        The fallbacks are the message WITHOUT custom emoji — the premium location flags in the
+        text, the flag icons and the ad button's icon on the keyboard. Telegram refuses a whole
+        message over one emoji it won't take (a stale id, a bot owner without Premium), so when
+        the edit is refused it is retried once as the fallback: a premium flag must never cost a
+        user their delivered config. ``on_fallback(reason)`` hears that the fallback was needed
+        (the look then draws plain emoji for a while)."""
 
         async def action(_bot: Bot | None) -> None:
             options = preview_options(link_preview)
@@ -74,12 +77,17 @@ class PendingNotifications:
                     text, reply_markup=reply_markup, link_preview_options=options
                 )
             except TelegramBadRequest as exc:
-                if fallback_reply_markup is None or not _is_custom_emoji_error(exc):
+                plain_text = fallback_text if fallback_text is not None else text
+                plain_markup = fallback_reply_markup or reply_markup
+                themed = fallback_text is not None or fallback_reply_markup is not None
+                if not themed or _is_not_modified(exc):
                     raise
-                logger.warning("custom-emoji button rejected; retrying without the emoji icon")
+                logger.warning("custom emoji refused (%s); sending the message plain", exc)
                 await message.edit_text(
-                    text, reply_markup=fallback_reply_markup, link_preview_options=options
+                    plain_text, reply_markup=plain_markup, link_preview_options=options
                 )
+                if on_fallback is not None:
+                    await on_fallback(str(exc))
 
         self._actions.append(action)
 

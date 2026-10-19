@@ -18,6 +18,7 @@ from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from gozar.bot.notifications import PendingNotifications
+from gozar.bot.screens import ScreenStore
 from gozar.db.models.enums import UserStatus
 from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
@@ -26,6 +27,7 @@ from gozar.remnawave import RemnawaveClient
 from gozar.services.admin import AdminService
 from gozar.services.button_service import ButtonService
 from gozar.services.content import ContentService
+from gozar.services.look import LookService
 from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingsService
 from gozar.services.trial import TrialService
@@ -85,6 +87,11 @@ class ContextMiddleware(BaseMiddleware):
                 admin=AdminService(user_repo, config_log_repo, settings, self._panel, self._redis),
                 arq=self._arq,
                 notify=notify,
+                redis=self._redis,
+                # 🎨: the look switches + what Telegram taught us (the users' location flags read it
+                # too); and the console's live screen per chat.
+                looks=LookService(settings, self._redis),
+                screens=ScreenStore(self._redis),
             )
             if user.status is UserStatus.banned:
                 await _notify_banned(event, content, user)

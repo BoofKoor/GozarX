@@ -32,6 +32,10 @@ class SettingKey:
     AD_BUTTON_TEXT = "ad_button_text"
     AD_BUTTON_URL = "ad_button_url"
     AD_BUTTON_EMOJI_ID = "ad_button_emoji_id"  # optional premium/custom-emoji icon (Bot API 9.4)
+    # 🎨 in the Telegram console: premium (custom) emoji, and rich messages for console screens.
+    # Unset reads as on; ``/simple`` turns both off. Premium also covers the users' location flags.
+    LOOK_PREMIUM = "look_premium"
+    LOOK_RICH = "look_rich"
 
 
 class SiteSettingKey:
