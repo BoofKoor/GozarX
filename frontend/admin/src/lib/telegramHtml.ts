@@ -34,6 +34,8 @@ const SUPPORTED = new Set([
   "tg-spoiler",
   "a",
   "tg-emoji",
+  // Bot API 9.5: a date/time each reader sees in their own clock and format
+  "tg-time",
   "code",
   "pre",
   "blockquote",

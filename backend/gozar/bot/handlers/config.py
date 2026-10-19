@@ -12,6 +12,7 @@ from __future__ import annotations
 import html
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.types import CallbackQuery, InlineKeyboardMarkup, Message
 
 from gozar.bot import callbacks as cb
@@ -28,6 +29,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.services.button_links import is_button_url
 from gozar.services.content import ContentService
+from gozar.services.look import LookService
 from gozar.services.referral import ReferralService
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import (
@@ -43,6 +45,7 @@ from gozar.services.trial import (
     human_bytes,
 )
 from gozar.ui.buttons import ButtonOverrides
+from gozar.ui.flags import flag_keyboard, location_html
 
 router = Router(name="config")
 
@@ -50,6 +53,36 @@ router = Router(name="config")
 async def _edit(callback: CallbackQuery, text: str, markup: InlineKeyboardMarkup) -> None:
     if isinstance(callback.message, Message):
         await callback.message.edit_text(text, reply_markup=markup)
+
+
+#: callback data -> remark, for the picker buttons a premium flag is drawn on
+Flags = dict[str, str]
+
+
+def _picker_flags(remarks: list[str], prefix: str) -> Flags:
+    return {f"{prefix}{i}": remark for i, remark in enumerate(remarks)}
+
+
+async def _edit_flagged(
+    callback: CallbackQuery,
+    text: str,
+    markup: InlineKeyboardMarkup,
+    flags: Flags | None,
+    looks: LookService,
+) -> None:
+    """Show a picker with each location's flag as a premium icon — and as the picker always was
+    when Telegram refuses that (the look then draws plain flags for a while)."""
+    themed = flag_keyboard(markup, flags, await looks.snapshot()) if flags else markup
+    if themed is markup:
+        await _edit(callback, text, markup)
+        return
+    try:
+        await _edit(callback, text, themed)
+    except TelegramBadRequest as exc:
+        if "not modified" in str(exc).lower():
+            return
+        await _edit(callback, text, markup)
+        await looks.refused(str(exc))
 
 
 def _parse_index(raw: str) -> int | None:
@@ -86,29 +119,29 @@ async def _render_claim(
     content: ContentService,
     buttons: ButtonOverrides,
     page_size: int,
-) -> tuple[str, InlineKeyboardMarkup]:
+) -> tuple[str, InlineKeyboardMarkup, Flags | None]:
     lang = user.language
-    if isinstance(result, Provisioned):
-        text = await content.text("choose_location", lang)
-        return text, location_keyboard(
-            result.remarks, cb.CONFIG_CLAIM_PREFIX, lang, page_size=page_size, buttons=buttons
+    if isinstance(result, Provisioned | AlreadyActive):
+        # A fresh trial delivers through CONFIG_CLAIM (it writes the one log row); one already live
+        # re-delivers as a change (CONFIG_CHANGE, no new log).
+        prefix = (
+            cb.CONFIG_CLAIM_PREFIX if isinstance(result, Provisioned) else cb.CONFIG_CHANGE_PREFIX
         )
-    if isinstance(result, AlreadyActive):
-        # Already holding a live trial — re-deliveries are changes (CONFIG_CHANGE, no new log).
         text = await content.text("choose_location", lang)
-        return text, location_keyboard(
-            result.remarks, cb.CONFIG_CHANGE_PREFIX, lang, page_size=page_size, buttons=buttons
+        markup = location_keyboard(
+            result.remarks, prefix, lang, page_size=page_size, buttons=buttons
         )
+        return text, markup, _picker_flags(result.remarks, prefix)
     if isinstance(result, AlreadyClaimedToday):
         # Cooldown still running — tell them how long is left ("—" when it can't be derived).
         text = await content.text("already_claimed", lang, retry_after=result.retry_after or "—")
-        return text, back_keyboard(lang, buttons)
+        return text, back_keyboard(lang, buttons), None
     key = {
         NotReady: "not_ready",
         NoLocations: "no_locations",
         PanelError: "panel_error",
     }[type(result)]
-    return await content.text(key, lang), back_keyboard(lang, buttons)
+    return await content.text(key, lang), back_keyboard(lang, buttons), None
 
 
 @router.callback_query(F.data == cb.MENU_CONFIG)
@@ -148,13 +181,15 @@ async def start_claim(
     content: ContentService,
     trial: TrialService,
     settings: SettingsService,
+    looks: LookService,
     buttons: ButtonOverrides,
 ) -> None:
     """The landing's inner get-config button — the ONLY place that provisions, then the picker."""
     await callback.answer()
     result = await trial.claim(user)
-    text, markup = await _render_claim(result, user, content, buttons, await _per_page(settings))
-    await _edit(callback, text, markup)
+    page_size = await _per_page(settings)
+    text, markup, flags = await _render_claim(result, user, content, buttons, page_size)
+    await _edit_flagged(callback, text, markup, flags, looks)
 
 
 async def _maybe_award_referral(
@@ -203,6 +238,7 @@ async def _deliver(
     log_repo: ConfigLogRepository | None,
     referral: ReferralService | None,
     buttons: ButtonOverrides,
+    looks: LookService,
 ) -> None:
     # DB work only; every user-facing send is QUEUED on `notify` and flushed by the middleware AFTER
     # the commit (so the invitee's config + the inviter's referral notice never precede the write).
@@ -233,20 +269,28 @@ async def _deliver(
     # path stays DB-only). Live usage needs a panel call, so {used_traffic} shows "—" here (real
     # usage lives on the status screen). {expires}/{remaining}/{expire} = time-left.
     total = human_bytes(await compute_traffic_bytes(settings, user.referral_count))
-    msg = await content.message(
-        "config_delivered",
-        user.language,
-        location=html.escape(delivery.location),
-        link=html.escape(delivery.link),
-        expires=delivery.expires,
-        remaining=delivery.expires,
-        expire=delivery.expires,
-        total_traffic=total,
-        total=total,
-        daily_limit=total,
-        used_traffic="—",
-        usage="—",
-    )
+    tokens = {
+        "link": html.escape(delivery.link),
+        "expires": delivery.expires,
+        "remaining": delivery.expires,
+        "expire": delivery.expires,
+        "total_traffic": total,
+        "total": total,
+        "daily_limit": total,
+        "used_traffic": "—",
+        "usage": "—",
+    }
+    plain_location = html.escape(delivery.location)
+    flag_location = location_html(delivery.location, await looks.snapshot())
+    msg = await content.message("config_delivered", user.language, location=flag_location, **tokens)
+    # The same message without the premium flag: what notifications.py falls back to when Telegram
+    # refuses the custom emoji, so a flag can never block config delivery.
+    fallback_text = None
+    if flag_location != plain_location:
+        plain = await content.message(
+            "config_delivered", user.language, location=plain_location, **tokens
+        )
+        fallback_text = plain.text
     ad = await _ad_button(settings, user.language)
     # If the promo carries a premium-emoji icon, stage a plain (icon-less) fallback keyboard: a
     # rejected emoji must not block config delivery; notifications.py retries with it.
@@ -261,6 +305,8 @@ async def _deliver(
         config_delivered_keyboard(user.language, buttons, ad=ad),
         link_preview=msg.link_preview,
         fallback_reply_markup=fallback,
+        fallback_text=fallback_text,
+        on_fallback=looks.refused,
     )
     await _maybe_queue_ads(settings, content, notify, user)  # v1: ads as a 2nd message, post-commit
 
@@ -275,6 +321,7 @@ async def deliver_claim(
     settings: SettingsService,
     config_log_repo: ConfigLogRepository,
     referral: ReferralService,
+    looks: LookService,
     buttons: ButtonOverrides,
 ) -> None:
     await _deliver(
@@ -288,6 +335,7 @@ async def deliver_claim(
         config_log_repo,
         referral,
         buttons,
+        looks,
     )
 
 
@@ -299,6 +347,7 @@ async def deliver_change(
     trial: TrialService,
     notify: PendingNotifications,
     settings: SettingsService,
+    looks: LookService,
     buttons: ButtonOverrides,
 ) -> None:
     await _deliver(
@@ -312,6 +361,7 @@ async def deliver_change(
         log_repo=None,
         referral=None,
         buttons=buttons,
+        looks=looks,
     )
 
 
@@ -322,6 +372,7 @@ async def change_location(
     content: ContentService,
     trial: TrialService,
     settings: SettingsService,
+    looks: LookService,
     buttons: ButtonOverrides,
 ) -> None:
     await callback.answer()
@@ -339,7 +390,9 @@ async def change_location(
     markup = location_keyboard(
         result, cb.CONFIG_CHANGE_PREFIX, lang, page_size=await _per_page(settings), buttons=buttons
     )
-    await _edit(callback, text, markup)
+    await _edit_flagged(
+        callback, text, markup, _picker_flags(result, cb.CONFIG_CHANGE_PREFIX), looks
+    )
 
 
 @router.callback_query(F.data.startswith(cb.LOC_PAGE_PREFIX))
@@ -349,6 +402,7 @@ async def paginate_locations(
     content: ContentService,
     trial: TrialService,
     settings: SettingsService,
+    looks: LookService,
     buttons: ButtonOverrides,
 ) -> None:
     """Re-render the picker at another page — a pure view change (no claim/log/referral logic).
@@ -374,4 +428,4 @@ async def paginate_locations(
     markup = location_keyboard(
         result, prefix, lang, page=page, page_size=await _per_page(settings), buttons=buttons
     )
-    await _edit(callback, text, markup)
+    await _edit_flagged(callback, text, markup, _picker_flags(result, prefix), looks)

@@ -286,7 +286,12 @@ class RemnawaveClient:
         return sub, links
 
     async def squad_location_names(self, squad_uuid: str) -> list[str]:
-        """Location remark names available to a squad — and ONLY that squad.
+        """Location remark names available to a squad — and ONLY that squad (see
+        ``squad_locations``, which also hands back the squad itself)."""
+        return (await self.squad_locations(squad_uuid))[1]
+
+    async def squad_locations(self, squad_uuid: str) -> tuple[InternalSquad | None, list[str]]:
+        """The squad and the location remark names available to it — and ONLY to it.
 
         VERIFY (live contract): there's no direct squad->hosts endpoint, so we match by inbound
         UUID. A squad's ``inbounds[]`` are config-profile inbounds whose OWN id is ``uuid``; a host
@@ -311,7 +316,7 @@ class RemnawaveClient:
             logger.warning(
                 "squad_location_names: squad %s not found (%d squads)", squad_uuid, len(squads)
             )
-            return []
+            return None, []
 
         inbound_uuids = {i.uuid for i in squad.inbounds if i.uuid}
         matched = [
@@ -325,4 +330,4 @@ class RemnawaveClient:
                 squad_uuid,
                 len(inbound_uuids),
             )
-        return _unique(matched)
+        return squad, _unique(matched)

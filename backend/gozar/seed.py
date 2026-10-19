@@ -210,15 +210,11 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.ru: "⛔️ Ваш доступ к боту заблокирован.",
     },
     # --- Admin panel (owner-only) body copy. Operators read these in their own language. ---
+    # The console home draws its own title and summary table above this line (ui/console_text).
     "admin_menu": {
-        Language.fa: "🛠 پنل مدیریت\nیک گزینه را انتخاب کنید:",
-        Language.en: "🛠 Admin panel\nChoose an option:",
-        Language.ru: "🛠 Панель администратора\nВыберите действие:",
-    },
-    "admin_stats": {
-        Language.fa: "📊 آمار ربات:\n• کل کاربران: {total}\n• آزاد: {available}\n• دارای کانفیگ فعال: {active}\n• مسدود: {banned}\n• کانفیگ‌های امروز: {configs_today}\n• مجموع دعوت‌ها: {referrals}",
-        Language.en: "📊 Bot stats:\n• Total users: {total}\n• Available: {available}\n• Active config: {active}\n• Banned: {banned}\n• Configs today: {configs_today}\n• Total referrals: {referrals}",
-        Language.ru: "📊 Статистика:\n• Всего пользователей: {total}\n• Свободны: {available}\n• С активным конфигом: {active}\n• Заблокированы: {banned}\n• Конфигов сегодня: {configs_today}\n• Всего приглашений: {referrals}",
+        Language.fa: "یک بخش را از دکمه‌های زیر انتخاب کنید.",
+        Language.en: "Pick a section below.",
+        Language.ru: "Выберите раздел ниже.",
     },
     "admin_broadcast_prompt": {
         Language.fa: "📣 پیامی که می‌خواهید برای همهٔ کاربران ارسال شود را بفرستید (متن یا رسانه).\nبدون سربرگ «فورواردشده» ارسال می‌شود.",
@@ -259,11 +255,6 @@ DEFAULT_CONTENT: dict[str, dict[Language, str]] = {
         Language.fa: "❓ کاربری با این شناسه پیدا نشد. دوباره تلاش کنید.",
         Language.en: "❓ No user with that ID. Try again.",
         Language.ru: "❓ Пользователь с таким ID не найден. Попробуйте снова.",
-    },
-    "admin_user_card": {
-        Language.fa: "👤 کاربر {id}\n• وضعیت: {status}\n• زبان: {language}\n• دعوت‌ها: {referrals}\n• کانفیگ‌های دریافتی: {configs}\n• نام پنل: {panel}\n• تاریخ عضویت: {joined}",
-        Language.en: "👤 User {id}\n• Status: {status}\n• Language: {language}\n• Referrals: {referrals}\n• Configs received: {configs}\n• Panel name: {panel}\n• Joined: {joined}",
-        Language.ru: "👤 Пользователь {id}\n• Статус: {status}\n• Язык: {language}\n• Приглашения: {referrals}\n• Конфигов получено: {configs}\n• Имя в панели: {panel}\n• Регистрация: {joined}",
     },
     "admin_ban_confirm": {
         Language.fa: "⛔ این کاربر مسدود می‌شود و کانفیگ فعالش روی پنل حذف می‌شود. ادامه می‌دهید؟",

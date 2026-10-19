@@ -125,9 +125,14 @@ _LABELS: dict[str, dict[Language, str]] = {
         Language.ru: "↪️ Переслать всем",
     },
     "admin_refresh_locations": {
-        Language.fa: "📍 بروزرسانی لوکیشن‌ها",
-        Language.en: "📍 Refresh locations",
-        Language.ru: "📍 Обновить локации",
+        Language.fa: "📍 لوکیشن‌ها",
+        Language.en: "📍 Locations",
+        Language.ru: "📍 Локации",
+    },
+    "admin_look": {
+        Language.fa: "🎨 ظاهر",
+        Language.en: "🎨 Appearance",
+        Language.ru: "🎨 Внешний вид",
     },
     "admin_reset_all": {
         Language.fa: "♻️ ریست حجم همه",

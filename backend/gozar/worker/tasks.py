@@ -53,12 +53,14 @@ from gozar.remnawave.schemas import PanelUser
 from gozar.services import push
 from gozar.services.content import ContentService
 from gozar.services.health import build_snapshot, sample_from
+from gozar.services.look import LookService
 from gozar.services.panel_cache import write_squad_online
 from gozar.services.reminders import ReminderService
 from gozar.services.settings_service import SettingKey, SettingsService, SiteSettingKey
 from gozar.services.site_reminders import SiteReminderService, nudge_tokens
 from gozar.services.telegram_errors import is_unreachable
 from gozar.services.trial import TrialService, human_bytes, human_remaining
+from gozar.ui.icons import all_ids
 
 logger = logging.getLogger("gozar.worker.tasks")
 
@@ -1022,3 +1024,33 @@ async def refresh_squad_online(ctx: dict) -> None:
         activity = await panel.squad_online_count(squads)
         if activity is not None:
             await write_squad_online(redis, activity.online, activity.week)
+
+
+#: getCustomEmojiStickers takes at most 200 ids per call.
+_EMOJI_BATCH = 200
+
+
+async def verify_premium_emoji(ctx: dict) -> None:
+    """Ask Telegram which of the console's premium emoji ids it still knows, and record the rest so
+    they are drawn as the plain emoji (``services/look``). Daily, and once at worker start.
+
+    One bounded call per 200 ids (three for the 403 the icon table holds). A failed call records
+    nothing: the previous answer stands, and a screen whose id went stale still arrives through the
+    sender's plain fallback."""
+    bot: Bot | None = ctx.get("bot")
+    redis = ctx.get("cache_redis")
+    if bot is None or redis is None:
+        return
+    ids = sorted(all_ids())
+    known: set[str] = set()
+    try:
+        for start in range(0, len(ids), _EMOJI_BATCH):
+            stickers = await bot.get_custom_emoji_stickers(ids[start : start + _EMOJI_BATCH])
+            known |= {s.custom_emoji_id for s in stickers if s.custom_emoji_id}
+    except Exception:
+        logger.warning("premium emoji check failed (the previous answer stands)")
+        return
+    missing = set(ids) - known
+    await LookService(None, redis).record_missing(missing)
+    if missing:
+        logger.warning("Telegram no longer knows %d premium emoji id(s)", len(missing))

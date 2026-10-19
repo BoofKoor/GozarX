@@ -22,6 +22,7 @@ from gozar.db.models.user import User
 from gozar.db.repositories.config_log import ConfigLogRepository
 from gozar.remnawave.schemas import PanelUser, Subscription, SubscriptionUser
 from gozar.services.content import ContentService
+from gozar.services.look import LookService
 from gozar.services.settings_service import SettingKey, SettingsService
 from gozar.services.trial import TrialService
 from gozar.ui.buttons import EMPTY_OVERRIDES
@@ -119,7 +120,10 @@ async def test_config_claim_provisions_and_flips_active(session) -> None:
     trial, content, settings = await _setup(session, panel)
     user = await _user(session, telegram_id=2, status=UserStatus.available)
 
-    await start_claim(_callback(), user, content, trial, settings, buttons=EMPTY_OVERRIDES)
+    looks = LookService(settings, fakeredis.aioredis.FakeRedis(decode_responses=True))
+    await start_claim(
+        _callback(), user, content, trial, settings, looks=looks, buttons=EMPTY_OVERRIDES
+    )
 
     assert panel.created  # config:claim is the only place that provisions
     assert user.status is UserStatus.active_config

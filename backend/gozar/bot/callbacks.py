@@ -51,6 +51,17 @@ ADMIN_USER_RECLAIM = "admin:user:reclaim"
 ADMIN_USER_ZERO_REFERRALS = "admin:user:zero_referrals"
 ADMIN_USER_CONFIRM = "admin:user:confirm"
 ADMIN_USER_CANCEL = "admin:user:cancel"
+# 📍 the users' locations (the home's 📍 opens it; its 🔄 offers every location of the squad again).
+ADMIN_LOCATIONS = "admin:locations"
+# 🎨 appearance: the two switches, the self-test (and its answer), "try premium again".
+ADMIN_LOOK = "admin:look"
+ADMIN_LOOK_PREMIUM = "admin:look:premium"
+ADMIN_LOOK_RICH = "admin:look:rich"
+ADMIN_LOOK_RETRY = "admin:look:retry"
+ADMIN_LOOK_TEST = "admin:look:test"
+ADMIN_LOOK_TEST_YES = "admin:look:test:yes"
+ADMIN_LOOK_TEST_NO = "admin:look:test:no"
+ADMIN_LOOK_SAMPLE = "admin:look:sample"  # the self-test's coloured sample buttons (a toast only)
 
 
 def lang_cb(code: str) -> str:

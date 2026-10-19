@@ -24,10 +24,25 @@ def test_admin_menu_keyboard() -> None:
         cb.ADMIN_USERS,
         cb.ADMIN_BROADCAST,
         cb.ADMIN_FORWARD,
-        cb.ADMIN_REFRESH_LOCATIONS,
+        cb.ADMIN_LOCATIONS,
         cb.ADMIN_RESET_ALL,
+        cb.ADMIN_LOOK,
         cb.ADMIN_CLOSE,
     ]
+
+
+def test_confirm_keyboard_colours_say_what_the_confirm_does() -> None:
+    send = confirm_keyboard(Language.en, "a:ok", "a:no", confirm_key="admin_send")
+    destroy = confirm_keyboard(Language.en, "a:ok", "a:no", danger=True)
+    assert [b.style for b in send.inline_keyboard[0]] == ["success", None]  # cancel = navigation
+    assert [b.style for b in destroy.inline_keyboard[0]] == ["danger", None]
+
+
+def test_user_card_colours_ban_red_and_unban_green() -> None:
+    active = admin_user_card_keyboard(Language.en, banned=False)
+    banned = admin_user_card_keyboard(Language.en, banned=True)
+    assert active.inline_keyboard[0][0].style == "danger"
+    assert banned.inline_keyboard[0][0].style == "success"
 
 
 def test_admin_back_keyboard() -> None:

@@ -204,10 +204,13 @@ def admin_menu_keyboard(
             ButtonSpec(key="admin_forward", callback_data=cb.ADMIN_FORWARD),
         ],
         [
-            ButtonSpec(key="admin_refresh_locations", callback_data=cb.ADMIN_REFRESH_LOCATIONS),
+            ButtonSpec(key="admin_refresh_locations", callback_data=cb.ADMIN_LOCATIONS),
             ButtonSpec(key="admin_reset_all", callback_data=cb.ADMIN_RESET_ALL),
         ],
-        [ButtonSpec(key="admin_close", callback_data=cb.ADMIN_CLOSE)],
+        [
+            ButtonSpec(key="admin_look", callback_data=cb.ADMIN_LOOK),
+            ButtonSpec(key="admin_close", callback_data=cb.ADMIN_CLOSE),
+        ],
     ]
     return render_rows(lang, structure, buttons, screen=Screen.admin_menu)
 
@@ -229,14 +232,18 @@ def confirm_keyboard(
     cancel_cb: str,
     *,
     confirm_key: str = "admin_confirm",
+    danger: bool = False,
     buttons: ButtonOverrides | None = None,
 ) -> InlineKeyboardMarkup:
     """Generic ✅/❌ gate — the broadcast/forward preview, the per-user destructive confirm, and the
     bulk reset confirm all reuse it (only the confirm/cancel callbacks differ; ``confirm_key`` picks
-    the "Send" vs "Confirm" label)."""
+    the "Send" vs "Confirm" label). The confirm button is green, or red (``danger``) when what it
+    confirms takes something away; cancel stays uncoloured — it is navigation."""
     structure = [
         [
-            ButtonSpec(key=confirm_key, callback_data=confirm_cb),
+            ButtonSpec(
+                key=confirm_key, callback_data=confirm_cb, style="danger" if danger else "success"
+            ),
             ButtonSpec(key="admin_cancel", callback_data=cancel_cb),
         ]
     ]
@@ -249,14 +256,14 @@ def admin_user_card_keyboard(
     """Per-user actions. Ban (when active) / unban (when banned), plus reclaim + zero-referrals;
     the target telegram_id is held in FSM state, so no id is embedded in the callbacks."""
     toggle = (
-        ButtonSpec(key="admin_unban", callback_data=cb.ADMIN_USER_UNBAN)
+        ButtonSpec(key="admin_unban", callback_data=cb.ADMIN_USER_UNBAN, style="success")
         if banned
-        else ButtonSpec(key="admin_ban", callback_data=cb.ADMIN_USER_BAN)
+        else ButtonSpec(key="admin_ban", callback_data=cb.ADMIN_USER_BAN, style="danger")
     )
     structure = [
         [toggle],
         [
-            ButtonSpec(key="admin_reclaim", callback_data=cb.ADMIN_USER_RECLAIM),
+            ButtonSpec(key="admin_reclaim", callback_data=cb.ADMIN_USER_RECLAIM, style="primary"),
             ButtonSpec(key="admin_zero_referrals", callback_data=cb.ADMIN_USER_ZERO_REFERRALS),
         ],
         [ButtonSpec(key="admin_back", callback_data=cb.ADMIN_MENU)],

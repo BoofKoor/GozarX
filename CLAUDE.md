@@ -42,7 +42,11 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
   Never unanchored substring regex.
 - **User-facing copy comes from the `content` table** via `content.text(key, lang, **tokens)`;
   placeholders are `{token}`, substituted only when provided. Never `str.replace` on message text.
-- **Fixed UI chrome (button labels)** lives in a small **in-code i18n map**, not the DB.
+- **Fixed UI chrome (button labels)** lives in a small **in-code i18n map**, not the DB. The
+  Telegram console's chrome — titles, table labels, one-line states (`ui/console_text`) — is chrome
+  too; its prose (prompts, confirmations, results) stays in `content` (`admin_*`). The operations
+  screens from Phase 30 on are Persian-only in code: their operators are, and hundreds of technical
+  lines would bury the bot's real copy in the Texts editor.
 - **Match a chosen location to its config by remark NAME, not list index.**
 - **No process-global mutable state for per-user data** — per-user state in FSM/DB; shared caches in
   Redis, keyed properly.
@@ -96,7 +100,8 @@ FastAPI/aiogram. The boot sequence (`docker/entrypoint.sh`) is stable forever:
 - `settings`: key → value string. Runtime values (trial squad, locations, daily_limit_mb,
   referral_reward_mb, referral_reward_limit, trial_hours, ads_enabled, configs_per_page,
   ad_button_enabled/ad_button_text/ad_button_url/ad_button_emoji_id — the Persian-only promo button
-  beside "change location" on the delivered config) — set via the first-run wizard, editable from
+  beside "change location" on the delivered config; look_premium/look_rich — the Telegram console's
+  🎨 switches, flipped from the bot, unset = on) — set via the first-run wizard, editable from
   the panel. NOT env vars. A location list of `[]` means ALL the squad's live names (the wizards,
   both refreshes and "every box ticked" all store it), so a host added later appears by itself;
   a subset matching no live host falls back to all. `seeded_site_faq` / `seeded_site_landings`
@@ -392,6 +397,43 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   clean, and the runtime shrank enough to meet Phase F's JS budget: the home page 167.4 → 155.4 KB.
   The image optimizer is switched off (nothing used it), and `components/Link` scrolls to an anchor
   on the current page itself, which 16.3's router stopped doing for a query-only change.
+29 The Telegram console (`/admin`) rebuilt on Bot API 10.3 — the first of the four phases that bring
+  tunnelbot (the owner's SSH node/exit bot, `tunnelbot-setup.sh` in the repo root) into this bot.
+  aiogram 3.29.0 (yanked on PyPI) → 3.31.0. The UI kit: `ui/rich` (one `Doc`, a rich message and a
+  regular one), `ui/theme` + `ui/icons` (403 premium emoji ids, 256 flags), `ui/look` +
+  `services/look` (the 🎨 switches in `settings`, what Telegram taught us in Redis),
+  `bot/screens` (the sender: rich → regular, premium → plain, edit → send anew), `ui/validate`
+  (Telegram's markup rules, run over every console screen by the tests). One live screen per admin
+  chat, typed answers deleted once read; home with a summary, stats with the week and today's
+  locations, a user card with its claim timeline, 📍 locations, 🎨 appearance with a self-test and
+  `/simple`. The users' picker draws each location's flag as a premium icon and the delivered
+  config as a premium emoji, and falls back to exactly the old screen when Telegram refuses one.
+
+## Telegram console conventions (`/admin`)
+- **Rich messages are for the console only.** A user on an old app sees a "not supported"
+  placeholder instead of one (Telegram's own words), so every user-facing screen stays a regular
+  message; users get premium FLAGS (and coloured buttons), nothing else of the look.
+- **A screen is a `Doc`, theming happens in the sender, never in the screen.** A screen writes plain
+  emoji (`ui.flags.with_flag` adds a plain flag); `bot/screens` turns them into custom emoji when
+  the look allows, so its "plain" fallback really is plain. A `<tg-emoji>` baked into a Doc
+  survives into the fallback and makes it fail the same way.
+- **Telegram KEEPS custom emoji only for a bot whose owner has Premium, and silently drops them
+  otherwise** (Bot API 9.4). The sender reads every answer: dropped (or a themed send refused while
+  the same rendering went through plain) blocks icons for a day (`LOOK_BLOCKED_KEY`); kept lifts it.
+  Icons are blamed only for the rendering they broke — a rich message refused with AND without
+  them is the rich message's fault.
+- **A refused edit that is about the message itself sends the screen anew** (and deletes the old
+  one) at once; "not modified" is nothing to do. Never loop renderings over an uneditable message.
+- **The console's live screen is in Redis (`ScreenStore`), never in process memory**: the worker
+  draws job progress (Phase 30) on the same screens. A button edits the message it was pressed on;
+  a typed answer edits the live screen; `/admin` opens a fresh one and deletes the previous.
+- **What the admin types is deleted once read** — except a broadcast's source message, which the
+  worker copies to every user and so must outlive the send.
+- **Premium ids are checked daily** (`verify_premium_emoji`, ≤200 per call); an id Telegram no
+  longer knows is drawn as its plain emoji. New ids come from the packs named in `ui/icons`, and a
+  test holds the table to 403 numeric ids and 256 distinct flags.
+- **A location's country is read like the site reads it** (`ui/flags.country_code`: flag emoji →
+  Persian/English name as a WHOLE word → bare code), so «چک» never matches inside «کوچک».
 
 ## Admin panel conventions
 - **The panel has its OWN palette, "Nocturne"** — a deep indigo canvas with periwinkle brand blue —
