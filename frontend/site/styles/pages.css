@@ -214,6 +214,8 @@ select.inp{ appearance:none; background-image:linear-gradient(45deg,transparent 
 @media (max-width:999.98px){ .dl-alt{ margin-block-start:2px; } }
 .dl-note{ display:flex; align-items:flex-start; gap:8px; margin:12px 0 0; padding:10px 12px; font-size:13px; line-height:1.8; color:var(--text); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); }
 .dl-note .ic{ inline-size:16px; block-size:16px; flex:none; margin-block-start:4px; color:var(--muted); }
+/* a step's terminal command: a Latin run, wrapped rather than scrolled (a scroller is a Tab stop) */
+.gcmd{ display:block; margin-block-start:12px; padding:8px 12px; font:13px/1.7 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; color:var(--text); background:var(--sunken); border:1px solid var(--border); border-radius:var(--r-ctl); white-space:pre-wrap; overflow-wrap:anywhere; unicode-bidi:isolate; user-select:all; }
 .guide-get{ margin-block-start:12px; text-decoration:none; }
 .guide-get .ic{ inline-size:16px; block-size:16px; }
 .tshot{ display:block; inline-size:100%; block-size:auto; aspect-ratio:16/9; object-fit:cover; margin-block-start:14px; border-radius:var(--r-card); border:1px solid var(--border); background:var(--sunken); }

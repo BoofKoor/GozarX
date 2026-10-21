@@ -180,6 +180,8 @@ export interface GuideStep {
   d: string;
   /** this step is "get your config": it carries a link to the claim widget (C-29) */
   get?: true;
+  /** a terminal command the step runs, drawn as its own left-to-right block under the download */
+  cmd?: string;
 }
 
 // Locale-invariant platform metadata: the BrandIcon glyph key, the accent colour that tints the
@@ -214,6 +216,8 @@ export const PLATFORM_META: Record<Platform, PlatformMeta> = {
 export interface Guide extends PlatformMeta {
   platform: Platform;
   name: string;
+  /** the page's meta description */
+  desc: string;
   app: string;
   dl: { top: string; bottom: string };
   steps: GuideStep[];
@@ -272,26 +276,103 @@ export const GUIDE_LABELS: Record<
   },
 };
 
-// Shared Happ flow — identical on every platform (the install source differs only via the button).
-// Step 2 links to the widget (it said «به صفحهٔ دریافت برو» and linked nowhere), and step 3 leads
-// with the one-tap Happ button under the config — the clipboard route is the fallback, not the path.
-const HAPP_STEPS: Record<Locale, GuideStep[]> = {
-  fa: [
-    { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا Happ را دریافت و نصب کنی، سپس اپ را باز کن." },
-    { t: "کانفیگت را بگیر", d: "در صفحهٔ اصلی لوکیشن دلخواهت را انتخاب کن و «دریافت کانفیگ» را بزن؛ کانفیگ همان لحظه ساخته می‌شود.", get: true },
-    { t: "کانفیگ را به Happ اضافه کن", d: "زیر کانفیگ روی دکمهٔ Happ بزن تا با یک لمس به اپ اضافه شود. اگر اپ باز نشد، «کپی» را بزن و در Happ از دکمهٔ + گزینهٔ «Add from clipboard» را انتخاب کن." },
-    { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ بزرگ اتصال بزن؛ اگر اجازهٔ VPN خواسته شد آن را تأیید کن. چند لحظه بعد وصل می‌شوی." },
-  ],
-  en: [
-    { t: "Install Happ", d: "Tap the button below to download and install Happ, then open the app." },
-    { t: "Get your config", d: "On the home page, pick a location and tap “Get config” — your config is made on the spot.", get: true },
-    { t: "Add it to Happ", d: "Under the config, tap the Happ button to add it in one tap. If the app doesn’t open, tap “Copy”, then in Happ press + and choose “Add from clipboard”." },
-    { t: "Connect", d: "Pick a location and tap the big connect button; approve the VPN permission if asked. You’ll be connected in a moment." },
-  ],
+// Each platform's own route through the same four moves — install, get the config, add it to Happ,
+// connect. How an app gets onto the device, what the system asks on the first connect and what goes
+// wrong afterwards are where the platforms really differ, and where a visitor gets stuck. All five
+// guides used to share one text — 92–99% of each was word for word on another — so Google read them
+// as one page and left two of them uncrawled. Step 2 links to the widget (it said «به صفحهٔ دریافت
+// برو» and linked nowhere). On a phone step 3 leads with the one-tap Happ button; on a computer with
+// the clipboard, which works whatever the browser does with a happ:// link. A UI label in Latin
+// script is a path with «→» (`Settings → System`): an all-Latin run is laid out left to right inside
+// Persian copy, where a «←» would point back up the path.
+type Trouble = { q: string; a: string };
+
+const GET: Record<Locale, { phone: GuideStep; computer: GuideStep }> = {
+  fa: {
+    phone: { t: "کانفیگت را بگیر", d: "در صفحهٔ اصلی لوکیشن دلخواهت را انتخاب کن و «دریافت کانفیگ» را بزن؛ کانفیگ همان لحظه ساخته می‌شود.", get: true },
+    computer: { t: "کانفیگت را بگیر", d: "صفحهٔ اصلی را روی همین کامپیوتر باز کن، لوکیشن دلخواهت را انتخاب کن و «دریافت کانفیگ» را بزن تا لینک کانفیگ همین‌جا آماده باشد.", get: true },
+  },
+  en: {
+    phone: { t: "Get your config", d: "On the home page, pick a location and tap “Get config” — your config is made on the spot.", get: true },
+    computer: { t: "Get your config", d: "Open the home page on this computer, pick a location and click “Get config”, so the config link is right here.", get: true },
+  },
 };
 
-// Shared troubleshooting (applies to every Happ guide).
-const TROUBLE: Record<Locale, { q: string; a: string }[]> = {
+const ADD_ON_COMPUTER: Record<Locale, GuideStep> = {
+  fa: { t: "کانفیگ را به Happ اضافه کن", d: "زیر کانفیگ «کپی» را بزن و در Happ از دکمهٔ + گزینهٔ «Add from clipboard» را انتخاب کن. دکمهٔ Happ زیر کانفیگ را هم می‌توانی امتحان کنی؛ مرورگر اول می‌پرسد Happ باز شود یا نه." },
+  en: { t: "Add it to Happ", d: "Under the config, click “Copy”, then in Happ press + and choose “Add from clipboard”. You can also try the Happ button under the config; the browser first asks whether to open Happ." },
+};
+
+const HAPP_STEPS: Record<Locale, Record<Platform, GuideStep[]>> = {
+  fa: {
+    android: [
+      { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا فایل نصبی (APK) دانلود شود و بعد بازش کن. اندروید بار اول می‌پرسد به مرورگرت اجازهٔ «نصب برنامه‌های ناشناس» را می‌دهی یا نه؛ اجازه بده و «نصب» را بزن." },
+      GET.fa.phone,
+      { t: "کانفیگ را به Happ اضافه کن", d: "زیر کانفیگ روی دکمهٔ Happ بزن تا با یک لمس به اپ اضافه شود. اگر اپ باز نشد، «کپی» را بزن و در Happ از دکمهٔ + گزینهٔ «Add from clipboard» را انتخاب کن." },
+      { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ بزرگ اتصال بزن. بار اول اندروید «درخواست اتصال» VPN را نشان می‌دهد؛ «تأیید» را بزن. آیکون کلید بالای صفحه یعنی وصل شده‌ای." },
+    ],
+    ios: [
+      { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا صفحهٔ Happ در App Store باز شود و «Get» را بزن. اگر App Store گفت این اپ در کشور یا منطقهٔ تو در دسترس نیست، یعنی Apple ID تو ایرانی است؛ یادداشت زیر را ببین." },
+      GET.fa.phone,
+      { t: "کانفیگ را به Happ اضافه کن", d: "زیر کانفیگ روی دکمهٔ Happ بزن؛ Safari می‌پرسد صفحه در Happ باز شود یا نه، «Open» را بزن. اگر نشد، «کپی» را بزن و در Happ از دکمهٔ + گزینهٔ «Add from clipboard» را انتخاب کن؛ iOS برای خواندن کلیپ‌بورد اجازه می‌خواهد، «Allow Paste» را بزن." },
+      { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ اتصال بزن. بار اول iOS می‌پرسد Happ می‌تواند پیکربندی VPN اضافه کند یا نه؛ «Allow» را بزن و با رمز گوشی یا Face ID تأیید کن. نشان VPN در نوار بالا یا Control Center یعنی وصل شده‌ای." },
+    ],
+    windows: [
+      { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا نصب‌کنندهٔ Happ (فایل exe) دانلود شود و اجرایش کن. اگر ویندوز پیام «Windows protected your PC» نشان داد، «More info» و بعد «Run anyway» را بزن؛ ویندوز این را دربارهٔ برنامه‌هایی می‌گوید که هنوز نمی‌شناسد." },
+      GET.fa.computer,
+      ADD_ON_COMPUTER.fa,
+      { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ اتصال بزن. اگر ویندوز پرسید Happ به شبکه دسترسی داشته باشد یا نه، «Allow access» را بزن. بعد سایتی را که فیلتر بود در مرورگر باز کن تا مطمئن شوی وصلی." },
+    ],
+    macos: [
+      { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا صفحهٔ Happ در App Store مک باز شود و «Get» را بزن؛ بعد از نصب، Happ را از Launchpad یا پوشهٔ Applications باز کن." },
+      GET.fa.computer,
+      ADD_ON_COMPUTER.fa,
+      { t: "وصل شو", d: "لوکیشن را انتخاب کن و روی دکمهٔ اتصال بزن. بار اول macOS می‌پرسد Happ می‌تواند پیکربندی VPN اضافه کند یا نه؛ «Allow» را بزن و رمز مک را وارد کن یا با Touch ID تأیید کن." },
+    ],
+    linux: [
+      { t: "Happ را نصب کن", d: "روی دکمهٔ پایین بزن تا بستهٔ deb دانلود شود، بعد در ترمینال، در پوشه‌ای که فایل در آن ذخیره شده (معمولاً Downloads)، این دستور را اجرا کن. این بسته برای دبیان، اوبونتو و توزیع‌های بر پایهٔ آن‌هاست.", cmd: "sudo apt install ./Happ.linux.x64.deb" },
+      GET.fa.computer,
+      ADD_ON_COMPUTER.fa,
+      { t: "وصل شو", d: "Happ را از فهرست برنامه‌ها باز کن، لوکیشن را انتخاب کن و روی دکمهٔ اتصال بزن. بعد سایتی را که فیلتر بود در مرورگر باز کن تا مطمئن شوی وصلی." },
+    ],
+  },
+  en: {
+    android: [
+      { t: "Install Happ", d: "Tap the button below to download the installer (APK), then open it. The first time, Android asks whether your browser may “install unknown apps” — allow it, then tap “Install”." },
+      GET.en.phone,
+      { t: "Add it to Happ", d: "Under the config, tap the Happ button to add it in one tap. If the app doesn’t open, tap “Copy”, then in Happ press + and choose “Add from clipboard”." },
+      { t: "Connect", d: "Pick a location and tap the big connect button. The first time, Android shows a VPN “Connection request” — tap “OK”. A key icon at the top of the screen means you’re connected." },
+    ],
+    ios: [
+      { t: "Install Happ", d: "Tap the button below to open Happ in the App Store and tap “Get”. If the App Store says the app isn’t available in your country or region, your Apple ID is Iranian — see the note below." },
+      GET.en.phone,
+      { t: "Add it to Happ", d: "Under the config, tap the Happ button; Safari asks whether to open the page in Happ — tap “Open”. Otherwise tap “Copy”, then in Happ press + and choose “Add from clipboard”; iOS asks before Happ reads the clipboard — tap “Allow Paste”." },
+      { t: "Connect", d: "Pick a location and tap connect. The first time, iOS asks whether Happ may add VPN configurations — tap “Allow” and confirm with your passcode or Face ID. The VPN badge in the status bar or Control Center means you’re connected." },
+    ],
+    windows: [
+      { t: "Install Happ", d: "Click the button below to download the Happ installer (.exe) and run it. If Windows shows “Windows protected your PC”, click “More info”, then “Run anyway” — Windows says that about apps it doesn’t recognise yet." },
+      GET.en.computer,
+      ADD_ON_COMPUTER.en,
+      { t: "Connect", d: "Pick a location and click connect. If Windows asks whether Happ may use the network, choose “Allow access”. Then open a site that was blocked in your browser to check you’re through." },
+    ],
+    macos: [
+      { t: "Install Happ", d: "Click the button below to open Happ in the Mac App Store and click “Get”; once it’s installed, open Happ from Launchpad or the Applications folder." },
+      GET.en.computer,
+      ADD_ON_COMPUTER.en,
+      { t: "Connect", d: "Pick a location and click connect. The first time, macOS asks whether Happ may add VPN configurations — click “Allow” and enter your Mac’s password or use Touch ID." },
+    ],
+    linux: [
+      { t: "Install Happ", d: "Click the button below to download the .deb package, then run this command in a terminal, in the folder it was saved to (usually Downloads). The package is for Debian, Ubuntu and the distributions built on them.", cmd: "sudo apt install ./Happ.linux.x64.deb" },
+      GET.en.computer,
+      ADD_ON_COMPUTER.en,
+      { t: "Connect", d: "Open Happ from your applications menu, pick a location and click connect. Then open a site that was blocked in your browser to check you’re through." },
+    ],
+  },
+};
+
+// Troubleshooting: what goes wrong on THIS platform first, then the two answers every Happ guide
+// shares (a config that won't connect, a slow location).
+const SHARED_TROUBLE: Record<Locale, Trouble[]> = {
   fa: [
     { q: "وصل نمی‌شود، چه کنم؟", a: "کانفیگ را دوباره از صفحهٔ دریافت کپی و در Happ import کن و مطمئن شو زمان دستگاهت درست تنظیم شده است." },
     { q: "سرعت پایین است", a: "لوکیشن دیگری را از صفحهٔ دریافت امتحان کن؛ لوکیشن نزدیک‌تر معمولاً سریع‌تر است." },
@@ -302,19 +383,86 @@ const TROUBLE: Record<Locale, { q: string; a: string }[]> = {
   ],
 };
 
+const TROUBLE: Record<Locale, Record<Platform, Trouble[]>> = {
+  fa: {
+    android: [
+      { q: "فایل نصب نمی‌شود", a: "به برنامه‌ای که فایل را با آن باز کردی (مرورگر یا مدیر فایل) اجازهٔ «نصب برنامه‌های ناشناس» را بده: تنظیمات ← برنامه‌ها ← همان برنامه ← نصب برنامه‌های ناشناس. اگر Play Protect هشدار داد، «جزئیات بیشتر» و بعد «درهرصورت نصب شود» را بزن." },
+      { q: "بعد از مدتی خودبه‌خود قطع می‌شود", a: "اندروید برای صرفه‌جویی در باتری برنامه‌های پس‌زمینه را می‌بندد. در تنظیمات ← برنامه‌ها ← Happ ← باتری، گزینهٔ «بدون محدودیت» را انتخاب کن؛ اسم این گزینه در گوشی‌های مختلف کمی فرق دارد." },
+    ],
+    ios: [
+      { q: "Happ در App Store پیدا نمی‌شود", a: "App Store فقط اپ‌های کشورِ Apple ID تو را نشان می‌دهد و برای ایران فروشگاهی ندارد. با یک Apple ID کشور دیگر (مثلاً آمریکا) وارد App Store شو و دوباره روی دکمهٔ دانلود بزن." },
+      { q: "اجازهٔ VPN را رد کردم", a: "در Happ دوباره روی دکمهٔ اتصال بزن تا iOS باز هم بپرسد و این بار «Allow» را بزن. پیکربندی Happ بعد از آن در Settings → General → VPN & Device Management دیده می‌شود." },
+    ],
+    windows: [
+      { q: "ویندوز یا آنتی‌ویروس جلوی نصب را می‌گیرد", a: "از هشدار «Windows protected your PC» با «More info» و «Run anyway» رد شو. اگر آنتی‌ویروس فایل را پاک کرد، آن را فقط از همین دکمهٔ رسمی دوباره بگیر و در آنتی‌ویروس برایش استثنا بگذار." },
+      { q: "نصب‌کننده روی کامپیوترم اجرا نمی‌شود", a: "این نصب‌کننده برای ویندوز ۶۴ بیتی است و روی ویندوز ۳۲ بیتی اجرا نمی‌شود. نوع ویندوزت را در Settings → System → About، جلوی System type ببین." },
+    ],
+    macos: [
+      { q: "Happ در App Store مک پیدا نمی‌شود", a: "مثل آیفون، App Store مک هم برای ایران فروشگاه ندارد؛ با یک Apple ID کشور دیگر وارد شو. Happ روی مک و آیفون یک اپ است، پس همان Apple ID که روی آیفون استفاده کردی این‌جا هم کار می‌کند." },
+      { q: "اجازهٔ VPN را ندادم", a: "در Happ دوباره روی دکمهٔ اتصال بزن تا macOS باز هم بپرسد. پیکربندی Happ بعد از آن در System Settings → VPN دیده می‌شود." },
+    ],
+    linux: [
+      { q: "apt خطای وابستگی می‌دهد", a: "دستور sudo apt -f install را اجرا کن تا وابستگی‌های جاافتاده نصب شوند، بعد دستور نصب را دوباره بزن." },
+      { q: "توزیع من بر پایهٔ دبیان نیست", a: "این بسته فقط روی دبیان، اوبونتو و توزیع‌های بر پایهٔ آن‌ها نصب می‌شود. برای توزیع‌های دیگر، صفحهٔ انتشار Happ desktop در GitHub را ببین." },
+    ],
+  },
+  en: {
+    android: [
+      { q: "The file won't install", a: "Allow “Install unknown apps” for the app you opened the file with (your browser or file manager): Settings → Apps → that app → Install unknown apps. If Play Protect warns you, tap “More details”, then “Install anyway”." },
+      { q: "It disconnects on its own after a while", a: "Android closes background apps to save battery. In Settings → Apps → Happ → Battery, choose “Unrestricted” — the name differs a little from phone to phone." },
+    ],
+    ios: [
+      { q: "I can't find Happ in the App Store", a: "The App Store only shows the apps of your Apple ID's country, and it has no Iranian storefront. Sign in to the App Store with an Apple ID from another country (for example the US) and tap the download button again." },
+      { q: "I declined the VPN permission", a: "Tap connect in Happ again so iOS asks once more, and choose “Allow” this time. Happ's configuration then shows under Settings → General → VPN & Device Management." },
+    ],
+    windows: [
+      { q: "Windows or my antivirus blocks the installer", a: "Get past “Windows protected your PC” with “More info” and “Run anyway”. If your antivirus removes the file, download it again from this official button only and add an exception for it in the antivirus." },
+      { q: "The installer won't run on my PC", a: "This installer is for 64-bit Windows and won't run on 32-bit Windows — check “System type” under Settings → System → About." },
+    ],
+    macos: [
+      { q: "I can't find Happ in the Mac App Store", a: "As on the iPhone, the App Store has no Iranian storefront: sign in with an Apple ID from another country. Happ is one app on the Mac and the iPhone, so the Apple ID you used on your iPhone works here too." },
+      { q: "I didn't allow the VPN", a: "Click connect in Happ again so macOS asks once more. Happ's configuration then appears under System Settings → VPN." },
+    ],
+    linux: [
+      { q: "apt reports missing dependencies", a: "Run sudo apt -f install to pull in what's missing, then run the install command again." },
+      { q: "My distribution isn't Debian-based", a: "This package installs only on Debian, Ubuntu and the distributions built on them. For others, check the Happ desktop releases page on GitHub." },
+    ],
+  },
+};
+
+// The guide's meta description, one per platform: a template with only the name swapped was one
+// more sentence all five pages shared.
+const GUIDE_DESC: Record<Locale, Record<Platform, string>> = {
+  fa: {
+    android: "راهنمای اتصال در اندروید با Happ: نصب فایل APK، افزودن کانفیگ رایگان GozarX با یک لمس، تأیید درخواست VPN و جلوگیری از قطع شدن در پس‌زمینه.",
+    ios: "راهنمای اتصال در آیفون با Happ: نصب از App Store با Apple ID غیرایرانی، افزودن کانفیگ رایگان GozarX و اجازهٔ پیکربندی VPN.",
+    windows: "راهنمای اتصال در ویندوز با Happ: اجرای نصب‌کنندهٔ exe و عبور از هشدار SmartScreen، افزودن کانفیگ رایگان GozarX و اتصال.",
+    macos: "راهنمای اتصال در مک با Happ: نصب از App Store مک با Apple ID غیرایرانی، افزودن کانفیگ رایگان GozarX و اجازهٔ VPN.",
+    linux: "راهنمای اتصال در لینوکس با Happ: نصب بستهٔ deb با apt، افزودن کانفیگ رایگان GozarX و رفع خطای وابستگی.",
+  },
+  en: {
+    android: "Connect on Android with Happ: install the APK, add your free GozarX config in one tap, approve the VPN request and keep it from dropping in the background.",
+    ios: "Connect on iPhone with Happ: install from the App Store with a non-Iranian Apple ID, add your free GozarX config and allow the VPN configuration.",
+    windows: "Connect on Windows with Happ: run the .exe installer past the SmartScreen warning, add your free GozarX config and connect.",
+    macos: "Connect on a Mac with Happ: install from the Mac App Store with a non-Iranian Apple ID, add your free GozarX config and allow the VPN.",
+    linux: "Connect on Linux with Happ: install the .deb with apt, add your free GozarX config and fix missing dependencies.",
+  },
+};
+
 const NAMES: Record<Locale, Record<Platform, string>> = {
   fa: { android: "اندروید", ios: "آیفون (iOS)", windows: "ویندوز", macos: "مک (macOS)", linux: "لینوکس" },
   en: { android: "Android", ios: "iPhone (iOS)", windows: "Windows", macos: "macOS", linux: "Linux" },
 };
 
-// Download-button label lines (small top line + bold bottom line), per platform + locale.
+// Download-button label lines (small top line + bold bottom line), per platform + locale. A Persian
+// line names the extension without its dot: «(.deb)» inside RTL text is drawn «(deb.)».
 const DL: Record<Locale, Record<Platform, { top: string; bottom: string }>> = {
   fa: {
     android: { top: "دانلود مستقیم", bottom: "فایل نصبی اندروید (APK)" },
     ios: { top: "دریافت از", bottom: "App Store" },
-    windows: { top: "دانلود مستقیم", bottom: "نصب‌کنندهٔ ویندوز (.exe)" },
+    windows: { top: "دانلود مستقیم", bottom: "نصب‌کنندهٔ ویندوز (exe)" },
     macos: { top: "دریافت از", bottom: "App Store" },
-    linux: { top: "دانلود مستقیم", bottom: "بستهٔ لینوکس (.deb)" },
+    linux: { top: "دانلود مستقیم", bottom: "بستهٔ لینوکس (deb)" },
   },
   en: {
     android: { top: "Direct download", bottom: "Android installer (APK)" },
@@ -334,10 +482,11 @@ export function guideFor(locale: Locale, platform: string): Guide | undefined {
   return {
     platform,
     name: NAMES[locale][platform],
+    desc: GUIDE_DESC[locale][platform],
     app: APP_NAME,
     dl: DL[locale][platform],
-    steps: HAPP_STEPS[locale],
-    trouble: TROUBLE[locale],
+    steps: HAPP_STEPS[locale][platform],
+    trouble: [...TROUBLE[locale][platform], ...SHARED_TROUBLE[locale]],
     ...PLATFORM_META[platform],
   };
 }

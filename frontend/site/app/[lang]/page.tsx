@@ -90,7 +90,7 @@ export default async function HomePage({ params }: { params: LangParams }) {
             <p className="sub sub-short">{t("hero_sub_short")}</p>
           </div>
           <div id="hero-widget">
-            <HomeWidget locale={locale} />
+            <HomeWidget locale={locale} initial={{ locations, config }} />
           </div>
           <div className="trust-row">
             <span className="pill">
