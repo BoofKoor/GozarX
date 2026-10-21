@@ -436,6 +436,15 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   plan it recorded as it went. Saved servers log in with the bot's own ed25519 key; passwords are
   used once and never stored. `VAULT_KEY` (installer-made; `install.sh --secrets` adds it to an
   older `.env`) seals what must be kept. Verified on a real 3.4.4 panel and a real remnanode.
+31 Why Search Console left 8 of the site's 32 pages "Discovered – currently not indexed", found by
+  crawling and rendering the built site AS Googlebot rather than by reading it. In Google's render
+  every page with the claim widget led with its error card — robots.txt keeps the renderer off
+  `/api/` — so the widget now draws its picker from the page's server read; the sitemap a fresh
+  server handed out had no landing in it (now rendered per request, failing rather than short,
+  `lastmod` only where it is real); ~20 `/?loc=` copies of the homepage are closed to crawlers;
+  and the five guides, one text with the platform's name swapped (92–99% shared), each have their
+  own steps and troubleshooting. `docs/website/audit/accept_google.py` keeps all four from coming
+  back.
 
 ## Telegram console conventions (`/admin`)
 - **Rich messages are for the console only.** A user on an old app sees a "not supported"
@@ -790,6 +799,33 @@ and the Postgres password are reused, never rotated; a blank admin password keep
   site copy, landings, FAQ (`lib/publicData`, `lib/siteCopy`, `lib/landing`, `lib/faq`). Never
   `/status`: reading it mints a device. `/locations` takes an OPTIONAL device, so a cookieless server
   read resolves none and mints none.
+- **What Google should see cannot hang on a browser API call.** Its renderer honours robots.txt for
+  a page's own requests, and `/api/` is closed — it has to be, because a cookieless `/status` mints a
+  device, and a crawler let in would fill `site_devices` and the visitor figures. So every page Google
+  rendered led with the widget's S8 («یک وقفهٔ کوتاه پیش آمد»), the first thing under the H1 of all 18
+  landings. A `/status` that got NO answer (`useSite().unanswered`) on a browser holding no saved
+  config now draws S1 from the page's own server read (ClaimWidget `initial`: the squad's list and
+  `/config`); a server that answered with an error, or anything after a claim was tried, is still
+  S8. A failed `/locations` read is `null` (unknown), not `[]`, so that fallback can apply. Check
+  with Search Console's TEST LIVE URL screenshot, or `docs/website/audit/accept_google.py`, which
+  renders the pages with the paths robots.txt disallows refused.
+- **The sitemap is rendered per request and is never short.** Prerendered, it was built without a
+  backend — the 14 fixed pages and no landing — and that copy is what a fresh server handed out after
+  every deploy or restart: for five minutes, then once more as the stale copy a regeneration serves
+  first. `dynamic = "force-dynamic"` (the landing list still comes through the 5-minute fetch
+  cache), and with the backend unreachable it FAILS (`fetchLandingsOrThrow`) — a 5xx makes Google
+  keep the copy it has, a short list tells it the landings are gone. `lastmod` only where it is
+  real: a landing's `updated_at`. Google uses the field only while it proves accurate, so stamping
+  the fixed pages "now" on every render costs the landings' real dates too.
+- **`/?loc=` is closed to crawlers** (`Disallow: /*?loc=`): the flag strip and every /locations
+  cell without a landing link one, and each is a fetch that finds the homepage again — ~20 of them on
+  a 32-page site, out of the same crawl the landings wait on.
+- **Pages of one family must differ in what they SAY, not in the name they swap in.** The five
+  guides were one text (`HAPP_STEPS[locale]`) with the platform's name in the H1 — 92–99% of each
+  was on another — and Google indexed three and left two uncrawled. Each platform now has its own
+  install, first-connect and troubleshooting steps (`HAPP_STEPS[locale][platform]`, `TROUBLE`,
+  `GUIDE_DESC`). In Persian copy a UI path in Latin script is written with «→»: an all-Latin run is
+  laid out left to right, where «←» would point back up the path.
 - **SEO is Persian-only (decision D3).** One URL per page — no `/en/…`, no hreflang — and English is
   a display preference, not a second site. `proxy.ts` picks the language per request (the `locale`
   cookie, then `Accept-Language`, then fa, so a crawler gets Persian) and REWRITES the request onto

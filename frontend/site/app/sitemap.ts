@@ -1,12 +1,14 @@
 import type { MetadataRoute } from "next";
 import { PLATFORMS } from "@/lib/content";
-import { fetchLandings } from "@/lib/landing";
+import { fetchLandingsOrThrow } from "@/lib/landing";
 import { SITE_URL } from "@/lib/site";
 
-// Regenerate hourly at runtime so admin-authored landings appear without a redeploy. At BUILD time
-// (inside Docker, no backend up) fetchLandings fails gracefully to [] and the static list below is
-// emitted — the first revalidation after boot fills the landings in.
-export const revalidate = 3600;
+// Rendered on every request, never prerendered. The build has no backend, so the prerendered copy
+// listed the 14 fixed pages and NO landing — and that copy was what a fresh server handed out: after
+// every deploy or restart for five minutes, and then once more as the stale copy a regeneration
+// serves first — to whoever asked first, which may well have been Googlebot. The landing list still
+// comes through the 5-minute fetch cache, so this costs the backend nothing extra.
+export const dynamic = "force-dynamic";
 
 type Freq = NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 
@@ -14,8 +16,13 @@ type Freq = NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]>;
 // pages, one guide page per platform, the locations and articles indexes, and every published
 // keyword landing (/l/{slug}). The personalized /status view and the /offline PWA fallback are
 // deliberately excluded (and also disallowed in robots.ts).
+//
+// With the backend unreachable this FAILS rather than answering the fixed pages alone: a sitemap is
+// a claim about what exists, a 5xx makes Google keep the copy it has and come back, and a short one
+// tells it every landing is gone. `lastmod` is only ever a real date — a landing's `updated_at`; the
+// fixed pages carry none, because stamping them "now" on every render (as this did) is a date Google
+// learns to ignore, and then it ignores the landings' real ones too.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const now = new Date();
   const pages: { path: string; priority: number; changeFrequency: Freq }[] = [
     { path: "/", priority: 1, changeFrequency: "daily" },
     { path: "/guides", priority: 0.8, changeFrequency: "monthly" },
@@ -34,14 +41,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
   const statics: MetadataRoute.Sitemap = pages.map(({ path, priority, changeFrequency }) => ({
     url: `${SITE_URL}${path}`,
-    lastModified: now,
     changeFrequency,
     priority,
   }));
 
   // fa+en rows share one URL (locale is cookie-switched) — dedupe by slug, newest updated_at wins.
   const bySlug = new Map<string, string | null>();
-  for (const row of await fetchLandings()) {
+  for (const row of await fetchLandingsOrThrow()) {
     const prev = bySlug.get(row.slug);
     if (prev === undefined || (row.updated_at ?? "") > (prev ?? "")) {
       bySlug.set(row.slug, row.updated_at);
@@ -49,7 +55,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }
   const landings: MetadataRoute.Sitemap = [...bySlug.entries()].map(([slug, updatedAt]) => ({
     url: `${SITE_URL}/l/${slug}`,
-    lastModified: updatedAt ? new Date(updatedAt) : now,
+    ...(updatedAt ? { lastModified: new Date(updatedAt) } : {}),
     changeFrequency: "weekly",
     priority: 0.7,
   }));

@@ -5,6 +5,7 @@ import { localeOf } from "@/lib/server";
 import { fill } from "@/lib/i18n";
 import { translator } from "@/lib/copy";
 import { fetchLanding, fetchLandings } from "@/lib/landing";
+import { fetchPublicConfig, fetchPublicLocations } from "@/lib/publicData";
 import { breadcrumbLd } from "@/lib/jsonld";
 import { JsonLd } from "@/components/JsonLd";
 import { Icon } from "@/components/Icon";
@@ -71,10 +72,14 @@ export default async function LandingPage({ params }: { params: Promise<{ lang: 
   const row = await fetchLanding(slug, locale);
   if (!row) notFound();
 
-  // Related landings for internal linking (same locale the row was served in; drop self, cap 6).
-  const related = (await fetchLandings(row.locale as "fa" | "en"))
-    .filter((s) => s.slug !== slug)
-    .slice(0, 6);
+  // Related landings for internal linking (same locale the row was served in; drop self, cap 6), and
+  // the squad's list + /config for a widget whose own reads go unanswered (ClaimWidget `initial`).
+  const [landings, locations, config] = await Promise.all([
+    fetchLandings(row.locale as "fa" | "en"),
+    fetchPublicLocations(),
+    fetchPublicConfig(),
+  ]);
+  const related = landings.filter((s) => s.slug !== slug).slice(0, 6);
 
   // The served row may be the fa fallback inside en chrome — the article carries its own lang/dir.
   const rtl = row.locale === "fa";
@@ -113,6 +118,7 @@ export default async function LandingPage({ params }: { params: Promise<{ lang: 
             locale={locale}
             preselect={row.location_remark ?? undefined}
             title={widgetTitle}
+            initial={{ locations, config }}
           />
         </div>
 

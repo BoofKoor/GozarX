@@ -4,7 +4,7 @@ import type { Metadata } from "next";
 import Link from "@/components/Link";
 import { notFound } from "next/navigation";
 import { localeOf } from "@/lib/server";
-import { type Locale, faDigits } from "@/lib/i18n";
+import { faDigits } from "@/lib/i18n";
 import { GUIDE_LABELS, guideFor } from "@/lib/content";
 import { Icon } from "@/components/Icon";
 import { BrandIcon } from "@/components/BrandIcon";
@@ -25,12 +25,6 @@ function stepShot(platform: string, n: number): string | null {
   return existsSync(path.join(process.cwd(), "public", rel)) ? rel : null;
 }
 
-// Meta-description template ({name} = platform display name), kept under ~160 chars for SERPs.
-const META_DESC: Record<Locale, string> = {
-  fa: "آموزش قدم‌به‌قدم اتصال با اپ Happ در {name}: دانلود، افزودن کانفیگ رایگان GozarX و رفع اشکال.",
-  en: "Step-by-step guide to connecting with the Happ app on {name}: download, add your free GozarX config and troubleshoot.",
-};
-
 // The platforms are fixed, but nothing is prerendered at build (see the root layout): each guide is
 // rendered at its first visit and cached from then on.
 export function generateStaticParams(): { platform: string }[] {
@@ -46,7 +40,7 @@ export async function generateMetadata({ params }: { params: Promise<{ lang: str
   // only — the unknown-platform fallback above 404s in the page body and needs no canonical.
   return {
     title: `${heading(GUIDE_LABELS[locale], g.name)} — GozarX`,
-    description: META_DESC[locale].replace("{name}", g.name),
+    description: g.desc,
     alternates: { canonical: `/guides/${platform}` },
   };
 }
@@ -130,6 +124,12 @@ export default async function GuidePage({ params }: { params: Promise<{ lang: st
                         </p>
                       )}
                     </>
+                  )}
+                  {/* after the download it needs; a command is a Latin run, so its own LTR block */}
+                  {s.cmd && (
+                    <code className="gcmd" dir="ltr">
+                      {s.cmd}
+                    </code>
                   )}
                   {s.get && (
                     <Link className="btn sm guide-get" href="/#hero-widget">

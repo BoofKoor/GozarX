@@ -17,6 +17,7 @@
 | E | [`10-phase-e.md`](10-phase-e.md)، [`accept_e.py`](accept_e.py)، [`shots/phase-e/`](shots/phase-e/) | اجرای فاز E: «کانفیگ من»، دربارهٔ ما/تماس جدا، صفحات حقوقی، ۴۰۴/خطا/آفلاین، یک منبع FAQ، متن صادق، QR (۱۱ بررسی)، شاهدها |
 | F | [`11-phase-f.md`](11-phase-f.md)، [`accept_f.py`](accept_f.py)، [`shots/phase-f/`](shots/phase-f/) | اجرای فاز F: صفحه‌های استاتیک/ISR با انتخاب زبان در `proxy.ts` (D3)، کپی بیرون از bundle، CSS جداشده (صفحهٔ اصلی ۹٫۴KB)، کارت اشتراک هر لندینگ، SW و manifest دوزبانه (۱۹ بررسی)، شاهدها |
 | Next | [`12-next-upgrade.md`](12-next-upgrade.md) | ارتقای Next.js به ۱۶٫۳٫۸ و React به ۱۹٫۳٫۰: `npm audit` پاک، بودجهٔ JS فاز F برآورده (`accept_f.py` ۱۹ از ۱۹)، بهینه‌ساز تصویر خاموش، اسکرول لینک به لنگر همان صفحه |
+| ۳۱ | [`accept_google.py`](accept_google.py) | سایت همان‌طور که گوگل می‌بیند: ویجت در رندر گوگل (درخواست‌های بسته در robots.txt رد می‌شوند) انتخاب لوکیشن نشان می‌دهد نه کارت خطا، سایت‌مپ هر بار زنده و با همهٔ لندینگ‌ها، `/?loc=` بسته، و هیچ راهنمایی تکرار راهنمای دیگر نیست |
 
 **خلاصه:** پایهٔ بصری، واکنش‌گرایی (۰ سرریز) و پایداری چیدمان (CLS≈۰) خوب است؛ ضعف‌ها در حالت‌های
 غیرخوش ویجت (اسکلتون نامرئی، تایمر یخ‌زده، خطای عمومی، revive شکسته)، تبدیل روی موبایل (دکمه زیر
@@ -38,6 +39,7 @@ python3 docs/website/audit/accept_d.py /tmp/shots     # کیبورد، هدف ل
 pip install zxing-cpp                                 # اختیاری: accept_e کد QR را واقعاً رمزگشایی می‌کند
 python3 docs/website/audit/accept_e.py /tmp/shots     # نام‌ها، صفحات محتوا، ۴۰۴/آفلاین، FAQ، QR (~۲ دقیقه)
 python3 docs/website/audit/accept_f.py /tmp/shots     # استاتیک/ISR، زبان، وزن JS/CSS، کارت OG، SW، manifest (~۱ دقیقه)
+python3 docs/website/audit/accept_google.py /tmp/shots  # رندر گوگل‌بات، سایت‌مپ، robots.txt، تکرار راهنماها (~۱ دقیقه)
 ```
 
 `mockapi.py` حالت‌ها را با کوکی انتخاب می‌کند (`mock_state`، `mock_claim`، `mock_locs`، `mock_delay`، `mock_refs`، `mock_hist`)

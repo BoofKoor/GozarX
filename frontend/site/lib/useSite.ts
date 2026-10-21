@@ -10,7 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { api, type PublicConfig, type StatusResponse } from "@/lib/api";
+import { ApiError, api, type PublicConfig, type StatusResponse } from "@/lib/api";
 import type { Locale } from "@/lib/i18n";
 import { hasPushSubscription } from "@/lib/push";
 
@@ -20,9 +20,13 @@ export interface SiteState {
   /** Date.now() when `status` arrived — the anchor lib/time uses to correct for the device clock. */
   statusAt: number;
   config: PublicConfig | null;
+  /** null until the list arrives — and after a read that failed: unknown is not "none". */
   locations: string[] | null;
   loading: boolean;
   offline: boolean;
+  /** `offline` because /status got NO answer — no connection, or a request the browser refused
+   *  (robots.txt does that to Google's renderer) — rather than an error the server sent back. */
+  unanswered: boolean;
   /** Re-read /status. `quiet` is for background polls: a failed poll keeps the current view instead
    *  of flipping the widget to its error screen mid-countdown — the next poll simply tries again. */
   reload: (opts?: { quiet?: boolean }) => Promise<void>;
@@ -54,7 +58,8 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [locations, setLocations] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [offline, setOffline] = useState(false);
+  // Why /status last failed, or null: one state, so `offline` and `unanswered` cannot disagree.
+  const [failure, setFailure] = useState<"answered" | "unanswered" | null>(null);
   const [pushPerm, setPushPerm] = useState<NotificationPermission>("default");
   const [pushSub, setPushSub] = useState(false);
   const started = useRef(false);
@@ -73,7 +78,10 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
       // braces (e.g. "{{STATUS}}") — they're broken and must never be offered to a user.
       setLocations(raw.filter((n) => !/[{}]/.test(n)));
     } catch {
-      setLocations([]);
+      // Unknown, not empty: a caller holding the page's own server read of the list (the claim
+      // widget, LocationsGrid) falls back to it instead of drawing "no locations" — which is what
+      // Google's renderer got, robots.txt keeping it off /api/.
+      setLocations(null);
     }
   }, []);
 
@@ -81,9 +89,9 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
     async (opts?: { quiet?: boolean }) => {
       try {
         setStatus(await api.status());
-        setOffline(false);
-      } catch {
-        if (!opts?.quiet) setOffline(true);
+        setFailure(null);
+      } catch (err) {
+        if (!opts?.quiet) setFailure(err instanceof ApiError ? "answered" : "unanswered");
       }
     },
     [setStatus],
@@ -100,9 +108,9 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
           ? new URLSearchParams(window.location.search).get("ref")
           : null;
       setStatus(await api.status(ref ?? undefined));
-      setOffline(false);
-    } catch {
-      setOffline(true);
+      setFailure(null);
+    } catch (err) {
+      setFailure(err instanceof ApiError ? "answered" : "unanswered");
     }
     // config is device-independent; locations now carry the freshly-set cookie (same device).
     await Promise.all([
@@ -129,7 +137,8 @@ export function SiteProvider({ locale, children }: { locale: Locale; children: R
     config,
     locations,
     loading,
-    offline,
+    offline: failure !== null,
+    unanswered: failure === "unanswered",
     reload,
     refreshLocations: loadLocations,
     pushPerm,

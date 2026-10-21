@@ -2,7 +2,7 @@
 
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import Link from "@/components/Link";
-import { api, type ClaimResponse, type StatusResponse } from "@/lib/api";
+import { api, type ClaimResponse, type PublicConfig, type StatusResponse } from "@/lib/api";
 import { type Locale, faDigits, fill } from "@/lib/i18n";
 import { useT } from "@/lib/useT";
 import { clientDeadline } from "@/lib/time";
@@ -87,15 +87,20 @@ export function ClaimWidget({
   compact = false,
   preselect,
   title,
+  initial,
 }: {
   locale: Locale;
   compact?: boolean;
   preselect?: string;
   /** The picker's heading in place of «کانفیگ رایگان امروز» — a landing names its location. */
   title?: string;
+  /** The page's own SERVER read of the squad's list and /config (lib/publicData), for a browser
+   *  whose reads go unanswered — see `unknownVisitor`. Display only: Turnstile still follows the
+   *  browser's own /config, since a claim it could not reach would not get through either. */
+  initial?: { locations: string[] | null; config: PublicConfig | null };
 }) {
   const t = useT();
-  const { status, statusAt, config, locations, loading, offline, reload, refreshLocations } =
+  const { status, statusAt, config, locations, loading, offline, unanswered, reload, refreshLocations } =
     useSite();
   const [picked, setPicked] = useState<string | null>(null);
   const [token, setToken] = useState("");
@@ -134,14 +139,14 @@ export function ClaimWidget({
   }, []);
 
   const needsTurnstile = !!config?.turnstile_enabled && !!config.turnstile_site_key;
-  const popular = config?.popular_location ?? null;
+  const popular = config?.popular_location ?? initial?.config?.popular_location ?? null;
   const current = status?.location ?? null;
   // Lead the grid with what the visitor most likely wants, so the collapsed two rows always hold it:
   // when switching, the location in use (marked «فعلی»); otherwise a landing page's promised
   // location, then the admin's "popular" pick. A stable sort — everything else keeps panel order.
   const lead = changeLoc ? current : (preselect ?? null);
   const rank = (l: string) => (sameLoc(l, lead) ? 0 : sameLoc(l, popular) ? 1 : 2);
-  const rawLocs = locations ?? [];
+  const rawLocs = locations ?? initial?.locations ?? [];
   const locs = [...rawLocs].sort((a, b) => rank(a) - rank(b));
   // The popular location doubles as the DEFAULT selection, so the CTA is never dead-on-arrival: a
   // visitor can claim with zero taps, and any real pick — or a landing's preselect — overrides it.
@@ -396,9 +401,16 @@ export function ClaimWidget({
   useVisiblePoll(!loading && hasConfig && exhausted, poll);
 
   // ---- which screen, and what it is called (the live region announces changes nobody tapped for) ----
+  // /status got NO answer, on a browser that holds no config of its own: as far as anyone can tell
+  // a NEW visitor, so the picker — from the page's server read when the browser's own list failed
+  // too — rather than an error card nobody can act on. Google's renderer is exactly this visitor:
+  // robots.txt keeps it off /api/, and every page it rendered led with «یک وقفهٔ کوتاه پیش آمد».
+  // A server that ANSWERED with an error is still S8, and so is anything after a claim was tried —
+  // the claim is the real test of whether there is a service behind the picker.
+  const unknownVisitor = offline && unanswered && !saved && outcomeSeq === 0 && locs.length > 0;
   const view: string = loading
     ? "loading"
-    : offline || errState
+    : errState || (offline && !unknownVisitor)
       ? "s8"
       : blocked
         ? "sb"
@@ -722,7 +734,7 @@ export function ClaimWidget({
             {...ctaProps}
             disabled={!selected}
             label={t("cta_get")}
-            trialHours={config?.trial_hours ?? status?.trial_hours}
+            trialHours={config?.trial_hours ?? status?.trial_hours ?? initial?.config?.trial_hours}
           />
         </div>
       </div>

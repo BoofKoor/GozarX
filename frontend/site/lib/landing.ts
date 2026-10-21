@@ -2,8 +2,9 @@
 // backend fetches. They run in the Next server (never the browser), so they hit BACKEND_ORIGIN
 // directly (http://app:8000 inside compose; set in BOTH stages of docker/Dockerfile.site).
 //
-// Failure is always graceful (null / []): `next build` runs inside Docker with no backend up, and a
-// transient backend outage must degrade to a 404/landing-less sitemap — never crash a render.
+// Failure is graceful (null / []) wherever a page renders: a transient backend outage degrades to a
+// 404 or a landing-less band, never a crashed render. The exception is the sitemap: there `[]` tells
+// Google every landing is gone, so it reads through `fetchLandingsOrThrow` and fails instead.
 // `revalidate` gives ISR semantics: admin edits appear within ~5 minutes without a redeploy.
 
 import type { Locale } from "@/lib/i18n";
@@ -40,14 +41,18 @@ export async function fetchLanding(slug: string, locale: Locale): Promise<Landin
   }
 }
 
+/** Every published landing, or a THROW when the backend did not answer — for the sitemap. */
+export async function fetchLandingsOrThrow(locale?: Locale): Promise<LandingSummary[]> {
+  const res = await fetch(`${BACKEND}/api/public/pages${locale ? `?locale=${locale}` : ""}`, {
+    next: { revalidate: REVALIDATE },
+  });
+  if (!res.ok) throw new Error(`/api/public/pages answered ${res.status}`);
+  return (await res.json()) as LandingSummary[];
+}
+
 export async function fetchLandings(locale?: Locale): Promise<LandingSummary[]> {
   try {
-    const res = await fetch(
-      `${BACKEND}/api/public/pages${locale ? `?locale=${locale}` : ""}`,
-      { next: { revalidate: REVALIDATE } },
-    );
-    if (!res.ok) return [];
-    return (await res.json()) as LandingSummary[];
+    return await fetchLandingsOrThrow(locale);
   } catch {
     return [];
   }
